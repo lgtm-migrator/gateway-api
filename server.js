@@ -44,21 +44,37 @@ app.use(logger('dev'));
 
 // this is our get method
 // this method fetches all available data in our database
-router.get('/getData', (req, res) => {
+/* router.get('/getData', (req, res) => {
     Data.find((err, data) => {
         if (err) return res.json({ success: false, error: err });
         
         return res.json({ success: true, data: data });
-    });
+    }); //.sort({id: 'asc'}).limit(2)
+}); */
+
+//Same as above, just with query built before excuting
+router.get('/getData', (req, res) => {
+  var q = Data.find().sort({id: 'desc'}).limit(3);
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
 });
 
+
+
+
 //this is a get method that only returns what we look for i.e. 
+//search matches 
 router.post('/getDataSearch', (req, res) => {
     const { search } = req.body;
-    Data.find({name: search}, (err, data) => {
-        if (err) return res.json({ success: false, error: err });
-        
-        return res.json({ success: true, data: data });
+    Data.find({ $or: [
+      {name: { "$regex": search, "$options": "i" }},
+      {description: { "$regex": search, "$options": "i" }
+    }]}, (err, data) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true, data: data });
     });
 });
 
