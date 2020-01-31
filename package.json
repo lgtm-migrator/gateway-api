@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "axios": "^0.18.0",
-    "react": "^16.5.0",
-    "react-dom": "^16.5.0",
-    "react-scripts": "1.1.5"
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "mongoose": "^5.8.10",
+    "morgan": "^1.9.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -16,5 +17,3 @@
   },
   "proxy": "http://localhost:3001"
 }
-
-
