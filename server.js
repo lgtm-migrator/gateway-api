@@ -11,21 +11,10 @@ const app = express();
 app.use(cors());
 const router = express.Router();
 
-/*const dbName = 'sample_airbnb';
-const collectionName = 'listingsAndReviews';*/
-
-const dbName = 'HDRUKRDT';
-//const collectionName = 'testCollection';
-
 // this is our MongoDB database
-const dbRoute =
-    'mongodb://first-user:Password2@cluster0-shard-00-00-cenin.gcp.mongodb.net:27017,cluster0-shard-00-01-cenin.gcp.mongodb.net:27017,cluster0-shard-00-02-cenin.gcp.mongodb.net:27017/'+dbName+'?ssl=true&replicaSet=Cluster0-shard-0&authSource=admin&retryWrites=true&w=majority';
+const dbRoute = 'mongodb+srv://'+process.env.user+':'+process.env.password+'@'+process.env.cluster+'/'+process.env.database+'?ssl=true&retryWrites=true&w=majority';    
 // connects our back end code with the database
-mongoose.connect(dbRoute, { useNewUrlParser: true });
-
-
-
-
+mongoose.connect(dbRoute, { useNewUrlParser: true, useFindAndModify: false, useUnifiedTopology: true });
 
 let db = mongoose.connection;
 
@@ -39,6 +28,93 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(logger('dev'));
+
+
+
+//Returns all tools
+router.get('/all-tools', (req, res) => {
+  var startIndex = 0;
+  maxResults = 25;
+  if (req.query.startIndex) {
+    startIndex = req.query.startIndex;
+  }
+  if (req.query.maxResults) {
+    maxResults = req.query.maxResults;
+  }
+  
+  var q = Data.find().sort({id: 'desc'}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
+});
+
+// Returns tool based on id
+router.get('/tool', (req, res) => {
+  var q = Data.find({id:req.query.id});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
+});
+
+// Add tool
+router.post('/tool', (req, res) => {
+  let data = new Data();
+
+  const { id, type, name, description, rating, link } = req.body;
+
+  if ((!id && id !== 0)) {
+    return res.json({
+      success: false,
+      error: 'INVALID INPUTS',
+    });
+  }
+
+  data.id = id;
+  data.type = type;
+  data.name = name;
+  data.description = description;
+  data.rating = rating;
+  data.link = link;
+
+  data.save((err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
+  });
+});
+
+// Update tool
+router.put('/tool', (req, res) => {
+  const { id, type, name, description, rating, link } = req.body;
+  Data.findOneAndUpdate({id: id}, {type: type, name: name, description: description, rating: rating, link: link},  (err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
+  });
+});
+
+// Delete tool
+router.delete('/tool', (req, res) => {
+  const { id } = req.body;
+  Data.findByIdAndRemove(id, (err) => {
+    if (err) return res.send(err);
+    return res.json({ success: true });
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
+//Old APIs below here vvvv
+
 
 
 
@@ -118,7 +194,7 @@ router.post('/putData', (req, res) => {
 
   const { id, type, name, description, rating, link } = req.body;
 
-  if ((!id && id !== 0) || !type || !name) {
+  if ((!id && id !== 0)) {
     return res.json({
       success: false,
       error: 'INVALID INPUTS',
@@ -139,6 +215,12 @@ router.post('/putData', (req, res) => {
 
   
 });
+
+
+
+
+
+//Old APIs above here ^^^^
 
 
 
