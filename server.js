@@ -6,7 +6,7 @@ const logger = require('morgan');
 const Data = require('./models/tools');
 //const DataNew = require('./models/newData');
 
-const API_PORT = 3001;
+const API_PORT = process.env.PORT || 3001;
 const app = express();
 app.use(cors());
 const router = express.Router();
