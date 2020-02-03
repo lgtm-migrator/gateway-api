@@ -1,6 +1,6 @@
 
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', ' gcr.io/hdrukrdt-tonyespley/hdruk-rdt-api:latest', '.']
+  args: ['build', '-t', 'gcr.io/hdrukrdt-tonyespley/hdruk-rdt-api:latest', '.']
 - name: 'gcr.io/cloud-builders/gcloud'
   args: ['run', 'deploy', '--image=gcr.io/hdrukrdt-tonyespley/hdruk-rdt-api:latest', '--platform', 'managed', '--region', 'europe-west1', 'uat-back-end']
