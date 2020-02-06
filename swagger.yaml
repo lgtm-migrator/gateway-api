@@ -30,3 +30,42 @@ paths:
       responses: 
         '200':
           description: OK
+  /search?search={searchTerm}&maxResults={maxResults}:
+    get:
+      summary: Returns search results by searchTerm with a limit of maxResults
+      parameters:
+        - name: searchTerm
+          in: path
+          required: true
+          description: A search term.
+          schema:
+            type : string
+            example: a
+        - name: maxResults
+          in: path
+          required: true
+          description: A number to return
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            default: 25
+      responses: 
+        '200':
+          description: OK
+  /tool/{toolID}:
+    get:
+      summary: Returns details for a specific tool.
+      parameters:
+        - name: toolID
+          in: path
+          required: true
+          description: The ID of the tool
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            example: 89522470
+      responses: 
+        '200':
+          description: OK
