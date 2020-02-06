@@ -1,0 +1,32 @@
+openapi: 3.0.0
+info:
+  title: API for Tools and artefacts repository
+  description: API for Tools and artefacts repository.
+  version: 0.0.1
+
+servers:
+  - url: https://{environment}-api.healthresearch.tools:{port}/api
+    variables:
+      environment:
+        default: latest
+        description: The Environment name.
+      port:
+        enum:
+          - '443'
+        default: '443'
+
+paths:
+  /search?search={searchTerm}:
+    get:
+      summary: Returns search results by searchTerm
+      parameters:
+        - name: searchTerm
+          in: path
+          required: true
+          description: A search term.
+          schema:
+            type : string
+            example: homebrew
+      responses: 
+        '200':
+          description: OK
