@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
 const express = require('express');
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+const swaggerDocument = YAML.load('./swagger.yaml');
 var cors = require('cors');
 const bodyParser = require('body-parser');
 const logger = require('morgan');
@@ -413,6 +416,7 @@ async function fun1(req, res){
 
 // append /api for our http requests
 app.use('/api', router);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // launch our backend into a port
 app.listen(API_PORT, () => console.log(`LISTENING ON PORT ${API_PORT}`));
