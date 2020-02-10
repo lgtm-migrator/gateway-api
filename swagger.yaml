@@ -16,6 +16,12 @@ servers:
         default: '443'
 
 paths:
+  /search:
+    get:
+      summary: Returns all results
+      responses: 
+        '200':
+          description: OK
   /search?search={searchTerm}:
     get:
       summary: Returns search results by searchTerm

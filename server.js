@@ -211,13 +211,13 @@ router.get('/search/bar', async (req, res) => {
 });
 
 /**
- * {get} /tool/:id Tool
+ * {get} /tool/:toolID Tool
  * 
  * Return the details on the tool based on the tool ID.
  */
-router.get('/tool/:id', async (req, res) => {
+router.get('/tool/:toolID', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({id:req.params.id});
+  var q = Data.find({id:req.params.toolID});
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -273,6 +273,36 @@ router.put('/tool/review/edit', async (req, res) => {
  */
 router.delete('/tool/review/delete', async (req, res) => {
 
+});
+
+/**
+ * {get} /project​/:project​ID Project
+ * 
+ * Return the details on the tool based on the tool ID.
+ */
+router.get('/person/:project​ID', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({id:req.params.projectID});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
+});
+
+/**
+ * {get} /person/:personID Person
+ * 
+ * Return the details on the tool based on the tool ID.
+ */
+router.get('/person/:personID', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({id:req.params.personID});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
 });
 
 /* 
