@@ -8,8 +8,10 @@ const DataSchema = new Schema(
     id: Number,
     message: String
   },
-  { collection: 'testCollection' },
-  { timestamps: true }
+  { 
+    collection: 'testCollection',
+    timestamps: true
+  }
 );
 
 

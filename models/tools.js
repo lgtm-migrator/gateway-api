@@ -13,8 +13,10 @@ const ToolSchema = new Schema(
     rating: Number,
     link: String
   },
-  { collection: 'tools' },
-  { timestamps: true }
+  { 
+    collection: 'tools',
+    timestamps: true 
+  }
 );
 
 // export the new Schema so we could modify it using Node.js

@@ -29,16 +29,13 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(logger('dev'));
 
-
-
-
 /**
  * {get} /  Home 
  * 
  * Maybe not needed as page can be generated with static content by react.
  */
 router.get('/', async (req, res) => {
-
+    
 });
 
 /**
@@ -88,7 +85,28 @@ router.get('/mytools/alltools', async (req, res) => {
  * return if they are allowed to add/edit/delete (For this project delete will be admin only)
  */
 router.post('/mytools/add', async (req, res) => {
+  let data = new Data();
 
+  const { id, type, name, description, rating, link } = req.body;
+
+  if ((!id && id !== 0)) {
+    return res.json({
+      success: false,
+      error: 'INVALID INPUTS',
+    });
+  }
+
+  data.id = id;
+  data.type = type;
+  data.name = name;
+  data.description = description;
+  data.rating = rating;
+  data.link = link;
+
+  data.save((err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
+  });
 });
 
 /**
@@ -100,7 +118,18 @@ router.post('/mytools/add', async (req, res) => {
  * (If we are going down the versions route then we will add a new version of the data and increase the version i.e. v1, v2)
  */
 router.put('/mytools/edit', async (req, res) => {
-
+  const { id, type, name, description, rating, link } = req.body;
+  Data.findOneAndUpdate({id: id}, 
+    {
+      type: type, 
+      name: name, 
+      description: description, 
+      rating: rating, 
+      link: link
+    },  (err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
+  });
 });
 
 /**
@@ -110,7 +139,11 @@ router.put('/mytools/edit', async (req, res) => {
  * When they detele, authenticate user and then delete the tool data and review data from the DB
  */
 router.delete('/mytools/delete', async (req, res) => {
-
+  const { id } = req.body;
+  Data.findOneAndDelete({id: id}, (err) => {
+    if (err) return res.send(err);
+    return res.json({ success: true });
+  });
 });
 
 /**
@@ -264,19 +297,17 @@ admin/moderater approves.
 
 
 
-/* async function getNumber() { // Async function statment
-  return 42;
-}
-let logNumber = async function() { // Async function expression
-  console.log(getNumber());
 
-  getNumber() // returns a promise
-    .then(function(value) {
-      console.log(value);
-    });
-}
-logNumber(); // Promise { 42 } */
 
+
+
+
+
+/**
+ * 
+ * Test area below! To be deleted!
+ * 
+ */
 
 
 function getRandomNumber() {
@@ -306,12 +337,8 @@ console.log('after async call');
 
 
 
-
-
-
-
 //Returns all tools
-router.get('/all-tools', async (req, res) => {
+router.get('/all-tools2', async (req, res) => {
   var startIndex = 0;
   maxResults = 25;
   if (req.query.startIndex) {
@@ -330,11 +357,6 @@ router.get('/all-tools', async (req, res) => {
 
   return results;
 });
-
-/* Test
-Test 4
-Test 2
-Test 3 */
 
 async function test(res, startIndex,maxResults) {
   var results = null;
@@ -383,185 +405,11 @@ async function fun1(req, res){
 
 
 
-
-
-
-
-// Returns tool based on id
-router.get('/tool', (req, res) => {
-  var q = Data.find({id:req.query.id});
-
-  q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
-  });
-});
-
-// Add tool
-router.post('/tool', (req, res) => {
-  let data = new Data();
-
-  const { id, type, name, description, rating, link } = req.body;
-
-  if ((!id && id !== 0)) {
-    return res.json({
-      success: false,
-      error: 'INVALID INPUTS',
-    });
-  }
-
-  data.id = id;
-  data.type = type;
-  data.name = name;
-  data.description = description;
-  data.rating = rating;
-  data.link = link;
-
-  data.save((err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
-  });
-});
-
-// Update tool
-router.put('/tool', (req, res) => {
-  const { id, type, name, description, rating, link } = req.body;
-  Data.findOneAndUpdate({id: id}, {type: type, name: name, description: description, rating: rating, link: link},  (err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
-  });
-});
-
-// Delete tool
-router.delete('/tool', (req, res) => {
-  const { id } = req.body;
-  Data.findOneAndUpdate({id: id}, (err) => {
-    if (err) return res.send(err);
-    return res.json({ success: true });
-  });
-});
-
-
-
-
-
-
-
-
-
-
-
-//Old APIs below here vvvv
-
-
-
-
-// this is our get method
-// this method fetches all available data in our database
-/* router.get('/getData', (req, res) => {
-    Data.find((err, data) => {
-        if (err) return res.json({ success: false, error: err });
-        
-        return res.json({ success: true, data: data });
-    }); //.sort({id: 'asc'}).limit(2)
-}); */
-
-//Same as above, just with query built before excuting
-router.get('/getData', (req, res) => {
-  var q = Data.find().sort({id: 'desc'}).limit(3);
-
-  q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
-  });
-});
-
-
-
-
-//this is a get method that only returns what we look for i.e. 
-//search matches 
-router.post('/getDataSearch', (req, res) => {
-    const { search } = req.body;
-    Data.find({ $or: [
-      {name: { "$regex": search, "$options": "i" }},
-      {description: { "$regex": search, "$options": "i" }
-    }]}, (err, data) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, data: data });
-    });
-});
-
-
-
-
-
-// this is our update method
-// this method overwrites existing data in our database
-router.post('/updateData', (req, res) => {
-  const { id, update } = req.body;
-  Data.findByIdAndUpdate(id, update, (err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
-  });
-});
-
-
-
-
-
-// this is our delete method
-// this method removes existing data in our database
-router.delete('/deleteData', (req, res) => {
-  const { id } = req.body;
-  Data.findByIdAndRemove(id, (err) => {
-    if (err) return res.send(err);
-    return res.json({ success: true });
-  });
-});
-
-
-
-
-
-
-// this is our create methid
-// this method adds new data in our database
-router.post('/putData', (req, res) => {
-  let data = new Data();
-
-  const { id, type, name, description, rating, link } = req.body;
-
-  if ((!id && id !== 0)) {
-    return res.json({
-      success: false,
-      error: 'INVALID INPUTS',
-    });
-  }
-
-  data.id = id;
-  data.type = type;
-  data.name = name;
-  data.description = description;
-  data.rating = rating;
-  data.link = link;
-
-  data.save((err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
-  });
-
-  
-});
-
-
-
-
-
-//Old APIs above here ^^^^
-
-
-
+/**
+ * 
+ * Test area above! To be deleted!
+ * 
+ */
 
 // append /api for our http requests
 app.use('/api', router);

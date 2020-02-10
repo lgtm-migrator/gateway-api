@@ -9,8 +9,10 @@ const RecordSearchSchema = new Schema(
     returned: Number,
     datesearched: Date
   },
-  { collection: 'recorded_search' },
-  { timestamps: true }
+  { 
+    collection: 'recorded_search',
+    timestamps: true 
+  }
 );
 
 // export the new Schema so we could modify it using Node.js
