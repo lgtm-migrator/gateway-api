@@ -11,14 +11,13 @@ chai.use(chaiString);
 
 describe("Wake up API", () => {
   it("Check the api-docs are alive", done => {
-    this.timeout(30000);
     chai
       .request(testURL)
       .get('/api-docs/')
       .end((err, res) => {
         expect(res).to.have.status(200);
       });
-  });
+  }).timeout(10000);
 
 })
 
