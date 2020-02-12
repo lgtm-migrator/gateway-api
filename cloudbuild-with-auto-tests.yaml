@@ -5,9 +5,9 @@ steps:
   args: ['push', 'gcr.io/hdrukrdt-tonyespley/hdruk-rdt-api:latest']
 - name: 'gcr.io/cloud-builders/gcloud'
   args: ['run', 'deploy', 'latest-api', '--image', 'gcr.io/hdrukrdt-tonyespley/hdruk-rdt-api:latest', '--platform', 'managed', '--region', 'europe-west1', '--allow-unauthenticated']
-- name: 'gcr.io/cloud-builders/npm'
+- name: 'gcr.io/cloud-builders/npm:node-10.10.0'
   args: ['install']
-- name: 'gcr.io/cloud-builders/npm'
+- name: 'gcr.io/cloud-builders/npm:node-10.10.0'
   args: ['test']
   env:
     - 'URL=https://latest-api.healthresearch.tools'
