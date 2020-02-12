@@ -17,7 +17,7 @@ describe("Wake up API", () => {
       .end((err, res) => {
         expect(res).to.have.status(200);
       });
-  }).timeout(10000);
+  }).timeout(30000);
 
 })
 
