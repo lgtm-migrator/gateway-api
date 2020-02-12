@@ -9,8 +9,8 @@ const { expect } = chai;
 chai.use(chaiHttp);
 chai.use(chaiString);
 
-describe("Search API", () => {
-  it("Search without any parameters should return at least one result", done => {
+describe("Wake up API", () => {
+  it("Check the api-docs are alive", done => {
     this.timeout(30000);
     chai
       .request(testURL)
@@ -20,7 +20,7 @@ describe("Search API", () => {
       });
   });
 
-}
+})
 
 describe("Search API", () => {
   it("Search without any parameters should return at least one result", done => {
