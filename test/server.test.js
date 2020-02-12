@@ -10,12 +10,12 @@ chai.use(chaiHttp);
 chai.use(chaiString);
 
 describe("Wake up API", () => {
-  it("Check the api-docs are alive", done => {
+  it("Check the api is alive", done => {
     chai
       .request(testURL)
-      .get('/api-docs/')
+      .get('/api/dead')
       .end((err, res) => {
-        expect(res).to.have.status(200);
+        expect(res).to.have.status(404);
       });
   }).timeout(30000);
 
