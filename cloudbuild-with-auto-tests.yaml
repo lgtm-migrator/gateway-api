@@ -11,5 +11,5 @@ steps:
   args: ['test']
   env:
     - 'URL=https://latest-api.healthresearch.tools'
-  images:
+images:
 - gcr.io/hdrukrdt-tonyespley/hdruk-rdt-api:latest
