@@ -44,7 +44,7 @@ describe("Search API", () => {
             //this is hacky - but a search could be in the name or description
             try {
                 expect(payload).to.have.nested.property('data[0].name').to.containIgnoreCase(searchString);
-            } catch {
+            } catch (e) {
                 expect(payload).to.have.nested.property('data[0].description').to.containIgnoreCase(searchString);
             }
             done();
