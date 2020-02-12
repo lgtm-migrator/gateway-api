@@ -11,6 +11,19 @@ chai.use(chaiString);
 
 describe("Search API", () => {
   it("Search without any parameters should return at least one result", done => {
+    this.timeout(30000);
+    chai
+      .request(testURL)
+      .get('/api-docs/')
+      .end((err, res) => {
+        expect(res).to.have.status(200);
+      });
+  });
+
+}
+
+describe("Search API", () => {
+  it("Search without any parameters should return at least one result", done => {
     chai
       .request(testURL)
       .get('/api/search')
