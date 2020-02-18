@@ -280,10 +280,10 @@ router.delete('/tool/review/delete', async (req, res) => {
  * 
  * Return the details on the tool based on the tool ID.
  */
-router.get('/project/:project​ID', async (req, res) => {
+router.get('/project/:projectID', async (req, res) => {
   //req.params.id is how you get the id from the url
   var q = Data.find({id:req.params.projectID});
-
+  
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
