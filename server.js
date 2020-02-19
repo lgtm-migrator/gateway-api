@@ -169,6 +169,7 @@ router.get('/search', async (req, res) => {
   var startIndex = 0;
   var maxResults = 25;
   var searchString = "";
+  var typeString = "";
   
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
@@ -179,13 +180,31 @@ router.get('/search', async (req, res) => {
   if (req.query.search){
     searchString = req.query.search;
   }
+  if (req.query.type){
+    typeString = req.query.type;
+  }
 
-  var searchQuery = { 
-    $or: [
-      {name: { "$regex": searchString, "$options": "i" }},
-      {description: { "$regex": searchString, "$options": "i" }}
-    ]
-  };
+  // var searchQuery = { 
+  //   $or: [
+  //     {name: { "$regex": searchString, "$options": "i" }},
+  //     {description: { "$regex": searchString, "$options": "i" }}
+  //   ]
+  // };
+
+
+  var searchQuery = {
+    $and : [
+             { 
+               $or : [ 
+                      {name: { "$regex": searchString, "$options": "i" }},
+                      {description: { "$regex": searchString, "$options": "i" }}
+                     ]
+             },
+             { 
+               type: {"$regex": typeString, "$options": "i"}
+             }
+           ]
+  } 
 
   var q = Data.find(searchQuery)
   .sort({id: 'desc'}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
