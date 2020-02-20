@@ -181,7 +181,12 @@ router.get('/search', async (req, res) => {
     searchString = req.query.search;
   }
   if (req.query.type){
-    typeString = req.query.type;
+    if (req.query.type === "all") {
+      typeString = '';
+    }
+    else {
+      typeString = req.query.type;
+    }
   }
 
   // var searchQuery = { 
@@ -197,7 +202,9 @@ router.get('/search', async (req, res) => {
              { 
                $or : [ 
                       {name: { "$regex": searchString, "$options": "i" }},
-                      {description: { "$regex": searchString, "$options": "i" }}
+                      {description: { "$regex": searchString, "$options": "i" }},
+                      {firstname: { "$regex": searchString, "$options": "i" }},
+                      {surname: { "$regex": searchString, "$options": "i" }}
                      ]
              },
              { 
@@ -360,98 +367,6 @@ admin/moderater approves.
  * Test area below! To be deleted!
  * 
  */
-
-
-function getRandomNumber() {
-  return new Promise(function(resolve, reject) {
-    setTimeout(function() {
-      const randomValue = Math.random();
-      const error = randomValue > .8 ? true : false;
-      if (error) {
-        reject(new Error('Ooops, something broke!'));
-      } else {
-        resolve(randomValue);
-      }
-    }, 2000);
-  }); 
-}
-
-async function logNumber2() {
-  let number;
-  console.log('before await', number);
-  number = await getRandomNumber();
-  console.log('after await', number); //waits for above before running
-}
-
-console.log('before async call');
-logNumber2();
-console.log('after async call');
-
-
-
-//Returns all tools
-router.get('/all-tools2', async (req, res) => {
-  var startIndex = 0;
-  maxResults = 25;
-  if (req.query.startIndex) {
-    startIndex = req.query.startIndex;
-  }
-  if (req.query.maxResults) {
-    maxResults = req.query.maxResults;
-  }
-  var results = null;
-  
-  console.log("Test");
-
-  results = test(res, startIndex,maxResults)
-  
-  console.log("Test 6");
-
-  return results;
-});
-
-async function test(res, startIndex,maxResults) {
-  var results = null;
-  console.log("Test 2");
-  //results = await test2(res, startIndex,maxResults);
-  console.log("Test 5");
-  return results;
-
-  /* var q = Data.find().sort({id: 'desc'})
-  q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    results =  res.json({ success: true, data: data });
-    console.log("Test1 = "+results);
-    return results;
-  }); */
-}
-
-
-/* function test2 (res, startIndex,maxResults) {
-  return new Promise(function(resolve, reject) {
-    await Data.find((err, data) => {
-      console.log("Test 3");
-      setTimeout(function() {
-        if (err) return res.json({ success: false, error: err });
-        results = res.json({ success: true, data: data });
-      }, 2000);
-      console.log("Test 4");
-    }).skip(parseInt(startIndex)).limit(parseInt(maxResults));
-    resolve(results);
-  });
-} */
-
-
-
-/* 
-
-async function fun1(req, res){
-  let response = await request.get('http://localhost:3000');
-    if (response.err) { console.log('error');}
-    else { console.log('fetched response');
-}
-
-*/
 
 
 
