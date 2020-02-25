@@ -198,8 +198,11 @@ router.get('/search', async (req, res) => {
 
   var searchQuery = {};
 
+  if (typeString !== '') {
+    searchQuery = {type: typeString}
+  }
+
   if (searchString.length > 0) {
-    
     if (typeString === '') {
         searchQuery = {
             $text: {$search:searchString}
