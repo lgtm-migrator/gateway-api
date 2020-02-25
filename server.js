@@ -196,25 +196,29 @@ router.get('/search', async (req, res) => {
   //   ]
   // };
 
+  var searchQuery = {};
 
-  var searchQuery = {
-    $and : [
-             { 
-               $or : [ 
-                      {name: { "$regex": searchString, "$options": "i" }},
-                      {description: { "$regex": searchString, "$options": "i" }},
-                      {firstname: { "$regex": searchString, "$options": "i" }},
-                      {surname: { "$regex": searchString, "$options": "i" }}
-                     ]
-             },
-             { 
-               type: {"$regex": typeString, "$options": "i"}
-             }
-           ]
-  } 
+  if (searchString.length > 0) {
+    
+    if (typeString === '') {
+        searchQuery = {
+            $text: {$search:searchString}
+        };
 
-  var q = Data.find(searchQuery)
-  .sort({id: 'desc'}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    } else {
+
+        searchQuery = {
+            $and : [
+                {$text: {$search:searchString}},
+                {type: typeString}
+            ]
+        };
+    }
+
+  }
+
+  var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
+  .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     result = res.json({ success: true, data: data });
