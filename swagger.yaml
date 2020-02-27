@@ -59,6 +59,12 @@ paths:
       responses: 
         '200':
           description: OK
+  /stats:
+    get:
+      summary: Returns stats about the tools repository.
+      responses: 
+        '200':
+          description: OK
   /tool/{toolID}:
     get:
       summary: Returns details for a specific tool.
