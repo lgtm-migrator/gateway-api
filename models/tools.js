@@ -9,9 +9,19 @@ const ToolSchema = new Schema(
     type: String,
     name: String,
     description: String,
-    tags: [String],
     rating: Number,
-    link: String
+    link: String,
+    categories: {
+      category: {type: String},
+      programmingLanguage: {type: [String]},
+      programmingLanguageVersion: {type: String},
+    },
+    license: String,
+    authors: [String],
+    tags: {
+      features: [String],
+      topics: [String],
+    }
   },
   { 
     collection: 'tools',

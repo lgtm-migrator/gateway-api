@@ -87,24 +87,47 @@ router.get('/mytools/alltools', async (req, res) => {
  * Authenticate user and then display all the tools that they added or for admin display all tools. Also 
  * return if they are allowed to add/edit/delete (For this project delete will be admin only)
  */
+          /* router.post('/mytools/add', async (req, res) => {
+            let data = new Data();
+
+            const { id, type, name, description, rating, link } = req.body;
+
+            if ((!id && id !== 0)) {
+              return res.json({
+                success: false,
+                error: 'INVALID INPUTS',
+              });
+            }
+
+            data.id = id;
+            data.type = type;
+            data.name = name;
+            data.description = description;
+            data.rating = rating;
+            data.link = link;
+
+            data.save((err) => {
+              if (err) return res.json({ success: false, error: err });
+              return res.json({ success: true });
+            });
+          }); */
+
 router.post('/mytools/add', async (req, res) => {
   let data = new Data();
 
-  const { id, type, name, description, rating, link } = req.body;
+  const { type, name, link, description, categories, license, authors, tags} = req.body;
 
-  if ((!id && id !== 0)) {
-    return res.json({
-      success: false,
-      error: 'INVALID INPUTS',
-    });
-  }
-
-  data.id = id;
   data.type = type;
   data.name = name;
-  data.description = description;
-  data.rating = rating;
   data.link = link;
+  data.description = description;
+  data.categories.category = categories.category;
+  data.categories.programmingLanguage = categories.programmingLanguage;
+  data.categories.programmingLanguageVersion = categories.programmingLanguageVersion;
+  data.license = license;
+  data.authors = authors;
+  data.tags.features = tags.features;
+  data.tags.topics = tags.topics;
 
   data.save((err) => {
     if (err) return res.json({ success: false, error: err });
@@ -121,14 +144,24 @@ router.post('/mytools/add', async (req, res) => {
  * (If we are going down the versions route then we will add a new version of the data and increase the version i.e. v1, v2)
  */
 router.put('/mytools/edit', async (req, res) => {
-  const { id, type, name, description, rating, link } = req.body;
+  const { id, type, name, link, description,categories, license, authors, tags} = req.body;
   Data.findOneAndUpdate({id: id}, 
     {
       type: type, 
       name: name, 
-      description: description, 
-      rating: rating, 
-      link: link
+      link: link,
+      description: description,
+      categories: {
+        category: categories.category,
+        programmingLanguage: categories.programmingLanguage,
+        programmingLanguageVersion: categories.programmingLanguageVersion
+      },
+      license: license,
+      authors: authors,
+      tags: {
+        features: tags.features,
+        topics: tags.topics
+      }
     },  (err) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true });
@@ -341,8 +374,13 @@ APIs that allow the tool owner to add/edit/delete a response to a review.
 APIs that allow the reviews that are flagged/caught by exclusion code to be hidden from view until 
 admin/moderater approves.
 */
+router.get('/addtool', async (req, res) => {
+    
+});
 
-
+// router.get('/addproject', async (req, res) => {
+    
+// });
 
 
 
