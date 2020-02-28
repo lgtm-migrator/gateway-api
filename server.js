@@ -1,3 +1,5 @@
+"use strict";
+
 const mongoose = require('mongoose');
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
@@ -229,25 +231,32 @@ router.get('/search', async (req, res) => {
   //   ]
   // };
 
+  var searchQuery = {};
 
-  var searchQuery = {
-    $and : [
-             { 
-               $or : [ 
-                      {name: { "$regex": searchString, "$options": "i" }},
-                      {description: { "$regex": searchString, "$options": "i" }},
-                      {firstname: { "$regex": searchString, "$options": "i" }},
-                      {surname: { "$regex": searchString, "$options": "i" }}
-                     ]
-             },
-             { 
-               type: {"$regex": typeString, "$options": "i"}
-             }
-           ]
-  } 
+  if (typeString !== '') {
+    searchQuery = {type: typeString}
+  }
 
-  var q = Data.find(searchQuery)
-  .sort({id: 'desc'}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+  if (searchString.length > 0) {
+    if (typeString === '') {
+        searchQuery = {
+            $text: {$search:searchString}
+        };
+
+    } else {
+
+        searchQuery = {
+            $and : [
+                {$text: {$search:searchString}},
+                {type: typeString}
+            ]
+        };
+    }
+
+  }
+
+  var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
+  .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     result = res.json({ success: true, data: data });
@@ -267,6 +276,118 @@ router.get('/search', async (req, res) => {
  */
 router.get('/search/bar', async (req, res) => {
 
+});
+
+/**
+ * {get} /stats get some basic high level stats
+ * 
+ * This will return a JSON document to show high level stats
+ */
+router.get('/stats', async (req, res) => {
+  var result;
+
+  //get some dates for query
+  var lastDay = new Date();
+  lastDay.setDate(lastDay.getDate() - 1);
+ 
+  var lastWeek = new Date();
+  lastWeek.setDate(lastWeek.getDate() - 7);
+
+  var lastMonth = new Date();
+  lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+  var lastYear = new Date();
+  lastYear.setYear(lastYear.getYear() - 1);
+
+  //set the aggregate queries
+  var aggregateQueryTypes = [ { $group : { _id : "$type", count: { $sum: 1 } } } ];
+
+  var aggregateQuerySearches = [
+    { 
+        $facet: {
+             "lastDay": [
+                {"$match" : {"datesearched":{"$gt": lastDay}}},
+                {
+                    $group : {
+                        _id: 'lastDay',
+                        count: { $sum: 1 }
+                    },
+                }
+            ],
+             "lastWeek": [
+                {"$match" : {"datesearched":{"$gt": lastWeek}}},
+                {
+                    $group : {
+                        _id: 'lastWeek',
+                        count: { $sum: 1 }
+                    },
+                }
+            ],
+             "lastMonth": [
+                {"$match" : {"datesearched":{"$gt": lastMonth}}},
+                {
+                    $group : {
+                        _id: 'lastMonth',
+                        count: { $sum: 1 }
+                    },
+                }
+            ],
+             "lastYear": [
+                {"$match" : {"datesearched":{"$gt": lastYear}}},
+                {
+                    $group : {
+                        _id: 'lastYear',
+                        count: { $sum: 1 }
+                    },
+                }
+            ],
+        }
+    }];
+
+
+  var q = RecordSearchData.aggregate(aggregateQuerySearches);
+
+  q.exec((err, dataSearches) => {
+    if (err) return res.json({ success: false, error: err });
+    
+    var x = Data.aggregate(aggregateQueryTypes);
+    x.exec((errx, dataTypes) => {
+        if (errx) return res.json({ success: false, error: errx });
+
+        var counts = {}; //hold the type (i.e. tool, person, project) counts data
+        for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
+            counts[dataTypes[i]._id] = dataTypes[i].count;
+        }
+
+        if (typeof dataSearches[0].lastDay[0] === "undefined") {
+            dataSearches[0].lastDay[0] = {count:0};
+        }
+        if (typeof dataSearches[0].lastWeek[0] === "undefined") {
+            dataSearches[0].lastWeek[0] = {count:0};
+        }
+        if (typeof dataSearches[0].lastMonth[0] === "undefined") {
+            dataSearches[0].lastMonth[0] = {count:0};
+        }
+        if (typeof dataSearches[0].lastYear[0] === "undefined") {
+            dataSearches[0].lastYear[0] = {count:0};
+        }        
+        result = res.json(
+            { 'success': true, 'data': 
+                { 'typecounts': counts, 
+                    'daycounts' : {
+                        'day':dataSearches[0].lastDay[0].count,
+                        'week':dataSearches[0].lastWeek[0].count,
+                        'month':dataSearches[0].lastMonth[0].count,
+                        'year':dataSearches[0].lastYear[0].count,
+                        
+                    },
+                }
+            }
+        );
+    });
+  });
+
+  return result;
 });
 
 /**
