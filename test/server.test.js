@@ -40,7 +40,7 @@ describe("Search API", () => {
 
   
   //add other things to search for here that should be sucessful
-  ['homebrew','the'].forEach(function(searchString) {
+  ['homebrew','cancer', 'disparity'].forEach(function(searchString) {
 
     it(`Search for string '${searchString}', first result should contain name or description '${searchString}'`, done => {
         chai
@@ -58,7 +58,16 @@ describe("Search API", () => {
             try {
                 expect(payload).to.have.nested.property('data[0].name').to.containIgnoreCase(searchString);
             } catch (e) {
-                expect(payload).to.have.nested.property('data[0].description').to.containIgnoreCase(searchString);
+                try {
+                    expect(payload).to.have.nested.property('data[0].description').to.containIgnoreCase(searchString);
+                } catch (e) {
+                    try {
+                        expect(payload).to.have.nested.property('data[0].tags').that.contains(searchString);
+                        console.log('found in tag')
+                    } catch (e) {
+
+                    }
+                }
             }
             done();
         });
@@ -88,8 +97,8 @@ describe("Search API", () => {
   });
 
 
-  it("Search for string 'a' limit results to 5, 5 or less results should be returned", done => {
-    var searchString = "a";
+  it("Search for string 'cancer' limit results to 3, 3 or less results should be returned", done => {
+    var searchString = "cancer";
     var maxResults = 5;
     chai
       .request(testURL)
