@@ -196,11 +196,11 @@ router.get('/dataset/:id', async (req, res) => {
         })
         .catch(function (err) {
             // handle error
-            return res.json({ success: false, error: err });
+            return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
         })
     })
     .catch(function (err) {
-        return res.json({ success: false, error: err });
+        return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
     });
 
 });
