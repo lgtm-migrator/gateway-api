@@ -177,31 +177,17 @@ router.put('/mytools/edit', async (req, res) => {
  * Pull data set from remote system
  */
 router.get('/dataset/:id', async (req, res) => {
-   var metadataCatalogue =  process.env.metadataURL || 'https://modelcatalogue.cs.ox.ac.uk/rdt3';
+   var metadataCatalogue =  process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
 
-    axios.post(metadataCatalogue + '/api/authentication/login', {
-        "username" : process.env.metadataUsername || '',
-        "password" : process.env.metadataPassword || ''
-    })
+    axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id)
     .then(function (response) {
-        var cookie = response.headers['set-cookie'][0];
-        var jsession = cookie.split(";");
-
-        axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id, {
-            headers: { 'Cookie': jsession[0] }
-        })
-        .then(function (response) {
-            // handle success
-            return res.json( { 'success': true, 'data': response.data } );
-        })
-        .catch(function (err) {
-            // handle error
-            return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
-        })
+        // handle success
+        return res.json( { 'success': true, 'data': response.data } );
     })
     .catch(function (err) {
+        // handle error
         return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
-    });
+    })
 
 });
 
