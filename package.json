@@ -25,7 +25,7 @@
     "yamljs": "^0.3.0"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "node -r esm server.js",
     "build": "",
     "test": "mocha",
     "eject": ""
