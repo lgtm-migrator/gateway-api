@@ -20,7 +20,7 @@ import { Data, RecordSearchData } from './database/schema';
 const API_PORT = process.env.PORT || 3001;
 var app = express();
 app.use(cors({
-  origin: ["http://localhost:3000", "https://latest.healthresearch.tools/", "https://dev.healthresearch.tools/"],
+  origin: [process.env.homeURL],
   credentials: true
  }));
 const router = express.Router();
