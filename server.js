@@ -297,9 +297,14 @@ router.get('/search', async (req, res) => {
   // };
 
   var searchQuery = {};
+  var aggregateQueryTypes = [ { $group : { _id : "$type", count: { $sum: 1 } } } ];
 
   if (typeString !== '') {
-    searchQuery = {type: typeString}
+    searchQuery = {type: typeString};
+    aggregateQueryTypes = [
+        { $match: { type: typeString } },
+        { $group : { _id : "$type", count: { $sum: 1 } } }
+    ];
   }
 
   if (searchString.length > 0) {
@@ -307,6 +312,11 @@ router.get('/search', async (req, res) => {
         searchQuery = {
             $text: {$search:searchString}
         };
+
+        aggregateQueryTypes = [
+            { $match: { $text: {$search:searchString} } },
+            { $group : { _id : "$type", count: { $sum: 1 } } }
+        ];
 
     } else {
 
@@ -316,20 +326,39 @@ router.get('/search', async (req, res) => {
                 {type: typeString}
             ]
         };
+
+        aggregateQueryTypes = [
+            { $match: { 
+                $and : [
+                    {$text: {$search:searchString}},
+                    {type: typeString}
+                ] } },
+            { $group : { _id : "$type", count: { $sum: 1 } } }
+        ];
     }
 
   }
 
-  var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
-  .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
-  q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    result = res.json({ success: true, data: data });
-    let recordSearchData = new RecordSearchData();
-    recordSearchData.searched = searchString;
-    recordSearchData.returned = data.length;
-    recordSearchData.datesearched = Date.now();
-    recordSearchData.save((err) => {});
+  var x = Data.aggregate(aggregateQueryTypes);
+  x.exec((errx, dataTypes) => {
+    if (errx) return res.json({ success: false, error: errx });
+
+    var counts = {}; //hold the type (i.e. tool, person, project) counts data
+    for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
+        counts[dataTypes[i]._id] = dataTypes[i].count;
+    }
+
+    var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
+    .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    q.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        result = res.json({ success: true, data: data, summary: counts });
+        let recordSearchData = new RecordSearchData();
+        recordSearchData.searched = searchString;
+        recordSearchData.returned = data.length;
+        recordSearchData.datesearched = Date.now();
+        recordSearchData.save((err) => {});
+    });
   });
   return result; 
 });
