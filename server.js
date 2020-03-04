@@ -1,47 +1,91 @@
 "use strict";
 
-const mongoose = require('mongoose');
-const express = require('express');
-const swaggerUi = require('swagger-ui-express');
-const YAML = require('yamljs');
+import express from 'express';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
 const swaggerDocument = YAML.load('./swagger.yaml');
-var cors = require('cors');
-const bodyParser = require('body-parser');
-const logger = require('morgan');
-const Data = require('./models/tools');
-const RecordSearchData = require('./models/recordSearch');
-const axios = require('axios');
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import logger from 'morgan';
+import passport from "passport";
+import cookieParser from "cookie-parser";
+import axios from 'axios';
+
+import { connectToDatabase } from "./database/connection"
+import { initialiseAuthentication } from "./auth";
+import { utils } from "./auth";
+import { ROLES } from './utils'
+import { Data, RecordSearchData } from './database/schema';
 
 const API_PORT = process.env.PORT || 3001;
-const app = express();
-app.use(cors());
+var app = express();
+app.use(cors({
+  origin: ["http://localhost:3000", "https://latest.healthresearch.tools/", "https://dev.healthresearch.tools/"],
+  credentials: true
+ }));
 const router = express.Router();
 
-// this is our MongoDB database
-const dbRoute = 'mongodb+srv://'+process.env.user+':'+process.env.password+'@'+process.env.cluster+'/'+process.env.database+'?ssl=true&retryWrites=true&w=majority';    
-// connects our back end code with the database
-mongoose.connect(dbRoute, { useNewUrlParser: true, useFindAndModify: false, useUnifiedTopology: true });
-
-let db = mongoose.connection;
-
-db.once('open', () => console.log('connected to the database'));
-
-// checks if connection with the database is successful
-db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+connectToDatabase();
 
 // (optional) only made for logging and
 // bodyParser, parses the request body to be a readable json format
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(logger('dev'));
+app.use(cookieParser());
+app.use(passport.initialize());
+app.use(passport.session());
+
+// append /api for our http requests
+app.use('/api', router);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+initialiseAuthentication(app);
+
+//Used to check for errors, leaving in here as it might be useful later
+/* router.get('/status', function(req, res, next) {
+  passport.authenticate('jwt', function(err, user, info) {
+      console.log(err);
+      console.log(user);
+      console.log(info);
+  })(req, res, next);
+}); */
 
 /**
- * {get} /  Home 
+ * {get} /status Status
+ * 
+ * Return the logged in status of the user and their role.
+ */
+router.get(
+  '/status',
+  passport.authenticate('jwt'),
+  async (req, res) => { 
+    if (req.user) {
+      return res.json({ success: true, data: [{role:req.user.role, id:req.user.id, name:req.user.firstname+" "+req.user.lastname}] });
+    }
+    else {
+      return res.json({ success: true, data: [{role:"Reader", id:null, name:null}] });
+    }
+});
+
+/**
+ * {get} /logout Logout
+ * 
+ * Logs the user out
+ */
+router.get('/logout', function(req, res){
+  req.logout();  
+  res.clearCookie('jwt');
+  return res.json({ success: true });
+});
+
+/**
+ * {get} / Home
  * 
  * Maybe not needed as page can be generated with static content by react.
  */
 router.get('/', async (req, res) => {
-    
+  
 });
 
 /**
@@ -419,7 +463,6 @@ router.get('/stats', async (req, res) => {
 router.get('/tool/:toolID', async (req, res) => {
   //req.params.id is how you get the id from the url
   var q = Data.find({id:req.params.toolID});
-
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
@@ -649,9 +692,6 @@ router.get('/addtool', async (req, res) => {
  * 
  */
 
-// append /api for our http requests
-app.use('/api', router);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // launch our backend into a port
 app.listen(API_PORT, () => console.log(`LISTENING ON PORT ${API_PORT}`));

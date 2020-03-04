@@ -1,6 +1,5 @@
-// /backend/data.js
-const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+import { model, Schema } from 'mongoose'
+
 
 // this will be our data base's data structure 
 const RecordSearchSchema = new Schema(
@@ -16,4 +15,7 @@ const RecordSearchSchema = new Schema(
 );
 
 // export the new Schema so we could modify it using Node.js
-module.exports = mongoose.model("RecordSearchModel", RecordSearchSchema);
+// export the new Schema so we could modify it using Node.js
+const RecordSearchData = model('RecordSearchModel', RecordSearchSchema)
+
+export { RecordSearchData }

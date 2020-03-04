@@ -1,11 +1,9 @@
-// /backend/data.js
-const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+import { model, Schema } from 'mongoose'
 
 // this will be our data base's data structure 
 const ToolSchema = new Schema(
   {
-    id: Number,
+    id: String,
     type: String,
     name: String,
     description: String,
@@ -31,7 +29,7 @@ const ToolSchema = new Schema(
       }
     ],
     firstname: String,
-    surname: String,
+    lastname: Stringx
   },
   { 
     collection: 'tools',
@@ -40,4 +38,6 @@ const ToolSchema = new Schema(
 );
 
 // export the new Schema so we could modify it using Node.js
-module.exports = mongoose.model("ToolModel", ToolSchema);
+const Data = model('Data', ToolSchema)
+
+export { Data }
