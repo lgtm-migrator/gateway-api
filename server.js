@@ -405,6 +405,97 @@ router.get('/tool/:toolID', async (req, res) => {
   });
 });
 
+router.get('/getAllTopics/:type', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({type:req.params.type});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    var combinedTopics = [];
+    data.map((dat)=>{
+      dat.tags.topics.map((topic)=>{
+        combinedTopics.push(topic);
+      });
+    });
+  return res.json({ success: true, data: combinedTopics });
+  });
+});
+
+
+router.get('/getAllFeatures/:type', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({type:req.params.type});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    var combinedFeatures = [];
+    data.map((dat)=>{
+      dat.tags.features.map((feature)=>{
+        combinedFeatures.push(feature);
+      });
+    });
+  return res.json({ success: true, data: combinedFeatures });
+  });
+});
+
+router.get('/getAllLanguages/:type', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({type:req.params.type});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    var combinedLanguages = [];
+    data.map((dat)=>{
+      dat.categories.programmingLanguage.map((language)=>{
+        combinedLanguages.push(language);
+      });
+    });
+  return res.json({ success: true, data: combinedLanguages });
+  });
+});
+
+router.get('/getAllCategories/:type', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({type:req.params.type});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    var combinedCategories = [];
+    data.map((dat)=>{
+        combinedCategories.push(dat.categories.category);
+    });
+  return res.json({ success: true, data: combinedCategories });
+  });
+});
+
+router.get('/getAllLicenses/:type', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({type:req.params.type});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    var combinedLicenses = [];
+    data.map((dat)=>{
+      combinedLicenses.push(dat.license);
+    });
+  return res.json({ success: true, data: combinedLicenses });
+  });
+});
+
+router.get('/getAllUsers/:type', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({type:req.params.type});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    var combinedUsers = [];
+    data.map((dat)=>{
+      combinedUsers.push(dat.firstname + ' ' + dat.surname);
+    });
+  return res.json({ success: true, data: combinedUsers });
+  });
+});
+
 /**
  * {get} /tool/:id/reviews Show reviews
  * 

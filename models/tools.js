@@ -21,7 +21,17 @@ const ToolSchema = new Schema(
     tags: {
       features: [String],
       topics: [String],
-    }
+    },
+    reviews: [
+      {
+        rating: Number,
+        project: Boolean,
+        projectName: String,
+        review: String,
+      }
+    ],
+    firstname: String,
+    surname: String,
   },
   { 
     collection: 'tools',
