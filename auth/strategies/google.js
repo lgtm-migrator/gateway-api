@@ -65,7 +65,7 @@ const strategy = app => {
                 .cookie('jwt', signToken(req.user), {
                     httpOnly: true
                 })
-                .redirect("http://localhost:3000/")
+                .redirect(process.env.homeURL)
         }
     )
 
