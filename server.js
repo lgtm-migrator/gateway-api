@@ -10,6 +10,7 @@ const bodyParser = require('body-parser');
 const logger = require('morgan');
 const Data = require('./models/tools');
 const RecordSearchData = require('./models/recordSearch');
+const axios = require('axios');
 
 const API_PORT = process.env.PORT || 3001;
 const app = express();
@@ -168,6 +169,26 @@ router.put('/mytools/edit', async (req, res) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true });
   });
+});
+
+/**
+ * {get} /dataset/:id get a dataset
+ * 
+ * Pull data set from remote system
+ */
+router.get('/dataset/:id', async (req, res) => {
+   var metadataCatalogue =  process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
+
+    axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id)
+    .then(function (response) {
+        // handle success
+        return res.json( { 'success': true, 'data': response.data } );
+    })
+    .catch(function (err) {
+        // handle error
+        return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
+    })
+
 });
 
 /**
