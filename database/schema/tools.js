@@ -3,7 +3,7 @@ import { model, Schema } from 'mongoose'
 // this will be our data base's data structure 
 const ToolSchema = new Schema(
   {
-    id: String,
+    id: Number,
     type: String,
     name: String,
     description: String,
@@ -29,7 +29,7 @@ const ToolSchema = new Schema(
       }
     ],
     firstname: String,
-    lastname: Stringx
+    lastname: String
   },
   { 
     collection: 'tools',

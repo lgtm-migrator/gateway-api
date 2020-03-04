@@ -17,7 +17,7 @@ async function createUser({
             return reject('Email is already in use')
         }
 
-        var id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        var id = Math.random().toString().replace('0.', '');
         var type = "person";
         return resolve(
             await UserModel.create({
