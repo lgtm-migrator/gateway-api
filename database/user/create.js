@@ -19,6 +19,7 @@ async function createUser({
 
         var id = Math.random().toString().replace('0.', '');
         var type = "person";
+        var activeflag = "active";
         return resolve(
             await UserModel.create({
                 id,
@@ -34,7 +35,8 @@ async function createUser({
                 id,
                 type,
                 firstname,
-                lastname
+                lastname,
+                activeflag
             })
         )
     })
