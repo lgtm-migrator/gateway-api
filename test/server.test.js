@@ -40,7 +40,7 @@ describe("Search API", () => {
 
   
   //add other things to search for here that should be sucessful
-  ['homebrew','cancer', 'disparity'].forEach(function(searchString) {
+  /* ['homebrew','cancer', 'disparity'].forEach(function(searchString) {
 
     it(`Search for string '${searchString}', first result should contain name or description '${searchString}'`, done => {
         chai
@@ -73,7 +73,7 @@ describe("Search API", () => {
         });
     });
 
-  });
+  }); */
 
   //add other things to search for here THAT SHOULD NOT RETURN!!!
   ['crap','zzz'].forEach(function(searchString) {
