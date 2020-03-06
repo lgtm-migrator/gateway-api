@@ -21,11 +21,12 @@ const ToolSchema = new Schema(
       topics: [String],
     },
     reviews: [
-      {
-        rating: Number,
-        project: Boolean,
+      { 
+        reviewerID: Number,
+        rating: Number, 
         projectName: String,
         review: String,
+        date: Date
       }
     ],
     firstname: String,

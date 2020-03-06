@@ -821,7 +821,23 @@ router.post('/tool/review/star', async (req, res) => {
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
 router.post('/tool/review/add', async (req, res) => {
-
+  const { id, reviewerID, rating, projectName, review} = req.body;
+  
+   Data.findOneAndUpdate({id: id}, 
+    {$push: {
+      reviews: [
+        { 
+          reviewerID: reviewerID,
+          rating: rating, 
+          projectName: projectName,
+          review: review,
+          date: Date.now()
+        }
+      ],
+    }},  (err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
+  });
 });
 
 /**
