@@ -162,7 +162,7 @@ router.get('/mytools/alltools', async (req, res) => {
 router.post('/mytools/add', async (req, res) => {
   let data = new Data();
 
-  const { type, name, link, description, categories, license, authors, tags} = req.body;
+  const {type, name, link, description, categories, license, authors, tags} = req.body;
 
   data.type = type;
   data.name = name;
@@ -191,7 +191,7 @@ router.post('/mytools/add', async (req, res) => {
  * (If we are going down the versions route then we will add a new version of the data and increase the version i.e. v1, v2)
  */
 router.put('/mytools/edit', async (req, res) => {
-  const { id, type, name, link, description,categories, license, authors, tags} = req.body;
+  const { id, type, name, link, description, categories, license, authors, tags} = req.body;
   Data.findOneAndUpdate({id: id}, 
     {
       type: type, 
@@ -469,18 +469,27 @@ router.get('/tool/:toolID', async (req, res) => {
   });
 });
 
+
 router.get('/getAllTopics/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
   var q = Data.find({type:req.params.type});
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
-    var combinedTopics = [];
+    var tempTopics = [];
     data.map((dat)=>{
       dat.tags.topics.map((topic)=>{
-        combinedTopics.push(topic);
+        tempTopics.push(topic);
       });
     });
+
+    const combinedTopics = [];
+    tempTopics.map(temp => {
+    if (combinedTopics.indexOf(temp) === -1) {
+      combinedTopics.push(temp)
+    }
+    });
+
   return res.json({ success: true, data: combinedTopics });
   });
 });
@@ -492,15 +501,24 @@ router.get('/getAllFeatures/:type', async (req, res) => {
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
-    var combinedFeatures = [];
+    var tempFeatures = [];
     data.map((dat)=>{
       dat.tags.features.map((feature)=>{
-        combinedFeatures.push(feature);
+        tempFeatures.push(feature);
       });
     });
+
+    const combinedFeatures = [];
+    tempFeatures.map(temp => {
+    if (combinedFeatures.indexOf(temp) === -1) {
+      combinedFeatures.push(temp)
+    }
+    });
+
   return res.json({ success: true, data: combinedFeatures });
   });
 });
+
 
 router.get('/getAllLanguages/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
@@ -508,15 +526,24 @@ router.get('/getAllLanguages/:type', async (req, res) => {
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
-    var combinedLanguages = [];
+    var tempLanguages = [];
     data.map((dat)=>{
       dat.categories.programmingLanguage.map((language)=>{
-        combinedLanguages.push(language);
+        tempLanguages.push(language);
       });
     });
+
+    const combinedLanguages = [];
+    tempLanguages.map(temp => {
+    if (combinedLanguages.indexOf(temp) === -1) {
+      combinedLanguages.push(temp)
+    }
+    });
+
   return res.json({ success: true, data: combinedLanguages });
   });
 });
+
 
 router.get('/getAllCategories/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
@@ -524,13 +551,23 @@ router.get('/getAllCategories/:type', async (req, res) => {
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
-    var combinedCategories = [];
+    var tempCategories = [];
     data.map((dat)=>{
-        combinedCategories.push(dat.categories.category);
+        tempCategories.push(dat.categories.category);
     });
+
+    const combinedCategories = [];
+    tempCategories.map(temp => {
+    if (combinedCategories.indexOf(temp) === -1) {
+      combinedCategories.push(temp)
+    }
+    });
+
+
   return res.json({ success: true, data: combinedCategories });
   });
 });
+
 
 router.get('/getAllLicenses/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
@@ -538,13 +575,36 @@ router.get('/getAllLicenses/:type', async (req, res) => {
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
-    var combinedLicenses = [];
+    var tempLicenses = [];
     data.map((dat)=>{
-      combinedLicenses.push(dat.license);
+      tempLicenses.push(dat.license);
     });
+
+    const combinedLicenses = [];
+    tempLicenses.map(temp => {
+    if (combinedLicenses.indexOf(temp) === -1) {
+      combinedLicenses.push(temp)
+    }
+    });
+
   return res.json({ success: true, data: combinedLicenses });
   });
 });
+
+
+// router.get('/getAllUsers/:type', async (req, res) => {
+//   //req.params.id is how you get the id from the url
+//   var q = Data.find({type:req.params.type});
+
+//   q.exec((err, data) => {
+//     if (err) return res.json({ success: false, error: err });
+//     var combinedUsers = [];
+//     data.map((dat)=>{
+//       combinedUsers.push(dat.firstname + ' ' + dat.surname);
+//     });
+//   return res.json({ success: true, data: combinedUsers });
+//   });
+// });
 
 router.get('/getAllUsers/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
@@ -552,13 +612,24 @@ router.get('/getAllUsers/:type', async (req, res) => {
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
-    var combinedUsers = [];
+    var tempUsers = [];
     data.map((dat)=>{
-      combinedUsers.push(dat.firstname + ' ' + dat.surname);
+      dat.authors.map((author)=>{
+        tempUsers.push(author);
+      });
     });
+
+  const combinedUsers = [];
+    tempUsers.map(temp => {
+    if (combinedUsers.indexOf(temp) === -1) {
+      combinedUsers.push(temp)
+  }
+  });
+
   return res.json({ success: true, data: combinedUsers });
   });
 });
+
 
 /**
  * {get} /tool/:id/reviews Show reviews
