@@ -34,6 +34,7 @@ describe("Search API", () => {
 
         expect(payload).to.have.property('success').with.to.be.true;
         expect(payload).to.have.property('data').with.lengthOf.to.be.at.least(1);
+        expect(payload).to.have.property('summary');
         done();
       });
   });
@@ -53,6 +54,7 @@ describe("Search API", () => {
 
             expect(payload).to.have.property('success').with.to.be.true;
             expect(payload).to.have.property('data').with.lengthOf.to.be.at.least(1);
+            expect(payload).to.have.property('summary');
 
             //this is hacky - but a search could be in the name or description
             try {
@@ -89,6 +91,7 @@ describe("Search API", () => {
 
             expect(payload).to.have.property('success').with.to.be.true;
             expect(payload).to.have.property('data').with.lengthOf(0);
+            expect(payload).to.have.property('summary');
 
             done();
         });
@@ -141,5 +144,25 @@ describe("Get Object API", () => {
     });
 
   });
+
+});
+
+describe("Get stats API", () => {
+
+    it(`Run stats API call`, done => {
+        chai
+        .request(testURL)
+        .get('/api/stats')
+        .end((err, res) => {
+            expect(res).to.have.status(200);
+            
+            var payload = JSON.parse(res.text);
+
+            expect(payload).to.have.property('success').with.to.be.true;
+            expect(payload).to.have.nested.property('data.typecounts.tool').to.be.at.least(1);
+
+            done();
+        });
+    });
 
 });

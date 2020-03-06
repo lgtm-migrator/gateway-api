@@ -162,8 +162,8 @@ router.get('/mytools/alltools', async (req, res) => {
 router.post('/mytools/add', async (req, res) => {
   let data = new Data();
 
-  const {type, name, link, description, categories, license, authors, tags} = req.body;
-
+  const { type, name, link, description, categories, license, authors, tags} = req.body;
+  data.id = Math.random().toString().replace('0.', '');
   data.type = type;
   data.name = name;
   data.link = link;
@@ -175,10 +175,11 @@ router.post('/mytools/add', async (req, res) => {
   data.authors = authors;
   data.tags.features = tags.features;
   data.tags.topics = tags.topics;
+  data.activeflag = 'review';
 
   data.save((err) => {
     if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
+    return res.json({ success: true, id: data.id });
   });
 });
 
@@ -297,39 +298,201 @@ router.get('/search', async (req, res) => {
   // };
 
   var searchQuery = {};
+  var aggregateQueryTypes = [ { $group : { _id : "$type", count: { $sum: 1 } } } ];
 
   if (typeString !== '') {
-    searchQuery = {type: typeString}
+    searchQuery = {
+      $and : [
+        {type: typeString},
+        {activeflag: 'active'}
+    ]
+    };
+    aggregateQueryTypes = [
+        { $match: { type: typeString } },
+        { $group : { _id : "$type", count: { $sum: 1 } } }
+    ];
   }
 
   if (searchString.length > 0) {
     if (typeString === '') {
         searchQuery = {
-            $text: {$search:searchString}
+          $and : [
+            {$text: {$search:searchString}},
+            {activeflag: 'active'}
+        ]
         };
 
-    } else {
+        aggregateQueryTypes = [
+            { $match: { $text: {$search:searchString} } },
+            { $group : { _id : "$type", count: { $sum: 1 } } }
+        ];
 
+    } else {
         searchQuery = {
             $and : [
                 {$text: {$search:searchString}},
-                {type: typeString}
+                {type: typeString},
+                {activeflag: 'active'}
             ]
         };
+
+        aggregateQueryTypes = [
+            { $match: { 
+                $and : [
+                    {$text: {$search:searchString}},
+                    {type: typeString}
+                ] } },
+            { $group : { _id : "$type", count: { $sum: 1 } } }
+        ];
     }
 
   }
 
+  var x = Data.aggregate(aggregateQueryTypes);
+  x.exec((errx, dataTypes) => {
+    if (errx) return res.json({ success: false, error: errx });
+
+    var counts = {}; //hold the type (i.e. tool, person, project) counts data
+    for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
+        counts[dataTypes[i]._id] = dataTypes[i].count;
+    }
+
+    var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
+    .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    q.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        result = res.json({ success: true, data: data, summary: counts });
+        let recordSearchData = new RecordSearchData();
+        recordSearchData.searched = searchString;
+        recordSearchData.returned = data.length;
+        recordSearchData.datesearched = Date.now();
+        recordSearchData.save((err) => {});
+    });
+  });
+  return result; 
+});
+
+/**
+ * {get} /accountsearch Search tools
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.get('/accountsearch', async (req, res) => {
+  var result;
+  var startIndex = 0;
+  var maxResults = 25;
+  var typeString = "";
+  var idString = "";
+  var toolStateString = "";
+  
+  if (req.query.startIndex) {
+    startIndex = req.query.startIndex;
+  }
+  if (req.query.maxResults) {
+    maxResults = req.query.maxResults;
+  }
+  if (req.query.type){
+    typeString = req.query.type;
+  }
+  if (req.query.id){
+    idString = req.query.id;
+  }
+  if (req.query.toolState){
+    toolStateString = req.query.toolState;
+  }
+
+  var searchQuery = {
+    $and : [
+        {type: typeString},
+        {authors: idString},
+        {activeflag: toolStateString}
+    ]
+  };
+    
+  console.log("Here = "+searchQuery)
   var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
   .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     result = res.json({ success: true, data: data });
-    let recordSearchData = new RecordSearchData();
-    recordSearchData.searched = searchString;
-    recordSearchData.returned = data.length;
-    recordSearchData.datesearched = Date.now();
-    recordSearchData.save((err) => {});
+  });
+  return result; 
+});
+
+/**
+ * {get} /accountsearch Search tools
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.delete('/accountdelete', async (req, res) => {
+  const {id}  = req.body;
+  Data.findOneAndDelete({id: id}, (err) => {
+    if (err) return res.send(err);
+    return res.json({ success: true });
+  });
+});
+
+/**
+ * {get} /accountstatusupdate Search tools
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.post('/accountstatusupdate', async (req, res) => {
+  const { id, activeflag} = req.body;
+  console.log("here ! = "+activeflag)
+  
+  
+  Data.findOneAndUpdate({id: id}, 
+    {
+      activeflag: activeflag
+    },  (err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
+  });
+});
+
+/**
+ * {get} /accountsearch Search tools
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.get('/accountsearchadmin', async (req, res) => {
+  var result;
+  var startIndex = 0;
+  var maxResults = 25;
+  var typeString = "";
+  var toolStateString = "";
+  
+  if (req.query.startIndex) {
+    startIndex = req.query.startIndex;
+  }
+  if (req.query.maxResults) {
+    maxResults = req.query.maxResults;
+  }
+  if (req.query.type){
+    typeString = req.query.type;
+  }
+  if (req.query.toolState){
+    toolStateString = req.query.toolState;
+  }
+
+  var searchQuery = {
+    $and : [
+        {type: typeString},
+        {activeflag: toolStateString}
+    ]
+  };
+    
+  console.log("Here = "+searchQuery)
+  var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
+  .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    result = res.json({ success: true, data: data });
   });
   return result; 
 });

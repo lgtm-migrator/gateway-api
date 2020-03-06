@@ -29,7 +29,8 @@ const ToolSchema = new Schema(
       }
     ],
     firstname: String,
-    lastname: String
+    lastname: String,
+    activeflag: String
   },
   { 
     collection: 'tools',
