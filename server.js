@@ -176,6 +176,7 @@ router.post('/mytools/add', async (req, res) => {
   data.tags.features = tags.features;
   data.tags.topics = tags.topics;
   data.activeflag = 'review';
+  data.updatedon = new Date();
 
   data.save((err) => {
     if (err) return res.json({ success: false, error: err });
@@ -778,27 +779,17 @@ router.get('/getAllLicenses/:type', async (req, res) => {
 //   });
 // });
 
-router.get('/getAllUsers/:type', async (req, res) => {
+router.get('/getAllUsers', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({type:req.params.type});
+  var q = Data.find({type:'person'});
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
-    var tempUsers = [];
+    const users = [];
     data.map((dat)=>{
-      dat.authors.map((author)=>{
-        tempUsers.push(author);
-      });
+      users.push({id:dat.id, name:dat.firstname+' '+dat.lastname})  
     });
-
-  const combinedUsers = [];
-    tempUsers.map(temp => {
-    if (combinedUsers.indexOf(temp) === -1) {
-      combinedUsers.push(temp)
-  }
-  });
-
-  return res.json({ success: true, data: combinedUsers });
+  return res.json({ success: true, data: users });
   });
 });
 
