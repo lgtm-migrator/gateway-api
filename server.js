@@ -308,7 +308,11 @@ router.get('/search', async (req, res) => {
     ]
     };
     aggregateQueryTypes = [
-        { $match: { type: typeString } },
+      { $match: { 
+        $and : [
+            {$text: {$search:searchString}},
+            {activeflag: 'active'}
+        ] } },
         { $group : { _id : "$type", count: { $sum: 1 } } }
     ];
   }
@@ -323,7 +327,11 @@ router.get('/search', async (req, res) => {
         };
 
         aggregateQueryTypes = [
-            { $match: { $text: {$search:searchString} } },
+          { $match: { 
+            $and : [
+                {$text: {$search:searchString}},
+                {activeflag: 'active'}
+            ] } },
             { $group : { _id : "$type", count: { $sum: 1 } } }
         ];
 
@@ -340,7 +348,8 @@ router.get('/search', async (req, res) => {
             { $match: { 
                 $and : [
                     {$text: {$search:searchString}},
-                    {type: typeString}
+                    {type: typeString},
+                    {activeflag: 'active'}
                 ] } },
             { $group : { _id : "$type", count: { $sum: 1 } } }
         ];
