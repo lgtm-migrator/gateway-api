@@ -772,7 +772,7 @@ router.get('/getAllLicenses/:type', async (req, res) => {
 //     if (err) return res.json({ success: false, error: err });
 //     var combinedUsers = [];
 //     data.map((dat)=>{
-//       combinedUsers.push(dat.firstname + ' ' + dat.surname);
+//       combinedUsers.push(dat.firstname + ' ' + dat.lastname);
 //     });
 //   return res.json({ success: true, data: combinedUsers });
 //   });
