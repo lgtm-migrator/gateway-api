@@ -65,7 +65,7 @@ const strategy = app => {
                 .cookie('jwt', signToken(req.user), {
                     httpOnly: true
                 })
-                .redirect(process.env.homeURL)
+                .redirect(process.env.homeURL+"/account")
         }
     )
 
