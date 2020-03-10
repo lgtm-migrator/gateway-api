@@ -31,6 +31,9 @@ const ToolSchema = new Schema(
     ],
     firstname: String,
     lastname: String,
+    bio: String,
+    link: String,
+    orcid: String,
     activeflag: String
   },
   { 

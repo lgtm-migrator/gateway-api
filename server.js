@@ -15,7 +15,7 @@ import { connectToDatabase } from "./database/connection"
 import { initialiseAuthentication } from "./auth";
 import { utils } from "./auth";
 import { ROLES } from './utils'
-import { Data, RecordSearchData } from './database/schema';
+import { Data, RecordSearchData, UserModel } from './database/schema';
 
 const API_PORT = process.env.PORT || 3001;
 var app = express();
@@ -159,7 +159,7 @@ router.get('/mytools/alltools', async (req, res) => {
             });
           }); */
 
-router.post('/mytools/add', async (req, res) => {
+router.post('/mytools/add', async (req, res) => { 
   let data = new Data();
 
   const { type, name, link, description, categories, license, authors, tags} = req.body;
@@ -196,7 +196,7 @@ router.post('/mytools/add', async (req, res) => {
 router.put('/mytools/edit', async (req, res) => {
   const { id, type, name, link, description, categories, license, authors, tags} = req.body;
   Data.findOneAndUpdate({id: id}, 
-    {
+    { 
       type: type, 
       name: name, 
       link: link,
@@ -211,12 +211,34 @@ router.put('/mytools/edit', async (req, res) => {
       tags: {
         features: tags.features,
         topics: tags.topics
-      }
+      },
     },  (err) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true });
   });
 });
+
+
+router.post('/person/edit', async (req, res) => {
+
+  const { id, type, bio, link, orcid} = req.body;
+  Data.findOneAndUpdate({id: id}, 
+
+     {
+      type: type,
+      bio: bio,
+      link: link,
+      orcid: orcid,
+    }, (err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
+  });
+ 
+});
+
+
+// 
+
 
 /**
  * {get} /dataset/:id get a dataset
@@ -884,10 +906,24 @@ router.get('/project/:projectID', async (req, res) => {
 router.get('/person/:personID', async (req, res) => {
   //req.params.id is how you get the id from the url
   var q = Data.find({id:req.params.personID});
+  // var q = UserModel.find({id:req.params.userID});
+
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
+  });
+});
+
+//HERE RN
+router.get('/user/:userID', async (req, res) => {
+
+  //req.params.id is how you get the id from the url
+  var q = UserModel.find({id:req.params.userID});
+
+  q.exec((err, userdata) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, userdata: userdata });
   });
 });
 
