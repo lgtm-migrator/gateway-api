@@ -176,7 +176,8 @@ router.post('/mytools/add', async (req, res) => {
   data.tags.features = tags.features;
   data.tags.topics = tags.topics;
   data.activeflag = 'review';
-  data.updatedon = new Date();
+  // data.updatedon = new Date();
+  data.updatedon = Date.now();
 
   data.save((err) => {
     if (err) return res.json({ success: false, error: err });
