@@ -295,16 +295,20 @@ router.get('/search', async (req, res) => {
   var maxResults = 25;
   var searchString = "";
   var typeString = "";
+  var programmingLanguage = "";
   
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
   }
+
   if (req.query.maxResults) {
     maxResults = req.query.maxResults;
   }
+
   if (req.query.search){
     searchString = req.query.search;
   }
+
   if (req.query.type){
     if (req.query.type === "all") {
       typeString = '';
@@ -314,72 +318,47 @@ router.get('/search', async (req, res) => {
     }
   }
 
-  // var searchQuery = { 
-  //   $or: [
-  //     {name: { "$regex": searchString, "$options": "i" }},
-  //     {description: { "$regex": searchString, "$options": "i" }}
-  //   ]
-  // };
+  if (req.query.programmingLanguage) {
+      programmingLanguage = req.query.programmingLanguage;
+  }
 
-  var searchQuery = {};
-  var aggregateQueryTypes = [ { $group : { _id : "$type", count: { $sum: 1 } } } ];
+  var searchQuery = {$and :[ {activeflag: 'active'} ] };
+  var aggregateQueryTypes = [ 
+    { $match: { 
+      $and : [
+        {activeflag: 'active'}
+      ]
+    }},
+    { $group : {
+      _id : "$type", count: { $sum: 1 } 
+      }
+    } 
+  ];
 
   if (typeString !== '') {
-    searchQuery = {
-      $and : [
-        {type: typeString},
-        {activeflag: 'active'}
-    ]
-    };
-    aggregateQueryTypes = [
-      { $match: { 
-        $and : [
-            {$text: {$search:searchString}},
-            {activeflag: 'active'}
-        ] } },
-        { $group : { _id : "$type", count: { $sum: 1 } } }
-    ];
+    searchQuery["$and"].push({type: typeString});
+    aggregateQueryTypes[0]["$match"]["$and"].push({type: typeString});
   }
 
   if (searchString.length > 0) {
-    if (typeString === '') {
-        searchQuery = {
-          $and : [
-            {$text: {$search:searchString}},
-            {activeflag: 'active'}
-        ]
-        };
+    searchQuery["$and"].push({$text: {$search:searchString}});
+    aggregateQueryTypes[0]["$match"]["$and"].push({$text: {$search:searchString}});
+  }
 
-        aggregateQueryTypes = [
-          { $match: { 
-            $and : [
-                {$text: {$search:searchString}},
-                {activeflag: 'active'}
-            ] } },
-            { $group : { _id : "$type", count: { $sum: 1 } } }
-        ];
-
+  if (programmingLanguage.length > 0) {
+    var pl = [];
+    if (!Array.isArray(programmingLanguage)) {
+      pl = [{"categories.programmingLanguage": programmingLanguage}];
     } else {
-        searchQuery = {
-            $and : [
-                {$text: {$search:searchString}},
-                {type: typeString},
-                {activeflag: 'active'}
-            ]
-        };
-
-        aggregateQueryTypes = [
-            { $match: { 
-                $and : [
-                    {$text: {$search:searchString}},
-                    {type: typeString},
-                    {activeflag: 'active'}
-                ] } },
-            { $group : { _id : "$type", count: { $sum: 1 } } }
-        ];
+      for (var i = 0; i < programmingLanguage.length; i++) {
+        pl[i] = {"categories.programmingLanguage":programmingLanguage[i]};
+      }
     }
 
-  }
+    searchQuery["$and"].push({"$or":pl});
+    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":pl});
+  } 
+
 
   var x = Data.aggregate(aggregateQueryTypes);
   x.exec((errx, dataTypes) => {
