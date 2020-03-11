@@ -15,20 +15,11 @@ const ToolSchema = new Schema(
       programmingLanguageVersion: {type: String},
     },
     license: String,
-    authors: [String],
+    authors: [Number],
     tags: {
       features: [String],
       topics: [String],
     },
-    reviews: [
-      { 
-        reviewerID: Number,
-        rating: Number, 
-        projectName: String,
-        review: String,
-        date: Date
-      }
-    ],
     firstname: String,
     lastname: String,
     bio: String,

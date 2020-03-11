@@ -17,7 +17,7 @@ async function createUser({
             return reject('Email is already in use')
         }
 
-        var id = Math.random().toString().replace('0.', '');
+        var id = parseInt(Math.random().toString().replace('0.', ''));
         var type = "person";
         var activeflag = "active";
         return resolve(

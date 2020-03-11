@@ -15,14 +15,14 @@ import { connectToDatabase } from "./database/connection"
 import { initialiseAuthentication } from "./auth";
 import { utils } from "./auth";
 import { ROLES } from './utils'
-import { Data, RecordSearchData, UserModel } from './database/schema';
+import { Data, RecordSearchData, UserModel, Reviews } from './database/schema';
 
 const API_PORT = process.env.PORT || 3001;
 var app = express();
 app.use(cors({
   origin: [process.env.homeURL],
   credentials: true
- }));
+}));
 const router = express.Router();
 
 connectToDatabase();
@@ -59,22 +59,22 @@ initialiseAuthentication(app);
 router.get(
   '/status',
   passport.authenticate('jwt'),
-  async (req, res) => { 
+  async (req, res) => {
     if (req.user) {
-      return res.json({ success: true, data: [{role:req.user.role, id:req.user.id, name:req.user.firstname+" "+req.user.lastname}] });
+      return res.json({ success: true, data: [{ role: req.user.role, id: req.user.id, name: req.user.firstname + " " + req.user.lastname }] });
     }
     else {
-      return res.json({ success: true, data: [{role:"Reader", id:null, name:null}] });
+      return res.json({ success: true, data: [{ role: "Reader", id: null, name: null }] });
     }
-});
+  });
 
 /**
  * {get} /logout Logout
  * 
  * Logs the user out
  */
-router.get('/logout', function(req, res){
-  req.logout();  
+router.get('/logout', function (req, res) {
+  req.logout();
   res.clearCookie('jwt');
   return res.json({ success: true });
 });
@@ -85,7 +85,7 @@ router.get('/logout', function(req, res){
  * Maybe not needed as page can be generated with static content by react.
  */
 router.get('/', async (req, res) => {
-  
+
 });
 
 /**
@@ -134,36 +134,36 @@ router.get('/mytools/alltools', async (req, res) => {
  * Authenticate user and then display all the tools that they added or for admin display all tools. Also 
  * return if they are allowed to add/edit/delete (For this project delete will be admin only)
  */
-          /* router.post('/mytools/add', async (req, res) => {
-            let data = new Data();
+/* router.post('/mytools/add', async (req, res) => {
+  let data = new Data();
 
-            const { id, type, name, description, rating, link } = req.body;
+  const { id, type, name, description, rating, link } = req.body;
 
-            if ((!id && id !== 0)) {
-              return res.json({
-                success: false,
-                error: 'INVALID INPUTS',
-              });
-            }
+  if ((!id && id !== 0)) {
+    return res.json({
+      success: false,
+      error: 'INVALID INPUTS',
+    });
+  }
 
-            data.id = id;
-            data.type = type;
-            data.name = name;
-            data.description = description;
-            data.rating = rating;
-            data.link = link;
+  data.id = id;
+  data.type = type;
+  data.name = name;
+  data.description = description;
+  data.rating = rating;
+  data.link = link;
 
-            data.save((err) => {
-              if (err) return res.json({ success: false, error: err });
-              return res.json({ success: true });
-            });
-          }); */
+  data.save((err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
+  });
+}); */
 
 router.post('/mytools/add', async (req, res) => { 
   let data = new Data();
 
-  const { type, name, link, description, categories, license, authors, tags} = req.body;
-  data.id = Math.random().toString().replace('0.', '');
+  const { type, name, link, description, categories, license, authors, tags } = req.body;
+  data.id = parseInt(Math.random().toString().replace('0.', ''));
   data.type = type;
   data.name = name;
   data.link = link;
@@ -211,11 +211,11 @@ router.put('/mytools/edit', async (req, res) => {
       tags: {
         features: tags.features,
         topics: tags.topics
-      },
-    },  (err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
-  });
+      }
+    }, (err) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true });
+    });
 });
 
 
@@ -246,16 +246,16 @@ router.post('/person/edit', async (req, res) => {
  * Pull data set from remote system
  */
 router.get('/dataset/:id', async (req, res) => {
-   var metadataCatalogue =  process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
+  var metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
 
-    axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id)
+  axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id)
     .then(function (response) {
-        // handle success
-        return res.json( { 'success': true, 'data': response.data } );
+      // handle success
+      return res.json({ 'success': true, 'data': response.data });
     })
     .catch(function (err) {
-        // handle error
-        return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
+      // handle error
+      return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
     })
 
 });
@@ -268,7 +268,7 @@ router.get('/dataset/:id', async (req, res) => {
  */
 router.delete('/mytools/delete', async (req, res) => {
   const { id } = req.body;
-  Data.findOneAndDelete({id: id}, (err) => {
+  Data.findOneAndDelete({ id: id }, (err) => {
     if (err) return res.send(err);
     return res.json({ success: true });
   });
@@ -366,22 +366,40 @@ router.get('/search', async (req, res) => {
 
     var counts = {}; //hold the type (i.e. tool, person, project) counts data
     for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
-        counts[dataTypes[i]._id] = dataTypes[i].count;
+      counts[dataTypes[i]._id] = dataTypes[i].count;
     }
+    
+    /*
+    Needed to only bring back the active reviews
 
-    var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
-    .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    $match:{
+      "review.activeFlag": "active"
+    }
+    
+    Score needs to get added back in
+    
+    , { score: { $meta: "textScore" } }
+    */
+
+    var q = Data.aggregate([
+      {$match: searchQuery},
+      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }},
+      { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" }}
+    ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+
+    /* var q = Data.find(searchQuery, { score: { $meta: "textScore" } })
+      .sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(maxResults)); */
     q.exec((err, data) => {
-        if (err) return res.json({ success: false, error: err });
-        result = res.json({ success: true, data: data, summary: counts });
-        let recordSearchData = new RecordSearchData();
-        recordSearchData.searched = searchString;
-        recordSearchData.returned = data.length;
-        recordSearchData.datesearched = Date.now();
-        recordSearchData.save((err) => {});
+      if (err) return res.json({ success: false, error: err });
+      result = res.json({ success: true, data: data, summary: counts });
+      let recordSearchData = new RecordSearchData();
+      recordSearchData.searched = searchString;
+      recordSearchData.returned = data.length;
+      recordSearchData.datesearched = Date.now();
+      recordSearchData.save((err) => { });
     });
   });
-  return result; 
+  return result;
 });
 
 /**
@@ -397,39 +415,32 @@ router.get('/accountsearch', async (req, res) => {
   var typeString = "";
   var idString = "";
   var toolStateString = "";
-  
+
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
   }
   if (req.query.maxResults) {
     maxResults = req.query.maxResults;
   }
-  if (req.query.type){
+  if (req.query.type) {
     typeString = req.query.type;
   }
-  if (req.query.id){
+  if (req.query.id) {
     idString = req.query.id;
   }
-  if (req.query.toolState){
+  if (req.query.toolState) {
     toolStateString = req.query.toolState;
   }
-
-  var searchQuery = {
-    $and : [
-        {type: typeString},
-        {authors: idString},
-        {activeflag: toolStateString}
-    ]
-  };
-    
-  console.log("Here = "+searchQuery)
-  var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
-  .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+  
+  var q = Data.aggregate([
+    {$match: {$and: [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: toolStateString }]}},
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }}
+  ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     result = res.json({ success: true, data: data });
   });
-  return result; 
+  return result;
 });
 
 /**
@@ -439,8 +450,8 @@ router.get('/accountsearch', async (req, res) => {
  * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
 router.delete('/accountdelete', async (req, res) => {
-  const {id}  = req.body;
-  Data.findOneAndDelete({id: id}, (err) => {
+  const { id } = req.body;
+  Data.findOneAndDelete({ id: id }, (err) => {
     if (err) return res.send(err);
     return res.json({ success: true });
   });
@@ -453,17 +464,15 @@ router.delete('/accountdelete', async (req, res) => {
  * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
 router.post('/accountstatusupdate', async (req, res) => {
-  const { id, activeflag} = req.body;
-  console.log("here ! = "+activeflag)
-  
-  
-  Data.findOneAndUpdate({id: id}, 
+  const { id, activeflag } = req.body;
+
+  Data.findOneAndUpdate({ id: id },
     {
       activeflag: activeflag
-    },  (err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
-  });
+    }, (err) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true });
+    });
 });
 
 /**
@@ -478,35 +487,37 @@ router.get('/accountsearchadmin', async (req, res) => {
   var maxResults = 25;
   var typeString = "";
   var toolStateString = "";
-  
+
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
   }
   if (req.query.maxResults) {
     maxResults = req.query.maxResults;
   }
-  if (req.query.type){
+  if (req.query.type) {
     typeString = req.query.type;
   }
-  if (req.query.toolState){
+  if (req.query.toolState) {
     toolStateString = req.query.toolState;
   }
 
   var searchQuery = {
-    $and : [
-        {type: typeString},
-        {activeflag: toolStateString}
+    $and: [
+      { type: typeString },
+      { activeflag: toolStateString }
     ]
   };
-    
-  console.log("Here = "+searchQuery)
-  var q = Data.find(searchQuery, {score: {$meta: "textScore"}})
-  .sort({score:{$meta:"textScore"}}).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+  
+  console.log("Here = " + searchQuery)
+  var q = Data.aggregate([
+    {$match: {$and: [{ type: typeString }, { activeflag: toolStateString }]}},
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }}
+  ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     result = res.json({ success: true, data: data });
   });
-  return result; 
+  return result;
 });
 
 /**
@@ -529,7 +540,7 @@ router.get('/stats', async (req, res) => {
   //get some dates for query
   var lastDay = new Date();
   lastDay.setDate(lastDay.getDate() - 1);
- 
+
   var lastWeek = new Date();
   lastWeek.setDate(lastWeek.getDate() - 7);
 
@@ -540,48 +551,48 @@ router.get('/stats', async (req, res) => {
   lastYear.setYear(lastYear.getYear() - 1);
 
   //set the aggregate queries
-  var aggregateQueryTypes = [ { $group : { _id : "$type", count: { $sum: 1 } } } ];
+  var aggregateQueryTypes = [{ $group: { _id: "$type", count: { $sum: 1 } } }];
 
   var aggregateQuerySearches = [
-    { 
-        $facet: {
-             "lastDay": [
-                {"$match" : {"datesearched":{"$gt": lastDay}}},
-                {
-                    $group : {
-                        _id: 'lastDay',
-                        count: { $sum: 1 }
-                    },
-                }
-            ],
-             "lastWeek": [
-                {"$match" : {"datesearched":{"$gt": lastWeek}}},
-                {
-                    $group : {
-                        _id: 'lastWeek',
-                        count: { $sum: 1 }
-                    },
-                }
-            ],
-             "lastMonth": [
-                {"$match" : {"datesearched":{"$gt": lastMonth}}},
-                {
-                    $group : {
-                        _id: 'lastMonth',
-                        count: { $sum: 1 }
-                    },
-                }
-            ],
-             "lastYear": [
-                {"$match" : {"datesearched":{"$gt": lastYear}}},
-                {
-                    $group : {
-                        _id: 'lastYear',
-                        count: { $sum: 1 }
-                    },
-                }
-            ],
-        }
+    {
+      $facet: {
+        "lastDay": [
+          { "$match": { "datesearched": { "$gt": lastDay } } },
+          {
+            $group: {
+              _id: 'lastDay',
+              count: { $sum: 1 }
+            },
+          }
+        ],
+        "lastWeek": [
+          { "$match": { "datesearched": { "$gt": lastWeek } } },
+          {
+            $group: {
+              _id: 'lastWeek',
+              count: { $sum: 1 }
+            },
+          }
+        ],
+        "lastMonth": [
+          { "$match": { "datesearched": { "$gt": lastMonth } } },
+          {
+            $group: {
+              _id: 'lastMonth',
+              count: { $sum: 1 }
+            },
+          }
+        ],
+        "lastYear": [
+          { "$match": { "datesearched": { "$gt": lastYear } } },
+          {
+            $group: {
+              _id: 'lastYear',
+              count: { $sum: 1 }
+            },
+          }
+        ],
+      }
     }];
 
 
@@ -589,41 +600,43 @@ router.get('/stats', async (req, res) => {
 
   q.exec((err, dataSearches) => {
     if (err) return res.json({ success: false, error: err });
-    
+
     var x = Data.aggregate(aggregateQueryTypes);
     x.exec((errx, dataTypes) => {
-        if (errx) return res.json({ success: false, error: errx });
+      if (errx) return res.json({ success: false, error: errx });
 
-        var counts = {}; //hold the type (i.e. tool, person, project) counts data
-        for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
-            counts[dataTypes[i]._id] = dataTypes[i].count;
-        }
+      var counts = {}; //hold the type (i.e. tool, person, project) counts data
+      for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
+        counts[dataTypes[i]._id] = dataTypes[i].count;
+      }
 
-        if (typeof dataSearches[0].lastDay[0] === "undefined") {
-            dataSearches[0].lastDay[0] = {count:0};
+      if (typeof dataSearches[0].lastDay[0] === "undefined") {
+        dataSearches[0].lastDay[0] = { count: 0 };
+      }
+      if (typeof dataSearches[0].lastWeek[0] === "undefined") {
+        dataSearches[0].lastWeek[0] = { count: 0 };
+      }
+      if (typeof dataSearches[0].lastMonth[0] === "undefined") {
+        dataSearches[0].lastMonth[0] = { count: 0 };
+      }
+      if (typeof dataSearches[0].lastYear[0] === "undefined") {
+        dataSearches[0].lastYear[0] = { count: 0 };
+      }
+      result = res.json(
+        {
+          'success': true, 'data':
+          {
+            'typecounts': counts,
+            'daycounts': {
+              'day': dataSearches[0].lastDay[0].count,
+              'week': dataSearches[0].lastWeek[0].count,
+              'month': dataSearches[0].lastMonth[0].count,
+              'year': dataSearches[0].lastYear[0].count,
+
+            },
+          }
         }
-        if (typeof dataSearches[0].lastWeek[0] === "undefined") {
-            dataSearches[0].lastWeek[0] = {count:0};
-        }
-        if (typeof dataSearches[0].lastMonth[0] === "undefined") {
-            dataSearches[0].lastMonth[0] = {count:0};
-        }
-        if (typeof dataSearches[0].lastYear[0] === "undefined") {
-            dataSearches[0].lastYear[0] = {count:0};
-        }        
-        result = res.json(
-            { 'success': true, 'data': 
-                { 'typecounts': counts, 
-                    'daycounts' : {
-                        'day':dataSearches[0].lastDay[0].count,
-                        'week':dataSearches[0].lastWeek[0].count,
-                        'month':dataSearches[0].lastMonth[0].count,
-                        'year':dataSearches[0].lastYear[0].count,
-                        
-                    },
-                }
-            }
-        );
+      );
     });
   });
 
@@ -636,133 +649,142 @@ router.get('/stats', async (req, res) => {
  * Return the details on the tool based on the tool ID.
  */
 router.get('/tool/:toolID', async (req, res) => {
-  //req.params.id is how you get the id from the url
-  var q = Data.find({id:req.params.toolID});
+  var q = Data.aggregate([
+    {$match: {$and: [{ id: parseInt(req.params.toolID) }]}},
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }}
+  ]);
   q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
+    var r = Reviews.aggregate([
+      {$match: {$and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }]}},
+      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" }}
+    ]);    
+    r.exec((err, reviewData) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true, data: data, reviewData: reviewData });
+    });
+
   });
 });
 
 
 router.get('/getAllTopics/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({type:req.params.type});
+  var q = Data.find({ type: req.params.type });
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     var tempTopics = [];
-    data.map((dat)=>{
-      dat.tags.topics.map((topic)=>{
+    data.map((dat) => {
+      dat.tags.topics.map((topic) => {
         tempTopics.push(topic);
       });
     });
 
     const combinedTopics = [];
     tempTopics.map(temp => {
-    if (combinedTopics.indexOf(temp) === -1) {
-      combinedTopics.push(temp)
-    }
+      if (combinedTopics.indexOf(temp) === -1) {
+        combinedTopics.push(temp)
+      }
     });
 
-  return res.json({ success: true, data: combinedTopics });
+    return res.json({ success: true, data: combinedTopics });
   });
 });
 
 
 router.get('/getAllFeatures/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({type:req.params.type});
+  var q = Data.find({ type: req.params.type });
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     var tempFeatures = [];
-    data.map((dat)=>{
-      dat.tags.features.map((feature)=>{
+    data.map((dat) => {
+      dat.tags.features.map((feature) => {
         tempFeatures.push(feature);
       });
     });
 
     const combinedFeatures = [];
     tempFeatures.map(temp => {
-    if (combinedFeatures.indexOf(temp) === -1) {
-      combinedFeatures.push(temp)
-    }
+      if (combinedFeatures.indexOf(temp) === -1) {
+        combinedFeatures.push(temp)
+      }
     });
 
-  return res.json({ success: true, data: combinedFeatures });
+    return res.json({ success: true, data: combinedFeatures });
   });
 });
 
 
 router.get('/getAllLanguages/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({type:req.params.type});
+  var q = Data.find({ type: req.params.type });
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     var tempLanguages = [];
-    data.map((dat)=>{
-      dat.categories.programmingLanguage.map((language)=>{
+    data.map((dat) => {
+      dat.categories.programmingLanguage.map((language) => {
         tempLanguages.push(language);
       });
     });
 
     const combinedLanguages = [];
     tempLanguages.map(temp => {
-    if (combinedLanguages.indexOf(temp) === -1) {
-      combinedLanguages.push(temp)
-    }
+      if (combinedLanguages.indexOf(temp) === -1) {
+        combinedLanguages.push(temp)
+      }
     });
 
-  return res.json({ success: true, data: combinedLanguages });
+    return res.json({ success: true, data: combinedLanguages });
   });
 });
 
 
 router.get('/getAllCategories/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({type:req.params.type});
+  var q = Data.find({ type: req.params.type });
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     var tempCategories = [];
-    data.map((dat)=>{
-        tempCategories.push(dat.categories.category);
+    data.map((dat) => {
+      tempCategories.push(dat.categories.category);
     });
 
     const combinedCategories = [];
     tempCategories.map(temp => {
-    if (combinedCategories.indexOf(temp) === -1) {
-      combinedCategories.push(temp)
-    }
+      if (combinedCategories.indexOf(temp) === -1) {
+        combinedCategories.push(temp)
+      }
     });
 
 
-  return res.json({ success: true, data: combinedCategories });
+    return res.json({ success: true, data: combinedCategories });
   });
 });
 
 
 router.get('/getAllLicenses/:type', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({type:req.params.type});
+  var q = Data.find({ type: req.params.type });
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     var tempLicenses = [];
-    data.map((dat)=>{
+    data.map((dat) => {
       tempLicenses.push(dat.license);
     });
 
     const combinedLicenses = [];
     tempLicenses.map(temp => {
-    if (combinedLicenses.indexOf(temp) === -1) {
-      combinedLicenses.push(temp)
-    }
+      if (combinedLicenses.indexOf(temp) === -1) {
+        combinedLicenses.push(temp)
+      }
     });
 
-  return res.json({ success: true, data: combinedLicenses });
+    return res.json({ success: true, data: combinedLicenses });
   });
 });
 
@@ -783,36 +805,63 @@ router.get('/getAllLicenses/:type', async (req, res) => {
 
 router.get('/getAllUsers', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({type:'person'});
+  var q = Data.find({ type: 'person' });
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     const users = [];
-    data.map((dat)=>{
-      users.push({id:dat.id, name:dat.firstname+' '+dat.lastname})  
+    data.map((dat) => {
+      users.push({ id: dat.id, name: dat.firstname + ' ' + dat.lastname })
     });
-  return res.json({ success: true, data: users });
+    return res.json({ success: true, data: users });
   });
 });
 
 
-/**
- * {get} /tool/:id/reviews Show reviews
- * 
- * Return the reviews based on the tool ID.
- */
-router.get('/tool/:id/reviews', async (req, res) => {
-  //req.params.id is how you get the id from the url
 
+
+
+
+/**
+ * {get} /accountsearch Search tools
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.get('/pendingreviewsadmin', async (req, res) => {
+
+  var r = Reviews.aggregate([
+    {$match: {$and: [{ activeflag: 'active' }]}},
+    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" }}
+  ]);   
+  r.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
 });
 
 /**
- * {post} /tool/review/star Add basic review (Stars)
+ * {get} /accountsearch Search tools
  * 
- * Add the basic data for the review to the DB.
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
-router.post('/tool/review/star', async (req, res) => {
+router.get('/pendingreviews', async (req, res) => {
 
+  var idString = "";
+
+  if (req.query.id) {
+    idString = parseInt(req.query.id);
+  }
+
+  var r = Reviews.aggregate([
+    {$match: {$and: [{ activeflag: 'active' }, { reviewerID : idString }]}},
+    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" }}
+  ]);   
+  r.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
 });
 
 /**
@@ -823,34 +872,53 @@ router.post('/tool/review/star', async (req, res) => {
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
 router.post('/tool/review/add', async (req, res) => {
-  const { id, reviewerID, rating, projectName, review} = req.body;
-  
-   Data.findOneAndUpdate({id: id}, 
-    {$push: {
-      reviews: [
-        { 
-          reviewerID: reviewerID,
-          rating: rating, 
-          projectName: projectName,
-          review: review,
-          date: Date.now()
-        }
-      ],
-    }},  (err) => {
+  let reviews = new Reviews();
+  const { toolID, reviewerID, rating, projectName, review } = req.body;
+
+  reviews.reviewID = parseInt(Math.random().toString().replace('0.', ''));
+  reviews.toolID = toolID;
+  reviews.reviewerID = reviewerID;
+  reviews.rating = rating;
+  reviews.projectName = projectName;
+  reviews.review = review;
+  reviews.activeflag = 'review';
+  reviews.date = Date.now();
+
+  reviews.save((err) => {
     if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
+    return res.json({ success: true, id: reviews.reviewID });
   });
 });
 
 /**
- * {put} /tool/review/edit Edit review
+ * {post} /tool/review/approve Approve review
  * 
- * Authenticate user to see if edit review should be displayed.
- * When they submit, authenticate the user, validate the data and update review data to the DB or add a new version.
- * We will also check the review (Free word entry) for exclusion data (node module?)
+ * Authenticate user to see if user can approve.
  */
-router.put('/tool/review/edit', async (req, res) => {
+router.post('/tool/review/approve', async (req, res) => {
+  const { id, activeflag } = req.body;
+  Reviews.findOneAndUpdate({ reviewID: id },
+    {
+      activeflag: activeflag
+    }, (err) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true });
+    });
 
+
+});
+
+/**
+ * {delete} /tool/review/reject Reject review
+ * 
+ * Authenticate user to see if user can reject.
+ */
+router.delete('/tool/review/reject', async (req, res) => {
+  const { id } = req.body;
+  Reviews.findOneAndDelete({ reviewID: id }, (err) => {
+    if (err) return res.send(err);
+    return res.json({ success: true });
+  });
 });
 
 /**
@@ -859,7 +927,11 @@ router.put('/tool/review/edit', async (req, res) => {
  * When they delete, authenticate the user and remove the review data from the DB.
  */
 router.delete('/tool/review/delete', async (req, res) => {
-
+  const { id } = req.body;
+  Data.findOneAndDelete({ id: id }, (err) => {
+    if (err) return res.send(err);
+    return res.json({ success: true });
+  });
 });
 
 /**
@@ -868,9 +940,10 @@ router.delete('/tool/review/delete', async (req, res) => {
  * Return the details on the tool based on the tool ID.
  */
 router.get('/project/:projectID', async (req, res) => {
-  //req.params.id is how you get the id from the url
-  var q = Data.find({id:req.params.projectID});
-  
+  var q = Data.aggregate([
+    {$match: {$and: [{ id: parseInt(req.params.projectID) }]}},
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }}
+  ]);
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
@@ -884,9 +957,7 @@ router.get('/project/:projectID', async (req, res) => {
  */
 router.get('/person/:personID', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({id:req.params.personID});
-  // var q = UserModel.find({id:req.params.userID});
-
+  var q = Data.find({ id: req.params.personID });
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -917,11 +988,11 @@ APIs that allow the reviews that are flagged/caught by exclusion code to be hidd
 admin/moderater approves.
 */
 router.get('/addtool', async (req, res) => {
-    
+
 });
 
 // router.get('/addproject', async (req, res) => {
-    
+
 // });
 
 
