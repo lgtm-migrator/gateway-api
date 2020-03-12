@@ -10,7 +10,10 @@ const ReviewsSchema = new Schema(
     projectName: String,
     review: String,
     activeflag: String,
-    date: Date
+    date: Date,
+    replierID: Number,
+    reply: String,
+    replydate: Date
   },
   {
     collection: 'reviews',
