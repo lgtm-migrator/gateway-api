@@ -296,7 +296,12 @@ router.get('/search', async (req, res) => {
   var searchString = "";
   var typeString = "";
   var programmingLanguage = "";
+<<<<<<< HEAD
 
+=======
+  var toolCategory = "";
+  
+>>>>>>> 54d0d3137915f219d21a58349990c48375e99221
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
   }
@@ -320,6 +325,13 @@ router.get('/search', async (req, res) => {
 
   if (req.query.programmingLanguage) {
     programmingLanguage = req.query.programmingLanguage;
+<<<<<<< HEAD
+=======
+}
+
+  if (req.query.toolCategory) {
+    toolCategory = req.query.toolCategory;
+>>>>>>> 54d0d3137915f219d21a58349990c48375e99221
   }
 
   var searchQuery = { $and: [{ activeflag: 'active' }] };
@@ -358,9 +370,30 @@ router.get('/search', async (req, res) => {
       }
     }
 
+<<<<<<< HEAD
     searchQuery["$and"].push({ "$or": pl });
     aggregateQueryTypes[0]["$match"]["$and"].push({ "$or": pl });
   }
+=======
+    searchQuery["$and"].push({"$or":pl});
+    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":pl});
+  } 
+
+  if (toolCategory.length > 0) {
+    var tc = [];
+    if (!Array.isArray(toolCategory)) {
+      tc = [{"categories.toolCategory": toolCategory}];
+    } else {
+      for (var i = 0; i < toolCategory.length; i++) {
+        tc[i] = {"categories.toolCategory":toolCategory[i]};
+      }
+    }
+
+    searchQuery["$and"].push({"$or":tc});
+    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":tc});
+  } 
+
+>>>>>>> 54d0d3137915f219d21a58349990c48375e99221
 
   var x = Data.aggregate(aggregateQueryTypes);
   x.exec((errx, dataTypes) => {
