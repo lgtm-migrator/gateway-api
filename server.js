@@ -296,7 +296,7 @@ router.get('/search', async (req, res) => {
   var searchString = "";
   var typeString = "";
   var programmingLanguage = "";
-  var toolCategory = "";
+  var category = "";
   
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
@@ -323,8 +323,8 @@ router.get('/search', async (req, res) => {
     programmingLanguage = req.query.programmingLanguage;
 }
 
-  if (req.query.toolCategory) {
-    toolCategory = req.query.toolCategory;
+  if (req.query.category) {
+    category = req.query.category;
   }
 
   var searchQuery = {$and :[ {activeflag: 'active'} ] };
@@ -350,6 +350,7 @@ router.get('/search', async (req, res) => {
     aggregateQueryTypes[0]["$match"]["$and"].push({$text: {$search:searchString}});
   }
 
+  console.log('programmingLanguage server.js: ' + programmingLanguage)
   if (programmingLanguage.length > 0) {
     var pl = [];
     if (!Array.isArray(programmingLanguage)) {
@@ -360,25 +361,29 @@ router.get('/search', async (req, res) => {
       }
     }
 
+    console.log('pl server: ' + JSON.stringify(pl))
     searchQuery["$and"].push({"$or":pl});
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":pl});
   } 
 
-  if (toolCategory.length > 0) {
+  console.log('category server.js: ' + category)
+  if (category.length > 0) {
     var tc = [];
-    if (!Array.isArray(toolCategory)) {
-      tc = [{"categories.toolCategory": toolCategory}];
+    if (!Array.isArray(category)) {
+      tc = [{"categories.category": category}];
     } else {
-      for (var i = 0; i < toolCategory.length; i++) {
-        tc[i] = {"categories.toolCategory":toolCategory[i]};
+      for (var i = 0; i < category.length; i++) {
+        tc[i] = {"categories.category":category[i]};
       }
     }
 
+    console.log('tc server: ' + JSON.stringify(tc))
     searchQuery["$and"].push({"$or":tc});
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":tc});
   } 
 
 
+  console.log(searchQuery)
   var x = Data.aggregate(aggregateQueryTypes);
   x.exec((errx, dataTypes) => {
     if (errx) return res.json({ success: false, error: errx });
