@@ -296,6 +296,7 @@ router.get('/search', async (req, res) => {
   var searchString = "";
   var typeString = "";
   var programmingLanguage = "";
+  var toolCategory = "";
   
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
@@ -319,7 +320,11 @@ router.get('/search', async (req, res) => {
   }
 
   if (req.query.programmingLanguage) {
-      programmingLanguage = req.query.programmingLanguage;
+    programmingLanguage = req.query.programmingLanguage;
+}
+
+  if (req.query.toolCategory) {
+    toolCategory = req.query.toolCategory;
   }
 
   var searchQuery = {$and :[ {activeflag: 'active'} ] };
@@ -357,6 +362,20 @@ router.get('/search', async (req, res) => {
 
     searchQuery["$and"].push({"$or":pl});
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":pl});
+  } 
+
+  if (toolCategory.length > 0) {
+    var tc = [];
+    if (!Array.isArray(toolCategory)) {
+      tc = [{"categories.toolCategory": toolCategory}];
+    } else {
+      for (var i = 0; i < toolCategory.length; i++) {
+        tc[i] = {"categories.toolCategory":toolCategory[i]};
+      }
+    }
+
+    searchQuery["$and"].push({"$or":tc});
+    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":tc});
   } 
 
 
