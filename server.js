@@ -159,7 +159,7 @@ router.get('/mytools/alltools', async (req, res) => {
   });
 }); */
 
-router.post('/mytools/add', async (req, res) => { 
+router.post('/mytools/add', async (req, res) => {
   let data = new Data();
 
   const { type, name, link, description, categories, license, authors, tags } = req.body;
@@ -194,11 +194,11 @@ router.post('/mytools/add', async (req, res) => {
  * (If we are going down the versions route then we will add a new version of the data and increase the version i.e. v1, v2)
  */
 router.put('/mytools/edit', async (req, res) => {
-  const { id, type, name, link, description, categories, license, authors, tags} = req.body;
-  Data.findOneAndUpdate({id: id}, 
-    { 
-      type: type, 
-      name: name, 
+  const { id, type, name, link, description, categories, license, authors, tags } = req.body;
+  Data.findOneAndUpdate({ id: id },
+    {
+      type: type,
+      name: name,
       link: link,
       description: description,
       categories: {
@@ -221,19 +221,19 @@ router.put('/mytools/edit', async (req, res) => {
 
 router.post('/person/edit', async (req, res) => {
 
-  const { id, type, bio, link, orcid} = req.body;
-  Data.findOneAndUpdate({id: id}, 
+  const { id, type, bio, link, orcid } = req.body;
+  Data.findOneAndUpdate({ id: id },
 
-     {
+    {
       type: type,
       bio: bio,
       link: link,
       orcid: orcid,
     }, (err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
-  });
- 
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true });
+    });
+
 });
 
 
@@ -296,7 +296,7 @@ router.get('/search', async (req, res) => {
   var searchString = "";
   var typeString = "";
   var programmingLanguage = "";
-  
+
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
   }
@@ -305,11 +305,11 @@ router.get('/search', async (req, res) => {
     maxResults = req.query.maxResults;
   }
 
-  if (req.query.search){
+  if (req.query.search) {
     searchString = req.query.search;
   }
 
-  if (req.query.type){
+  if (req.query.type) {
     if (req.query.type === "all") {
       typeString = '';
     }
@@ -319,46 +319,48 @@ router.get('/search', async (req, res) => {
   }
 
   if (req.query.programmingLanguage) {
-      programmingLanguage = req.query.programmingLanguage;
+    programmingLanguage = req.query.programmingLanguage;
   }
 
-  var searchQuery = {$and :[ {activeflag: 'active'} ] };
-  var aggregateQueryTypes = [ 
-    { $match: { 
-      $and : [
-        {activeflag: 'active'}
-      ]
-    }},
-    { $group : {
-      _id : "$type", count: { $sum: 1 } 
+  var searchQuery = { $and: [{ activeflag: 'active' }] };
+  var aggregateQueryTypes = [
+    {
+      $match: {
+        $and: [
+          { activeflag: 'active' }
+        ]
       }
-    } 
+    },
+    {
+      $group: {
+        _id: "$type", count: { $sum: 1 }
+      }
+    }
   ];
 
   if (typeString !== '') {
-    searchQuery["$and"].push({type: typeString});
-    aggregateQueryTypes[0]["$match"]["$and"].push({type: typeString});
+    searchQuery["$and"].push({ type: typeString });
+    aggregateQueryTypes[0]["$match"]["$and"].push({ type: typeString });
   }
 
   if (searchString.length > 0) {
-    searchQuery["$and"].push({$text: {$search:searchString}});
-    aggregateQueryTypes[0]["$match"]["$and"].push({$text: {$search:searchString}});
+    searchQuery["$and"].push({ $text: { $search: searchString } });
+    aggregateQueryTypes[0]["$match"]["$and"].push({ $text: { $search: searchString } });
   }
 
   if (programmingLanguage.length > 0) {
     var pl = [];
     if (!Array.isArray(programmingLanguage)) {
-      pl = [{"categories.programmingLanguage": programmingLanguage}];
+      pl = [{ "categories.programmingLanguage": programmingLanguage }];
     } else {
       for (var i = 0; i < programmingLanguage.length; i++) {
-        pl[i] = {"categories.programmingLanguage":programmingLanguage[i]};
+        pl[i] = { "categories.programmingLanguage": programmingLanguage[i] };
       }
     }
 
-    searchQuery["$and"].push({"$or":pl});
-    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":pl});
-  } 
-
+    searchQuery["$and"].push({ "$or": pl });
+    aggregateQueryTypes[0]["$match"]["$and"].push({ "$or": pl });
+  }
 
   var x = Data.aggregate(aggregateQueryTypes);
   x.exec((errx, dataTypes) => {
@@ -368,27 +370,23 @@ router.get('/search', async (req, res) => {
     for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
       counts[dataTypes[i]._id] = dataTypes[i].count;
     }
-    
-    /*
-    Needed to only bring back the active reviews
 
-    $match:{
-      "review.activeFlag": "active"
+    var q = '';
+    if (searchString.length > 0) {
+      q = Data.aggregate([
+        { $match: searchQuery },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
+      ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(maxResults));
     }
-    
-    Score needs to get added back in
-    
-    , { score: { $meta: "textScore" } }
-    */
+    else {
+      q = Data.aggregate([
+        { $match: searchQuery },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
+      ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    }
 
-    var q = Data.aggregate([
-      {$match: searchQuery},
-      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }},
-      { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" }}
-    ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(maxResults));
-
-    /* var q = Data.find(searchQuery, { score: { $meta: "textScore" } })
-      .sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(maxResults)); */
     q.exec((err, data) => {
       if (err) return res.json({ success: false, error: err });
       result = res.json({ success: true, data: data, summary: counts });
@@ -431,10 +429,10 @@ router.get('/accountsearch', async (req, res) => {
   if (req.query.toolState) {
     toolStateString = req.query.toolState;
   }
-  
+
   var q = Data.aggregate([
-    {$match: {$and: [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: toolStateString }]}},
-    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }}
+    { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: toolStateString }] } },
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
   ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -507,11 +505,11 @@ router.get('/accountsearchadmin', async (req, res) => {
       { activeflag: toolStateString }
     ]
   };
-  
+
   console.log("Here = " + searchQuery)
   var q = Data.aggregate([
-    {$match: {$and: [{ type: typeString }, { activeflag: toolStateString }]}},
-    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }}
+    { $match: { $and: [{ type: typeString }, { activeflag: toolStateString }] } },
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
   ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -650,14 +648,14 @@ router.get('/stats', async (req, res) => {
  */
 router.get('/tool/:toolID', async (req, res) => {
   var q = Data.aggregate([
-    {$match: {$and: [{ id: parseInt(req.params.toolID) }]}},
-    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }}
+    { $match: { $and: [{ id: parseInt(req.params.toolID) }] } },
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
   ]);
   q.exec((err, data) => {
     var r = Reviews.aggregate([
-      {$match: {$and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }]}},
-      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" }}
-    ]);    
+      { $match: { $and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }] } },
+      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } }
+    ]);
     r.exec((err, reviewData) => {
       if (err) return res.json({ success: false, error: err });
       return res.json({ success: true, data: data, reviewData: reviewData });
@@ -831,9 +829,9 @@ router.get('/getAllUsers', async (req, res) => {
 router.get('/pendingreviewsadmin', async (req, res) => {
 
   var r = Reviews.aggregate([
-    {$match: {$and: [{ activeflag: 'active' }]}},
-    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" }}
-  ]);   
+    { $match: { $and: [{ activeflag: 'review' }] } },
+    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } }
+  ]);
   r.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
@@ -855,9 +853,9 @@ router.get('/pendingreviews', async (req, res) => {
   }
 
   var r = Reviews.aggregate([
-    {$match: {$and: [{ activeflag: 'active' }, { reviewerID : idString }]}},
-    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" }}
-  ]);   
+    { $match: { $and: [{ activeflag: 'review' }, { reviewerID: idString }] } },
+    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } }
+  ]);
   r.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
@@ -941,8 +939,8 @@ router.delete('/tool/review/delete', async (req, res) => {
  */
 router.get('/project/:projectID', async (req, res) => {
   var q = Data.aggregate([
-    {$match: {$and: [{ id: parseInt(req.params.projectID) }]}},
-    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" }}
+    { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
   ]);
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -969,7 +967,7 @@ router.get('/person/:personID', async (req, res) => {
 router.get('/user/:userID', async (req, res) => {
 
   //req.params.id is how you get the id from the url
-  var q = UserModel.find({id:req.params.userID});
+  var q = UserModel.find({ id: req.params.userID });
 
   q.exec((err, userdata) => {
     if (err) return res.json({ success: false, error: err });
