@@ -158,8 +158,11 @@ router.get('/mytools/alltools', async (req, res) => {
     return res.json({ success: true });
   });
 }); */
-
-router.post('/mytools/add', async (req, res) => {
+router.post(
+  '/mytools/add',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   let data = new Data();
 
   const { type, name, link, description, categories, license, authors, tags } = req.body;
@@ -193,7 +196,11 @@ router.post('/mytools/add', async (req, res) => {
  * When they submit, authenticate the user, validate the data and update the tool data on the DB.
  * (If we are going down the versions route then we will add a new version of the data and increase the version i.e. v1, v2)
  */
-router.put('/mytools/edit', async (req, res) => {
+router.put(
+  '/mytools/edit',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   const { id, type, name, link, description, categories, license, authors, tags } = req.body;
   Data.findOneAndUpdate({ id: id },
     {
@@ -218,9 +225,11 @@ router.put('/mytools/edit', async (req, res) => {
     });
 });
 
-
-router.post('/person/edit', async (req, res) => {
-
+router.post(
+  '/person/edit',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   const { id, type, bio, link, orcid } = req.body;
   Data.findOneAndUpdate({ id: id },
 
@@ -297,6 +306,8 @@ router.get('/search', async (req, res) => {
   var typeString = "";
   var programmingLanguage = "";
   var category = "";
+  var features = "";
+  var topics = "";
 
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
@@ -325,6 +336,14 @@ router.get('/search', async (req, res) => {
 
   if (req.query.category) {
     category = req.query.category;
+  }
+
+  if (req.query.features) {
+    features = req.query.features;
+  }
+
+  if (req.query.topics) {
+    topics = req.query.topics;
   }
 
   var searchQuery = { $and: [{ activeflag: 'active' }] };
@@ -385,6 +404,38 @@ router.get('/search', async (req, res) => {
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":tc});
   } 
 
+  console.log('features server.js: ' + features)
+  if (features.length > 0) {
+    var f = [];
+    if (!Array.isArray(features)) {
+      f = [{"tags.features": features}];
+    } else {
+      for (var i = 0; i < features.length; i++) {
+        f[i] = {"tags.features":features[i]};
+      }
+    }
+
+    console.log('f server: ' + JSON.stringify(f))
+    searchQuery["$and"].push({"$or":f});
+    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":f});
+  } 
+
+  console.log('topics server.js: ' + topics)
+  if (topics.length > 0) {
+    var t = [];
+    if (!Array.isArray(topics)) {
+      t = [{"tags.topics": topics}];
+    } else {
+      for (var i = 0; i < topics.length; i++) {
+        t[i] = {"tags.topics":topics[i]};
+      }
+    }
+
+    console.log('f server: ' + JSON.stringify(t))
+    searchQuery["$and"].push({"$or":t});
+    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":t});
+  } 
+
   console.log(searchQuery)
   var x = Data.aggregate(aggregateQueryTypes);
   x.exec((errx, dataTypes) => {
@@ -430,7 +481,11 @@ router.get('/search', async (req, res) => {
  * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
  * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
-router.get('/accountsearch', async (req, res) => {
+router.get(
+  '/accountsearch',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   var result;
   var startIndex = 0;
   var maxResults = 25;
@@ -471,7 +526,11 @@ router.get('/accountsearch', async (req, res) => {
  * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
  * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
-router.delete('/accountdelete', async (req, res) => {
+router.delete(
+  '/accountdelete',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   const { id } = req.body;
   Data.findOneAndDelete({ id: id }, (err) => {
     if (err) return res.send(err);
@@ -485,7 +544,11 @@ router.delete('/accountdelete', async (req, res) => {
  * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
  * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
-router.post('/accountstatusupdate', async (req, res) => {
+router.post(
+  '/accountstatusupdate',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
   const { id, activeflag } = req.body;
 
   Data.findOneAndUpdate({ id: id },
@@ -503,7 +566,11 @@ router.post('/accountstatusupdate', async (req, res) => {
  * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
  * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
-router.get('/accountsearchadmin', async (req, res) => {
+router.get(
+  '/accountsearchadmin',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
   var result;
   var startIndex = 0;
   var maxResults = 25;
@@ -678,6 +745,7 @@ router.get('/tool/:toolID', async (req, res) => {
   q.exec((err, data) => {
     var r = Reviews.aggregate([
       { $match: { $and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }] } },
+      { $sort: {date: -1}},
       { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
       { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
     ]);
@@ -699,7 +767,8 @@ router.get('/getAllTopics/:type', async (req, res) => {
     var tempTopics = [];
     data.map((dat) => {
       dat.tags.topics.map((topic) => {
-        tempTopics.push(topic);
+        console.log("topic: " + topic)
+        topic.length <=0 ? tempTopics=tempTopics : tempTopics.push(topic);
       });
     });
 
@@ -724,7 +793,8 @@ router.get('/getAllFeatures/:type', async (req, res) => {
     var tempFeatures = [];
     data.map((dat) => {
       dat.tags.features.map((feature) => {
-        tempFeatures.push(feature);
+        console.log('feature: ' + feature)
+        feature.length <= 0 ? tempFeatures=tempFeatures : tempFeatures.push(feature);
       });
     });
 
@@ -749,7 +819,8 @@ router.get('/getAllLanguages/:type', async (req, res) => {
     var tempLanguages = [];
     data.map((dat) => {
       dat.categories.programmingLanguage.map((language) => {
-        tempLanguages.push(language);
+        console.log('language: ' + language)
+        language.length <= 0 ? tempLanguages=tempLanguages : tempLanguages.push(language);
       });
     });
 
@@ -773,7 +844,8 @@ router.get('/getAllCategories/:type', async (req, res) => {
     if (err) return res.json({ success: false, error: err });
     var tempCategories = [];
     data.map((dat) => {
-      tempCategories.push(dat.categories.category);
+      console.log('dat: ' + dat.categories.category)
+      dat.categories.category.length <= 0 ? tempCategories=tempCategories : tempCategories.push(dat.categories.category);
     });
 
     const combinedCategories = [];
@@ -797,7 +869,8 @@ router.get('/getAllLicenses/:type', async (req, res) => {
     if (err) return res.json({ success: false, error: err });
     var tempLicenses = [];
     data.map((dat) => {
-      tempLicenses.push(dat.license);
+      console.log("license: " + dat.license)
+      dat.license.length <= 0 ? tempLicenses=tempLicenses : tempLicenses.push(dat.license);
     });
 
     const combinedLicenses = [];
@@ -841,17 +914,17 @@ router.get('/getAllUsers', async (req, res) => {
 });
 
 
-
-
-
-
 /**
  * {get} /accountsearch Search tools
  * 
  * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
  * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
-router.get('/pendingreviewsadmin', async (req, res) => {
+router.get(
+  '/pendingreviewsadmin',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
 
   var r = Reviews.aggregate([
     { $match: { $and: [{ activeflag: 'review' }] } },
@@ -870,7 +943,11 @@ router.get('/pendingreviewsadmin', async (req, res) => {
  * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
  * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
  */
-router.get('/pendingreviews', async (req, res) => {
+router.get(
+  '/pendingreviews',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Creator),
+  async (req, res) => {
 
   var idString = "";
 
@@ -896,7 +973,11 @@ router.get('/pendingreviews', async (req, res) => {
  * When they submit, authenticate the user, validate the data and add review data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
-router.post('/tool/review/add', async (req, res) => {
+router.post(
+  '/tool/review/add',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   let reviews = new Reviews();
   const { toolID, reviewerID, rating, projectName, review } = req.body;
 
@@ -922,7 +1003,11 @@ router.post('/tool/review/add', async (req, res) => {
  * When they submit, authenticate the user, validate the data and add reply data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
-router.post('/tool/reply', async (req, res) => {
+router.post(
+  '/tool/reply',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   const { reviewID, replierID, reply } = req.body;
   Reviews.findOneAndUpdate({ reviewID: reviewID },
   {
@@ -940,7 +1025,11 @@ router.post('/tool/reply', async (req, res) => {
  * 
  * Authenticate user to see if user can approve.
  */
-router.post('/tool/review/approve', async (req, res) => {
+router.post(
+  '/tool/review/approve',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
   const { id, activeflag } = req.body;
   Reviews.findOneAndUpdate({ reviewID: id },
     {
@@ -958,7 +1047,11 @@ router.post('/tool/review/approve', async (req, res) => {
  * 
  * Authenticate user to see if user can reject.
  */
-router.delete('/tool/review/reject', async (req, res) => {
+router.delete(
+  '/tool/review/reject',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
   const { id } = req.body;
   Reviews.findOneAndDelete({ reviewID: id }, (err) => {
     if (err) return res.send(err);
@@ -971,7 +1064,11 @@ router.delete('/tool/review/reject', async (req, res) => {
  * 
  * When they delete, authenticate the user and remove the review data from the DB.
  */
-router.delete('/tool/review/delete', async (req, res) => {
+router.delete(
+  '/tool/review/delete',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   const { id } = req.body;
   Data.findOneAndDelete({ id: id }, (err) => {
     if (err) return res.send(err);
@@ -1011,8 +1108,11 @@ router.get('/person/:personID', async (req, res) => {
 });
 
 //HERE RN
-router.get('/user/:userID', async (req, res) => {
-  console.log("gfef")
+router.get(
+  '/user/:userID',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
   //req.params.id is how you get the id from the url
   var q = UserModel.find({ id: req.params.userID });
 
