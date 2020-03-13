@@ -14,11 +14,75 @@ servers:
         enum:
           - '443'
         default: '443'
-
 paths:
-  /search:
+  /dataset/{datasetID}:
+    get:
+      summary: Returns details for a Dataset from the Metadata catalogue.
+      parameters:
+        - name: datasetID
+          in: path
+          required: true
+          description: The ID of the datset
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            example: 89522470
+      responses: 
+        '200':
+          description: OK    
+  /person/{personID}:
+    get:
+      summary: Returns details for a person.
+      parameters:
+        - name: personID
+          in: path
+          required: true
+          description: The ID of the person
+          schema:
+            type : string
+            example: b2475d19-75fe-422b-9d0c-c53cdfff8230
+      responses: 
+        '200':
+          description: OK 
+  /search/:
     get:
       summary: Returns all results
+      responses: 
+        '200':
+          description: OK
+  /search:
+    get:
+      summary: Returns search results with filters (filers can be added to searchTerms and have maxResults)
+      parameters:
+        - name: category
+          in: query
+          required: false
+          description: A category.
+          schema:
+            type : string
+            example: Notebook
+        - name: programmingLanguage
+          in: query
+          required: false
+          description: A programming language.
+          schema:
+            type : string
+            example: Java
+        - name: features
+          in: query
+          required: false
+          description: A feature.
+          schema:
+            type : string
+            example: Density Estimation
+        - name: topics
+          in: query
+          required: false
+          description: A topic.
+          schema:
+            type : string
+            example: Lung Cancer
       responses: 
         '200':
           description: OK
