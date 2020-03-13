@@ -720,7 +720,8 @@ router.get('/tool/:toolID', async (req, res) => {
   q.exec((err, data) => {
     var r = Reviews.aggregate([
       { $match: { $and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }] } },
-      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } }
+      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
+      { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
     ]);
     r.exec((err, reviewData) => {
       if (err) return res.json({ success: false, error: err });
@@ -897,7 +898,8 @@ router.get('/pendingreviewsadmin', async (req, res) => {
 
   var r = Reviews.aggregate([
     { $match: { $and: [{ activeflag: 'review' }] } },
-    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } }
+    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
+    { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
   ]);
   r.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -921,7 +923,8 @@ router.get('/pendingreviews', async (req, res) => {
 
   var r = Reviews.aggregate([
     { $match: { $and: [{ activeflag: 'review' }, { reviewerID: idString }] } },
-    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } }
+    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
+    { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
   ]);
   r.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -952,6 +955,26 @@ router.post('/tool/review/add', async (req, res) => {
   reviews.save((err) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, id: reviews.reviewID });
+  });
+});
+
+/**
+ * {post} /tool/reply/add Add reply
+ * 
+ * Authenticate user to see if add reply should be displayed.
+ * When they submit, authenticate the user, validate the data and add reply data to the DB.
+ * We will also check the review (Free word entry) for exclusion data (node module?)
+ */
+router.post('/tool/reply', async (req, res) => {
+  const { reviewID, replierID, reply } = req.body;
+  Reviews.findOneAndUpdate({ reviewID: reviewID },
+  {
+    replierID: replierID,
+    reply: reply,
+    replydate: Date.now()
+  }, (err) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true });
   });
 });
 
@@ -1032,7 +1055,7 @@ router.get('/person/:personID', async (req, res) => {
 
 //HERE RN
 router.get('/user/:userID', async (req, res) => {
-
+  console.log("gfef")
   //req.params.id is how you get the id from the url
   var q = UserModel.find({ id: req.params.userID });
 
