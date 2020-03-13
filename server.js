@@ -720,6 +720,7 @@ router.get('/tool/:toolID', async (req, res) => {
   q.exec((err, data) => {
     var r = Reviews.aggregate([
       { $match: { $and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }] } },
+      { $sort: {date: -1}},
       { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
       { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
     ]);
