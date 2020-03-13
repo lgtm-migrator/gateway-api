@@ -297,6 +297,8 @@ router.get('/search', async (req, res) => {
   var typeString = "";
   var programmingLanguage = "";
   var category = "";
+  var features = "";
+  var topics = "";
 
   if (req.query.startIndex) {
     startIndex = req.query.startIndex;
@@ -325,6 +327,14 @@ router.get('/search', async (req, res) => {
 
   if (req.query.category) {
     category = req.query.category;
+  }
+
+  if (req.query.features) {
+    features = req.query.features;
+  }
+
+  if (req.query.topics) {
+    topics = req.query.topics;
   }
 
   var searchQuery = { $and: [{ activeflag: 'active' }] };
@@ -383,6 +393,38 @@ router.get('/search', async (req, res) => {
     console.log('tc server: ' + JSON.stringify(tc))
     searchQuery["$and"].push({"$or":tc});
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":tc});
+  } 
+
+  console.log('features server.js: ' + features)
+  if (features.length > 0) {
+    var f = [];
+    if (!Array.isArray(features)) {
+      f = [{"tags.features": features}];
+    } else {
+      for (var i = 0; i < features.length; i++) {
+        f[i] = {"tags.features":features[i]};
+      }
+    }
+
+    console.log('f server: ' + JSON.stringify(f))
+    searchQuery["$and"].push({"$or":f});
+    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":f});
+  } 
+
+  console.log('topics server.js: ' + topics)
+  if (topics.length > 0) {
+    var t = [];
+    if (!Array.isArray(topics)) {
+      t = [{"tags.topics": topics}];
+    } else {
+      for (var i = 0; i < topics.length; i++) {
+        t[i] = {"tags.topics":topics[i]};
+      }
+    }
+
+    console.log('f server: ' + JSON.stringify(t))
+    searchQuery["$and"].push({"$or":t});
+    aggregateQueryTypes[0]["$match"]["$and"].push({"$or":t});
   } 
 
   console.log(searchQuery)
@@ -698,7 +740,8 @@ router.get('/getAllTopics/:type', async (req, res) => {
     var tempTopics = [];
     data.map((dat) => {
       dat.tags.topics.map((topic) => {
-        tempTopics.push(topic);
+        console.log("topic: " + topic)
+        topic.length <=0 ? tempTopics=tempTopics : tempTopics.push(topic);
       });
     });
 
@@ -723,7 +766,8 @@ router.get('/getAllFeatures/:type', async (req, res) => {
     var tempFeatures = [];
     data.map((dat) => {
       dat.tags.features.map((feature) => {
-        tempFeatures.push(feature);
+        console.log('feature: ' + feature)
+        feature.length <= 0 ? tempFeatures=tempFeatures : tempFeatures.push(feature);
       });
     });
 
@@ -748,7 +792,8 @@ router.get('/getAllLanguages/:type', async (req, res) => {
     var tempLanguages = [];
     data.map((dat) => {
       dat.categories.programmingLanguage.map((language) => {
-        tempLanguages.push(language);
+        console.log('language: ' + language)
+        language.length <= 0 ? tempLanguages=tempLanguages : tempLanguages.push(language);
       });
     });
 
@@ -772,7 +817,8 @@ router.get('/getAllCategories/:type', async (req, res) => {
     if (err) return res.json({ success: false, error: err });
     var tempCategories = [];
     data.map((dat) => {
-      tempCategories.push(dat.categories.category);
+      console.log('dat: ' + dat.categories.category)
+      dat.categories.category.length <= 0 ? tempCategories=tempCategories : tempCategories.push(dat.categories.category);
     });
 
     const combinedCategories = [];
@@ -796,7 +842,8 @@ router.get('/getAllLicenses/:type', async (req, res) => {
     if (err) return res.json({ success: false, error: err });
     var tempLicenses = [];
     data.map((dat) => {
-      tempLicenses.push(dat.license);
+      console.log("license: " + dat.license)
+      dat.license.length <= 0 ? tempLicenses=tempLicenses : tempLicenses.push(dat.license);
     });
 
     const combinedLicenses = [];
@@ -838,10 +885,6 @@ router.get('/getAllUsers', async (req, res) => {
     return res.json({ success: true, data: users });
   });
 });
-
-
-
-
 
 
 /**
