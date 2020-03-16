@@ -597,7 +597,6 @@ router.get(
     ]
   };
 
-  console.log("Here = " + searchQuery)
   var q = Data.aggregate([
     { $match: { $and: [{ type: typeString }, { activeflag: toolStateString }] } },
     { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
@@ -967,6 +966,31 @@ router.get(
 });
 
 /**
+ * {get} /accountsearch Search tools
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.get('/reviews', async (req, res) => {
+
+  var reviewIDString = "";
+
+  if (req.query.id) {
+    reviewIDString = parseInt(req.query.id);
+  }
+
+  var r = Reviews.aggregate([
+    { $match: { $and: [{ activeflag: 'active' }, { reviewID: reviewIDString }] } },
+    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
+    { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
+  ]);
+  r.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
+});
+
+/**
  * {post} /tool/review/add Add review
  * 
  * Authenticate user to see if add review should be displayed.
@@ -1099,8 +1123,12 @@ router.get('/project/:projectID', async (req, res) => {
  */
 router.get('/person/:personID', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({ id: req.params.personID });
 
+  var q = Data.aggregate([
+    { $match: { $and: [{ id: parseInt(req.params.personID) }] } },
+    { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "tools" } },
+    { $lookup: { from: "reviews", localField: "id", foreignField: "reviewerID", as: "reviews" } }
+  ]);
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
