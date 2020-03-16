@@ -26,7 +26,8 @@ const ToolSchema = new Schema(
     link: String,
     orcid: String,
     activeflag: String,
-    updatedon: Date
+    updatedon: Date,
+    counter: Number
   },
   { 
     collection: 'tools',

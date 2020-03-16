@@ -226,6 +226,18 @@ router.put(
 });
 
 router.post(
+  '/counter/update',
+  async(req, res) => {
+    const {id, counter} = req.body;
+    console.log('id is: ' + id + ' + counter is: ' + counter)
+    Data.findOneAndUpdate({id: id},
+         {counter: counter}, (err) => {
+          if (err) return res.json({ success: false, error: err });
+          return res.json({ success: true });
+        });
+  });
+
+router.post(
   '/person/edit',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
