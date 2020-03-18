@@ -15,7 +15,7 @@ import { connectToDatabase } from "./database/connection"
 import { initialiseAuthentication } from "./auth";
 import { utils } from "./auth";
 import { ROLES } from './utils'
-import { Data, RecordSearchData, UserModel, Reviews } from './database/schema';
+import { Data, RecordSearchData, UserModel, Reviews, MessagesModel } from './database/schema';
 
 const API_PORT = process.env.PORT || 3001;
 var app = express();
@@ -183,8 +183,16 @@ router.post(
   data.updatedon = Date.now();
 
   data.save((err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, id: data.id });
+    let message = new MessagesModel();
+    message.messageID = parseInt(Math.random().toString().replace('0.', ''));
+    message.messageTo = 0;
+    message.messageObjectID = data.id;
+    message.messageType = 'add';
+    message.messageSent = Date.now();
+    message.save((err) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true, id: data.id });
+    });
   });
 });
 
@@ -567,6 +575,28 @@ router.post(
     {
       activeflag: activeflag
     }, (err) => {
+      var p = Data.find({ id: id });
+      p.exec((err, data) => {
+        console.log(data)
+        for (var i = 0; i < data[0].authors.length; i++) {
+          let message = new MessagesModel();
+          message.messageID = parseInt(Math.random().toString().replace('0.', ''));
+          message.messageTo = data[0].authors[i];
+          message.messageObjectID = id;
+          message.messageType = 'approved';
+          message.messageSent = Date.now();
+          message.save((err) => {});
+        }
+      });
+      
+      let message = new MessagesModel();
+      message.messageID = parseInt(Math.random().toString().replace('0.', ''));
+      message.messageTo = 0;
+      message.messageObjectID = id;
+      message.messageType = 'approved';
+      message.messageSent = Date.now();
+      message.save((err) => {});
+
       if (err) return res.json({ success: false, error: err });
       return res.json({ success: true });
     });
@@ -1071,11 +1101,9 @@ router.post(
     {
       activeflag: activeflag
     }, (err) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true });
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true });
     });
-
-
 });
 
 /**
@@ -1160,6 +1188,53 @@ router.get(
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, userdata: userdata });
   });
+});
+
+/**
+ * {get} /messages Messages
+ * 
+ * Return list of messages
+ */
+router.get(
+  '/messagesadmin/:personID',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
+  var idString = "";
+
+  if (req.params.personID) {
+    idString = parseInt(req.params.personID);
+  }
+  console.log("Here "+idString)
+  var m = MessagesModel.aggregate([
+    { $match: { $and: [{ $or: [ { messageTo: idString}, { messageTo: 0} ]}] } },
+    { $sort: {messageSent: -1}},
+    { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
+  ]);
+  m.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, newData: data });
+  });
+});
+
+router.get(
+  '/messages/:personID',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Creator),
+  async (req, res) => {
+    var idString = "";
+
+    if (req.query.id) {
+      idString = parseInt(req.query.id);
+    }
+    var m = MessagesModel.aggregate([
+      { $match: { $and: [{ messageTo: idString}] } },
+      { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
+    ]);
+    m.exec((err, data) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true, newData: data });
+    });
 });
 
 /* 
