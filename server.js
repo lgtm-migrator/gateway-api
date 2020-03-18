@@ -165,7 +165,7 @@ router.post(
   async (req, res) => {
   let data = new Data();
 
-  const { type, name, link, description, categories, license, authors, tags } = req.body;
+  const { type, name, link, description, categories, license, authors, tags, toolids } = req.body;
   data.id = parseInt(Math.random().toString().replace('0.', ''));
   data.type = type;
   data.name = name;
@@ -179,6 +179,7 @@ router.post(
   data.tags.features = tags.features;
   data.tags.topics = tags.topics;
   data.activeflag = 'review';
+  data.toolids = toolids;
   // data.updatedon = new Date();
   data.updatedon = Date.now();
 
@@ -209,7 +210,7 @@ router.put(
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-  const { id, type, name, link, description, categories, license, authors, tags } = req.body;
+  const { id, type, name, link, description, categories, license, authors, toolids, tags } = req.body;
   Data.findOneAndUpdate({ id: id },
     {
       type: type,
@@ -226,7 +227,8 @@ router.put(
       tags: {
         features: tags.features,
         topics: tags.topics
-      }
+      },
+      toolids: toolids
     }, (err) => {
       if (err) return res.json({ success: false, error: err });
       return res.json({ success: true });
@@ -927,21 +929,6 @@ router.get('/getAllLicenses/:type', async (req, res) => {
   });
 });
 
-
-// router.get('/getAllUsers/:type', async (req, res) => {
-//   //req.params.id is how you get the id from the url
-//   var q = Data.find({type:req.params.type});
-
-//   q.exec((err, data) => {
-//     if (err) return res.json({ success: false, error: err });
-//     var combinedUsers = [];
-//     data.map((dat)=>{
-//       combinedUsers.push(dat.firstname + ' ' + dat.lastname);
-//     });
-//   return res.json({ success: true, data: combinedUsers });
-//   });
-// });
-
 router.get('/getAllUsers', async (req, res) => {
   //req.params.id is how you get the id from the url
   var q = Data.find({ type: 'person' });
@@ -953,6 +940,16 @@ router.get('/getAllUsers', async (req, res) => {
       users.push({ id: dat.id, name: dat.firstname + ' ' + dat.lastname })
     });
     return res.json({ success: true, data: users });
+  });
+});
+
+router.get('/getAllTools', async (req, res) => {
+  //req.params.id is how you get the id from the url
+  var q = Data.find({ type: 'tool' });
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
   });
 });
 

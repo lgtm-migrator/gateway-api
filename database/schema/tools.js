@@ -27,7 +27,8 @@ const ToolSchema = new Schema(
     orcid: String,
     activeflag: String,
     updatedon: Date,
-    counter: Number
+    counter: Number,
+    toolids: [Number]
   },
   { 
     collection: 'tools',
