@@ -471,6 +471,7 @@ router.get('/search', async (req, res) => {
       q = Data.aggregate([
         { $match: searchQuery },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
         { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
       ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(maxResults));
     }
@@ -478,6 +479,7 @@ router.get('/search', async (req, res) => {
       q = Data.aggregate([
         { $match: searchQuery },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
         { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
       ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
     }
