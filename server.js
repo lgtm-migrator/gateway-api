@@ -795,7 +795,7 @@ router.get('/stats/recent', async (req, res) => {
 /**
  * {get} /stats/unmet Unmet Searches
  * 
- * Return the details on the recent searches.
+ * Return the details on the unmet searches.
  */
 router.get('/stats/unmet', async (req, res) => {
   var q = RecordSearchData.aggregate([
@@ -809,6 +809,24 @@ router.get('/stats/unmet', async (req, res) => {
     },
     {$sort:{ datesearched : 1}}
   ])
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
+});
+
+/**
+ * {get} /stats/popular Popular Objects
+ * 
+ * Return the details on the popular objects.
+ */
+router.get('/stats/popular', async (req, res) => {
+  var q = Data.find({ counter: { $gt : 0} }).sort({ counter: -1 }).limit(10);
+
+  if (req.query.type) {
+    q = Data.find({ $and:[ {type : req.query.type, counter: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
+  }
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
