@@ -784,7 +784,7 @@ router.get('/stats/recent', async (req, res) => {
       }
     },
     {$sort:{ datesearched : 1}}
-  ])
+  ]).limit(10);
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -808,7 +808,7 @@ router.get('/stats/unmet', async (req, res) => {
       }
     },
     {$sort:{ datesearched : 1}}
-  ])
+  ]).limit(10);
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -826,6 +826,24 @@ router.get('/stats/popular', async (req, res) => {
 
   if (req.query.type) {
     q = Data.find({ $and:[ {type : req.query.type, counter: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
+  }
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
+});
+
+/**
+ * {get} /stats/popular Updated Objects
+ * 
+ * Return the details on the updated objects.
+ */
+router.get('/stats/updates', async (req, res) => {
+  var q = Data.find({ counter: { $gt : 0} }).sort({ updatedon: -1 }).limit(10);
+
+  if (req.query.type) {
+    q = Data.find({ $and:[ {type : req.query.type, updatedon: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
   }
 
   q.exec((err, data) => {
