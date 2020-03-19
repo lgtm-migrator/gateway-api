@@ -394,7 +394,6 @@ router.get('/search', async (req, res) => {
     aggregateQueryTypes[0]["$match"]["$and"].push({ $text: { $search: searchString } });
   }
 
-  console.log('programmingLanguage server.js: ' + programmingLanguage)
   if (programmingLanguage.length > 0) {
     var pl = [];
     if (!Array.isArray(programmingLanguage)) {
@@ -404,13 +403,10 @@ router.get('/search', async (req, res) => {
         pl[i] = { "categories.programmingLanguage": programmingLanguage[i] };
       }
     }
-
-    console.log('pl server: ' + JSON.stringify(pl))
     searchQuery["$and"].push({ "$or": pl });
     aggregateQueryTypes[0]["$match"]["$and"].push({ "$or": pl });
   }
 
-  console.log('category server.js: ' + category)
   if (category.length > 0) {
     var tc = [];
     if (!Array.isArray(category)) {
@@ -420,13 +416,10 @@ router.get('/search', async (req, res) => {
         tc[i] = {"categories.category":category[i]};
       }
     }
-
-    console.log('tc server: ' + JSON.stringify(tc))
     searchQuery["$and"].push({"$or":tc});
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":tc});
   } 
 
-  console.log('features server.js: ' + features)
   if (features.length > 0) {
     var f = [];
     if (!Array.isArray(features)) {
@@ -436,8 +429,6 @@ router.get('/search', async (req, res) => {
         f[i] = {"tags.features":features[i]};
       }
     }
-
-    console.log('f server: ' + JSON.stringify(f))
     searchQuery["$and"].push({"$or":f});
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":f});
   } 
@@ -452,8 +443,6 @@ router.get('/search', async (req, res) => {
         t[i] = {"tags.topics":topics[i]};
       }
     }
-
-    console.log('f server: ' + JSON.stringify(t))
     searchQuery["$and"].push({"$or":t});
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":t});
   } 
@@ -491,7 +480,9 @@ router.get('/search', async (req, res) => {
       result = res.json({ success: true, data: data, summary: counts });
       let recordSearchData = new RecordSearchData();
       recordSearchData.searched = searchString;
-      recordSearchData.returned = data.length;
+      recordSearchData.returned.tool = counts.tool;
+      recordSearchData.returned.project = counts.project;
+      recordSearchData.returned.person = counts.person;
       recordSearchData.datesearched = Date.now();
       recordSearchData.save((err) => { });
     });
@@ -775,6 +766,34 @@ router.get('/stats', async (req, res) => {
   });
 
   return result;
+});
+
+/**
+ * {get} /stats/recent Recent Searches
+ * 
+ * Return the details on the recent searches.
+ */
+router.get('/stats/recent', async (req, res) => {
+  var q = RecordSearchData.find({$or: [ { "returned.tool": { $gt : 0}}, { "returned.project": { $gt : 0}}, { "returned.person": { $gt : 0}} ]});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
+});
+
+/**
+ * {get} /stats/unmet Unmet Searches
+ * 
+ * Return the details on the recent searches.
+ */
+router.get('/stats/unmet', async (req, res) => {
+  var q = RecordSearchData.find({ returned: null});
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
 });
 
 /**

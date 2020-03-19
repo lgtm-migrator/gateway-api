@@ -5,7 +5,12 @@ import { model, Schema } from 'mongoose'
 const RecordSearchSchema = new Schema(
   {
     searched: String,
-    returned: Number,
+    returned: 
+      {
+        tool: Number, 
+        project: Number, 
+        person: Number
+      },
     datesearched: Date
   },
   { 
