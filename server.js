@@ -774,7 +774,17 @@ router.get('/stats', async (req, res) => {
  * Return the details on the recent searches.
  */
 router.get('/stats/recent', async (req, res) => {
-  var q = RecordSearchData.find({$or: [ { "returned.tool": { $gt : 0}}, { "returned.project": { $gt : 0}}, { "returned.person": { $gt : 0}} ]});
+  var q = RecordSearchData.aggregate([
+    { $match: { $or: [ { "returned.tool": { $gt : 0}}, { "returned.project": { $gt : 0}}, { "returned.person": { $gt : 0}} ] }},
+    {
+      $group: {
+        _id: {$toLower: "$searched"},
+        count: { $sum: 1 },
+        returned: { $first: "$returned" }
+      }
+    },
+    {$sort:{ datesearched : 1}}
+  ])
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -788,7 +798,17 @@ router.get('/stats/recent', async (req, res) => {
  * Return the details on the recent searches.
  */
 router.get('/stats/unmet', async (req, res) => {
-  var q = RecordSearchData.find({ returned: null});
+  var q = RecordSearchData.aggregate([
+    
+    { $match: { returned: null}},
+    {
+      $group: {
+        _id: { $toLower: "$searched"},
+        count: { $sum: 1 }
+      }
+    },
+    {$sort:{ datesearched : 1}}
+  ])
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
