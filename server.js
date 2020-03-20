@@ -239,7 +239,6 @@ router.post(
   '/counter/update',
   async(req, res) => {
     const {id, counter} = req.body;
-    console.log('id is: ' + id + ' + counter is: ' + counter)
     Data.findOneAndUpdate({id: id},
          {counter: counter}, (err) => {
           if (err) return res.json({ success: false, error: err });
@@ -433,7 +432,6 @@ router.get('/search', async (req, res) => {
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":f});
   } 
 
-  console.log('topics server.js: ' + topics)
   if (topics.length > 0) {
     var t = [];
     if (!Array.isArray(topics)) {
@@ -447,7 +445,6 @@ router.get('/search', async (req, res) => {
     aggregateQueryTypes[0]["$match"]["$and"].push({"$or":t});
   } 
 
-  console.log(searchQuery)
   var x = Data.aggregate(aggregateQueryTypes);
   x.exec((errx, dataTypes) => {
     if (errx) return res.json({ success: false, error: errx });
@@ -572,7 +569,6 @@ router.post(
     }, (err) => {
       var p = Data.find({ id: id });
       p.exec((err, data) => {
-        console.log(data)
         for (var i = 0; i < data[0].authors.length; i++) {
           let message = new MessagesModel();
           message.messageID = parseInt(Math.random().toString().replace('0.', ''));
@@ -887,7 +883,6 @@ router.get('/getAllTopics/:type', async (req, res) => {
     var tempTopics = [];
     data.map((dat) => {
       dat.tags.topics.map((topic) => {
-        console.log("topic: " + topic)
         topic.length <=0 ? tempTopics=tempTopics : tempTopics.push(topic);
       });
     });
@@ -913,7 +908,6 @@ router.get('/getAllFeatures/:type', async (req, res) => {
     var tempFeatures = [];
     data.map((dat) => {
       dat.tags.features.map((feature) => {
-        console.log('feature: ' + feature)
         feature.length <= 0 ? tempFeatures=tempFeatures : tempFeatures.push(feature);
       });
     });
@@ -939,7 +933,6 @@ router.get('/getAllLanguages/:type', async (req, res) => {
     var tempLanguages = [];
     data.map((dat) => {
       dat.categories.programmingLanguage.map((language) => {
-        console.log('language: ' + language)
         language.length <= 0 ? tempLanguages=tempLanguages : tempLanguages.push(language);
       });
     });
@@ -964,7 +957,6 @@ router.get('/getAllCategories/:type', async (req, res) => {
     if (err) return res.json({ success: false, error: err });
     var tempCategories = [];
     data.map((dat) => {
-      console.log('dat: ' + dat.categories.category)
       dat.categories.category.length <= 0 ? tempCategories=tempCategories : tempCategories.push(dat.categories.category);
     });
 
@@ -989,7 +981,6 @@ router.get('/getAllLicenses/:type', async (req, res) => {
     if (err) return res.json({ success: false, error: err });
     var tempLicenses = [];
     data.map((dat) => {
-      console.log("license: " + dat.license)
       dat.license.length <= 0 ? tempLicenses=tempLicenses : tempLicenses.push(dat.license);
     });
 
@@ -1279,7 +1270,7 @@ router.get(
   if (req.params.personID) {
     idString = parseInt(req.params.personID);
   }
-  console.log("Here "+idString)
+  
   var m = MessagesModel.aggregate([
     { $match: { $and: [{ $or: [ { messageTo: idString}, { messageTo: 0} ]}] } },
     { $sort: {messageSent: -1}},

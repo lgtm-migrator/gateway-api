@@ -3,8 +3,6 @@ const chaiHttp = require("chai-http");
 const chaiString = require("chai-string");
 const testURL  =  process.env.URL || 'http://localhost:3001';
 
-console.log('URL is: '+ testURL);
-
 const { expect } = chai;
 chai.use(chaiHttp);
 chai.use(chaiString);
