@@ -807,7 +807,7 @@ router.get('/stats/unmet', async (req, res) => {
         count: { $sum: 1 }
       }
     },
-    {$sort:{ datesearched : 1}}
+    {$sort:{ count : -1}}
   ]).limit(10);
 
   q.exec((err, data) => {
