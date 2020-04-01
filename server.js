@@ -1038,8 +1038,15 @@ router.get(
     { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
   ]);
   r.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
+    var a = Reviews.aggregate([
+      { $match: { $and: [{ activeflag: 'active' }] } },
+      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
+      { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
+    ]);
+    a.exec((err, allReviews) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true, data: data, allReviews: allReviews });
+    });
   });
 });
 
@@ -1067,8 +1074,15 @@ router.get(
     { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
   ]);
   r.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
+    var a = Reviews.aggregate([
+      { $match: { $and: [{ activeflag: 'active' }, { reviewerID: idString }] } },
+      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
+      { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
+    ]);
+    a.exec((err, allReviews) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true, data: data, allReviews: allReviews });
+    });
   });
 });
 
