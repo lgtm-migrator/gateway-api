@@ -821,45 +821,6 @@ router.get('/addtool', async (req, res) => {
 
 });
 
-// router.get('/addproject', async (req, res) => {
-
-// });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
- * 
- * Test area below! To be deleted!
- * 
- */
-
-
-
-
-
-/**
- * 
- * Test area above! To be deleted!
- * 
- */
-
-
 // launch our backend into a port
 app.listen(API_PORT, () => console.log(`LISTENING ON PORT ${API_PORT}`));
 
