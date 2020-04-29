@@ -11,11 +11,11 @@ import passport from "passport";
 import cookieParser from "cookie-parser";
 import axios from 'axios';
 
-import { connectToDatabase } from "./database/connection"
-import { initialiseAuthentication } from "./auth";
-import { utils } from "./auth";
-import { ROLES } from './utils'
-import { Data, RecordSearchData, UserModel, Reviews, MessagesModel } from './database/schema';
+import { connectToDatabase } from "./db"
+import { initialiseAuthentication } from "../../auth";
+import { utils } from "../../auth";
+import { ROLES } from '../../utils'
+import { Data, RecordSearchData, UserModel, Reviews, MessagesModel } from '../../database/schema';
 
 const API_PORT = process.env.PORT || 3001;
 var app = express();
