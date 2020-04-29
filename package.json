@@ -31,7 +31,7 @@
   },
   "scripts": {
     "start": "node index.js",
-    "server": "nodemon server",
+    "server": "nodemon index.js",
     "build": "",
     "test": "mocha",
     "eject": ""

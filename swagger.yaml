@@ -1,10 +1,12 @@
 openapi: 3.0.0
 info:
-  title: API for Tools and artefacts repository
+  title: HDR UK API 
   description: API for Tools and artefacts repository.
   version: 0.0.1
 
 servers:
+  - url: http://localhost:3001/api
+
   - url: https://{environment}-api.healthresearch.tools:{port}/api
     variables:
       environment:
@@ -14,10 +16,13 @@ servers:
         enum:
           - '443'
         default: '443'
+
 paths:
   /dataset/{datasetID}:
     get:
       summary: Returns details for a Dataset from the Metadata catalogue.
+      tags:
+        - Data Sets
       parameters:
         - name: datasetID
           in: path
@@ -31,9 +36,12 @@ paths:
       responses: 
         '200':
           description: OK    
+
   /person/{personID}:
     get:
       summary: Returns details for a person.
+      tags:
+        - Person
       parameters:
         - name: personID
           in: path
@@ -45,15 +53,20 @@ paths:
       responses: 
         '200':
           description: OK 
-  /search/:
+
+  /search:
     get:
       summary: Returns all results
+      tags:
+        - Search
       responses: 
         '200':
           description: OK
   /search:
     get:
       summary: Returns search results with filters (filers can be added to searchTerms and have maxResults)
+      tags:
+        - Search
       parameters:
         - name: category
           in: query
@@ -86,9 +99,12 @@ paths:
       responses: 
         '200':
           description: OK
+
   /search?search={searchTerm}:
     get:
       summary: Returns search results by searchTerm
+      tags:
+        - Search
       parameters:
         - name: searchTerm
           in: path
@@ -100,9 +116,12 @@ paths:
       responses: 
         '200':
           description: OK
+
   /search?search={searchTerm}&maxResults={maxResults}:
     get:
       summary: Returns search results by searchTerm with a limit of maxResults
+      tags:
+        - Search
       parameters:
         - name: searchTerm
           in: path
@@ -125,13 +144,54 @@ paths:
           description: OK
   /stats:
     get:
-      summary: Returns stats about the tools repository.
+      summary: This will return a JSON document to show high level stats.
+      tags:
+        - Stats
       responses: 
         '200':
           description: OK
+
+  /stats/recent:
+    get:
+      summary: Return the details on the recent searches.
+      tags:
+        - Stats
+      responses: 
+        '200':
+          description: OK
+
+  /stats/unmet:
+    get:
+      summary: Return the details on the unmet searches.
+      tags:
+        - Stats
+      responses: 
+        '200':
+          description: OK
+
+  /stats/popular:
+    get:
+      summary: Return the details on the popular objects.
+      tags:
+        - Stats
+      responses: 
+        '200':
+          description: OK
+
+  /stats/updates:
+    get:
+      summary: Return the details on the updated objects.
+      tags:
+        - Stats
+      responses: 
+        '200':
+          description: OK
+
   /tool/{toolID}:
     get:
       summary: Returns details for a specific tool.
+      tags:
+        - Tools
       parameters:
         - name: toolID
           in: path
@@ -142,6 +202,52 @@ paths:
             format: int64
             minimum: 1
             example: 89522470
+      responses: 
+        '200':
+          description: OK
+
+
+  /accountsearch:
+    get:
+      summary: Account search.
+      tags:
+        - Account
+      responses: 
+        '200':
+          description: OK
+
+  /accountsearchadmin:
+    get:
+      summary: Account search admins.
+      tags:
+        - Account
+      responses: 
+        '200':
+          description: OK
+
+  /accountstatusupdate:
+    post:
+      summary: Account update status.
+      tags:
+        - Account
+      responses: 
+        '200':
+          description: OK
+
+  /accountdelete:
+    delete:
+      summary: Deletes an account.
+      tags:
+        - Account
+      responses: 
+        '200':
+          description: OK
+
+  /v1/users:
+    post:
+      summary: Register a User.
+      tags:
+        - Users
       responses: 
         '200':
           description: OK
