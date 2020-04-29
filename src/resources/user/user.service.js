@@ -1,7 +1,7 @@
-import { UserModel, Data } from '../schema'
+import { Data } from '../../../database/schema'
+import { UserModel } from './user.model'
 
-
-async function createUser({
+export async function createUser({
     firstname,
     lastname,
     email,
@@ -41,5 +41,3 @@ async function createUser({
         )
     })
 }
-
-export { createUser }

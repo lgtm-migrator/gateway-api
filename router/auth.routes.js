@@ -3,7 +3,8 @@ import { to } from 'await-to-js'
 import passport from "passport";
 import { verifyPassword, hashPassword } from '../auth/utils'
 import { login } from '../auth/strategies/jwt'
-import { createUser, getUserByEmail } from '../database/user'
+import { getUserByEmail } from '../src/resources/user/user.repository'
+import { createUser } from '../src/resources/user/user.service'
 import { ROLES } from '../../utils'
 import { getRedirectUrl } from '../auth/utils'
 import { utils } from "../auth";

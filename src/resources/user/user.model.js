@@ -13,6 +13,4 @@ const UserSchema = new Schema({
   role: String
 })
 
-const UserModel = model('User', UserSchema)
-
-export { UserModel }
+export const UserModel = model('User', UserSchema)

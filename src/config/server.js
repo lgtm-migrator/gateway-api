@@ -15,7 +15,8 @@ import { connectToDatabase } from "./db"
 import { initialiseAuthentication } from "../../auth";
 import { utils } from "../../auth";
 import { ROLES } from '../../utils'
-import { Data, RecordSearchData, UserModel, Reviews, MessagesModel } from '../../database/schema';
+import { Data, RecordSearchData, Reviews, MessagesModel } from '../../database/schema';
+import { UserModel } from '../resources/user/user.model'
 
 require('dotenv').config();
 

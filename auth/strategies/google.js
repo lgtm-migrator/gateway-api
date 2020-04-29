@@ -2,7 +2,8 @@ import passport from 'passport'
 import passportGoogle from 'passport-google-oauth'
 import { to } from 'await-to-js'
 
-import { getUserByProviderId, createUser } from '../../database/user'
+import { getUserByProviderId } from '../../src/resources/user/user.repository'
+import { createUser } from '../../src/resources/user/user.service'
 import { signToken, getRedirectUrl } from '../utils'
 import { ROLES } from '../../utils'
 

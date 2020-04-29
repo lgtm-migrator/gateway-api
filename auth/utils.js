@@ -1,6 +1,6 @@
 import passport from 'passport'
 import jwt from "jsonwebtoken"
-import { UserModel } from '../database/schema'
+import { UserModel } from '../src/resources/user/user.model'
 import bcrypt from "bcrypt"
 import { ROLES } from '../utils'
 
