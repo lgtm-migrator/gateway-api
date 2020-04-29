@@ -42,6 +42,7 @@ app.use(passport.session());
 // append /api for our http requests
 app.use('/api', router);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api/v1/users', require('../resources/user/user.route'));
 
 initialiseAuthentication(app);
 

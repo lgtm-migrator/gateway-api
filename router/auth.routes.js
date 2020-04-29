@@ -52,6 +52,7 @@ router.post('/login', async (req, res) => {
 
 })
 
+// @deprecated, use instead user.route.js Register user endpoint
 router.post('/register', 
     async (req, res) => {
 
