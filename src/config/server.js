@@ -17,6 +17,8 @@ import { utils } from "../../auth";
 import { ROLES } from '../../utils'
 import { Data, RecordSearchData, UserModel, Reviews, MessagesModel } from '../../database/schema';
 
+require('dotenv').config();
+
 const API_PORT = process.env.PORT || 3001;
 var app = express();
 app.use(cors({
