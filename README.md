@@ -25,7 +25,7 @@ database=
 googleClientID=
 googleClientSecret=
 JWTSecret=
-homeURL=http://localhost:300
+homeURL=http://localhost:3000
 PORT=3001
 ```
 
