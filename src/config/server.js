@@ -15,7 +15,7 @@ import { connectToDatabase } from "./db"
 import { initialiseAuthentication } from "../../auth";
 import { utils } from "../../auth";
 import { ROLES } from '../../utils'
-import { Data, RecordSearchData, Reviews, MessagesModel } from '../../database/schema';
+import { Data, Reviews, MessagesModel } from '../../database/schema';
 import { UserModel } from '../resources/user/user.model'
 
 require('dotenv').config();
@@ -53,6 +53,8 @@ app.use('/api/accountsearch', require('../resources/account/account.search.route
 app.use('/api/accountstatusupdate', require('../resources/account/account.status.update.router'));
 
 app.use('/api/stats', require('../resources/stats/stats.router'));
+
+app.use('/api/person', require('../resources/person/person.route'));
 
 initialiseAuthentication(app);
 
@@ -259,30 +261,6 @@ router.post(
           return res.json({ success: true });
         });
   });
-
-router.post(
-  '/person/edit',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-  async (req, res) => {
-  const { id, type, bio, link, orcid } = req.body;
-  Data.findOneAndUpdate({ id: id },
-
-    {
-      type: type,
-      bio: bio,
-      link: link,
-      orcid: orcid,
-    }, (err) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true });
-    });
-
-});
-
-
-// 
-
 
 /**
  * {get} /dataset/:id get a dataset
@@ -719,25 +697,6 @@ router.get('/project/:projectID', async (req, res) => {
   var q = Data.aggregate([
     { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
     { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-  ]);
-  q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
-  });
-});
-
-/**
- * {get} /person/:personID Person
- * 
- * Return the details on the tool based on the tool ID.
- */
-router.get('/person/:personID', async (req, res) => {
-  //req.params.id is how you get the id from the url
-
-  var q = Data.aggregate([
-    { $match: { $and: [{ id: parseInt(req.params.personID) }] } },
-    { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "tools" } },
-    { $lookup: { from: "reviews", localField: "id", foreignField: "reviewerID", as: "reviews" } }
   ]);
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
