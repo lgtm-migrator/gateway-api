@@ -1,14 +1,15 @@
 import express from 'express'
 import { to } from 'await-to-js'
-import { hashPassword } from '../../../auth/utils'
 import { login } from '../../../auth/strategies/jwt'
 import { createUser } from './user.service'
 import { ROLES } from '../../../utils'
-import { getRedirectUrl } from '../../../auth/utils'
+import { hashPassword, getRedirectUrl } from '../../../auth/utils'
+import passport from "passport";
+import { utils } from "../../../auth";
 
 const router = express.Router()
 
-// @router   POST /api/v1/users
+// @router   POST /api/user
 // @desc     Register user
 // @access   Public
 router.post('/', 
@@ -57,5 +58,22 @@ router.post('/',
         })
 
 });
+
+// @router   POST /api/user
+// @desc     find user by id
+// @access   Private
+router.get(
+    '/:userID',
+    passport.authenticate('jwt'),
+    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+    async (req, res) => {
+    //req.params.id is how you get the id from the url
+    var q = UserModel.find({ id: req.params.userID });
+  
+    q.exec((err, userdata) => {
+      if (err) return res.json({ success: false, error: err });
+      return res.json({ success: true, userdata: userdata });
+    });
+  });
 
 module.exports = router

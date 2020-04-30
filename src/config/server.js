@@ -16,7 +16,6 @@ import { initialiseAuthentication } from "../../auth";
 import { utils } from "../../auth";
 import { ROLES } from '../../utils'
 import { Data, Reviews, MessagesModel } from '../../database/schema';
-import { UserModel } from '../resources/user/user.model'
 
 require('dotenv').config();
 
@@ -43,7 +42,7 @@ app.use(passport.session());
 app.use('/api', router);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.use('/api/v1/users', require('../resources/user/user.route'));
+app.use('/api/user', require('../resources/user/user.route'));
 
 app.use('/api/search', require('../resources/search/search.router'));
 
@@ -701,21 +700,6 @@ router.get('/project/:projectID', async (req, res) => {
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
-  });
-});
-
-//HERE RN
-router.get(
-  '/user/:userID',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-  async (req, res) => {
-  //req.params.id is how you get the id from the url
-  var q = UserModel.find({ id: req.params.userID });
-
-  q.exec((err, userdata) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, userdata: userdata });
   });
 });
 

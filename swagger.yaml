@@ -243,7 +243,15 @@ paths:
         '200':
           description: OK
 
-  /v1/users:
+  /user/:user_id:
+    get:
+      summary: Find user by id.
+      tags:
+        - Users
+      responses: 
+        '200':
+          description: OK
+  /user:
     post:
       summary: Register a User.
       tags:
