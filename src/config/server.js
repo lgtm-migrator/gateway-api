@@ -55,16 +55,9 @@ app.use('/api/stats', require('../resources/stats/stats.router'));
 
 app.use('/api/person', require('../resources/person/person.route'));
 
-initialiseAuthentication(app);
+app.use('/api/mytools', require('../resources/mytools/mytools.route'));
 
-//Used to check for errors, leaving in here as it might be useful later
-/* router.get('/status', function(req, res, next) {
-  passport.authenticate('jwt', function(err, user, info) {
-      console.log(err);
-      console.log(user);
-      console.log(info);
-  })(req, res, next);
-}); */
+initialiseAuthentication(app);
 
 /**
  * {get} /status Status
@@ -92,162 +85,6 @@ router.get('/logout', function (req, res) {
   req.logout();
   res.clearCookie('jwt');
   return res.json({ success: true });
-});
-
-/**
- * {get} / Home
- * 
- * Maybe not needed as page can be generated with static content by react.
- */
-router.get('/', async (req, res) => {
-
-});
-
-/**
- * {post} /login  Login
- * 
- * Return call from Google/LinkedIn for checking anti-forgery state token and then exchange code for 
- * access token and ID token (JWT). Then pull user details (name etc) and store them in DB if brand new
- * user or update DB with access token and when it expires.
- */
-router.post('/login', async (req, res) => {
-
-});
-
-/**
- * {post} /logout Login
- * 
- * Logs out the user.
- */
-router.post('/logout', async (req, res) => {
-
-});
-
-/**
- * {get} /mytools Manage tools - show tools
- * 
- * Authenticate user and then display all the tools that they added. Also 
- * return if they are allowed to add/edit/delete (For this project delete will be admin only)
- */
-router.get('/mytools', async (req, res) => {
-
-});
-
-/**
- * {get} /mytools/alltools Manage tools - show tools
- * 
- * Authenticate user and then for admin display all tools. Also 
- * return if they are allowed to add/edit/delete (For this project delete will be admin only)
- */
-router.get('/mytools/alltools', async (req, res) => {
-
-});
-
-/**
- * {post} /mytools/add Add tool
- * 
- * Authenticate user and then display all the tools that they added or for admin display all tools. Also 
- * return if they are allowed to add/edit/delete (For this project delete will be admin only)
- */
-/* router.post('/mytools/add', async (req, res) => {
-  let data = new Data();
-
-  const { id, type, name, description, rating, link } = req.body;
-
-  if ((!id && id !== 0)) {
-    return res.json({
-      success: false,
-      error: 'INVALID INPUTS',
-    });
-  }
-
-  data.id = id;
-  data.type = type;
-  data.name = name;
-  data.description = description;
-  data.rating = rating;
-  data.link = link;
-
-  data.save((err) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true });
-  });
-}); */
-router.post(
-  '/mytools/add',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-  async (req, res) => {
-  let data = new Data();
-
-  const { type, name, link, description, categories, license, authors, tags, toolids } = req.body;
-  data.id = parseInt(Math.random().toString().replace('0.', ''));
-  data.type = type;
-  data.name = name;
-  data.link = link;
-  data.description = description;
-  data.categories.category = categories.category;
-  data.categories.programmingLanguage = categories.programmingLanguage;
-  data.categories.programmingLanguageVersion = categories.programmingLanguageVersion;
-  data.license = license;
-  data.authors = authors;
-  data.tags.features = tags.features;
-  data.tags.topics = tags.topics;
-  data.activeflag = 'review';
-  data.toolids = toolids;
-  // data.updatedon = new Date();
-  data.updatedon = Date.now();
-
-  data.save((err) => {
-    let message = new MessagesModel();
-    message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-    message.messageTo = 0;
-    message.messageObjectID = data.id;
-    message.messageType = 'add';
-    message.messageSent = Date.now();
-    message.save((err) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, id: data.id });
-    });
-  });
-});
-
-/**
- * {put} /mytools/edit Edit tool
- * 
- * Authenticate user to see if page should be displayed.
- * Authenticate user and then pull the data for the tool from the DB.
- * When they submit, authenticate the user, validate the data and update the tool data on the DB.
- * (If we are going down the versions route then we will add a new version of the data and increase the version i.e. v1, v2)
- */
-router.put(
-  '/mytools/edit',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-  async (req, res) => {
-  const { id, type, name, link, description, categories, license, authors, toolids, tags } = req.body;
-  Data.findOneAndUpdate({ id: id },
-    {
-      type: type,
-      name: name,
-      link: link,
-      description: description,
-      categories: {
-        category: categories.category,
-        programmingLanguage: categories.programmingLanguage,
-        programmingLanguageVersion: categories.programmingLanguageVersion
-      },
-      license: license,
-      authors: authors,
-      tags: {
-        features: tags.features,
-        topics: tags.topics
-      },
-      toolids: toolids
-    }, (err) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true });
-    });
 });
 
 router.post(
@@ -280,41 +117,6 @@ router.get('/dataset/:id', async (req, res) => {
     })
 
 });
-
-/**
- * {delete} /mytools/delete Delete tool
- * 
- * Authenticate user to see if page should be displayed.
- * When they detele, authenticate user and then delete the tool data and review data from the DB
- */
-router.delete('/mytools/delete', async (req, res) => {
-  const { id } = req.body;
-  Data.findOneAndDelete({ id: id }, (err) => {
-    if (err) return res.send(err);
-    return res.json({ success: true });
-  });
-});
-
-/**
- * {get} /search/basic Basic search
- * 
- * Maybe not needed as page can be generated with static content and links by react.
- */
-router.get('/search/basic', async (req, res) => {
-
-});
-
-
-
-/**
- * {get} /search/bar Search bar
- * 
- * This could be used to provide realtime results/feedback based on the what the user is typing.
- */
-router.get('/search/bar', async (req, res) => {
-
-});
-
 
 /**
  * {get} /tool/:toolID Tool
@@ -748,20 +550,6 @@ router.get(
       if (err) return res.json({ success: false, error: err });
       return res.json({ success: true, newData: data });
     });
-});
-
-/* 
-### Extra APIs ###
-
-*** Review response APIs ***
-APIs that allow the tool owner to add/edit/delete a response to a review.
-
-*** Review moderation APIs ***
-APIs that allow the reviews that are flagged/caught by exclusion code to be hidden from view until 
-admin/moderater approves.
-*/
-router.get('/addtool', async (req, res) => {
-
 });
 
 // launch our backend into a port

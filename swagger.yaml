@@ -259,3 +259,30 @@ paths:
       responses: 
         '200':
           description: OK
+
+  /mytools/add:
+    post:
+      summary: Add a tool.
+      tags:
+        - MyTools
+      responses: 
+        '200':
+          description: OK
+
+  /mytools/edit:
+    put:
+      summary: Edit a tool.
+      tags:
+        - MyTools
+      responses: 
+        '200':
+          description: OK
+
+  /mytools/delete:
+    delete:
+      summary: delete a tool.
+      tags:
+        - MyTools
+      responses: 
+        '200':
+          description: OK
