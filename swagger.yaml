@@ -243,7 +243,7 @@ paths:
         '200':
           description: OK
 
-  /v1/users/:user_id:
+  /users/:user_id:
     get:
       summary: Find user by id.
       tags:
@@ -252,7 +252,7 @@ paths:
         '200':
           description: OK
   
-  /api/v1/users:
+  /v1/users:
     get:
       summary: Find all users
       tags:
@@ -337,3 +337,15 @@ paths:
       responses: 
         '200':
           description: OK
+  
+  /v1/messages/:person_id:
+    get:
+      summary: delete a tool.
+      tags:
+        - Messages
+
+  /v1/messages/admin/:person_id:
+    get:
+      summary: delete a tool.
+      tags:
+        - Messages

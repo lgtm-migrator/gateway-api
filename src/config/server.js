@@ -44,6 +44,7 @@ app.use('/api', router);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use('/api/v1/users', require('../resources/user/user.route'));
+app.use('/api/v1/messages', require('../resources/message/message.route'));
 
 app.use('/api/search', require('../resources/search/search.router'));
 
@@ -55,7 +56,6 @@ app.use('/api/accountstatusupdate', require('../resources/account/account.status
 app.use('/api/stats', require('../resources/stats/stats.router'));
 
 app.use('/api/person', require('../resources/person/person.route'));
-app.use('/api/messages', require('../resources/message/message.route'));
 
 app.use('/api/mytools', require('../resources/mytools/mytools.route'));
 
@@ -350,33 +350,6 @@ router.get('/project/:projectID', async (req, res) => {
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
-  });
-});
-
-/**
- * {get} /messages Messages
- * 
- * Return list of messages
- */
-router.get(
-  '/messagesadmin/:personID',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin),
-  async (req, res) => {
-  var idString = "";
-
-  if (req.params.personID) {
-    idString = parseInt(req.params.personID);
-  }
-  
-  var m = MessagesModel.aggregate([
-    { $match: { $and: [{ $or: [ { messageTo: idString}, { messageTo: 0} ]}] } },
-    { $sort: {messageSent: -1}},
-    { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
-  ]);
-  m.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, newData: data });
   });
 });
 
