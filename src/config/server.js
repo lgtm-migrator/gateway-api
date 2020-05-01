@@ -13,7 +13,7 @@ import axios from 'axios';
 
 import { connectToDatabase } from "./db"
 import { utils, initialiseAuthentication } from "../resources/auth";
-import { ROLES } from '../../utils'
+import { ROLES } from '../resources/user/user.roles'
 import { Data, Reviews, MessagesModel } from '../../database/schema';
 
 require('dotenv').config();

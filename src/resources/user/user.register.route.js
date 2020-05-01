@@ -4,7 +4,7 @@ import { hashPassword } from '../auth/utils'
 import { login } from '../auth/strategies/jwt'
 import { getRedirectUrl } from '../auth/utils'
 import { createUser } from '../user/user.service'
-import { ROLES } from '../../../utils'
+import { ROLES } from '../user/user.roles'
 
 const router = express.Router()
 

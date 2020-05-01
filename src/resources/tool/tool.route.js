@@ -1,5 +1,5 @@
 import express from 'express'
-import { ROLES } from '../../../utils'
+import { ROLES } from '../user/user.roles'
 import { Data, Reviews } from '../../../database/schema';
 import passport from "passport";
 import { utils } from "../auth";

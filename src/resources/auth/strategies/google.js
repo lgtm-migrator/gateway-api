@@ -5,7 +5,7 @@ import { to } from 'await-to-js'
 import { getUserByProviderId } from '../../user/user.repository'
 import { createUser } from '../../user/user.service'
 import { signToken } from '../utils'
-import { ROLES } from '../../../../utils'
+import { ROLES } from '../../user/user.roles'
 
 const GoogleStrategy = passportGoogle.OAuth2Strategy
 
