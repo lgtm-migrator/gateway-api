@@ -340,12 +340,30 @@ paths:
   
   /v1/messages/:person_id:
     get:
-      summary: delete a tool.
+      summary: Find messages by person.
       tags:
         - Messages
 
   /v1/messages/admin/:person_id:
     get:
-      summary: delete a tool.
+      summary: find messages for admin by person id
       tags:
         - Messages
+
+  /v1/reviews:
+    get:
+      summary: find all reviews.
+      tags:
+        - Reviews
+
+  /v1/reviews/pending:
+    get:
+      summary: find all pending reviews.
+      tags:
+        - Reviews
+
+  /v1/reviews/admin/pending:
+    get:
+      summary: find all pending reviews for admins.
+      tags:
+        - Reviews

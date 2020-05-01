@@ -46,6 +46,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/messages', require('../resources/message/message.route'));
 
+app.use('/api/v1/reviews', require('../resources/tool/review.route'));
+
 app.use('/api/search', require('../resources/search/search.router'));
 
 app.use('/api/accountsearchadmin', require('../resources/account/account.search.admin.router'));
@@ -245,97 +247,6 @@ router.get('/getAllTools', async (req, res) => {
   });
 });
 
-
-/**
- * {get} /accountsearch Search tools
- * 
- * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
- * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
- */
-router.get(
-  '/pendingreviewsadmin',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin),
-  async (req, res) => {
-
-  var r = Reviews.aggregate([
-    { $match: { $and: [{ activeflag: 'review' }] } },
-    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-    { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
-  ]);
-  r.exec((err, data) => {
-    var a = Reviews.aggregate([
-      { $match: { $and: [{ activeflag: 'active' }] } },
-      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-      { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
-    ]);
-    a.exec((err, allReviews) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, data: data, allReviews: allReviews });
-    });
-  });
-});
-
-/**
- * {get} /accountsearch Search tools
- * 
- * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
- * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
- */
-router.get(
-  '/pendingreviews',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Creator),
-  async (req, res) => {
-
-  var idString = "";
-
-  if (req.query.id) {
-    idString = parseInt(req.query.id);
-  }
-
-  var r = Reviews.aggregate([
-    { $match: { $and: [{ activeflag: 'review' }, { reviewerID: idString }] } },
-    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-    { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
-  ]);
-  r.exec((err, data) => {
-    var a = Reviews.aggregate([
-      { $match: { $and: [{ activeflag: 'active' }, { reviewerID: idString }] } },
-      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-      { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
-    ]);
-    a.exec((err, allReviews) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, data: data, allReviews: allReviews });
-    });
-  });
-});
-
-/**
- * {get} /accountsearch Search tools
- * 
- * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
- * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
- */
-router.get('/reviews', async (req, res) => {
-
-  var reviewIDString = "";
-
-  if (req.query.id) {
-    reviewIDString = parseInt(req.query.id);
-  }
-
-  var r = Reviews.aggregate([
-    { $match: { $and: [{ activeflag: 'active' }, { reviewID: reviewIDString }] } },
-    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-    { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
-  ]);
-  r.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
-  });
-});
 
 /**
  * {get} /project​/:project​ID Project
