@@ -45,8 +45,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/messages', require('../resources/message/message.route'));
-
 app.use('/api/v1/reviews', require('../resources/tool/review.route'));
+app.use('/api/v1/tools', require('../resources/tool/tool.route'));
 
 app.use('/api/search', require('../resources/search/search.router'));
 
@@ -60,8 +60,6 @@ app.use('/api/stats', require('../resources/stats/stats.router'));
 app.use('/api/person', require('../resources/person/person.route'));
 
 app.use('/api/mytools', require('../resources/mytools/mytools.route'));
-
-app.use('/api/tool', require('../resources/tool/tool.route'));
 
 app.use('/api/auth/register', require('../resources/user/user.register.route'));
 app.use('/api/auth', require('../resources/auth/auth.route'));
@@ -236,17 +234,6 @@ router.get('/getAllLicenses/:type', async (req, res) => {
     return res.json({ success: true, data: combinedLicenses });
   });
 });
-
-router.get('/getAllTools', async (req, res) => {
-  //req.params.id is how you get the id from the url
-  var q = Data.find({ type: 'tool' });
-
-  q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
-  });
-});
-
 
 /**
  * {get} /project​/:project​ID Project

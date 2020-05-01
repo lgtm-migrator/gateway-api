@@ -140,4 +140,14 @@ router.post(
     });
   });
 
+router.get('/', async (req, res) => {
+    //req.params.id is how you get the id from the url
+    var q = Data.find({ type: 'tool' });
+
+    q.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true, data: data });
+    });
+});
+
 module.exports = router
