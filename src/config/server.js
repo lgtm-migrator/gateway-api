@@ -55,6 +55,7 @@ app.use('/api/accountstatusupdate', require('../resources/account/account.status
 app.use('/api/stats', require('../resources/stats/stats.router'));
 
 app.use('/api/person', require('../resources/person/person.route'));
+app.use('/api/messages', require('../resources/message/message.route'));
 
 app.use('/api/mytools', require('../resources/mytools/mytools.route'));
 
@@ -402,26 +403,6 @@ router.get(
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, newData: data });
   });
-});
-
-router.get(
-  '/messages/:personID',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Creator),
-  async (req, res) => {
-    var idString = "";
-
-    if (req.query.id) {
-      idString = parseInt(req.query.id);
-    }
-    var m = MessagesModel.aggregate([
-      { $match: { $and: [{ messageTo: idString}] } },
-      { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
-    ]);
-    m.exec((err, data) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, newData: data });
-    });
 });
 
 // launch our backend into a port
