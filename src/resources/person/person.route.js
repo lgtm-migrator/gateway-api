@@ -1,6 +1,6 @@
 import express from 'express'
 import { Data } from '../../../database/schema';
-import { utils } from "../../../auth";
+import { utils } from "../auth";
 import passport from "passport";
 import { ROLES } from '../../../utils'
 

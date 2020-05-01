@@ -12,8 +12,7 @@ import cookieParser from "cookie-parser";
 import axios from 'axios';
 
 import { connectToDatabase } from "./db"
-import { initialiseAuthentication } from "../../auth";
-import { utils } from "../../auth";
+import { utils, initialiseAuthentication } from "../resources/auth";
 import { ROLES } from '../../utils'
 import { Data, Reviews, MessagesModel } from '../../database/schema';
 

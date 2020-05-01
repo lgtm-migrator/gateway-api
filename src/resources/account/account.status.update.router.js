@@ -1,6 +1,6 @@
 import express from 'express';
 import passport from "passport";
-import { utils } from "../../../auth";
+import { utils } from "../auth";
 import { ROLES } from '../../../utils'
 import { Data, MessagesModel } from '../../../database/schema';
 

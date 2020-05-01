@@ -2,10 +2,10 @@ import passport from 'passport'
 import passportGoogle from 'passport-google-oauth'
 import { to } from 'await-to-js'
 
-import { getUserByProviderId } from '../../src/resources/user/user.repository'
-import { createUser } from '../../src/resources/user/user.service'
-import { signToken, getRedirectUrl } from '../utils'
-import { ROLES } from '../../utils'
+import { getUserByProviderId } from '../../user/user.repository'
+import { createUser } from '../../user/user.service'
+import { signToken } from '../utils'
+import { ROLES } from '../../../../utils'
 
 const GoogleStrategy = passportGoogle.OAuth2Strategy
 

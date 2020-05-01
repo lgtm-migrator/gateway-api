@@ -1,8 +1,8 @@
 import express from 'express'
 import { to } from 'await-to-js'
-import { hashPassword } from '../../../auth/utils'
-import { login } from '../../../auth/strategies/jwt'
-import { getRedirectUrl } from '../../../auth/utils'
+import { hashPassword } from '../auth/utils'
+import { login } from '../auth/strategies/jwt'
+import { getRedirectUrl } from '../auth/utils'
 import { createUser } from '../user/user.service'
 import { ROLES } from '../../../utils'
 

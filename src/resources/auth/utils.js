@@ -1,8 +1,8 @@
 import passport from 'passport'
 import jwt from "jsonwebtoken"
-import { UserModel } from '../src/resources/user/user.model'
+import { UserModel } from '../user/user.model'
 import bcrypt from "bcrypt"
-import { ROLES } from '../utils'
+import { ROLES } from '../../../utils'
 
 const setup = () => {
     passport.serializeUser((user, done) => done(null, user._id))

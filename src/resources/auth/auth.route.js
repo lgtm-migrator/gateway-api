@@ -1,9 +1,9 @@
 import express from 'express'
 import { to } from 'await-to-js'
-import { verifyPassword } from '../../../auth/utils'
-import { login } from '../../../auth/strategies/jwt'
+import { verifyPassword } from '../auth/utils'
+import { login } from '../auth/strategies/jwt'
 import { getUserByEmail } from '../user/user.repository'
-import { getRedirectUrl } from '../../../auth/utils'
+import { getRedirectUrl } from '../auth/utils'
 
 const router = express.Router()
 
@@ -45,6 +45,6 @@ router.post('/', async (req, res) => {
             data: getRedirectUrl(req.user.role)
         })
 
-})
+});
 
 module.exports = router

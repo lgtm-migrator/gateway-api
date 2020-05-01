@@ -2,7 +2,7 @@ import express from 'express'
 import { ROLES } from '../../../utils'
 import { Data, Reviews } from '../../../database/schema';
 import passport from "passport";
-import { utils } from "../../../auth";
+import { utils } from "../auth";
 
 const router = express.Router()
 
