@@ -62,7 +62,7 @@ app.use('/api/mytools', require('../resources/mytools/mytools.route'));
 app.use('/api/tool', require('../resources/tool/tool.route'));
 
 app.use('/api/auth/register', require('../resources/user/user.register.route'));
-app.use('/api/auth/login', require('../resources/auth/auth.route'));
+app.use('/api/auth', require('../resources/auth/auth.route'));
 
 initialiseAuthentication(app);
 
@@ -82,17 +82,6 @@ router.get(
       return res.json({ success: true, data: [{ role: "Reader", id: null, name: null }] });
     }
   });
-
-/**
- * {get} /logout Logout
- * 
- * Logs the user out
- */
-router.get('/logout', function (req, res) {
-  req.logout();
-  res.clearCookie('jwt');
-  return res.json({ success: true });
-});
 
 router.post(
   '/counter/update',

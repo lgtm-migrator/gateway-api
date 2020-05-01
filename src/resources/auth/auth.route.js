@@ -8,9 +8,9 @@ import { getRedirectUrl } from '../auth/utils'
 const router = express.Router()
 
 // @router   POST /api/auth/login
-// @desc     Add tools user
+// @desc     login user
 // @access   Public
-router.post('/', async (req, res) => {
+router.post('/login', async (req, res) => {
     console.log(req.body);
     console.log("Here!")
     const { email, password } = req.body
@@ -47,4 +47,14 @@ router.post('/', async (req, res) => {
 
 });
 
+
+// @router   POST /api/auth/logout
+// @desc     logout user
+// @access   Private
+router.get('/logout', function (req, res) {
+    req.logout();
+    res.clearCookie('jwt');
+    return res.json({ success: true });
+  });
+  
 module.exports = router
