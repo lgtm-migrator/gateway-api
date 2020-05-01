@@ -50,10 +50,7 @@ app.use('/api/v1/tools', require('../resources/tool/tool.route'));
 
 app.use('/api/search', require('../resources/search/search.router'));
 
-app.use('/api/accountsearchadmin', require('../resources/account/account.search.admin.router'));
-app.use('/api/accountdelete', require('../resources/account/account.delete.router'));
-app.use('/api/accountsearch', require('../resources/account/account.search.router'));
-app.use('/api/accountstatusupdate', require('../resources/account/account.status.update.router'));
+app.use('/api/v1/accounts', require('../resources/account/account.route'));
 
 app.use('/api/stats', require('../resources/stats/stats.router'));
 
