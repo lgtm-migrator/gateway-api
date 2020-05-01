@@ -4,6 +4,7 @@ import { verifyPassword } from '../auth/utils'
 import { login } from '../auth/strategies/jwt'
 import { getUserByEmail } from '../user/user.repository'
 import { getRedirectUrl } from '../auth/utils'
+import passport from "passport";
 
 const router = express.Router()
 
