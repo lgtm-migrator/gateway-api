@@ -6,6 +6,11 @@ import { ROLES } from '../../../utils'
 
 const router = express.Router()
 
+router.get('/', async (req, res) => {
+    console.log("Here!")
+    res.status(200).json({ hello: 'Hello, from the back-end world!' })    
+});
+
 // @router   POST /api/mytools/add
 // @desc     Add tools user
 // @access   Private

@@ -59,6 +59,9 @@ app.use('/api/mytools', require('../resources/mytools/mytools.route'));
 
 app.use('/api/tool', require('../resources/tool/tool.route'));
 
+app.use('/api/auth/register', require('../resources/user/user.register.route'));
+app.use('/api/auth/login', require('../resources/auth/auth.route'));
+
 initialiseAuthentication(app);
 
 /**

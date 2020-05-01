@@ -251,11 +251,53 @@ paths:
       responses: 
         '200':
           description: OK
-  /user:
+
+  /auth/register:
     post:
-      summary: Register a User.
+      summary: Register User.
       tags:
         - Users
+      responses: 
+        '200':
+          description: OK
+      parameters:
+        - in: path
+          name: body
+          schema:
+            type: obaject
+            required: 
+              - firstname
+              - lastname
+              - email
+              - password 
+            properties:
+              firstname:
+                type: string
+              lastname:
+                type: string              
+              email:
+                type: string
+              password:
+                type: string
+
+  /auth/login:
+    post:
+      summary: Authenticate User.
+      tags:
+        - Auth
+      parameters:
+        - in: path
+          name: body
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              email:
+                type: string
+              password:
+                type: string    
       responses: 
         '200':
           description: OK
