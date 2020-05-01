@@ -12,8 +12,6 @@ const router = express.Router()
 // @desc     login user
 // @access   Public
 router.post('/login', async (req, res) => {
-    console.log(req.body);
-    console.log("Here!")
     const { email, password } = req.body
 
     const [err, user] = await to(getUserByEmail(email))
