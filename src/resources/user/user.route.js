@@ -6,7 +6,7 @@ import { UserModel } from './user.model'
 
 const router = express.Router();
 
-// @router   POST /api/user
+// @router   POST /api/v1/users/:userID
 // @desc     find user by id
 // @access   Private
 router.get(
@@ -22,5 +22,23 @@ router.get(
       return res.json({ success: true, userdata: userdata });
     });
   });
+
+// @router   POST /api/v1/users
+// @desc     get all
+// @access   Private
+router.get('/', async (req, res) => {
+    //req.params.id is how you get the id from the url
+    var q = Data.find({ type: 'person' });
+
+    q.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        const users = [];
+        data.map((dat) => {
+        users.push({ id: dat.id, name: dat.firstname + ' ' + dat.lastname })
+        });
+        return res.json({ success: true, data: users });
+    });
+});
+  
 
 module.exports = router

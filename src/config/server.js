@@ -43,7 +43,7 @@ app.use(passport.session());
 app.use('/api', router);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.use('/api/user', require('../resources/user/user.route'));
+app.use('/api/v1/users', require('../resources/user/user.route'));
 
 app.use('/api/search', require('../resources/search/search.router'));
 
@@ -232,20 +232,6 @@ router.get('/getAllLicenses/:type', async (req, res) => {
     });
 
     return res.json({ success: true, data: combinedLicenses });
-  });
-});
-
-router.get('/getAllUsers', async (req, res) => {
-  //req.params.id is how you get the id from the url
-  var q = Data.find({ type: 'person' });
-
-  q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    const users = [];
-    data.map((dat) => {
-      users.push({ id: dat.id, name: dat.firstname + ' ' + dat.lastname })
-    });
-    return res.json({ success: true, data: users });
   });
 });
 

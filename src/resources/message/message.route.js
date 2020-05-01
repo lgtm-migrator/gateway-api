@@ -2,6 +2,7 @@ import express from 'express'
 import { utils } from "../auth";
 import passport from "passport";
 import { ROLES } from '../user/user.roles'
+import { MessagesModel } from '../message/message.model'
 
 const router = express.Router()
 
