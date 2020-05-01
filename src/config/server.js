@@ -62,23 +62,6 @@ app.use('/api/auth', require('../resources/auth/auth.route'));
 
 initialiseAuthentication(app);
 
-/**
- * {get} /status Status
- * 
- * Return the logged in status of the user and their role.
- */
-router.get(
-  '/status',
-  passport.authenticate('jwt'),
-  async (req, res) => {
-    if (req.user) {
-      return res.json({ success: true, data: [{ role: req.user.role, id: req.user.id, name: req.user.firstname + " " + req.user.lastname }] });
-    }
-    else {
-      return res.json({ success: true, data: [{ role: "Reader", id: null, name: null }] });
-    }
-  });
-
 router.post(
   '/counter/update',
   async(req, res) => {
