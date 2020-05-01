@@ -1,6 +1,5 @@
 import { model, Schema } from 'mongoose'
 
-// this will be our data base's data structure 
 const ReviewsSchema = new Schema(
   {
     reviewID: Number,
@@ -21,7 +20,4 @@ const ReviewsSchema = new Schema(
   }
 );
 
-// export the new Schema so we could modify it using Node.js
-const Reviews = model('Reviews', ReviewsSchema)
-
-export { Reviews }
+export const Reviews = model('Reviews', ReviewsSchema);

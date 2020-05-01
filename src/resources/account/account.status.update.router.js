@@ -2,7 +2,7 @@ import express from 'express';
 import passport from "passport";
 import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
-import { MessagesModel } from '../../../database/schema';
+import { MessagesModel } from '../message/message.model';
 import { Data } from '../tool/data.model'
 
 const router = express.Router();
