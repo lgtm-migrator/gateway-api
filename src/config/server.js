@@ -9,7 +9,6 @@ import bodyParser from 'body-parser';
 import logger from 'morgan';
 import passport from "passport";
 import cookieParser from "cookie-parser";
-import axios from 'axios';
 
 import { connectToDatabase } from "./db"
 import { initialiseAuthentication } from "../resources/auth";
@@ -48,6 +47,7 @@ app.use('/api/v1/tools', require('../resources/tool/tool.route'));
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
 
 app.use('/api/search', require('../resources/search/search.router'));
+app.use('/api/dataset', require('../resources/dataset/dataset.route'));
 
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
 
@@ -89,26 +89,6 @@ router.post(
           return res.json({ success: true });
         });
   });
-
-/**
- * {get} /dataset/:id get a dataset
- * 
- * Pull data set from remote system
- */
-router.get('/dataset/:id', async (req, res) => {
-  var metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
-
-  axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id)
-    .then(function (response) {
-      // handle success
-      return res.json({ 'success': true, 'data': response.data });
-    })
-    .catch(function (err) {
-      // handle error
-      return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
-    })
-
-});
 
 /**
  * {get} /project​/:project​ID Project
