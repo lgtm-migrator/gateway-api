@@ -1,7 +1,7 @@
 import { model, Schema } from 'mongoose'
 
 // this will be our data base's data structure 
-const ToolSchema = new Schema(
+const DataSchema = new Schema(
   {
     id: Number,
     type: String,
@@ -36,7 +36,4 @@ const ToolSchema = new Schema(
   }
 );
 
-// export the new Schema so we could modify it using Node.js
-const Data = model('Data', ToolSchema)
-
-export { Data }
+export const Data = model('Data', DataSchema)

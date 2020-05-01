@@ -1,5 +1,6 @@
 import express from 'express'
-import { Data, RecordSearchData } from '../../../database/schema';
+import { RecordSearchData } from '../../../database/schema';
+import { Data } from '../tool/data.model'
 
 const router = express.Router();
 

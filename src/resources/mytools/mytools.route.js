@@ -1,5 +1,5 @@
 import express from 'express'
-import { Data } from '../../../database/schema';
+import { Data } from '../tool/data.model'
 import { utils } from "../auth";
 import passport from "passport";
 import { ROLES } from '../user/user.roles'

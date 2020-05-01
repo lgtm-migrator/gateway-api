@@ -14,7 +14,8 @@ import axios from 'axios';
 import { connectToDatabase } from "./db"
 import { utils, initialiseAuthentication } from "../resources/auth";
 import { ROLES } from '../resources/user/user.roles'
-import { Data, Reviews, MessagesModel } from '../../database/schema';
+import { Reviews, MessagesModel } from '../../database/schema';
+import { Data } from '../resources/tool/data.model';
 
 require('dotenv').config();
 
