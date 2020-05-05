@@ -24,8 +24,8 @@ paths:
       tags:
         - Data Sets
       parameters:
-        - name: datasetID
-          in: path
+        - in: path
+          name: datasetID
           required: true
           description: The ID of the datset
           schema:
@@ -43,13 +43,22 @@ paths:
       tags:
         - Person
       parameters:
-        - name: personID
-          in: path
+        - in: path
+          name: personID
           required: true
           description: The ID of the person
           schema:
             type : string
             example: b2475d19-75fe-422b-9d0c-c53cdfff8230
+      responses:
+        '200':
+          description: OK 
+          
+  /person/edit:
+    post:
+      summary: Edit a person.
+      tags:
+        - Person
       responses: 
         '200':
           description: OK 
@@ -59,7 +68,7 @@ paths:
       summary: Returns all results
       tags:
         - Search
-      responses: 
+      responses:
         '200':
           description: OK
   /search:
@@ -213,7 +222,7 @@ paths:
         '200':
           description: OK
 
-  /tool/{toolID}:
+  /v1/tools/{toolID}:
     get:
       summary: Returns details for a specific tool.
       tags:
@@ -232,8 +241,23 @@ paths:
         '200':
           description: OK
 
+  /project/{projectId}:
+    get:
+      summary: Return the details on the project based on the project ID.
+      tags:
+        - Projects
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type : string
+            example: b2475d19-75fe-422b-9d0c-c53cdfff8230
+      responses: 
+        '200':
+          description: OK
 
-  /accountsearch:
+  /v1/accounts:
     get:
       summary: Account search.
       tags:
@@ -242,7 +266,7 @@ paths:
         '200':
           description: OK
 
-  /accountsearchadmin:
+  /v1/accounts/admin:
     get:
       summary: Account search admins.
       tags:
@@ -251,8 +275,8 @@ paths:
         '200':
           description: OK
 
-  /accountstatusupdate:
-    post:
+  /v1/accounts/status:
+    put:
       summary: Account update status.
       tags:
         - Account
@@ -260,7 +284,7 @@ paths:
         '200':
           description: OK
 
-  /accountdelete:
+  /v1/accounts:
     delete:
       summary: Deletes an account.
       tags:
@@ -269,19 +293,64 @@ paths:
         '200':
           description: OK
 
-  /user/:user_id:
+  /users/{userId}:
     get:
       summary: Find user by id.
+      tags:
+        - Users
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        description: The ID of the user
+        schema:
+          type : string
+          example: b2475d19-75fe-422b-9d0c-c53cdfff8230
+    responses:
+      '200':
+        description: OK
+  
+  /v1/users:
+    get:
+      summary: Find all users
+      tags:
+        - users
+      responses: 
+        '200':
+          description: OK
+
+  /auth/register:
+    post:
+      summary: Register User.
       tags:
         - Users
       responses: 
         '200':
           description: OK
-  /user:
+
+  /auth/login:
     post:
-      summary: Register a User.
+      summary: Authenticate User.
       tags:
-        - Users
+        - Auth   
+      responses: 
+        '200':
+          description: OK
+
+  /auth/logout:
+    get:
+      summary: Logout.
+      tags:
+        - Auth
+      responses: 
+        '200':
+          description: OK
+  
+  /auth/status:
+    get:
+      summary: Auth status.
+      tags:
+        - Auth
       responses: 
         '200':
           description: OK
@@ -312,3 +381,49 @@ paths:
       responses: 
         '200':
           description: OK
+  
+  /v1/messages/{personId}:
+    get:
+      summary: Find messages by person.
+      tags:
+        - Messages
+      parameters:
+        - name: personId
+          in: path
+          required: true
+          description: The ID of the person
+          schema:
+            type : string
+            example: b2475d19-75fe-422b-9d0c-c53cdfff8230
+
+  /v1/messages/admin/{personId}:
+    get:
+      summary: find messages for admin by person id
+      tags:
+        - Messages
+      parameters:
+        - name: personId
+          in: path
+          required: true
+          description: The ID of the person
+          schema:
+            type : string
+            example: b2475d19-75fe-422b-9d0c-c53cdfff8230
+
+  /v1/reviews:
+    get:
+      summary: find all reviews.
+      tags:
+        - Reviews
+
+  /v1/reviews/pending:
+    get:
+      summary: find all pending reviews.
+      tags:
+        - Reviews
+
+  /v1/reviews/admin/pending:
+    get:
+      summary: find all pending reviews for admins.
+      tags:
+        - Reviews

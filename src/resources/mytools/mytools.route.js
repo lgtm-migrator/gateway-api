@@ -1,10 +1,16 @@
 import express from 'express'
-import { Data } from '../../../database/schema';
-import { utils } from "../../../auth";
+import { Data } from '../tool/data.model'
+import { MessagesModel } from '../message/message.model'
+import { utils } from "../auth";
 import passport from "passport";
-import { ROLES } from '../../../utils'
+import { ROLES } from '../user/user.roles'
 
 const router = express.Router()
+
+router.get('/', async (req, res) => {
+    console.log("Here!")
+    res.status(200).json({ hello: 'Hello, from the back-end world!' })    
+});
 
 // @router   POST /api/mytools/add
 // @desc     Add tools user

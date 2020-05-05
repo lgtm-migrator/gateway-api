@@ -1,4 +1,4 @@
-import { Data } from '../../../database/schema'
+import { Data } from '../tool/data.model'
 import { UserModel } from './user.model'
 
 export async function createUser({

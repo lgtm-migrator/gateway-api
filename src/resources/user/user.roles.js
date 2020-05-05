@@ -3,4 +3,4 @@ const ROLES = {
     Creator: 'Creator'
   }
   
-  export { ROLES }
+export { ROLES }

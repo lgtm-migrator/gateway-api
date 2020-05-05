@@ -1,8 +1,9 @@
 import express from 'express'
-import { ROLES } from '../../../utils'
-import { Data, Reviews } from '../../../database/schema';
+import { ROLES } from '../user/user.roles'
+import { Reviews } from './review.model';
+import { Data } from '../tool/data.model'
 import passport from "passport";
-import { utils } from "../../../auth";
+import { utils } from "../auth";
 
 const router = express.Router()
 
@@ -138,5 +139,15 @@ router.post(
       return res.json({ success: true });
     });
   });
+
+router.get('/', async (req, res) => {
+    //req.params.id is how you get the id from the url
+    var q = Data.find({ type: 'tool' });
+
+    q.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true, data: data });
+    });
+});
 
 module.exports = router

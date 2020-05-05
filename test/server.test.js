@@ -126,7 +126,7 @@ describe("Get Object API", () => {
     it(`Search for Tool ID '${search.id}' should show name '${search.name}'`, done => {
         chai
         .request(testURL)
-        .get('/api/tool/'+search.id)
+        .get('/api/v1/tools/'+search.id)
         .end((err, res) => {
             expect(res).to.have.status(200);
             

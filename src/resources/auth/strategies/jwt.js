@@ -1,8 +1,7 @@
 import passport from 'passport'
 import passportJWT from 'passport-jwt'
 import { to } from 'await-to-js'
-
-import { getUserById } from '../../src/resources/user/user.repository'
+import { getUserById } from '../../user/user.repository'
 import { signToken } from '../utils'
 
 const JWTStrategy = passportJWT.Strategy

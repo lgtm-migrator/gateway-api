@@ -1,6 +1,6 @@
-import { Data } from '../schema'
+import { Data } from '../tool/data.model'
 
-async function createPerson({
+export async function createPerson({
     id: String,
     firstname: String,
     lastname: String
@@ -14,6 +14,4 @@ async function createPerson({
             })
         )
     })
-}
-
-export { createPerson }
+};

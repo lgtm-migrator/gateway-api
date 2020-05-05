@@ -8,6 +8,4 @@ const MessageSchema = new Schema({
   messageSent: Date
 })
 
-const MessagesModel = model('Messages', MessageSchema)
-
-export { MessagesModel }
+export const MessagesModel = model('Messages', MessageSchema);

@@ -1,65 +1,13 @@
 import express from 'express'
-import { to } from 'await-to-js'
-import { login } from '../../../auth/strategies/jwt'
-import { createUser } from './user.service'
-import { ROLES } from '../../../utils'
-import { hashPassword, getRedirectUrl } from '../../../auth/utils'
+import { ROLES } from '../user/user.roles'
 import passport from "passport";
-import { utils } from "../../../auth";
+import { utils } from "../auth";
+import { UserModel } from './user.model'
+import { Data } from '../tool/data.model'
 
-const router = express.Router()
+const router = express.Router();
 
-// @router   POST /api/user
-// @desc     Register user
-// @access   Public
-router.post('/', 
-    async (req, res) => {
-
-    const { firstname, lastname, email, password } = req.body
-
-    if (!/\b\w+\@\w+\.\w+(?:\.\w+)?\b/.test(email)) {
-        return res.status(500).json({ success: false, data: 'Enter a valid email address.' })
-    } else if (password.length < 5 || password.length > 20) {
-        return res.status(500).json({
-            success: false,
-            data: 'Password must be between 5 and 20 characters.'
-        })
-    }
-
-    let [err, user] = await to(
-        createUser({
-            firstname,
-            lastname,
-            email,
-            password: await hashPassword(password),
-            role: ROLES.Creator
-        })
-    )
-
-    if (err) {
-        return res.status(500).json({ success: false, data: 'Email is already taken' })
-    }
-
-    const [loginErr, token] = await to(login(req, user))
-
-    if (loginErr) {
-        console.error(loginErr)
-        return res.status(500).json({ success: false, data: 'Authentication error!' })
-    }
-
-    return res
-        .status(200)
-        .cookie('jwt', token, {
-            httpOnly: true
-        })
-        .json({
-            success: true,
-            data: getRedirectUrl(req.user.role)
-        })
-
-});
-
-// @router   POST /api/user
+// @router   POST /api/v1/users/:userID
 // @desc     find user by id
 // @access   Private
 router.get(
@@ -75,5 +23,23 @@ router.get(
       return res.json({ success: true, userdata: userdata });
     });
   });
+
+// @router   POST /api/v1/users
+// @desc     get all
+// @access   Private
+router.get('/', async (req, res) => {
+    //req.params.id is how you get the id from the url
+    var q = Data.find({ type: 'person' });
+
+    q.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        const users = [];
+        data.map((dat) => {
+        users.push({ id: dat.id, name: dat.firstname + ' ' + dat.lastname })
+        });
+        return res.json({ success: true, data: users });
+    });
+});
+  
 
 module.exports = router
