@@ -59,6 +59,10 @@ app.use('/api/mytools', require('../resources/mytools/mytools.route'));
 
 app.use('/api/tool', require('../resources/tool/tool.route'));
 
+app.use('/api/datasets/search', require('../resources/dataset/dataset.search.router'));
+app.use('/api/datasetfilters', require('../resources/dataset/dataset.filter.router'));
+app.use('/api/datasets/detail', require('../resources/dataset/dataset.detail.router'));
+
 initialiseAuthentication(app);
 
 /**
