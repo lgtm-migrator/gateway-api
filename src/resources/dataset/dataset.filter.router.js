@@ -4,7 +4,8 @@ import axios from 'axios';
 const router = express.Router();
 
   router.get('/', async (req, res) => {
-      var modelCatalogue = process.env.metadataURL || 
+      var modelCatalogue = 
+      // process.env.metadataURL || 
       'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 
       var searchString = "";

@@ -44,12 +44,12 @@ paths:
         - Data Sets
       parameters:
         - in: path
-        name: datasetID
-        required: true
-        description: The ID of the datset
-        schema:
-          type : string
-          example: d3a3935f-b28e-4e74-9b15-9432d611f26c
+          name: datasetID
+          required: true
+          description: The ID of the datset
+          schema:
+           type : string
+            example: d3a3935f-b28e-4e74-9b15-9432d611f26c
       responses: 
         '200':
           description: OK 
