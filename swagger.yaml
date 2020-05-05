@@ -37,6 +37,23 @@ paths:
         '200':
           description: OK    
 
+  /datasets/detail/{datasetID}:
+    get:
+      summary: Returns additional details for a dataset from the Metadata catalogue.
+      tags:
+        - Data Sets
+      parameters:
+        - in: path
+        name: datasetID
+        required: true
+        description: The ID of the datset
+        schema:
+          type : string
+          example: d3a3935f-b28e-4e74-9b15-9432d611f26c
+      responses: 
+        '200':
+          description: OK 
+
   /person/{personID}:
     get:
       summary: Returns details for a person.
