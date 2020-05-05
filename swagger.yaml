@@ -24,8 +24,8 @@ paths:
       tags:
         - Data Sets
       parameters:
-        - name: datasetID
-          in: path
+        - in: path
+          name: datasetID
           required: true
           description: The ID of the datset
           schema:
@@ -43,17 +43,17 @@ paths:
       tags:
         - Person
       parameters:
-        - name: personID
-          in: path
+        - in: path
+          name: personID
           required: true
           description: The ID of the person
           schema:
             type : string
             example: b2475d19-75fe-422b-9d0c-c53cdfff8230
-      responses: 
+      responses:
         '200':
           description: OK 
-
+          
   /person/edit:
     post:
       summary: Edit a person.
@@ -68,7 +68,7 @@ paths:
       summary: Returns all results
       tags:
         - Search
-      responses: 
+      responses:
         '200':
           description: OK
   /search:
@@ -280,9 +280,9 @@ paths:
         schema:
           type : string
           example: b2475d19-75fe-422b-9d0c-c53cdfff8230
-      responses: 
-        '200':
-          description: OK
+    responses:
+      '200':
+        description: OK
   
   /v1/users:
     get:
