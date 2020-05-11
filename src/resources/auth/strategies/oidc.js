@@ -10,7 +10,7 @@ import { signToken } from '../utils'
 import { ROLES } from '../../user/user.roles'
 
 const OidcStrategy = passportOidc.Strategy
-const baseAuthUrl = "https://connect.openathens.net" //process.env.AUTH_PROVIDER_URI;
+const baseAuthUrl = process.env.AUTH_PROVIDER_URI;
 
 const strategy = app => {
     const strategyOptions = {
@@ -18,8 +18,8 @@ const strategy = app => {
         authorizationURL: baseAuthUrl + "/oidc/auth",
         tokenURL: baseAuthUrl + "/oidc/token",
         userInfoURL: baseAuthUrl + "/oidc/userinfo",
-        clientID: 'hdruk.ac.uk.oidc-app-v1.5614d0c5-9fbf-46a0-8311-baf34df79bdb',//process.env.openidClientID,
-        clientSecret: 'IsRerNSo3JdPSWgo2X3amjcfy',//process.env.openidClientSecret,
+        clientID: process.env.openidClientID,
+        clientSecret: process.env.openidClientSecret,
         callbackURL: `/auth/oidc/callback`
     }
 

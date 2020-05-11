@@ -37,7 +37,7 @@ app.use(passport.session());
 
 app.use(
   session({
-      secret: "Shhhhhh",//process.env.SESSION_SECRET,
+      secret: process.env.JWTSecret,
       resave: false,
       saveUninitialized: true
   })

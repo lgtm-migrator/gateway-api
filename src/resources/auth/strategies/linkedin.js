@@ -13,8 +13,8 @@ const LinkedinStrategy = passportLinkedin.OAuth2Strategy
 
 const strategy = app => {
     const strategyOptions = {
-        clientID: '77boxmmnbjfkpr',//process.env.googleClientID,
-        clientSecret: 'cZgU1twE0SsWHEKw',//process.env.googleClientSecret,
+        clientID: process.env.googleClientID,
+        clientSecret: process.env.googleClientSecret,
         callbackURL: `/auth/linkedin/callback`
     }
 
