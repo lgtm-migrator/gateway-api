@@ -1,6 +1,7 @@
 import express from 'express'
 import axios from 'axios';
 import { UserModel } from '../user/user.model';
+import {sgMail} from '@sendgrid/mail';
 
 const router = express.Router()
 
@@ -26,9 +27,7 @@ router.get('/:id', async (req, res) => {
 
 
   router.post('/sendgrid', async (req, res) => {
-    // desctructure req obj
     const {
-      userId,
       researchAim,
       linkedDataSets,
       namesOfDataSets,
@@ -39,16 +38,39 @@ router.get('/:id', async (req, res) => {
       researchBenefits,
       ethicalProcessingEvidence,
       contactNumber,
+      title,
+      userId
     } = req;
 
+    const sendSuccess = {type: 'success', message: 'Done! Your request for data access has been sent to the data custodian.'};
+
     try {
-      const user = UserModel.findById({id: userId});
+      const user = await UserModel.findById({id: userId});
+      debugger;
       console.log(user);
+      if (!user) {
+        return res
+          .status(400)
+          .json({ message: { type:'error', message: 'User not found' } });
+      }
+
+      const msg = {
+        to: user.email,
+        from: 'support@healthdatagateway.org',
+        subject: `Enquires for ${tile} dataset healthdatagateway.org`,
+        text: 'and easy to do anywhere, even with Node.js',
+        html: `Thank you for enquiring about access to the ${title} dataset through the Health Data Research UK Innovation Gateway. The Data Custodian for this dataset has been notified and they will contact you directly in due course.<br />
+        In order to facilitate the next stage of the request process, please make yourself aware of the technical data terminology used by the NHS Data Dictionary on the following link: <a href="https://www.datadictionary.nhs.uk/">https://www.datadictionary.nhs.uk/</a><br />
+        Please reply to this email, if you would like to provide feedback to the Data Enquiry process facilitated by the Health Data Research Innovation Gateway - <a href="mailto:support@healthdatagateway.org(opens in new tab)">support@healthdatagateway.org(opens in new tab)</a>`,
+      };
+
+      await sgMail.send(msg);      
+      res.json({message: {...sendSuccess}});
     }
-    catch(err){
-      console.error(err);
-      res.status(500).json({ error: err });
+    catch(error) {
+      console.error(error);
+      res.status(500).json({message: {type: 'error', message: 'Something went wrong and your request could not be sent.'}});
     }
   });
 
-  module.exports = router
+  module.exports = router;
