@@ -63,6 +63,7 @@ app.use('/api/auth/register', require('../resources/user/user.register.route'));
 app.use('/api/datasets/search', require('../resources/dataset/dataset.search.router'));
 app.use('/api/datasetfilters', require('../resources/dataset/dataset.filter.router'));
 app.use('/api/datasets/detail', require('../resources/dataset/dataset.detail.router'));
+app.use('/api/datasets/filteredsearch', require('../resources/dataset/dataset.searchwithfilters.router'));
 
 initialiseAuthentication(app);
 

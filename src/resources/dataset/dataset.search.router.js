@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
   
       axios.get(metadataCatalogue + '/api/catalogueItems/search?searchTerm=' + searchString + '&domainType=DataModel&limit=1')
       .then(function (response){
-        count = response.data.count
+        count = response.data.count;
       })
       .then(function(){
         axios.get(metadataCatalogue + '/api/catalogueItems/search?searchTerm=' + searchString + '&domainType=DataModel&limit=' + count )
@@ -30,8 +30,6 @@ router.get('/', async (req, res) => {
           return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
         })
       })
-
-      console.log('in base search')
   
   });
   

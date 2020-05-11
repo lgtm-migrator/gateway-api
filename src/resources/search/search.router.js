@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
     var category = "";
     var features = "";
     var topics = "";
-  
+
     if (req.query.startIndex) {
       startIndex = req.query.startIndex;
     }
