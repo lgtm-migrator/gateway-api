@@ -1,5 +1,6 @@
 import express from 'express'
 import axios from 'axios';
+import { DataRequestModel } from '../datarequests/datarequests.model';
 
 const router = express.Router();
 
@@ -10,8 +11,22 @@ const router = express.Router();
   
     axios.get(metadataCatalogue + '/api/facets/' + req.params.id + '/profile/uk.ac.hdrukgateway/HdrUkProfilePluginService')
       .then(function (response) {
+        
+        var result;
+        if (req.query.id && req.query.id !== null) {
+          var p = DataRequestModel.find({ $and: [{ userId: req.query.id }, { dataSetId: req.params.id }]});
+          p.exec((datarequestErr, datarequest) => {
+            if (datarequestErr) return res.json({ success: false, error: datarequestErr });
+            console.log(datarequest)
+            result = res.json({ 'success': true, 'data': response.data, 'datarequest': datarequest });
+          });
+        }
+        else {
+          result = res.json({ 'success': true, 'data': response.data, 'datarequest': [] });
+        }
+
         // handle success
-        return res.json({ 'success': true, 'data': response.data });
+        return result;
       })
       .catch(function (err) {
         // handle error
