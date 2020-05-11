@@ -1,5 +1,6 @@
 import express from 'express'
 import axios from 'axios';
+import { UserModel } from '../user/user.model';
 
 const router = express.Router()
 
@@ -21,6 +22,33 @@ router.get('/:id', async (req, res) => {
         return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
       })
   
+  });
+
+
+  router.post('/sendgrid', async (req, res) => {
+    // desctructure req obj
+    const {
+      userId,
+      researchAim,
+      linkedDataSets,
+      namesOfDataSets,
+      dataRequirements,
+      dataSetParts,
+      startDate,
+      icoRegistration,
+      researchBenefits,
+      ethicalProcessingEvidence,
+      contactNumber,
+    } = req;
+
+    try {
+      const user = UserModel.findById({id: userId});
+      console.log(user);
+    }
+    catch(err){
+      console.error(err);
+      res.status(500).json({ error: err });
+    }
   });
 
   module.exports = router
