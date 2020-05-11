@@ -16,6 +16,7 @@ import { initialiseAuthentication } from "../resources/auth";
 require('dotenv').config();
 
 const API_PORT = process.env.PORT || 3001;
+const session = require("express-session");
 var app = express();
 app.use(cors({
   origin: [process.env.homeURL],
@@ -33,6 +34,14 @@ app.use(logger('dev'));
 app.use(cookieParser());
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use(
+  session({
+      secret: "Shhhhhh",//process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: true
+  })
+);
 
 // append /api for our http requests
 app.use('/api', router);

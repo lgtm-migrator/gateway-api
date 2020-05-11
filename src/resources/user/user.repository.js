@@ -1,4 +1,4 @@
-import { UserModel } from './user.model'
+import { UserModel } from './user.model';
 
 export async function getUserById(id) {
     return await UserModel.findById(id).exec()
@@ -10,4 +10,8 @@ export async function getUserByEmail(email) {
 
 export async function getUserByProviderId(providerId) {
     return await UserModel.findOne({ providerId }).exec()
+}
+
+export async function getUserByUserId(id) {
+    return await UserModel.findOne({ id }).exec()
 }

@@ -10,7 +10,8 @@ const UserSchema = new Schema({
   displayname: String,
   providerId: String,
   provider: String,
-  role: String
+  role: String,
+  redirectURL: String
 })
 
 export const UserModel = model('User', UserSchema)

@@ -3,41 +3,54 @@ import { to } from 'await-to-js'
 import { hashPassword } from '../auth/utils'
 import { login } from '../auth/strategies/jwt'
 import { getRedirectUrl } from '../auth/utils'
-import { createUser } from '../user/user.service'
+import { updateUser } from '../user/user.service'
+import { createPerson } from '../person/person.service'
 import { ROLES } from '../user/user.roles'
+import { getUserByUserId } from '../user/user.repository'
 
 const router = express.Router()
+
+// @router   Get /auth/register
+// @desc     Pulls user details to complete registration
+// @access   Public
+router.get('/:personID', 
+    async (req, res) => {
+        const [err, user] = await to(getUserByUserId(req.params.personID))
+        
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true, data: user }); 
+});
 
 // @router   POST /auth/register
 // @desc     Register user
 // @access   Public
 router.post('/', 
     async (req, res) => {
-
-    const { firstname, lastname, email, password } = req.body
+    const { id, firstname, lastname, email, bio, link, orcid, redirectURL } = req.body
 
     if (!/\b\w+\@\w+\.\w+(?:\.\w+)?\b/.test(email)) {
         return res.status(500).json({ success: false, data: 'Enter a valid email address.' })
-    } else if (password.length < 5 || password.length > 20) {
-        return res.status(500).json({
-            success: false,
-            data: 'Password must be between 5 and 20 characters.'
-        })
     }
 
-    let [err, user] = await to(
-        createUser({
+    let [userErr, user] = await to(
+        updateUser({
+            id,
             firstname,
             lastname,
-            email,
-            password: await hashPassword(password),
-            role: ROLES.Creator
+            email
         })
     )
-
-    if (err) {
-        return res.status(500).json({ success: false, data: 'Email is already taken' })
-    }
+    
+    let [personErr, person] = await to(
+        createPerson({
+            id,
+            firstname,
+            lastname,
+            bio,
+            link,
+            orcid
+        })
+    )
 
     const [loginErr, token] = await to(login(req, user))
 
@@ -46,15 +59,18 @@ router.post('/',
         return res.status(500).json({ success: false, data: 'Authentication error!' })
     }
 
+    var redirectURLis = redirectURL;
+
+    if (redirectURLis === null || redirectURLis === '') {
+        redirectURLis = ''
+    }
+
     return res
         .status(200)
         .cookie('jwt', token, {
             httpOnly: true
         })
-        .json({
-            success: true,
-            data: getRedirectUrl(req.user.role)
-        })
+        .json({ success: false, data: redirectURLis });
 
 });
 

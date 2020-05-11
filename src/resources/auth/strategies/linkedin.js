@@ -1,21 +1,21 @@
 import passport from 'passport'
-import passportGoogle from 'passport-google-oauth'
+import passportLinkedin from 'passport-linkedin-oauth2'
 import { to } from 'await-to-js'
 
 import { getUserByProviderId } from '../../user/user.repository'
-import { updateRedirectURL } from '../../user/user.service'
 import { getObjectById } from '../../tool/data.repository'
+import { updateRedirectURL } from '../../user/user.service'
 import { createUser } from '../../user/user.service'
 import { signToken } from '../utils'
 import { ROLES } from '../../user/user.roles'
 
-const GoogleStrategy = passportGoogle.OAuth2Strategy
+const LinkedinStrategy = passportLinkedin.OAuth2Strategy
 
 const strategy = app => {
     const strategyOptions = {
-        clientID: process.env.googleClientID,
-        clientSecret: process.env.googleClientSecret,
-        callbackURL: `/auth/google/callback`
+        clientID: '77boxmmnbjfkpr',//process.env.googleClientID,
+        clientSecret: 'cZgU1twE0SsWHEKw',//process.env.googleClientSecret,
+        callbackURL: `/auth/linkedin/callback`
     }
 
     const verifyCallback = async (
@@ -29,15 +29,13 @@ const strategy = app => {
             return done(err, user)
         }
 
-        const verifiedEmail = profile.emails.find(email => email.verified) || profile.emails[0];
-
         const [createdError, createdUser] = await to(
             createUser({
                 provider: profile.provider,
                 providerId: profile.id,
                 firstname: profile.name.givenName,
                 lastname: profile.name.familyName,
-                email: verifiedEmail.value,
+                email: '',
                 password: null,
                 role: ROLES.Creator
             })
@@ -46,26 +44,26 @@ const strategy = app => {
         return done(createdError, createdUser)
     }
 
-    passport.use(new GoogleStrategy(strategyOptions, verifyCallback))
+    passport.use(new LinkedinStrategy(strategyOptions, verifyCallback))
 
     app.get(
-        `/auth/google`,
+        `/auth/linkedin`,
         (req, res, next) => {
             // Save the url of the user's current page so the app can redirect back to it after authorization
             if (req.headers.referer) {req.param.returnpage = req.headers.referer;}
             next();
         },
-        passport.authenticate('google', {
+        passport.authenticate('linkedin', {
             scope: [
-                'https://www.googleapis.com/auth/userinfo.profile',
-                'https://www.googleapis.com/auth/userinfo.email'
+                'r_emailaddress',
+                'r_liteprofile'
             ]
         })
     )
 
     app.get(
-        `/auth/google/callback`,
-        passport.authenticate('google', { failureRedirect: '/login' }),
+        `/auth/linkedin/callback`,
+        passport.authenticate('linkedin', { failureRedirect: '/login' }),
         async (req, res) => {
             var redirect = '/account';
 
