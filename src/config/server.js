@@ -16,6 +16,7 @@ import { initialiseAuthentication } from "../resources/auth";
 require('dotenv').config();
 
 const API_PORT = process.env.PORT || 3001;
+const session = require("express-session");
 var app = express();
 app.use(cors({
   origin: [process.env.homeURL],
@@ -33,6 +34,14 @@ app.use(logger('dev'));
 app.use(cookieParser());
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use(
+  session({
+      secret: process.env.JWTSecret,
+      resave: false,
+      saveUninitialized: true
+  })
+);
 
 // append /api for our http requests
 app.use('/api', router);
@@ -64,6 +73,7 @@ app.use('/api/datasets/search', require('../resources/dataset/dataset.search.rou
 app.use('/api/datasetfilters', require('../resources/dataset/dataset.filter.router'));
 app.use('/api/datasets/detail', require('../resources/dataset/dataset.detail.router'));
 app.use('/api/datasets/sendgrid', require('../resources/dataset/dataset.route'));
+app.use('/api/datasets/filteredsearch', require('../resources/dataset/dataset.searchwithfilters.router'));
 
 initialiseAuthentication(app);
 

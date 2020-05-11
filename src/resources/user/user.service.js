@@ -1,25 +1,16 @@
-import { Data } from '../tool/data.model'
 import { UserModel } from './user.model'
 
 export async function createUser({
     firstname,
     lastname,
     email,
-    password,
     providerId,
     provider,
     role
 }) {
     return new Promise(async (resolve, reject) => {
-        const user = await UserModel.findOne({ email })
-
-        if (user) {
-            return reject('Email is already in use')
-        }
-
         var id = parseInt(Math.random().toString().replace('0.', ''));
-        var type = "person";
-        var activeflag = "active";
+
         return resolve(
             await UserModel.create({
                 id,
@@ -28,15 +19,39 @@ export async function createUser({
                 firstname,
                 lastname,
                 email,
-                password,
                 role
-            }),
-            await Data.create({
-                id,
-                type,
-                firstname,
-                lastname,
-                activeflag
+            })
+        )
+    })
+}
+
+export async function updateUser({
+    id,
+    firstname,
+    lastname,
+    email
+}) {
+    return new Promise(async (resolve, reject) => {
+        return resolve(
+            await UserModel.findOneAndUpdate({ id: id },
+            {
+                firstname: firstname,
+                lastname: lastname,
+                email: email
+            })
+        )
+    })
+}
+
+export async function updateRedirectURL({
+    id,
+    redirectURL
+}) {
+    return new Promise(async (resolve, reject) => {
+        return resolve(
+            await UserModel.findOneAndUpdate({ id: id },
+            {
+                redirectURL: redirectURL,
             })
         )
     })

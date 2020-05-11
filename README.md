@@ -27,6 +27,11 @@ googleClientSecret=
 JWTSecret=
 homeURL=http://localhost:3000
 PORT=3001
+AUTH_PROVIDER_URI=
+openidClientID=
+openidClientSecret=
+linkedinClientID=
+linkedinClientSecret=
 ```
 
 ## Step 4

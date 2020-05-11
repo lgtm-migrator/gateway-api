@@ -25,7 +25,7 @@ const signToken = (user) => {
             algorithm: 'HS256',
             expiresIn: 604800
         }
-        )
+    )
 }
 
 const hashPassword = async password => {

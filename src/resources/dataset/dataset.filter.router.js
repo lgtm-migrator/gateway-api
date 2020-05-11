@@ -9,9 +9,14 @@ const router = express.Router();
       'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 
       var searchString = "";
+      var filterTerm = "";
   
       if (req.query.search) {
         searchString = req.query.search;
+      }
+
+      if(req.query.filter) {
+        filterTerm = req.query.filter;
       }
 
       axios.get(modelCatalogue + '/api/dataModels/profile/values/uk.ac.hdrukgateway/HdrUkProfilePluginService?filter=publisher&filter=license&filter=geographicCoverage&filter=ageBand&filter=physicalSampleAvailability&filter=keywords&search=' + searchString)
@@ -23,6 +28,16 @@ const router = express.Router();
           // handle error
           return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
         })
+
+      // axios.get(modelCatalogue + '/api/dataModels/profile/values/uk.ac.hdrukgateway/HdrUkProfilePluginService?filter=' + filterTerm + '&search=' + searchString)
+      // .then(function (response) {
+      //   // handle success
+      //   return res.json({ 'success': true, 'data': response.data });
+      // })
+      // .catch(function (err) {
+      //   // handle error
+      //   return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
+      // })
     
     });
 

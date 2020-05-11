@@ -1,43 +1,46 @@
 import passport from 'passport'
-import passportGoogle from 'passport-google-oauth'
+import passportOidc from 'passport-openidconnect'
 import { to } from 'await-to-js'
 
 import { getUserByProviderId } from '../../user/user.repository'
-import { updateRedirectURL } from '../../user/user.service'
 import { getObjectById } from '../../tool/data.repository'
+import { updateRedirectURL } from '../../user/user.service'
 import { createUser } from '../../user/user.service'
 import { signToken } from '../utils'
 import { ROLES } from '../../user/user.roles'
 
-const GoogleStrategy = passportGoogle.OAuth2Strategy
+const OidcStrategy = passportOidc.Strategy
+const baseAuthUrl = process.env.AUTH_PROVIDER_URI;
 
 const strategy = app => {
     const strategyOptions = {
-        clientID: process.env.googleClientID,
-        clientSecret: process.env.googleClientSecret,
-        callbackURL: `/auth/google/callback`
+        issuer: baseAuthUrl,
+        authorizationURL: baseAuthUrl + "/oidc/auth",
+        tokenURL: baseAuthUrl + "/oidc/token",
+        userInfoURL: baseAuthUrl + "/oidc/userinfo",
+        clientID: process.env.openidClientID,
+        clientSecret: process.env.openidClientSecret,
+        callbackURL: `/auth/oidc/callback`
     }
 
     const verifyCallback = async (
         accessToken,
         refreshToken,
         profile,
-        done
+        done 
     ) => {
-        let [err, user] = await to(getUserByProviderId(profile.id))
+        let [err, user] = await to(getUserByProviderId(profile._json.eduPersonTargetedID))
         if (err || user) {
             return done(err, user)
         }
-
-        const verifiedEmail = profile.emails.find(email => email.verified) || profile.emails[0];
-
+        
         const [createdError, createdUser] = await to(
             createUser({
-                provider: profile.provider,
-                providerId: profile.id,
-                firstname: profile.name.givenName,
-                lastname: profile.name.familyName,
-                email: verifiedEmail.value,
+                provider: 'oidc',
+                providerId: profile._json.eduPersonTargetedID,
+                firstname: '',
+                lastname: '',
+                email: profile._json.eduPersonScopedAffiliation,
                 password: null,
                 role: ROLES.Creator
             })
@@ -46,26 +49,21 @@ const strategy = app => {
         return done(createdError, createdUser)
     }
 
-    passport.use(new GoogleStrategy(strategyOptions, verifyCallback))
+    passport.use('oidc', new OidcStrategy(strategyOptions, verifyCallback))
 
     app.get(
-        `/auth/google`,
+        `/auth/oidc`,
         (req, res, next) => {
             // Save the url of the user's current page so the app can redirect back to it after authorization
             if (req.headers.referer) {req.param.returnpage = req.headers.referer;}
             next();
         },
-        passport.authenticate('google', {
-            scope: [
-                'https://www.googleapis.com/auth/userinfo.profile',
-                'https://www.googleapis.com/auth/userinfo.email'
-            ]
-        })
+        passport.authenticate('oidc')
     )
 
     app.get(
-        `/auth/google/callback`,
-        passport.authenticate('google', { failureRedirect: '/login' }),
+        `/auth/oidc/callback`,
+        passport.authenticate('oidc', { failureRedirect: '/login' }),
         async (req, res) => {
             var redirect = '/account';
 
