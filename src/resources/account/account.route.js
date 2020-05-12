@@ -4,7 +4,7 @@ import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
 import { Data } from '../tool/data.model';
 import { MessagesModel } from '../message/message.model';
-import request from 'request';
+import { createDiscourseTopic } from '../discourse/discourse.service'
 
 const router = express.Router();
  
@@ -156,39 +156,6 @@ router.get(
   });
 
   module.exports = router;
-
-function createDiscourseTopic(tool) {
-  const options = {
-    url: `${process.env.DISCOURSE_URL}/posts.json`,
-    method: 'POST',
-    headers: {
-      'Api-Key': process.env.DISCOURSE_API_KEY,
-      'Api-Username': 'admin',
-      'user-agent': 'node.js',
-    },
-    json: {
-      title: tool.name,
-      raw: `${tool.description} <br> Original content: ${process.env.homeURL}/tool/${tool.id}`,
-      category: process.env.DISCOURSE_CATEGORY_TOOLS_ID,
-    }
-  };
-  request(options, (error, response, body) => {
-    if (error) {
-      console.error(error);
-    }
-
-    if (body.errors && body.errors.length > 0) {
-      console.error(body.errors);
-    }
-
-    if (body.topic_id) {
-      Data.findOneAndUpdate({ id: tool.id }, { $set: { discourseTopicId: body.topic_id }}, (err) => {
-        if (err)
-          console.error(err);
-      });
-    }
-  });
-}
 
 async function createMessage(authorId, toolId) {
   let message = new MessagesModel();
