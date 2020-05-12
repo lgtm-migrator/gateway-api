@@ -32,6 +32,8 @@ openidClientID=
 openidClientSecret=
 linkedinClientID=
 linkedinClientSecret=
+# Sendgrid API Key
+SENDGRID_API_KEY=
 ```
 
 ## Step 4
