@@ -73,6 +73,8 @@ app.use('/api/datasets/search', require('../resources/dataset/dataset.search.rou
 app.use('/api/datasetfilters', require('../resources/dataset/dataset.filter.router'));
 app.use('/api/datasets/detail', require('../resources/dataset/dataset.detail.router'));
 app.use('/api/datasets/filteredsearch', require('../resources/dataset/dataset.searchwithfilters.router'));
+app.use('/api/datasetcount', require('../resources/dataset/dataset.count.router'));
+
 
 initialiseAuthentication(app);
 
