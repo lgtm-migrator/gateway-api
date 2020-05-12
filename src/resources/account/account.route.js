@@ -4,6 +4,7 @@ import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
 import { Data } from '../tool/data.model';
 import { MessagesModel } from '../message/message.model';
+import request from 'request';
 
 const router = express.Router();
  
@@ -131,34 +132,70 @@ router.get(
     async (req, res) => {
     const { id, activeflag } = req.body;
   
-    Data.findOneAndUpdate({ id: id },
-      {
-        activeflag: activeflag
-      }, (err) => {
-        var p = Data.find({ id: id });
-        p.exec((err, data) => {
-          for (var i = 0; i < data[0].authors.length; i++) {
-            let message = new MessagesModel();
-            message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-            message.messageTo = data[0].authors[i];
-            message.messageObjectID = id;
-            message.messageType = 'approved';
-            message.messageSent = Date.now();
-            message.save((err) => {});
-          }
+    try {
+      let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag }});
+      if (!tool) {s
+        return res.status(400).json({ success: false, error: 'Tool not found' });
+      }
+
+      if (tool.authors) {
+        tool.authors.forEach(async (authorId) => {
+          await createMessage(authorId, id);
         });
-        
-        let message = new MessagesModel();
-        message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-        message.messageTo = 0;
-        message.messageObjectID = id;
-        message.messageType = 'approved';
-        message.messageSent = Date.now();
-        message.save((err) => {});
+      }
+      await createMessage(0, id);
+
+      createDiscourseTopic(tool);
+
+      return res.json({ success: true });
   
-        if (err) return res.json({ success: false, error: err });
-        return res.json({ success: true });
-      });
+    } catch (err) {
+      console.log(err);
+      return res.status(500).json({ success: false, error: err });
+    }
   });
 
   module.exports = router;
+
+function createDiscourseTopic(tool) {
+  const options = {
+    url: `${process.env.DISCOURSE_URL}/posts.json`,
+    method: 'POST',
+    headers: {
+      'Api-Key': process.env.DISCOURSE_API_KEY,
+      'Api-Username': 'admin',
+      'user-agent': 'node.js',
+    },
+    json: {
+      title: tool.name,
+      raw: `${tool.description} <br> Original content: ${process.env.homeURL}/tool/${tool.id}`,
+      category: process.env.DISCOURSE_CATEGORY_TOOLS_ID,
+    }
+  };
+  request(options, (error, response, body) => {
+    if (error) {
+      console.error(error);
+    }
+
+    if (body.errors && body.errors.length > 0) {
+      console.error(body.errors);
+    }
+
+    if (body.topic_id) {
+      Data.findOneAndUpdate({ id: tool.id }, { $set: { discourseTopicId: body.topic_id }}, (err) => {
+        if (err)
+          console.error(err);
+      });
+    }
+  });
+}
+
+async function createMessage(authorId, toolId) {
+  let message = new MessagesModel();
+  message.messageID = parseInt(Math.random().toString().replace('0.', ''));
+  message.messageTo = authorId;
+  message.messageObjectID = toolId;
+  message.messageType = 'approved';
+  message.messageSent = Date.now();
+  await message.save();
+}

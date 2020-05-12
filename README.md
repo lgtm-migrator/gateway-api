@@ -34,6 +34,9 @@ linkedinClientID=
 linkedinClientSecret=
 # Sendgrid API Key
 SENDGRID_API_KEY=
+DISCOURSE_API_KEY=
+DISCOURSE_URL=
+DISCOURSE_CATEGORY_TOOLS_ID=
 ```
 
 ## Step 4
