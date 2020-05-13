@@ -9,13 +9,13 @@ const router = express.Router();
 
 /**
  * @route /api/v1/discourse/topic/tool/:toolId
- * @description This route create a Discourse new topic if the tool exists and is active.
- * @return This route returns an object { link: linkToDiscourseTopic, posts: Array of Discourse posts, (should be empty) }
+ * @description This routes create a Discourse new topic if the tool exists and is active.
+ * @return This routes returns an object { link: linkToDiscourseTopic, posts: Array of Discourse posts, (should be empty) }
  */
 router.put(
   '/tool/:toolId',
-//   passport.authenticate('jwt'),
-//   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     const toolId = parseInt(req.params.toolId);
 
