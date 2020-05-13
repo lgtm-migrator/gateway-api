@@ -2,6 +2,10 @@ import { Data } from '../tool/data.model';
 import axios from 'axios';
 
 export async function findPostsByTopicId(topicId) {
+  if (!topicId) {
+    throw new Error("Topic can't be null");
+  }
+
   const config = {
     headers: {
       'Api-Key': process.env.DISCOURSE_API_KEY,
@@ -62,6 +66,8 @@ export async function createDiscourseTopic(tool) {
         { id: tool.id },
         { $set: { discourseTopicId: res.data.topic_id } }
       );
+
+      return res.data.topic_id;
     }
   } catch (err) {
     console.error(err);
