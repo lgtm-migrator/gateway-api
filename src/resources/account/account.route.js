@@ -145,7 +145,7 @@ router.get(
       }
       await createMessage(0, id);
 
-      createDiscourseTopic(tool);
+      await createDiscourseTopic(tool);
 
       return res.json({ success: true });
   

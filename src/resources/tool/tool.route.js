@@ -28,12 +28,12 @@ router.get('/:toolID', async (req, res) => {
       r.exec(async (err, reviewData) => {
         if (err) return res.json({ success: false, error: err });
 
-        let discoursePosts = [];
+        let discourseTopic = {};
         if (data[0].discourseTopicId) {
-          discoursePosts = await findPostsByTopicId(data[0].discourseTopicId);
+          discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
         }
 
-        return res.json({ success: true, data: data, reviewData: reviewData, discoursePosts: discoursePosts });
+        return res.json({ success: true, data: data, reviewData: reviewData, discourseTopic: discourseTopic });
       });
   
     });
