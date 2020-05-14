@@ -21,10 +21,14 @@ export async function findPostsByTopicId(topicId) {
     );
 
     // The first post is the actual topic so we need to remove it.
-    const posts = response.data.post_stream.posts.slice(
+    let posts = response.data.post_stream.posts.slice(
       1,
       response.data.post_stream.posts.length
     );
+
+    posts.map((post) => {
+        post.avatar_template = `${process.env.DISCOURSE_URL}${post.avatar_template.replace('{size}', '46')}`
+    });
 
     return {
       link: `${process.env.DISCOURSE_URL}/t/${response.data.slug}/${topicId}`,
