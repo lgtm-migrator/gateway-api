@@ -74,7 +74,6 @@ app.use('/api/datasetfilters', require('../resources/dataset/dataset.filter.rout
 app.use('/api/datasets/detail', require('../resources/dataset/dataset.detail.router'));
 app.use('/api/datasets/sendgrid', require('../resources/dataset/dataset.route'));
 app.use('/api/datasets/filteredsearch', require('../resources/dataset/dataset.searchwithfilters.router'));
-app.use('/api/datasetcount', require('../resources/dataset/dataset.count.router'));
 
 
 initialiseAuthentication(app);

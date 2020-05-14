@@ -1,6 +1,8 @@
 import express from 'express';
+import axios from 'axios';
 import { RecordSearchData } from '../search/record.search.model';
-import { Data } from '../tool/data.model'
+import { Data } from '../tool/data.model';
+import {DataRequestModel} from '../datarequests/datarequests.model';
 
 const router = express.Router()
 
@@ -24,9 +26,6 @@ router.get('/', async (req, res) => {
   
     var lastYear = new Date();
     lastYear.setYear(lastYear.getYear() - 1);
-  
-    //set the aggregate queries
-    var aggregateQueryTypes = [{ $group: { _id: "$type", count: { $sum: 1 } } }];
   
     var aggregateQuerySearches = [
       {
@@ -70,9 +69,17 @@ router.get('/', async (req, res) => {
         }
       }];
   
+    //set the aggregate queries
+    var aggregateQueryTypes = [{ $group: { _id: "$type", count: { $sum: 1 } } }];
   
     var q = RecordSearchData.aggregate(aggregateQuerySearches);
+
+    var aggregateAccessRequests = [{ $group: {_id: "accessRequests", count: { $sum: 1 } } }];
+
+    var y = DataRequestModel.aggregate(aggregateAccessRequests);
   
+    var metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
+    
     q.exec((err, dataSearches) => {
       if (err) return res.json({ success: false, error: err });
   
@@ -80,10 +87,25 @@ router.get('/', async (req, res) => {
       x.exec((errx, dataTypes) => {
         if (errx) return res.json({ success: false, error: errx });
   
-        var counts = {}; //hold the type (i.e. tool, person, project) counts data
+        var counts = {}; //hold the type (i.e. tool, person, project, access requests) counts data
         for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
           counts[dataTypes[i]._id] = dataTypes[i].count;
         }
+
+      y.exec((err, accessRequests) => {
+        if (err) return res.json({ success: false, error: err });
+  
+        if(accessRequests){
+          counts[accessRequests[0]._id] = accessRequests[0].count;
+        }
+
+      axios.get(metadataCatalogue + '/api/catalogueItems/search?searchTerm=&domainType=DataModel&limit=1')
+      .catch(function (err) {
+        // handle error
+        return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
+      })
+      .then(function (response){
+          counts["datasets"] = response.data.count;
   
         if (typeof dataSearches[0].lastDay[0] === "undefined") {
           dataSearches[0].lastDay[0] = { count: 0 };
@@ -97,6 +119,7 @@ router.get('/', async (req, res) => {
         if (typeof dataSearches[0].lastYear[0] === "undefined") {
           dataSearches[0].lastYear[0] = { count: 0 };
         }
+
         result = res.json(
           {
             'success': true, 'data':
@@ -113,11 +136,13 @@ router.get('/', async (req, res) => {
           }
         );
       });
+      });
+      });
     });
   
     return result;
   });
-  
+
   /**
    * {get} /stats/recent Recent Searches
    * 
@@ -141,6 +166,7 @@ router.get('/', async (req, res) => {
       return res.json({ success: true, data: data });
     });
   });
+
   
   /**
    * {get} /stats/unmet Unmet Searches
@@ -203,3 +229,4 @@ router.get('/', async (req, res) => {
   });
   
   module.exports = router
+
