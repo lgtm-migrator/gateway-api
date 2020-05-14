@@ -8,6 +8,8 @@ import { getObjectById } from '../../tool/data.repository'
 import { createUser } from '../../user/user.service'
 import { signToken } from '../utils'
 import { ROLES } from '../../user/user.roles'
+import  queryString from 'query-string';
+import  Url from 'url';
 
 const GoogleStrategy = passportGoogle.OAuth2Strategy
 
@@ -69,8 +71,10 @@ const strategy = app => {
         async (req, res) => {
             var redirect = '/account';
 
+            const queryStringParsed = queryString.parse(Url.parse(req.param.returnpage).query);
+
             if (req.param.returnpage) {
-                redirect = require('url').parse(req.param.returnpage).path;
+                redirect = Url.parse(req.param.returnpage).path;
             }
 
             let [profileErr, profile] = await to(getObjectById(req.user.id))
@@ -83,13 +87,20 @@ const strategy = app => {
             if (req.param.returnpage) {
                 delete req.param.returnpage;
             }
+
+            let redirectUrl = process.env.homeURL + redirect;
+            console.log(redirectUrl);
+            if (queryStringParsed.sso_redirect) {
+                console.log(queryStringParsed.sso_redirect);
+                redirectUrl = queryStringParsed.sso_redirect;
+            }
             
             return res
                 .status(200)
                 .cookie('jwt', signToken(req.user), {
                     httpOnly: true
                 })
-                .redirect(process.env.homeURL+redirect)
+                .redirect(redirectUrl)
         }
     )
 
