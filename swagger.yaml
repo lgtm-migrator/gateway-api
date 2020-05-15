@@ -444,3 +444,14 @@ paths:
       summary: find all pending reviews for admins.
       tags:
         - Reviews
+
+  /v1/discourse/topic/tool/{toolId}:
+    put:
+      summary: This route creates a new topic in Discourse if the tool exists and is active. Returns an object with the link to the new Discourse topic.
+      tags:
+        - Discourse
+      parameters:
+        - name: toolId
+          in: path
+          required: true
+          description: Tool id
