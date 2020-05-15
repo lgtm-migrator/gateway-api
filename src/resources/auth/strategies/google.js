@@ -10,6 +10,7 @@ import { signToken } from '../utils'
 import { ROLES } from '../../user/user.roles'
 import  queryString from 'query-string';
 import  Url from 'url';
+import { discourseLogin } from '../sso/sso.discourse.service'; 
 
 const GoogleStrategy = passportGoogle.OAuth2Strategy
 
@@ -71,10 +72,13 @@ const strategy = app => {
         async (req, res) => {
             var redirect = '/account';
 
-            const queryStringParsed = queryString.parse(Url.parse(req.param.returnpage).query);
+            let returnPage = null;
+            let queryStringParsed = null;
 
             if (req.param.returnpage) {
-                redirect = Url.parse(req.param.returnpage).path;
+                returnPage = Url.parse(req.param.returnpage);
+                redirect = returnPage.path;
+                queryStringParsed = queryString.parse(returnPage.query);
             }
 
             let [profileErr, profile] = await to(getObjectById(req.user.id))
@@ -89,10 +93,14 @@ const strategy = app => {
             }
 
             let redirectUrl = process.env.homeURL + redirect;
-            console.log(redirectUrl);
-            if (queryStringParsed.sso_redirect) {
-                console.log(queryStringParsed.sso_redirect);
-                redirectUrl = queryStringParsed.sso_redirect;
+            
+            if (queryStringParsed && queryStringParsed.sso && queryStringParsed.sig) {
+                try {
+                    redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
+                } catch (err) {
+                    console.error(err);
+                    return res.status(500).send('Error authenticating the user.');
+                }
             }
             
             return res
