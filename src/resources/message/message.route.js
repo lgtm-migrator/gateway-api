@@ -18,7 +18,7 @@ async (req, res) => {
     var m = MessagesModel.aggregate([
     { $match: { $and: [{ messageTo: idString}] } },
     { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
-    ]);
+    ]).limit(50);
     m.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, newData: data });
@@ -45,7 +45,7 @@ router.get(
       { $match: { $and: [{ $or: [ { messageTo: idString}, { messageTo: 0} ]}] } },
       { $sort: {messageSent: -1}},
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
-    ]);
+    ]).limit(50);
     m.exec((err, data) => {
       if (err) return res.json({ success: false, error: err });
       return res.json({ success: true, newData: data });
