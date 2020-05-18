@@ -7,7 +7,7 @@ describe("Wake up API", () => {
     const response = await testURL.get("/api/dead");
     expect(response.statusCode).toBe(404);
   });
-});
+}, 30000);
 
 
 describe("Search API", () => {
