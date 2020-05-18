@@ -5,6 +5,9 @@ const DataRequestSchema = new Schema({
   dataSetId: String,
   userId: Number,
   timeStamp: Date
+},
+{ 
+  collection: 'data_request' 
 })
 
 export const DataRequestModel = model('DataRequest', DataRequestSchema)
