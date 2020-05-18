@@ -66,7 +66,7 @@ router.put(
     utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
     const { id, type, name, link, description, categories, license, authors, toolids, datasetids, tags } = req.body;
-    console.log(datasetids)
+    
     Data.findOneAndUpdate({ id: id },
       {
         type: type,
