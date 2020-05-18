@@ -4,6 +4,7 @@ const testURL  = request( process.env.URL || 'http://localhost:3001');
 
 describe("Wake up API", () => {
   test("Check the api is alive", async () => {
+    jest.setTimeout(30000);
     const response = await testURL.get("/api/dead");
     expect(response.statusCode).toBe(404);
   });
