@@ -18,7 +18,8 @@ const strategy = app => {
     const strategyOptions = {
         clientID: process.env.linkedinClientID,
         clientSecret: process.env.linkedinClientSecret,
-        callbackURL: `/auth/linkedin/callback`
+        callbackURL: `/auth/linkedin/callback`,
+        proxy: true
     }
 
     const verifyCallback = async (

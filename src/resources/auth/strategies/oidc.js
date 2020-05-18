@@ -23,7 +23,8 @@ const strategy = app => {
         userInfoURL: baseAuthUrl + "/oidc/userinfo",
         clientID: process.env.openidClientID,
         clientSecret: process.env.openidClientSecret,
-        callbackURL: `/auth/oidc/callback`
+        callbackURL: `/auth/oidc/callback`,
+        proxy: true
     }
 
     const verifyCallback = async (

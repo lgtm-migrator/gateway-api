@@ -18,7 +18,8 @@ const strategy = app => {
     const strategyOptions = {
         clientID: process.env.googleClientID,
         clientSecret: process.env.googleClientSecret,
-        callbackURL: `/auth/google/callback`
+        callbackURL: `/auth/google/callback`,
+        proxy: true
     }
 
     const verifyCallback = async (

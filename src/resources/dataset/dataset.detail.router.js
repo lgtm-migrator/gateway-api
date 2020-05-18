@@ -14,18 +14,15 @@ const router = express.Router();
         
         var result;
         if (req.query.id && req.query.id !== null && req.query.id !== 'null') {
-          console.log(req.query.id)
           var p = DataRequestModel.find({ $and: [{ userId: req.query.id }, { dataSetId: req.params.id }]});
           p.exec((datarequestErr, datarequest) => {
             if (datarequestErr) return res.json({ success: false, error: datarequestErr });
-            console.log(datarequest)
             result = res.json({ 'success': true, 'data': response.data, 'datarequest': datarequest });
           });
         }
         else {
           result = res.json({ 'success': true, 'data': response.data, 'datarequest': [] });
         }
-      console.log(response.data)
         // handle success
         return result;
       })

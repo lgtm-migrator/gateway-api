@@ -19,7 +19,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
     async (req, res) => {
       let data = new Data();
   
-    const { type, name, link, description, categories, license, authors, tags, toolids } = req.body;
+    const { type, name, link, description, categories, license, authors, tags, toolids, datasetids } = req.body;
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
     data.name = name;
@@ -34,6 +34,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
     data.tags.topics = tags.topics;
     data.activeflag = 'review';
     data.toolids = toolids;
+    data.datasetids = datasetids;  
     // data.updatedon = new Date();
     data.updatedon = Date.now();
   
@@ -64,7 +65,8 @@ router.put(
     passport.authenticate('jwt'),
     utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
-    const { id, type, name, link, description, categories, license, authors, toolids, tags } = req.body;
+    const { id, type, name, link, description, categories, license, authors, toolids, datasetids, tags } = req.body;
+    console.log(datasetids)
     Data.findOneAndUpdate({ id: id },
       {
         type: type,
@@ -82,7 +84,8 @@ router.put(
           features: tags.features,
           topics: tags.topics
         },
-        toolids: toolids
+        toolids: toolids,
+        datasetids: datasetids  
       }, (err) => {
         if (err) return res.json({ success: false, error: err });
         return res.json({ success: true });
