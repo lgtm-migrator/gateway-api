@@ -9,7 +9,7 @@ export async function findPostsByTopicId(topicId) {
   const config = {
     headers: {
       'Api-Key': process.env.DISCOURSE_API_KEY,
-      'Api-Username': 'admin',
+      'Api-Username': 'system',
       'user-agent': 'node.js',
     },
   };
@@ -47,7 +47,7 @@ export async function createDiscourseTopic(tool) {
   const config = {
     headers: {
       'Api-Key': process.env.DISCOURSE_API_KEY,
-      'Api-Username': 'admin',
+      'Api-Username': 'system',
       'user-agent': 'node.js',
       'Content-Type': 'application/json',
     },
