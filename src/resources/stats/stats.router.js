@@ -77,7 +77,7 @@ router.get('/', async (req, res) => {
     var aggregateAccessRequests = [{ $group: {_id: "accessRequests", count: { $sum: 1 } } }];
 
     var y = DataRequestModel.aggregate(aggregateAccessRequests);
-  
+
     var metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
     
     q.exec((err, dataSearches) => {
@@ -95,7 +95,10 @@ router.get('/', async (req, res) => {
       y.exec((err, accessRequests) => {
         if (err) return res.json({ success: false, error: err });
   
-        if(accessRequests && accessRequests.length){
+        if (typeof accessRequests[0] === "undefined") {
+          counts["accessRequests"] = 0;
+        }
+        else if(accessRequests && accessRequests.length){
           counts[accessRequests[0]._id] = accessRequests[0].count;
         }
 
