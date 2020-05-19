@@ -30,6 +30,7 @@ const router = express.Router();
     try {
       // 1. get the current user requesting access
       const user = await UserModel.findOne({id: userId});
+      const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || custodianEmail;
       // 2. handle event if no user present in db
       if (!user) {
         return res
@@ -53,7 +54,7 @@ const router = express.Router();
       };
       // 4. email to custodian of the data
       const msgCustodian = {
-        to: `${custodianEmail}`,
+        to: `${dataCustodianEmail}`,
         from: `${hdrukEmail}`,
         subject: `Enquires for ${title} dataset healthdatagateway.org`,
         html: `
