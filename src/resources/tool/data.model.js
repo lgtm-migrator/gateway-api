@@ -29,7 +29,8 @@ const DataSchema = new Schema(
     updatedon: Date,
     counter: Number,
     toolids: [Number],
-    discourseTopicId: Number
+    discourseTopicId: Number,
+    datasetids: [String]
   },
   { 
     collection: 'tools',
