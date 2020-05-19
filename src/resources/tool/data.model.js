@@ -28,7 +28,9 @@ const DataSchema = new Schema(
     activeflag: String,
     updatedon: Date,
     counter: Number,
-    toolids: [Number]
+    toolids: [Number],
+    discourseTopicId: Number,
+    datasetids: [String]
   },
   { 
     collection: 'tools',

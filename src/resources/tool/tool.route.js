@@ -4,6 +4,7 @@ import { Reviews } from './review.model';
 import { Data } from '../tool/data.model'
 import passport from "passport";
 import { utils } from "../auth";
+import { findPostsByTopicId } from "../discourse/discourse.service";
 
 const router = express.Router()
 
@@ -24,9 +25,15 @@ router.get('/:toolID', async (req, res) => {
         { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
         { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
       ]);
-      r.exec((err, reviewData) => {
+      r.exec(async (err, reviewData) => {
         if (err) return res.json({ success: false, error: err });
-        return res.json({ success: true, data: data, reviewData: reviewData });
+
+        let discourseTopic = {};
+        if (data[0].discourseTopicId) {
+          discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
+        }
+
+        return res.json({ success: true, data: data, reviewData: reviewData, discourseTopic: discourseTopic });
       });
   
     });
