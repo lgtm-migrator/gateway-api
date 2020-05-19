@@ -98,7 +98,7 @@ router.get('/', async (req, res) => {
         if (typeof accessRequests[0] === "undefined") {
           counts["accessRequests"] = 0;
         }
-        else if(accessRequests){
+        else if(accessRequests && accessRequests.length){
           counts[accessRequests[0]._id] = accessRequests[0].count;
         }
 

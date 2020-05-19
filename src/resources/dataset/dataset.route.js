@@ -1,8 +1,5 @@
 import express from 'express'
 import axios from 'axios';
-import { UserModel } from '../user/user.model';
-import { DataRequestModel } from '../datarequests/datarequests.model';
-const sgMail = require('@sendgrid/mail');
 const router = express.Router();
 
 /**

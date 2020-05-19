@@ -7,4 +7,4 @@ const DataRequestSchema = new Schema({
   timeStamp: Date
 });
 
-export const DataRequestModel = model('DataRequest', DataRequestSchema)
+export const DataRequestModel = model('data_requests', DataRequestSchema)
