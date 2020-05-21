@@ -35,6 +35,9 @@ linkedinClientSecret=
 # Sendgrid API Key
 SENDGRID_API_KEY=
 
+# Datacustodian email address used for testing data access request locally, place with your email!
+DATA_CUSTODIAN_EMAIL=your@email.com
+
 # Discourse integration
 DISCOURSE_API_KEY=
 DISCOURSE_URL=
