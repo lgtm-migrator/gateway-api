@@ -26,26 +26,35 @@ npm i -S mongoose express body-parser morgan cors
 Create a .env file in the root of the project with this content:
 
 ```
-# db user
+# MongoDB connection parameters
 user=
-# db password
 password=
-# db cluster
 cluster=
-# db name
 database=
+
+homeURL=http://localhost:3000
+
+# Auth parameters
 googleClientID=
 googleClientSecret=
 JWTSecret=
-homeURL=http://localhost:3000
-PORT=3001
 AUTH_PROVIDER_URI=
 openidClientID=
 openidClientSecret=
 linkedinClientID=
 linkedinClientSecret=
+
 # Sendgrid API Key
 SENDGRID_API_KEY=
+
+# Datacustodian email address used for testing data access request locally, place with your email!
+DATA_CUSTODIAN_EMAIL=your@email.com
+
+# Discourse integration
+DISCOURSE_API_KEY=
+DISCOURSE_URL=
+DISCOURSE_CATEGORY_TOOLS_ID=
+DISCOURSE_SSO_SECRET=
 ```
 
 #### Step 4

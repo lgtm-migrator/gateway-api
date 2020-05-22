@@ -4,45 +4,46 @@ const testURL  = request( process.env.URL || 'http://localhost:3001');
 
 describe("Wake up API", () => {
   test("Check the api is alive", async () => {
+    jest.setTimeout(30000);
     const response = await testURL.get("/api/dead");
     expect(response.statusCode).toBe(404);
   });
-});
+}, 30000);
 
 
 describe("Search API", () => {
   test("Search without any parameters should return at least one result", async () => {
-    const response = await testURL.get("/api/search");
+    const response = await testURL.get("/api/v1/search");
     expect(response.statusCode).toBe(200);
     let payload = JSON.parse(response.text);
 
     expect(payload).toHaveProperty('success');
-    expect(payload).toHaveProperty('data');
-    expect(payload['data'].length).toBeGreaterThanOrEqual(1);
+    expect(payload).toHaveProperty('datasetResults');
+    expect(payload['datasetResults'].length).toBeGreaterThanOrEqual(1);
     expect(payload).toHaveProperty('summary');
 
   });
 
-  ['homebrew','cancer', 'disparity'].forEach(function(searchString) {
+  ['blood','cancer', 'epilepsy'].forEach(function(searchString) {
 
     test(`Search for string '${searchString}', first result should contain name or description '${searchString}'`, async () => {
-        const response = await testURL.get('/api/search?search='+searchString);
+        const response = await testURL.get('/api/v1/search?search='+searchString);
         expect(response.statusCode).toBe(200);
        	let payload = JSON.parse(response.text);
            
         expect(payload).toHaveProperty('success');
-        expect(payload).toHaveProperty('data');
-        expect(payload['data'].length).toBeGreaterThanOrEqual(1);
+        expect(payload).toHaveProperty('toolResults');
+        expect(payload['toolResults'].length).toBeGreaterThanOrEqual(1);
         expect(payload).toHaveProperty('summary');
 
 
-        expect(payload['data'][0]).toHaveProperty('name');
-        expect(payload['data'][0]).toHaveProperty('description');
-        expect(payload['data'][0]).toHaveProperty('tags');
+        expect(payload['toolResults'][0]).toHaveProperty('name');
+        expect(payload['toolResults'][0]).toHaveProperty('description');
+        expect(payload['toolResults'][0]).toHaveProperty('tags');
 
-        let name = payload['data'][0]['name'].toLowerCase() || '';
-        let description = payload['data'][0]['description'].toLowerCase() || '';
-        let tags = payload['data'][0]['tags'].join().toLowerCase() || '';
+        let name = payload['toolResults'][0]['name'].toLowerCase() || '';
+        let description = payload['toolResults'][0]['description'].toLowerCase() || '';
+        let tags = payload['toolResults'][0]['tags']['topics'].join().toLowerCase() || '';
         let string = searchString.toLowerCase();
 
         expect( name.includes(string) || description.includes(string) || tags.includes(string)).toBeTruthy();
@@ -56,13 +57,13 @@ describe("Search API", () => {
   ['crap','zzz'].forEach(function(searchString) {
 
     test(`Search for string '${searchString}', nothing should be returned`, async () => {
-        const response = await testURL.get('/api/search?search='+searchString);
+        const response = await testURL.get('/api/v1/search?search='+searchString);
         expect(response.statusCode).toBe(200);
        	let payload = JSON.parse(response.text);
            
         expect(payload).toHaveProperty('success');
-        expect(payload).toHaveProperty('data');
-        expect(payload['data'].length).toBe(0);
+        expect(payload).toHaveProperty('toolResults');
+        expect(payload['toolResults'].length).toBe(0);
         expect(payload).toHaveProperty('summary');
 
     });
@@ -70,17 +71,17 @@ describe("Search API", () => {
   });
 
 
-  test("Search for string 'cancer' limit results to 3, 3 or less results should be returned", async () => {
+  test("Search for string 'cancer' limit results to 40, 40 or less results should be returned", async () => {
     let searchString = "cancer";
-    let maxResults = 3;
+    let maxResults = 40;
 
-    const response = await testURL.get('/api/search?search='+searchString+'&maxResults='+maxResults);
+    const response = await testURL.get('/api/v1/search?search='+searchString);
     expect(response.statusCode).toBe(200);
     let payload = JSON.parse(response.text);
         
     expect(payload).toHaveProperty('success');
-    expect(payload).toHaveProperty('data');
-    expect(payload['data'].length).toBeLessThanOrEqual(maxResults);
+    expect(payload).toHaveProperty('datasetResults');
+    expect(payload['datasetResults'].length).toBeLessThanOrEqual(maxResults);
     expect(payload).toHaveProperty('summary');
   });
 

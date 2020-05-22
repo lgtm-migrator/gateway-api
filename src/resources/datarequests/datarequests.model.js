@@ -5,6 +5,6 @@ const DataRequestSchema = new Schema({
   dataSetId: String,
   userId: Number,
   timeStamp: Date
-})
+});
 
-export const DataRequestModel = model('DataRequest', DataRequestSchema)
+export const DataRequestModel = model('data_requests', DataRequestSchema)
