@@ -5,6 +5,7 @@ const RecordSearchSchema = new Schema(
     searched: String,
     returned: 
       {
+        dataset: Number,  
         tool: Number, 
         project: Number, 
         person: Number
