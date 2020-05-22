@@ -381,18 +381,18 @@ function getFilterOptions(values) {
     })
 
     return {
-        licenseFilterOptions: licenseFilterOptions.sort(),
-        sampleFilterOptions: sampleFilterOptions.sort(),
-        keywordsFilterOptions: keywordsFilterOptions.sort(),
-        publisherFilterOptions: publisherFilterOptions.sort(),
-        ageBandFilterOptions: ageBandFilterOptions.sort(),
-        geographicCoverageFilterOptions: geographicCoverageFilterOptions.sort(),
-        toolCategoriesFilterOptions: toolCategoriesFilterOptions.sort(),
-        programmingLanguageFilterOptions: programmingLanguageFilterOptions.sort(),
-        featuresFilterOptions: featuresFilterOptions.sort(),
-        toolTopicsFilterOptions: toolTopicsFilterOptions.sort(),
-        projectCategoriesFilterOptions: projectCategoriesFilterOptions.sort(),
-        projectTopicsFilterOptions: projectTopicsFilterOptions.sort()
+        licenseFilterOptions: licenseFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        sampleFilterOptions: sampleFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        keywordsFilterOptions: keywordsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        publisherFilterOptions: publisherFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        ageBandFilterOptions: ageBandFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        geographicCoverageFilterOptions: geographicCoverageFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        toolCategoriesFilterOptions: toolCategoriesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        programmingLanguageFilterOptions: programmingLanguageFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        featuresFilterOptions: featuresFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        toolTopicsFilterOptions: toolTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        projectCategoriesFilterOptions: projectCategoriesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        projectTopicsFilterOptions: projectTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
     };
 }
 
