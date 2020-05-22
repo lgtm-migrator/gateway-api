@@ -108,9 +108,6 @@ paths:
                 dataSetId:
                   type: string,
                   example: '2345654323456'
-                custodianEmail:
-                  type: string,
-                  example: 'yourCustodianEmail@email.com'
                 researchAim:
                   type: string
                   example: 'The aim of your research, description needed.'

@@ -68,6 +68,7 @@ const router = express.Router();
             ${researchBenefits ? `<strong>Research benefits</strong>: ${researchBenefits}<br /><br />`: ''}
             ${ethicalProcessingEvidence ? `<strong>Ethical processing evidence</strong>: ${ethicalProcessingEvidence}<br /><br />`: ''}
             ${contactNumber ? `<strong>Contact number</strong>: ${contactNumber}<br /><br />`: ''}
+            <strong>Email: ${user.email}</strong><br /><br />
             The person requesting the data is: ${user.firstname} ${user.lastname}`
       };
       // 5. sendgrid config and email processing
