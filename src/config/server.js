@@ -73,6 +73,7 @@ app.use('/api/v1/datasets/filters', require('../resources/dataset/dataset.filter
 app.use('/api/v1/datasets/access', require('../resources/dataset/dataset.access.router'));
 app.use('/api/v1/datasets/detail', require('../resources/dataset/dataset.detail.router')); 
 app.use('/api/v1/datasets/filteredsearch', require('../resources/dataset/dataset.searchwithfilters.router')); //search
+app.use('/api/v1/datasets/relatedobjects', require('../resources/dataset/dataset.relatedobjects.router'));
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
 
 initialiseAuthentication(app);
