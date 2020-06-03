@@ -7,7 +7,7 @@ info:
 servers:
   - url: http://localhost:3001/api
 
-  - url: https://{environment}-api.healthresearch.tools:{port}/api
+  - url: https://api.{environment}.healthdatagateway.org:{port}/api
     variables:
       environment:
         default: latest
