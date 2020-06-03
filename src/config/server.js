@@ -37,9 +37,9 @@ app.use(passport.session());
 
 app.use(
   session({
-      secret: process.env.JWTSecret,
-      resave: false,
-      saveUninitialized: true
+    secret: process.env.JWTSecret,
+    resave: false,
+    saveUninitialized: true
   })
 );
 
@@ -69,9 +69,9 @@ app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/discourse/topic', require('../resources/discourse/discourse.topic.route'));
 
 app.use('/api/v1/datasets/search', require('../resources/dataset/dataset.search.router'));
-app.use('/api/v1/datasets/filters', require('../resources/dataset/dataset.filters.router')); 
+app.use('/api/v1/datasets/filters', require('../resources/dataset/dataset.filters.router'));
 app.use('/api/v1/datasets/access', require('../resources/dataset/dataset.access.router'));
-app.use('/api/v1/datasets/detail', require('../resources/dataset/dataset.detail.router')); 
+app.use('/api/v1/datasets/detail', require('../resources/dataset/dataset.detail.router'));
 app.use('/api/v1/datasets/filteredsearch', require('../resources/dataset/dataset.searchwithfilters.router')); //search
 app.use('/api/v1/datasets/relatedobjects', require('../resources/dataset/dataset.relatedobjects.router'));
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
