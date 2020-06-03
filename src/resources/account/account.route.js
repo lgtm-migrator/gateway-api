@@ -7,18 +7,18 @@ import { MessagesModel } from '../message/message.model';
 import { createDiscourseTopic } from '../discourse/discourse.service'
 
 const router = express.Router();
- 
-  /**
-   * {delete} /api/v1/accounts
-   * 
-   * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
-   * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
-   */
-  router.delete(
-    '/',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
+
+/**
+ * {delete} /api/v1/accounts
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.delete(
+  '/',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
     const { id } = req.body;
     Data.findOneAndDelete({ id: id }, (err) => {
       if (err) return res.send(err);
@@ -26,23 +26,23 @@ const router = express.Router();
     });
   });
 
-  /**
-   * {get} /api/v1/accounts/admin
-   * 
-   * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
-   * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
-   */
-  router.get(
-    '/admin',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin),
-    async (req, res) => {
+/**
+ * {get} /api/v1/accounts/admin
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.get(
+  '/admin',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
     var result;
     var startIndex = 0;
     var maxResults = 25;
     var typeString = "";
     var toolStateString = "";
-  
+
     if (req.query.startIndex) {
       startIndex = req.query.startIndex;
     }
@@ -55,14 +55,14 @@ const router = express.Router();
     if (req.query.toolState) {
       toolStateString = req.query.toolState;
     }
-  
+
     var searchQuery = {
       $and: [
         { type: typeString },
         { activeflag: toolStateString }
       ]
     };
-  
+
     var q = Data.aggregate([
       { $match: { $and: [{ type: typeString }, { activeflag: toolStateString }] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
@@ -74,24 +74,24 @@ const router = express.Router();
     return result;
   });
 
-  /**
- * {get} /api/v1/accounts
- * 
- * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
- * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
- */
+/**
+* {get} /api/v1/accounts
+* 
+* Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+* The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+*/
 router.get(
-    '/',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
+  '/',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
     var result;
     var startIndex = 0;
     var maxResults = 25;
     var typeString = "";
     var idString = "";
     var toolStateString = "";
-  
+
     if (req.query.startIndex) {
       startIndex = req.query.startIndex;
     }
@@ -107,7 +107,7 @@ router.get(
     if (req.query.toolState) {
       toolStateString = req.query.toolState;
     }
-  
+
     var q = Data.aggregate([
       { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: toolStateString }] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
@@ -119,22 +119,23 @@ router.get(
     return result;
   });
 
-  /**
-   * {put} /api/v1/accounts/status
-   * 
-   * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
-   * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
-   */
-  router.put(
-    '/status',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin),
-    async (req, res) => {
+/**
+ * {put} /api/v1/accounts/status
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.put(
+  '/status',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
     const { id, activeflag } = req.body;
-  
+
     try {
-      let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag }});
-      if (!tool) {s
+      let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
+      if (!tool) {
+        s
         return res.status(400).json({ success: false, error: 'Tool not found' });
       }
 
@@ -148,14 +149,14 @@ router.get(
       await createDiscourseTopic(tool);
 
       return res.json({ success: true });
-  
+
     } catch (err) {
       console.log(err);
       return res.status(500).json({ success: false, error: err });
     }
   });
 
-  module.exports = router;
+module.exports = router;
 
 async function createMessage(authorId, toolId) {
   let message = new MessagesModel();
@@ -164,5 +165,6 @@ async function createMessage(authorId, toolId) {
   message.messageObjectID = toolId;
   message.messageType = 'approved';
   message.messageSent = Date.now();
+  message.isRead = false;
   await message.save();
 }

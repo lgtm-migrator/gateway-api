@@ -8,17 +8,17 @@ import { ROLES } from '../user/user.roles'
 const router = express.Router()
 
 router.get('/', async (req, res) => {
-    console.log("Here!")
-    res.status(200).json({ hello: 'Hello, from the back-end world!' })    
+  console.log("Here!")
+  res.status(200).json({ hello: 'Hello, from the back-end world!' })
 });
 
 // @router   POST /api/mytools/add
 // @desc     Add tools user
 // @access   Private
 router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
-      let data = new Data();
-  
+  async (req, res) => {
+    let data = new Data();
+
     const { type, name, link, description, categories, license, authors, tags, toolids, datasetids } = req.body;
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
@@ -34,10 +34,10 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
     data.tags.topics = tags.topics;
     data.activeflag = 'review';
     data.toolids = toolids;
-    data.datasetids = datasetids;  
+    data.datasetids = datasetids;
     // data.updatedon = new Date();
     data.updatedon = Date.now();
-  
+
     data.save((err) => {
       let message = new MessagesModel();
       message.messageID = parseInt(Math.random().toString().replace('0.', ''));
@@ -45,6 +45,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
       message.messageObjectID = data.id;
       message.messageType = 'add';
       message.messageSent = Date.now();
+      message.isRead = false;
       message.save((err) => {
         if (err) return res.json({ success: false, error: err });
         return res.json({ success: true, id: data.id });
@@ -52,21 +53,21 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
     });
   });
 
-  /**
- * {put} /mytools/edit Edit tool
- * 
- * Authenticate user to see if page should be displayed.
- * Authenticate user and then pull the data for the tool from the DB.
- * When they submit, authenticate the user, validate the data and update the tool data on the DB.
- * (If we are going down the versions route then we will add a new version of the data and increase the version i.e. v1, v2)
- */
+/**
+* {put} /mytools/edit Edit tool
+* 
+* Authenticate user to see if page should be displayed.
+* Authenticate user and then pull the data for the tool from the DB.
+* When they submit, authenticate the user, validate the data and update the tool data on the DB.
+* (If we are going down the versions route then we will add a new version of the data and increase the version i.e. v1, v2)
+*/
 router.put(
-    '/edit',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
+  '/edit',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
     const { id, type, name, link, description, categories, license, authors, toolids, datasetids, tags } = req.body;
-    
+
     Data.findOneAndUpdate({ id: id },
       {
         type: type,
@@ -85,26 +86,26 @@ router.put(
           topics: tags.topics
         },
         toolids: toolids,
-        datasetids: datasetids  
+        datasetids: datasetids
       }, (err) => {
         if (err) return res.json({ success: false, error: err });
         return res.json({ success: true });
       });
   });
 
-  /**
- * {delete} /mytools/delete Delete tool
- * 
- * Authenticate user to see if page should be displayed.
- * When they detele, authenticate user and then delete the tool data and review data from the DB
- */
+/**
+* {delete} /mytools/delete Delete tool
+* 
+* Authenticate user to see if page should be displayed.
+* When they detele, authenticate user and then delete the tool data and review data from the DB
+*/
 router.delete('/delete', async (req, res) => {
-    const { id } = req.body;
-    Data.findOneAndDelete({ id: id }, (err) => {
-      if (err) return res.send(err);
-      return res.json({ success: true });
-    });
+  const { id } = req.body;
+  Data.findOneAndDelete({ id: id }, (err) => {
+    if (err) return res.send(err);
+    return res.json({ success: true });
   });
+});
 
-  
+
 module.exports = router
