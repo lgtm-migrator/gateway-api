@@ -27,7 +27,8 @@
     "query-string": "^6.12.1",
     "swagger-ui-express": "^4.1.4",
     "test": "^0.6.0",
-    "yamljs": "^0.3.0"
+    "yamljs": "^0.3.0",
+    "snyk": "^1.334.0"
   },
   "devDependencies": {
     "jest": "^26.0.1",
@@ -39,7 +40,10 @@
     "server": "nodemon index.js",
     "build": "",
     "test": "jest",
-    "eject": ""
+    "eject": "",
+    "snyk-protect": "snyk protect",
+    "prepublish": "npm run snyk-protect"
   },
-  "proxy": "http://localhost:3001"
+  "proxy": "http://localhost:3001",
+  "snyk": true
 }
