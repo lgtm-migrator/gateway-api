@@ -7,6 +7,68 @@ import { MessagesModel } from '../message/message.model'
 
 const router = express.Router()
 
+router.get('/numberofunread/admin/:personID',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
+
+    var idString = "";
+    let countUnreadMessages = 0;
+    if (req.params.personID) {
+      idString = parseInt(req.params.personID);
+    }
+
+    var m = MessagesModel.aggregate([
+      { $match: { $and: [{ $or: [{ messageTo: idString }, { messageTo: 0 }] }] } },
+      { $sort: { messageSent: -1 } },
+      { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
+    ]).limit(50);
+    m.exec((err, data) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      } else {
+        Array.prototype.forEach.call(data, element => {
+          if (element.isRead === 'false') {
+            countUnreadMessages++;
+          }
+        });
+        return res.json({ countUnreadMessages });
+      }
+    })
+  });
+
+router.get('/numberofunread/:personID',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Creator),
+  async (req, res) => {
+
+    var idString = "";
+    let countUnreadMessages = 0;
+    if (req.params.personID) {
+      idString = parseInt(req.params.personID);
+    }
+
+    if (req.query.id) {
+      idString = parseInt(req.query.id);
+    }
+    var m = MessagesModel.aggregate([
+      { $match: { $and: [{ messageTo: idString }] } },
+      { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
+    ]).limit(50);
+    m.exec((err, data) => {
+      if (err) {
+        return res.json({ success: false, error: err });
+      } else {
+        Array.prototype.forEach.call(data, element => {
+          if (element.isRead === 'false') {
+            countUnreadMessages++;
+          }
+        });
+        return res.json({ countUnreadMessages });
+      }
+    })
+  });
+
 router.get('/:personID',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Creator),
@@ -62,8 +124,6 @@ router.post(
   async (req, res) => {
     console.log('in markAsRead');
     const messageIds = req.body;
-    let message = new MessagesModel();
-    console.log('updating these messageIds: ', messageIds);
 
     MessagesModel.updateMany(
       { messageID: { $in: messageIds } },
@@ -97,5 +157,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
       });
     });
   });
+
+
 
 module.exports = router
