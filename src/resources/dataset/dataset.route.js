@@ -27,7 +27,7 @@ router.get('/:id', async (req, res) => {
 
     }
     catch (err) {
-        console.log(err.message);
+        // handle error
         return res.json({ success: false, error: metadataCatalogueError + ' (raw message from metadata catalogue)' });
     }
 
