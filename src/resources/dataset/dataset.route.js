@@ -9,17 +9,28 @@ const router = express.Router();
  */
 router.get('/:id', async (req, res) => {
     var metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
-  
-    axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id)
-      .then(function (response) {
-        // handle success
-        return res.json({ 'success': true, 'data': response.data });
-      })
-      .catch(function (err) {
+    var metadataQuality = process.env.metadataQualityURL || 'https://europe-west1-hdruk-gateway.cloudfunctions.net/metadataqualityscore';
+    var metadataCatalogueError = '';
+
+    const reqMetadataCatalogue = axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id).catch(err => {metadataCatalogueError = err.message} );
+    const reqMetadataQuality = axios.get(metadataQuality + '/api/v1/' + req.params.id).catch(err => null);
+
+
+    try {
+        const [resMetadataCatalogue, resMetadataQuality] = await axios.all([reqMetadataCatalogue,reqMetadataQuality]);
+
+        if (resMetadataQuality) {
+            resMetadataCatalogue.data.quality = resMetadataQuality.data;
+        }
+
+        return res.json({ 'success': true, 'data': resMetadataCatalogue.data });
+
+    }
+    catch (err) {
         // handle error
-        return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
-      })
-  
+        return res.json({ success: false, error: metadataCatalogueError + ' (raw message from metadata catalogue)' });
+    }
+
   });
 
   module.exports = router;
