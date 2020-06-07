@@ -157,7 +157,7 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
   (await UserModel.find({ id: { $in: tool.authors } }))
-    .forEach(user => {
+    .forEach(async (user) => {
       const msg = {
         to: user.email,
         from: `${hdrukEmail}`,
