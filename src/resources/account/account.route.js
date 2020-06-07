@@ -5,8 +5,10 @@ import { ROLES } from '../user/user.roles'
 import { Data } from '../tool/data.model';
 import { MessagesModel } from '../message/message.model';
 import { createDiscourseTopic } from '../discourse/discourse.service'
-
+import { UserModel } from '../user/user.model'
+const sgMail = require('@sendgrid/mail');
 const router = express.Router();
+const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 /**
  * {delete} /api/v1/accounts
@@ -147,6 +149,7 @@ router.put(
       await createMessage(0, id);
 
       await createDiscourseTopic(tool);
+      await sendEmailNotifications(tool, activeflag);
 
       return res.json({ success: true });
 
@@ -167,4 +170,30 @@ async function createMessage(authorId, toolId) {
   message.messageSent = Date.now();
   message.isRead = false;
   await message.save();
+}
+
+async function sendEmailNotifications(tool, activeflag) {
+  const emailRecipients = await UserModel.find({ $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] });
+  const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  let subject;
+  let html;
+  //build email
+  if (activeflag === 'active') {
+    subject = `Your ${tool.type} ${tool.name} has been approved and is now live`
+    html = `Your ${tool.type} ${tool.name} has been approved and is now live <br /><br />  ${toolLink}`
+  } else if (activeflag === 'archive') {
+    subject = `Your ${tool.type} ${tool.name} has been rejected`
+    html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  ${toolLink}`
+  }
+
+  for (let emailRecipient of emailRecipients) {
+    const msg = {
+      to: emailRecipient.email,
+      from: `${hdrukEmail}`,
+      subject: subject,
+      html: html
+    };
+    await sgMail.send(msg);
+  }
 }

@@ -5,6 +5,9 @@ import { Data } from '../tool/data.model'
 import passport from "passport";
 import { utils } from "../auth";
 import { findPostsByTopicId } from "../discourse/discourse.service";
+import { UserModel } from '../user/user.model'
+const sgMail = require('@sendgrid/mail');
+const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 const router = express.Router()
 
@@ -63,9 +66,13 @@ router.post(
     reviews.activeflag = 'review';
     reviews.date = Date.now();
 
-    reviews.save((err) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, id: reviews.reviewID });
+    reviews.save(async (err) => {
+      if (err) {
+        return res.json({ success: false, error: err })
+      } else {
+        await sendEmailNotifications(reviews);
+        return res.json({ success: true, id: reviews.reviewID });
+      };
     });
   });
 
@@ -158,3 +165,31 @@ router.get('/', async (req, res) => {
 });
 
 module.exports = router
+
+async function sendEmailNotifications(review) {
+  //Get email recipients 
+  let emailRecipients = await UserModel.find({ role: 'Admin' });
+  const tool = await Data.findOne({ id: review.toolID });
+
+
+  (await UserModel.find({ id: { $in: tool.authors } }))
+    .forEach(author => {
+      emailRecipients.push(author)
+    });
+
+  //Get reviewer name
+  const reviewer = await UserModel.findOne({ id: review.reviewerID });
+  const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+  //send emails
+  for (let emailRecipient of emailRecipients) {
+    const msg = {
+      to: emailRecipient.email,
+      from: `${hdrukEmail}`,
+      subject: `Someone reviewed your tool`,
+      html: `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`
+    };
+    await sgMail.send(msg);
+  }
+}
