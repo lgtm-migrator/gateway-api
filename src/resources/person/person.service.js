@@ -6,7 +6,9 @@ export async function createPerson({
     lastname,
     bio,
     link,
-    orcid
+    orcid,
+    emailNotifications,
+    terms
 }) {
     var type = "person";
     var activeflag = "active";
@@ -20,7 +22,9 @@ export async function createPerson({
                 bio,
                 link,
                 orcid,
-                activeflag
+                activeflag,
+                emailNotifications,
+                terms
             })
         )
     })

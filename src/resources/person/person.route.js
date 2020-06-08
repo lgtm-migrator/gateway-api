@@ -11,14 +11,17 @@ router.post(
     passport.authenticate('jwt'),
     utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
-    const { id, type, bio, link, orcid } = req.body;
+    const { id, type, bio, link, orcid, emailNotifications, terms } = req.body;
+    console.log(req.body)
     Data.findOneAndUpdate({ id: id },
   
       {
-        type: type,
-        bio: bio,
-        link: link,
-        orcid: orcid,
+        type,
+        bio,
+        link,
+        orcid,
+        emailNotifications,
+        terms
       }, (err) => {
         if (err) return res.json({ success: false, error: err });
         return res.json({ success: true });
