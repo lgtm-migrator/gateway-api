@@ -26,7 +26,7 @@ router.get('/:personID',
 // @access   Public
 router.post('/', 
     async (req, res) => {
-    const { id, firstname, lastname, email, bio, link, orcid, redirectURL } = req.body
+    const { id, firstname, lastname, email, bio, link, orcid, redirectURL, emailNotifications, terms } = req.body
 
     if (!/\b\w+\@\w+\.\w+(?:\.\w+)?\b/.test(email)) {
         return res.status(500).json({ success: false, data: 'Enter a valid email address.' })
@@ -48,7 +48,9 @@ router.post('/',
             lastname,
             bio,
             link,
-            orcid
+            orcid,
+            emailNotifications,
+            terms
         })
     )
 

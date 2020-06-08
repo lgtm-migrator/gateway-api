@@ -30,7 +30,9 @@ const DataSchema = new Schema(
     counter: Number,
     toolids: [Number],
     discourseTopicId: Number,
-    datasetids: [String]
+    datasetids: [String],
+    emailNotifications: Boolean,
+    terms: Boolean
   },
   { 
     collection: 'tools',
