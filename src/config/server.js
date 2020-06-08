@@ -76,6 +76,8 @@ app.use('/api/v1/datasets/filteredsearch', require('../resources/dataset/dataset
 app.use('/api/v1/datasets/relatedobjects', require('../resources/dataset/dataset.relatedobjects.router'));
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
 
+app.use('/api/v1/dar', require('../resources/datarequests/datarequests.route'));
+
 initialiseAuthentication(app);
 
 // launch our backend into a port
