@@ -53,6 +53,7 @@ router.post('/add',
       message.messageTo = 0;
       message.messageObjectID = data.id;
       message.messageType = 'add';
+      message.messageDescription = `Approval needed: new ${data.type} added ${name}`
       message.messageSent = Date.now();
       message.isRead = false;
       message.save(async (err) => {
