@@ -5,6 +5,11 @@ import { Data } from '../tool/data.model'
 import passport from "passport";
 import { utils } from "../auth";
 import { findPostsByTopicId } from "../discourse/discourse.service";
+import { UserModel } from '../user/user.model'
+import { MessagesModel } from '../message/message.model'
+
+const sgMail = require('@sendgrid/mail');
+const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 const router = express.Router()
 
@@ -63,9 +68,13 @@ router.post(
     reviews.activeflag = 'review';
     reviews.date = Date.now();
 
-    reviews.save((err) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, id: reviews.reviewID });
+    reviews.save(async (err) => {
+      if (err) {
+        return res.json({ success: false, error: err })
+      } else {
+
+        return res.json({ success: true, id: reviews.reviewID });
+      };
     });
   });
 
@@ -109,7 +118,13 @@ router.post(
         activeflag: activeflag
       }, (err) => {
         if (err) return res.json({ success: false, error: err });
+
         return res.json({ success: true });
+      }).then(async (res) => {
+        const review = await Reviews.findOne({ reviewID: id });
+
+        await storeNotificationMessages(review);
+        await sendEmailNotifications(review);
       });
   });
 
@@ -158,3 +173,65 @@ router.get('/', async (req, res) => {
 });
 
 module.exports = router
+
+async function storeNotificationMessages(review) {
+
+  const tool = await Data.findOne({ id: review.toolID });
+  //Get reviewer name
+  const reviewer = await UserModel.findOne({ id: review.reviewerID });
+  const toolLink = process.env.homeURL + '/tool/' + review.toolID + '/' + tool.name
+  //admins
+  let message = new MessagesModel();
+  message.messageID = parseInt(Math.random().toString().replace('0.', ''));
+  message.messageTo = 0;
+  message.messageObjectID = review.toolID;
+  message.messageType = 'review';
+  message.messageSent = Date.now();
+  message.isRead = false;
+  message.messageDescription = `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} ${toolLink}`
+
+  await message.save(async (err) => {
+    if (err) {
+      return new Error({ success: false, error: err });
+    }
+  })
+  //authors
+  const authors = tool.authors;
+  authors.forEach(async (author) => {
+    message.messageTo = author;
+    await message.save(async (err) => {
+      if (err) {
+        return new Error({ success: false, error: err });
+      }
+    });
+  });
+  return { success: true, id: message.messageID };
+}
+
+async function sendEmailNotifications(review) {
+  //Get email recipients 
+  let emailRecipients = await UserModel.find({ role: 'Admin' });
+  const tool = await Data.findOne({ id: review.toolID });
+
+
+  (await UserModel.find({ id: { $in: tool.authors } }))
+    .forEach(author => {
+      emailRecipients.push(author)
+    });
+
+  //Get reviewer name
+  const reviewer = await UserModel.findOne({ id: review.reviewerID });
+  const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+  //send emails
+  for (let emailRecipient of emailRecipients) {
+    const msg = {
+      to: emailRecipient.email,
+      from: `${hdrukEmail}`,
+      subject: `Someone reviewed your tool`,
+      html: `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`
+    };
+    await sgMail.send(msg);
+  }
+}
