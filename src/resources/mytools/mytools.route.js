@@ -185,7 +185,7 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
     let message = new MessagesModel();
     message.messageType = 'author';
     message.messageSent = Date.now();
-    message.messageDescription = `${toolOwner.name} added you as an author of the ${tool.type} ${tool.name} <br /><br />  ${toolLink}`
+    message.messageDescription = `${toolOwner.name} added you as an author of the ${tool.type} ${tool.name}`
     message.isRead = false;
     message.messageObjectID = tool.id;
     message.messageID = parseInt(Math.random().toString().replace('0.', ''));
