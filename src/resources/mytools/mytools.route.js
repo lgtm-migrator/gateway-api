@@ -5,6 +5,7 @@ import { utils } from "../auth";
 import passport from "passport";
 import { ROLES } from '../user/user.roles'
 import { UserModel } from '../user/user.model'
+const asyncModule = require('async');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 const sgMail = require('@sendgrid/mail');
@@ -20,7 +21,9 @@ router.get('/', async (req, res) => {
 // @router   POST /api/mytools/add
 // @desc     Add tools user
 // @access   Private
-router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+router.post('/add',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     let data = new Data();
     const toolCreator = req.body.toolCreator;
@@ -59,7 +62,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 
           // send email to Admin when new tool or project has been added
           const emailRecipients = await UserModel.find({ role: 'Admin' });
-          const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
+          const toolLink = process.env.homeURL + '/tool/' + data.id + '/' + data.name
 
           sgMail.setApiKey(process.env.SENDGRID_API_KEY);
           for (let emailRecipient of emailRecipients) {
@@ -79,7 +82,8 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
           return res.json({ success: true, id: data.id });
         }
       });
-    });
+    })
+    storeNotificationsForAuthors(data, toolCreator);
   });
 
 /**
@@ -129,6 +133,7 @@ router.put(
       }).then((res) => {
         if (type === 'tool') {
           sendEmailNotificationToAuthors(data, toolCreator);
+          storeNotificationsForAuthors(data, toolCreator);
         }
         return res.json({ success: true });
       })
@@ -164,6 +169,32 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
         subject: `${toolOwner.name} added you as an author of the tool ${tool.name}`,
         html: `${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`
       };
-      await sgMail.send(msg);
+      // await sgMail.send(msg);
     });
+}
+
+async function storeNotificationsForAuthors(tool, toolOwner) {
+  //store messages to alert a user has been added as an author
+  const toolLink = process.env.homeURL + '/tool/' + tool.id
+
+  //normal user
+  tool.authors.push(0);
+  asyncModule.eachSeries(tool.authors, async (author) => {
+
+    let message = new MessagesModel();
+    message.messageType = 'author';
+    message.messageSent = Date.now();
+    message.messageDescription = `${toolOwner.name} added you as an author of the ${tool.type} ${tool.name} <br /><br />  ${toolLink}`
+    message.isRead = false;
+    message.messageObjectID = tool.id;
+    message.messageID = parseInt(Math.random().toString().replace('0.', ''));
+    message.messageTo = author;
+
+    await message.save(async (err) => {
+      if (err) {
+        return new Error({ success: false, error: err });
+      }
+      return { success: true, id: message.messageID };
+    });
+  });
 }

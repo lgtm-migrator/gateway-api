@@ -6,6 +6,8 @@ import passport from "passport";
 import { utils } from "../auth";
 import { findPostsByTopicId } from "../discourse/discourse.service";
 import { UserModel } from '../user/user.model'
+import { MessagesModel } from '../message/message.model'
+
 const sgMail = require('@sendgrid/mail');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
@@ -70,7 +72,7 @@ router.post(
       if (err) {
         return res.json({ success: false, error: err })
       } else {
-        await sendEmailNotifications(reviews);
+
         return res.json({ success: true, id: reviews.reviewID });
       };
     });
@@ -116,7 +118,13 @@ router.post(
         activeflag: activeflag
       }, (err) => {
         if (err) return res.json({ success: false, error: err });
+
         return res.json({ success: true });
+      }).then(async (res) => {
+        const review = await Reviews.findOne({ reviewID: id });
+
+        await storeNotificationMessages(review);
+        await sendEmailNotifications(review);
       });
   });
 
@@ -165,6 +173,40 @@ router.get('/', async (req, res) => {
 });
 
 module.exports = router
+
+async function storeNotificationMessages(review) {
+
+  const tool = await Data.findOne({ id: review.toolID });
+  //Get reviewer name
+  const reviewer = await UserModel.findOne({ id: review.reviewerID });
+  const toolLink = process.env.homeURL + '/tool/' + review.toolID + '/' + tool.name
+  //admins
+  let message = new MessagesModel();
+  message.messageID = parseInt(Math.random().toString().replace('0.', ''));
+  message.messageTo = 0;
+  message.messageObjectID = review.toolID;
+  message.messageType = 'review';
+  message.messageSent = Date.now();
+  message.isRead = false;
+  message.messageDescription = `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} ${toolLink}`
+
+  await message.save(async (err) => {
+    if (err) {
+      return new Error({ success: false, error: err });
+    }
+  })
+  //authors
+  const authors = tool.authors;
+  authors.forEach(async (author) => {
+    message.messageTo = author;
+    await message.save(async (err) => {
+      if (err) {
+        return new Error({ success: false, error: err });
+      }
+    });
+  });
+  return { success: true, id: message.messageID };
+}
 
 async function sendEmailNotifications(review) {
   //Get email recipients 
