@@ -75,8 +75,8 @@ router.get('/:personID',
   async (req, res) => {
     var idString = "";
 
-    if (req.query.id) {
-      idString = parseInt(req.query.id);
+    if (req.params.personID) {
+      idString = parseInt(req.params.personID);
     }
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ messageTo: idString }] } },
