@@ -18,8 +18,9 @@ require('dotenv').config();
 const API_PORT = process.env.PORT || 3001;
 const session = require("express-session");
 var app = express();
+
 app.use(cors({
-  origin: [process.env.homeURL],
+  origin: [process.env.homeURL.split(',')],
   credentials: true
 }));
 const router = express.Router();
