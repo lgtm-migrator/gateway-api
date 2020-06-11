@@ -65,50 +65,73 @@ const strategy = app => {
         })
     )
 
-    app.get(
-        `/auth/linkedin/callback`,
-        passport.authenticate('linkedin', { failureRedirect: '/login' }),
-        async (req, res) => {
-            var redirect = '/account';
+    app.get('/auth/linkedin/callback', (req, res, next) => {
+        passport.authenticate('linkedin', (err, user, info) => {
+            if (err || !user) {
+                // failureRedirect
+                var redirect = '/';
+                let returnPage = null;
 
-            let returnPage = null;
-            let queryStringParsed = null;
-            if (req.param.returnpage) {
-                returnPage = Url.parse(req.param.returnpage);
-                redirect = returnPage.path;
-                queryStringParsed = queryString.parse(returnPage.query);
-            }
-
-            let [profileErr, profile] = await to(getObjectById(req.user.id))
-            
-            if (!profile) {
-                await to(updateRedirectURL({id: req.user.id, redirectURL: redirect}))
-                return res.redirect(process.env.homeURL+'/completeRegistration/'+req.user.id)
-            }
-
-            if (req.param.returnpage) {
-                delete req.param.returnpage;
-            }
-
-            let redirectUrl = process.env.homeURL + redirect;
-            
-            if (queryStringParsed && queryStringParsed.sso && queryStringParsed.sig) {
-                try {
-                    redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
-                } catch (err) {
-                    console.error(err);
-                    return res.status(500).send('Error authenticating the user.');
+                if (req.param.returnpage) {
+                    returnPage = Url.parse(req.param.returnpage);
+                    redirect = returnPage.path;
+                    delete req.param.returnpage;
                 }
+                
+                let redirectUrl = process.env.homeURL + redirect;
+
+                return res
+                    .status(200)
+                    .redirect(redirectUrl)
             }
-            
-            return res
-                .status(200)
-                .cookie('jwt', signToken(req.user), {
-                    httpOnly: true
-                })
-                .redirect(redirectUrl)
-        }
-    )
+
+            req.login(user, async (err) => {
+                if (err) {
+                    return next(err);
+                }
+
+                var redirect = '/';
+
+                let returnPage = null;
+                let queryStringParsed = null;
+                if (req.param.returnpage) {
+                    returnPage = Url.parse(req.param.returnpage);
+                    redirect = returnPage.path;
+                    queryStringParsed = queryString.parse(returnPage.query);
+                }
+
+                let [profileErr, profile] = await to(getObjectById(req.user.id))
+
+                if (!profile) {
+                    await to(updateRedirectURL({ id: req.user.id, redirectURL: redirect }))
+                    return res.redirect(process.env.homeURL + '/completeRegistration/' + req.user.id)
+                }
+
+                if (req.param.returnpage) {
+                    delete req.param.returnpage;
+                }
+
+                let redirectUrl = process.env.homeURL + redirect;
+
+                if (queryStringParsed && queryStringParsed.sso && queryStringParsed.sig) {
+                    try {
+                        redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
+                    } catch (err) {
+                        console.error(err);
+                        return res.status(500).send('Error authenticating the user.');
+                    }
+                }
+
+                return res
+                    .status(200)
+                    .cookie('jwt', signToken(req.user), {
+                        httpOnly: true
+                    })
+                    .redirect(redirectUrl)
+
+            });
+        })(req, res, next);
+    });
 
     return app
 }
