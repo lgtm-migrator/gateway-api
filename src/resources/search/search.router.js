@@ -20,7 +20,14 @@ router.get('/', async (req, res) => {
 
     if (searchString.length > 0) {
         searchQuery["$and"].push({ $text: { $search: searchString } });
-        datasetSearchString = '"' + searchString.split(' ').join('""') + '"';
+        //The following code is a workaround for the way search works TODO:work with MDC to improve API
+        if (searchString.match(/"/)) {
+            //user has added quotes so pass string through
+            datasetSearchString = searchString;
+        } else {
+            //no quotes so lets a proximiy search
+            datasetSearchString = '"'+searchString+'"~25';
+        }
     }
     else {
         searchAll = true;
