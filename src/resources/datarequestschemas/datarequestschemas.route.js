@@ -1,7 +1,8 @@
 import express from 'express';
-import axios from 'axios';
 import { DataRequestSchemaModel } from './datarequestschemas.model';
-import { find } from 'async';
+import passport from 'passport';
+import { utils } from '../auth';
+import { ROLES } from '../user/user.roles';
 
 const router = express.Router();
 
