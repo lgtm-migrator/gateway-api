@@ -143,6 +143,53 @@ paths:
       responses: 
         '200':
           description: OK
+
+  /v1/data-access-request/{datasetID}:
+    get:
+      summary: Returns access request template.
+      security:
+        - cookieAuth: []
+      tags:
+        - Data Access Request
+      parameters:
+        - in: path
+          name: datasetID
+          required: true
+          description: The ID of the datset
+          schema:
+            type : string
+            example: 6efbc62f-6ebb-4f18-959b-1ec6fd0cc6fb
+      responses: 
+        '200':
+          description: OK 
+
+  /v1/data-access-request/{id}:
+    patch:
+      summary: Update a users question answers for access request.
+      security:
+        - cookieAuth: []
+      tags:
+        - Data Access Request
+      parameters:
+        - in: path
+          name: datasetID
+          required: true
+          description: The ID of the datset
+          schema:
+            type : string
+            example: 5ee249426136805fbf094eef
+        - in: body 
+          name: questionAnswers
+          description: Answers object
+          schema: 
+            type: object
+            properties:
+              questionAnswers:
+                type: string
+                example: '{firstName: Roger}'
+      responses: 
+        '200':
+          description: OK 
         
   /v1/person/{personID}:
     get:
