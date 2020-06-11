@@ -78,7 +78,7 @@ const strategy = app => {
                     delete req.param.returnpage;
                 }
                 
-                let redirectUrl = process.env.homeURL + redirect;
+                let redirectUrl = process.env.homeURL;
 
                 return res
                     .status(200)
