@@ -133,8 +133,10 @@ router.get(
     const { id, activeflag } = req.body;
   
     try {
-      let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag }});
-      if (!tool) {s
+      await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag }});
+      const tool = await Data.findOne({ id: id });
+        
+      if (!tool) {
         return res.status(400).json({ success: false, error: 'Tool not found' });
       }
 

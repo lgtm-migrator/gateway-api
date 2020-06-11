@@ -1,5 +1,6 @@
 import express from 'express'
 import { Data } from '../tool/data.model'
+import { findPostsByTopicId } from "../discourse/discourse.service";
 
 const router = express.Router();
 
@@ -13,9 +14,15 @@ router.get('/:projectID', async (req, res) => {
         { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
     ]);
-    q.exec((err, data) => {
+    q.exec(async (err, data) => {
         if (err) return res.json({ success: false, error: err });
-        return res.json({ success: true, data: data });
+
+        let discourseTopic = {};
+        if (data[0].discourseTopicId) {
+          discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
+        }
+
+        return res.json({ success: true, data: data, discourseTopic: discourseTopic });
     });
 });
 
