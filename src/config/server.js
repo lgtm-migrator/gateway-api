@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
@@ -7,21 +7,23 @@ const swaggerDocument = YAML.load('./swagger.yaml');
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import logger from 'morgan';
-import passport from "passport";
-import cookieParser from "cookie-parser";
+import passport from 'passport';
+import cookieParser from 'cookie-parser';
 
-import { connectToDatabase } from "./db"
-import { initialiseAuthentication } from "../resources/auth";
+import { connectToDatabase } from './db';
+import { initialiseAuthentication } from '../resources/auth';
 
 require('dotenv').config();
 
 const API_PORT = process.env.PORT || 3001;
-const session = require("express-session");
+const session = require('express-session');
 var app = express();
-app.use(cors({
-  origin: [process.env.homeURL],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [process.env.homeURL],
+    credentials: true,
+  })
+);
 const router = express.Router();
 
 connectToDatabase();
@@ -39,7 +41,7 @@ app.use(
   session({
     secret: process.env.JWTSecret,
     resave: false,
-    saveUninitialized: true
+    saveUninitialized: true,
   })
 );
 
@@ -77,6 +79,7 @@ app.use('/api/v1/datasets/relatedobjects', require('../resources/dataset/dataset
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
 
 app.use('/api/v1/dar', require('../resources/datarequests/datarequests.route'));
+app.use('/api/v1/datarequestschemas', require('../resources/datarequestschemas/datarequestschemas.route'));
 
 initialiseAuthentication(app);
 
