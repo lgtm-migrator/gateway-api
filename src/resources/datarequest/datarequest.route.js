@@ -34,7 +34,7 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
             userId,
             dataSetId,
             jsonSchema,
-            questionAnswers
+            questionAnswers: "{}"
          });
          // 3. save record
          await record.save();
