@@ -7,7 +7,7 @@ const router = express.Router();
 
 // @route   GET api/v1/data-access-request/:datasetId
 // @desc    GET Access request for user
-// @access  Public
+// @access  Private
 router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
    try {
       let data = {};
@@ -34,7 +34,8 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
             userId,
             dataSetId,
             jsonSchema,
-            questionAnswers: "{}"
+            questionAnswers: "{}",
+            applicationStatus: "inProgress"
          });
          // 3. save record
          await record.save();
@@ -53,10 +54,9 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
 
 // @route   PATCH api/v1/data-access-request/:id
 // @desc    Update request record answers
-// @access  Public
-router.patch('/:id', async (req, res) => {
+// @access  Private
+router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
    try {
-      console.log(req.body);
       // 1. id is the _id object in mongoo.db not the generated id or dataset Id
       const { params: { id }} = req;
       // 2. find data request by _id and update via body
@@ -76,5 +76,32 @@ router.patch('/:id', async (req, res) => {
       res.status(500).json({status: 'error', message: err});
    };
 });
+
+// @route   POST api/v1/data-access-request/:id
+// @desc    Update request record
+// @access  Private
+router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
+   // 1. id is the _id object in mongoo.db not the generated id or dataset Id
+   let {params: {id}} = req;
+   try {
+      let accessRequest = await DataRequestModel.findOne({_id: id});
+      console.log(`1 ${id}`);
+
+      // console.log(`1A ${accessRequest}`);
+
+      if (accessRequest) {
+         let application = await DataRequestModel.findOneAndUpdate({_id: id},  { $set: {applicationStatus: 'submitted'} }, {new: true});
+         console.log(`1B ${application}`);
+
+         return res.status(200).json({status: 'success', data: application});
+      }
+   }
+   catch(err) {
+      console.log(err.message);
+      res.status(500).json({status: 'error', message: err});
+   }
+})
+
+
 
 module.exports = router;

@@ -5,6 +5,10 @@ const DataRequestSchema = new Schema({
   version: Number,
   userId: Number,
   dataSetId: String,
+  applicationStatus: {
+    type: String,
+    default: "inProgress"
+  },
   jsonSchema: {
     type: String,
     default: "{}"
