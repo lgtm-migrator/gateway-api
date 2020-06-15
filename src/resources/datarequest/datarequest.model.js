@@ -1,7 +1,6 @@
 import { model, Schema } from 'mongoose';
 
 const DataRequestSchema = new Schema({
-  id: String,
   version: Number,
   userId: Number,
   dataSetId: String,

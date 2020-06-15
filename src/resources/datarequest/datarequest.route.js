@@ -85,14 +85,8 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
    let {params: {id}} = req;
    try {
       let accessRequest = await DataRequestModel.findOne({_id: id});
-      console.log(`1 ${id}`);
-
-      // console.log(`1A ${accessRequest}`);
-
       if (accessRequest) {
          let application = await DataRequestModel.findOneAndUpdate({_id: id},  { $set: {applicationStatus: 'submitted'} }, {new: true});
-         console.log(`1B ${application}`);
-
          return res.status(200).json({status: 'success', data: application});
       }
    }
