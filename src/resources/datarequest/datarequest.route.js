@@ -7,16 +7,19 @@ const router = express.Router();
 
 // @route   GET api/v1/data-access-request/:datasetId
 // @desc    GET Access request for user
-// @access  Public
+// @access  Private
 router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
    try {
       let data = {};
       // 1. Get dataSetId from params
       let {params: {dataSetId}} = req;
+      console.log(req.params);
       // 2. Get the userId
       let {id: userId} = req.user;
+      console.log(req.user);
       // 3. Find the matching record 
       const accessRecord = await DataRequestModel.findOne({dataSetId, userId});
+      console.log(accessRecord);
       // 4. if no record create it and pass back
       if (!accessRecord) {
          // 1. GET the template from the custodian
@@ -34,7 +37,8 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
             userId,
             dataSetId,
             jsonSchema,
-            questionAnswers: "{}"
+            questionAnswers: "{}",
+            applicationStatus: "inProgress"
          });
          // 3. save record
          await record.save();
@@ -43,6 +47,7 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
        } else {
          data = {...accessRecord._doc};
        }
+       console.log(data);
       return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers)}});
    }
    catch (err) {
@@ -53,10 +58,9 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
 
 // @route   PATCH api/v1/data-access-request/:id
 // @desc    Update request record answers
-// @access  Public
-router.patch('/:id', async (req, res) => {
+// @access  Private
+router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
    try {
-      console.log(req.body);
       // 1. id is the _id object in mongoo.db not the generated id or dataset Id
       const { params: { id }} = req;
       // 2. find data request by _id and update via body
@@ -76,5 +80,26 @@ router.patch('/:id', async (req, res) => {
       res.status(500).json({status: 'error', message: err});
    };
 });
+
+// @route   POST api/v1/data-access-request/:id
+// @desc    Update request record
+// @access  Private
+router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
+   // 1. id is the _id object in mongoo.db not the generated id or dataset Id
+   let {params: {id}} = req;
+   try {
+      let accessRequest = await DataRequestModel.findOne({_id: id});
+      if (accessRequest) {
+         let application = await DataRequestModel.findOneAndUpdate({_id: id},  { $set: {applicationStatus: 'submitted'} }, {new: true});
+         return res.status(200).json({status: 'success', data: application});
+      }
+   }
+   catch(err) {
+      console.log(err.message);
+      res.status(500).json({status: 'error', message: err});
+   }
+})
+
+
 
 module.exports = router;
