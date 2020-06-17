@@ -57,7 +57,7 @@ router.get(
     var q = Data.aggregate([
       { $match: { $and: [{ type: typeString }] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-    ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    ]);//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
     q.exec((err, data) => {
       if (err) return res.json({ success: false, error: err });
       result = res.json({ success: true, data: data });
@@ -99,7 +99,7 @@ router.get(
     var q = Data.aggregate([
       { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-    ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    ]);//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
     q.exec((err, data) => {
       if (err) return res.json({ success: false, error: err });
       result = res.json({ success: true, data: data });
@@ -133,12 +133,12 @@ router.put(
       }
       await createMessage(0, id, tool.name, tool.type, activeflag);
 
-      await createDiscourseTopic(tool);
+      if (!tool.discourseTopicId && tool.activeflag === 'active') {
+        await createDiscourseTopic(tool);
+      }
       await sendEmailNotifications(tool, activeflag);
 
-
       return res.json({ success: true });
-
     } catch (err) {
       console.log(err);
       return res.status(500).json({ success: false, error: err });

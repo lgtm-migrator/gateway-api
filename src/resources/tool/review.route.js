@@ -19,20 +19,12 @@ router.get(
     async (req, res) => {
   
     var r = Reviews.aggregate([
-      { $match: { $and: [{ activeflag: 'review' }] } },
       { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
       { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
     ]);
     r.exec((err, data) => {
-      var a = Reviews.aggregate([
-        { $match: { $and: [{ activeflag: 'active' }] } },
-        { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-        { $lookup: { from: "tools", localField: "toolID", foreignField: "id", as: "tool" } }
-      ]);
-      a.exec((err, allReviews) => {
         if (err) return res.json({ success: false, error: err });
-        return res.json({ success: true, data: data, allReviews: allReviews });
-      });
+        return res.json({ success: true, data: data });
     });
   });
   
