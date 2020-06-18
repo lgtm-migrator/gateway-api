@@ -18,12 +18,23 @@ require('dotenv').config();
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
 var app = express();
+
+var domains = [process.env.homeURL];
+
+var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
+var arr = rx.exec(process.env.homeURL);
+
+if (Array.isArray(arr) && arr.length > 0) {
+    domains.push('https://' + arr[2]);
+}
+
 app.use(
   cors({
-    origin: [process.env.homeURL],
+    origin: domains,
     credentials: true,
   })
 );
+
 const router = express.Router();
 
 connectToDatabase();
