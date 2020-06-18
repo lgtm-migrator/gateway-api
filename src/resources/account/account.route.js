@@ -133,12 +133,12 @@ router.put(
       }
       await createMessage(0, id, tool.name, tool.type, activeflag);
 
-      await createDiscourseTopic(tool);
+      if (!tool.discourseTopicId && tool.activeflag === 'active') {
+        await createDiscourseTopic(tool);
+      }
       await sendEmailNotifications(tool, activeflag);
 
-
       return res.json({ success: true });
-
     } catch (err) {
       console.log(err);
       return res.status(500).json({ success: false, error: err });
