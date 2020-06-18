@@ -2,7 +2,7 @@ import express from 'express';
 import passport from 'passport';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
-import { MessagesModel } from '../message/message.model';
+const notificationBuilder = require('../utilities/notificationBuilder');
 
 const router = express.Router();
 
@@ -16,10 +16,13 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
     let {
       params: { dataSetId },
     } = req;
+    console.log(req.params);
     // 2. Get the userId
     let { id: userId } = req.user;
+    console.log(req.user);
     // 3. Find the matching record
     const accessRecord = await DataRequestModel.findOne({ dataSetId, userId });
+    console.log(accessRecord);
     // 4. if no record create it and pass back
     if (!accessRecord) {
       // 1. GET the template from the custodian
@@ -45,6 +48,7 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
     } else {
       data = { ...accessRecord._doc };
     }
+    console.log(data);
     return res.status(200).json({
       status: 'success',
       data: { ...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers) },
@@ -92,9 +96,15 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
   } = req;
   try {
     let accessRequest = await DataRequestModel.findOne({ _id: id });
+
     if (accessRequest) {
       let application = await DataRequestModel.findOneAndUpdate({ _id: id }, { $set: { applicationStatus: 'submitted' } }, { new: true });
-      await triggerNotificationMessage();
+      await notificationBuilder.triggerNotificationMessage(
+        application.userId,
+        `You have successfully submitted a Data Access Request for ${application.dataSetId}`,
+        'data access request',
+        application.dataSetId
+      );
       return res.status(200).json({ status: 'success', data: application });
     }
   } catch (err) {
@@ -104,26 +114,3 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
 });
 
 module.exports = router;
-
-async function triggerNotificationMessage() {
-  let messageRecipients = [0, req.userId];
-
-  asyncModule.eachSeries(messageRecipients, async (recipient) => {
-    let message = new MessagesModel();
-    message.messageType = 'data access request';
-    message.messageSent = Date.now();
-    message.messageDescription = `You have successfully submitted a Data Access Request`;
-    message.isRead = false;
-    message.messageObjectID = null;
-    message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-
-    message.messageTo = recipient;
-
-    await message.save(async (err) => {
-      if (err) {
-        return new Error({ success: false, error: err });
-      }
-      return { success: true, id: message.messageID };
-    });
-  });
-}
