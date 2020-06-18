@@ -2,6 +2,7 @@ import express from 'express';
 import passport from 'passport';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
+const notificationBuilder = require('../utilities/notificationBuilder');
 
 const router = express.Router();
 
@@ -60,46 +61,54 @@ router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
 // @desc    Update request record answers
 // @access  Private
 router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
-   try {
-      // 1. id is the _id object in mongoo.db not the generated id or dataset Id
-      const { params: { id }} = req;
-      // 2. find data request by _id and update via body
-      let accessRequestRecord = await DataRequestModel.findByIdAndUpdate(id, req.body, { new: true });
-      // 3. check access record
-      if (!accessRequestRecord) {
-         return res.status(400).json({ status: 'error', message: 'Data Access Request not found.' });
-      }
-      // 4. return new data object
-      return res.status(200).json({
-         status: 'success', 
-         data: {...accessRequestRecord._doc, questionAnswers: JSON.parse(accessRequestRecord.questionAnswers)}
-      });
-   }
-   catch (err) {
-      console.log(err.message);
-      res.status(500).json({status: 'error', message: err});
-   };
+  try {
+    // 1. id is the _id object in mongoo.db not the generated id or dataset Id
+    const {
+      params: { id },
+    } = req;
+    // 2. find data request by _id and update via body
+    let accessRequestRecord = await DataRequestModel.findByIdAndUpdate(id, req.body, { new: true });
+    // 3. check access record
+    if (!accessRequestRecord) {
+      return res.status(400).json({ status: 'error', message: 'Data Access Request not found.' });
+    }
+
+    // 4. return new data object
+    return res.status(200).json({
+      status: 'success',
+      data: { ...accessRequestRecord._doc, questionAnswers: JSON.parse(accessRequestRecord.questionAnswers) },
+    });
+  } catch (err) {
+    console.log(err.message);
+    res.status(500).json({ status: 'error', message: err });
+  }
 });
 
 // @route   POST api/v1/data-access-request/:id
 // @desc    Update request record
 // @access  Private
 router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
-   // 1. id is the _id object in mongoo.db not the generated id or dataset Id
-   let {params: {id}} = req;
-   try {
-      let accessRequest = await DataRequestModel.findOne({_id: id});
-      if (accessRequest) {
-         let application = await DataRequestModel.findOneAndUpdate({_id: id},  { $set: {applicationStatus: 'submitted'} }, {new: true});
-         return res.status(200).json({status: 'success', data: application});
-      }
-   }
-   catch(err) {
-      console.log(err.message);
-      res.status(500).json({status: 'error', message: err});
-   }
-})
+  // 1. id is the _id object in mongoo.db not the generated id or dataset Id
+  let {
+    params: { id },
+  } = req;
+  try {
+    let accessRequest = await DataRequestModel.findOne({ _id: id });
 
-
+    if (accessRequest) {
+      let application = await DataRequestModel.findOneAndUpdate({ _id: id }, { $set: { applicationStatus: 'submitted' } }, { new: true });
+      await notificationBuilder.triggerNotificationMessage(
+        application.userId,
+        `You have successfully submitted a Data Access Request for ${application.dataSetId}`,
+        'data access request',
+        application.dataSetId
+      );
+      return res.status(200).json({ status: 'success', data: application });
+    }
+  } catch (err) {
+    console.log(err.message);
+    res.status(500).json({ status: 'error', message: err });
+  }
+});
 
 module.exports = router;
