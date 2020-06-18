@@ -10,15 +10,9 @@ const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 const sgMail = require('@sendgrid/mail');
 
-
 const router = express.Router()
 
-router.get('/', async (req, res) => {
-  console.log("Here!")
-  res.status(200).json({ hello: 'Hello, from the back-end world!' })
-});
-
-// @router   POST /api/mytools/add
+// @router   POST /api/v1/mytools/add
 // @desc     Add tools user
 // @access   Private
 router.post('/add',
@@ -28,7 +22,7 @@ router.post('/add',
     let data = new Data();
     const toolCreator = req.body.toolCreator;
 
-    const { type, name, link, description, categories, license, authors, tags, toolids, datasetids } = req.body;
+    const { type, name, link, description, categories, license, authors, tags, relatedObjects } = req.body;
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
     data.name = name;
@@ -42,11 +36,9 @@ router.post('/add',
     data.tags.features = tags.features;
     data.tags.topics = tags.topics;
     data.activeflag = 'review';
-    data.toolids = toolids;
-    data.datasetids = datasetids;
-    // data.updatedon = new Date();
     data.updatedon = Date.now();
-
+    data.relatedObjects = relatedObjects;
+    
     data.save((err) => {
       let message = new MessagesModel();
       message.messageID = parseInt(Math.random().toString().replace('0.', ''));
@@ -101,7 +93,7 @@ router.put(
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     const toolCreator = req.body.toolCreator;
-    const { id, type, name, link, description, categories, license, authors, toolids, datasetids, tags } = req.body;
+    const { id, type, name, link, description, categories, license, authors, tags, relatedObjects } = req.body;
     let data = {
       id: id,
       name: name,
@@ -125,8 +117,7 @@ router.put(
           features: tags.features,
           topics: tags.topics
         },
-        toolids: toolids,
-        datasetids: datasetids
+        relatedObjects: relatedObjects
       }, (err) => {
         if (err) {
           return res.json({ success: false, error: err });

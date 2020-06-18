@@ -57,7 +57,7 @@ router.get(
     var q = Data.aggregate([
       { $match: { $and: [{ type: typeString }] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-    ]);//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
     q.exec((err, data) => {
       if (err) return res.json({ success: false, error: err });
       result = res.json({ success: true, data: data });
@@ -99,7 +99,7 @@ router.get(
     var q = Data.aggregate([
       { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-    ]);//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
     q.exec((err, data) => {
       if (err) return res.json({ success: false, error: err });
       result = res.json({ success: true, data: data });

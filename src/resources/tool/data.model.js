@@ -32,7 +32,12 @@ const DataSchema = new Schema(
     discourseTopicId: Number,
     datasetids: [String],
     emailNotifications: Boolean,
-    terms: Boolean
+    terms: Boolean,
+    relatedObjects: [{
+        objectId: String,
+        reason: String,
+        objectType: String
+    }]
   },
   { 
     collection: 'tools',
