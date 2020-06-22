@@ -178,15 +178,17 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
   const toolLink = process.env.homeURL + '/tool/' + tool.id
 
   //normal user
-  tool.authors.push(0);
-  asyncModule.eachSeries(tool.authors, async (author) => {
+  var toolCopy = JSON.parse(JSON.stringify(tool));
+  
+  toolCopy.authors.push(0);
+  asyncModule.eachSeries(toolCopy.authors, async (author) => {
 
     let message = new MessagesModel();
     message.messageType = 'author';
     message.messageSent = Date.now();
-    message.messageDescription = `${toolOwner.name} added you as an author of the ${tool.type} ${tool.name}`
+    message.messageDescription = `${toolOwner.name} added you as an author of the ${toolCopy.type} ${toolCopy.name}`
     message.isRead = false;
-    message.messageObjectID = tool.id;
+    message.messageObjectID = toolCopy.id;
     message.messageID = parseInt(Math.random().toString().replace('0.', ''));
     message.messageTo = author;
 
