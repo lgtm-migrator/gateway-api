@@ -33,6 +33,8 @@ const DataSchema = new Schema(
     datasetids: [String],
     emailNotifications: Boolean,
     terms: Boolean,
+    journal: String,
+    journalYear: Number,
     relatedObjects: [{
         objectId: String,
         reason: String,
