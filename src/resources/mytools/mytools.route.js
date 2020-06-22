@@ -22,15 +22,18 @@ router.post('/add',
     let data = new Data();
     const toolCreator = req.body.toolCreator;
 
-    const { type, name, link, description, categories, license, authors, tags, relatedObjects } = req.body;
+    const { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
     data.name = name;
     data.link = link;
+    data.journal = journal;
+    data.journalYear = journalYear;
     data.description = description;
-    data.categories.category = categories.category;
-    data.categories.programmingLanguage = categories.programmingLanguage;
-    data.categories.programmingLanguageVersion = categories.programmingLanguageVersion;
+    console.log(req.body)
+    if (categories && typeof categories !== undefined) data.categories.category = categories.category;
+    if (categories && typeof categories !== undefined) data.categories.programmingLanguage = categories.programmingLanguage;
+    if (categories && typeof categories !== undefined) data.categories.programmingLanguageVersion = categories.programmingLanguageVersion;
     data.license = license;
     data.authors = authors;
     data.tags.features = tags.features;
@@ -93,7 +96,10 @@ router.put(
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     const toolCreator = req.body.toolCreator;
-    const { id, type, name, link, description, categories, license, authors, tags, relatedObjects } = req.body;
+    var { id, type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
+    
+    if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
+    
     let data = {
       id: id,
       name: name,
@@ -106,6 +112,8 @@ router.put(
         name: name,
         link: link,
         description: description,
+        journal: journal,
+        journalYear: journalYear,
         categories: {
           category: categories.category,
           programmingLanguage: categories.programmingLanguage,
@@ -122,7 +130,7 @@ router.put(
         if (err) {
           return res.json({ success: false, error: err });
         }
-      }).then((res) => {
+      }).then(() => {
         if (type === 'tool') {
           sendEmailNotificationToAuthors(data, toolCreator);
           storeNotificationsForAuthors(data, toolCreator);

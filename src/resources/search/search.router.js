@@ -38,41 +38,47 @@ router.get('/', async (req, res) => {
         getDatasetResult(datasetSearchString, getDatasetFilters(req)),
         getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool')),
         getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project')),
+        getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper')),
         getObjectResult('person', searchAll, searchQuery),
     ]).then((values) => {
         var datasetCount = values[0].results.length || 0;
         var toolCount = values[1].length || 0;
         var projectCount = values[2].length || 0;
-        var personCount = values[3].length || 0;
+        var paperCount = values[3].length || 0;
+        var personCount = values[4].length || 0;
 
         let recordSearchData = new RecordSearchData();
         recordSearchData.searched = searchString;
         recordSearchData.returned.dataset = datasetCount;
         recordSearchData.returned.tool = toolCount;
         recordSearchData.returned.project = projectCount;
+        recordSearchData.returned.paper = paperCount;
         recordSearchData.returned.person = personCount;
         recordSearchData.datesearched = Date.now();
         recordSearchData.save((err) => { });
 
         var filterOptions = getFilterOptions(values)
-        var summary = { datasets: datasetCount, tools: toolCount, projects: projectCount, persons: personCount }
+        var summary = { datasets: datasetCount, tools: toolCount, projects: projectCount, papers: paperCount, persons: personCount }
         
         var datasetIndex = req.query.datasetIndex || 0;
         var toolIndex = req.query.toolIndex || 0;
         var projectIndex = req.query.projectIndex || 0;
+        var paperIndex = req.query.paperIndex || 0;
         var personIndex = req.query.personIndex || 0;
         var maxResults = req.query.maxResults || 40;
 
         var datasetList = values[0].results.slice(datasetIndex, (+datasetIndex + +maxResults));
         var toolList = values[1].slice(toolIndex, (+toolIndex + +maxResults));
         var projectList = values[2].slice(projectIndex, (+projectIndex + +maxResults));
-        var personList = values[3].slice(personIndex, (+personIndex + +maxResults));
+        var paperList = values[3].slice(paperIndex, (+paperIndex + +maxResults));
+        var personList = values[4].slice(personIndex, (+personIndex + +maxResults));
 
         return res.json({
             success: true,
             datasetResults: datasetList,
             toolResults: toolList,
             projectResults: projectList,
+            paperResults: paperList,
             personResults: personList,
             filterOptions: filterOptions,
             summary: summary
@@ -215,6 +221,9 @@ function getObjectFilters(searchQueryStart, req, type) {
             }
             searchQuery["$and"].push({ "$or": t });
         }
+    }
+    else if (type === "paper") {
+        //paper filters
     }
     return searchQuery;
 }
