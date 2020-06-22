@@ -70,13 +70,12 @@ describe("Search API", () => {
 
   });
 
-  ['covid','cancer','epilepsy'].forEach(function(searchString) {
+  ['annual district death daily','cancer','epilepsy'].forEach(function(searchString) {
 
     test(`Search for string '${searchString}', first dataset result should contain title or description '${searchString}'`, async () => {
         const response = await testURL.get('/api/v1/search?search='+searchString);
         expect(response.statusCode).toBe(200);
        	let payload = JSON.parse(response.text);
-           
         expect(payload).toHaveProperty('success');
         expect(payload).toHaveProperty('datasetResults');
         expect(payload['datasetResults'].length).toBeGreaterThanOrEqual(1);
