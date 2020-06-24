@@ -26,7 +26,7 @@ router.post('/add',
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
     data.name = name;
-    data.link = link;
+    data.link = validateURL(link); 
     data.journal = journal;
     data.journalYear = journalYear;
     data.description = description;
@@ -199,4 +199,11 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
       return { success: true, id: message.messageID };
     });
   });
+}
+
+function validateURL(link) {
+  if (!/^https?:\/\//i.test(link)) {
+    link = 'http://' + link;
+  }
+  return link;
 }
