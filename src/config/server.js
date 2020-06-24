@@ -72,7 +72,7 @@ app.use('/api/v1/tools', require('../resources/tool/tool.route'));
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
-
+ 
 app.use('/api/v1/stats', require('../resources/stats/stats.router'));
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
@@ -94,6 +94,8 @@ app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
 app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/datarequest.schemas.route'));
 app.use('/api/v1/data-access-request', require('../resources/datarequest/datarequest.route'));
 app.use('/api/v1/dar', require('../resources/datarequests/datarequests.route'));
+
+app.use('/api/v1/collections', require('../resources/collections/collections.route'));
 
 
 initialiseAuthentication(app);

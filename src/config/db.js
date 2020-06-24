@@ -14,7 +14,7 @@ const connectToDatabase = async () => {
       poolSize: 10, // Maintain up to 10 socket connections
       // If not connected, return errors immediately rather than waiting for reconnect
       bufferMaxEntries: 0,
-      useNewUrlParser: true
+      useNewUrlParser: true 
     });
 
     console.log('MongoDB connected...');

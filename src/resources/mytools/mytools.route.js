@@ -19,7 +19,7 @@ router.post('/add',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-    let data = new Data();
+    let data = new Data(); 
     const toolCreator = req.body.toolCreator;
 
     const { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
@@ -28,7 +28,7 @@ router.post('/add',
     data.name = name;
     data.link = link;
     data.journal = journal;
-    data.journalYear = journalYear;
+    data.journalYear = journalYear; 
     data.description = description;
     console.log(req.body)
     if (categories && typeof categories !== undefined) data.categories.category = categories.category;

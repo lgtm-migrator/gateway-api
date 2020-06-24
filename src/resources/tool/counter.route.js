@@ -9,6 +9,6 @@ router.post('/update', async (req, res) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true });
   });
-});
+}); 
 
 module.exports = router;
