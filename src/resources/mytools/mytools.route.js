@@ -7,7 +7,7 @@ import { ROLES } from '../user/user.roles'
 import { UserModel } from '../user/user.model'
 const asyncModule = require('async');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
-
+const urlValidator = require('../utilities/urlValidator');
 const sgMail = require('@sendgrid/mail');
 
 const router = express.Router()
@@ -26,7 +26,7 @@ router.post('/add',
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
     data.name = name;
-    data.link = validateURL(link); 
+    data.link = urlValidator.validateURL(link); 
     data.journal = journal;
     data.journalYear = journalYear;
     data.description = description;
@@ -97,6 +97,7 @@ router.put(
   async (req, res) => {
     const toolCreator = req.body.toolCreator;
     var { id, type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
+    link = urlValidator.validateURL(link); 
     
     if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
     
@@ -199,11 +200,4 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
       return { success: true, id: message.messageID };
     });
   });
-}
-
-function validateURL(link) {
-  if (!/^https?:\/\//i.test(link)) {
-    link = 'http://' + link;
-  }
-  return link;
 }
