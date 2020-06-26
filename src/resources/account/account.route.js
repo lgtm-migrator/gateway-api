@@ -1,6 +1,6 @@
 import express from 'express';
 import passport from "passport";
-import { utils } from "../auth";
+import { utils } from "../auth"; 
 import { ROLES } from '../user/user.roles'
 import { Data } from '../tool/data.model';
 import { MessagesModel } from '../message/message.model';
@@ -116,7 +116,7 @@ router.get(
 router.put(
   '/status',
   passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin),
+  utils.checkIsInRole(ROLES.Admin), 
   async (req, res) => {
     const { id, activeflag } = req.body;
 
