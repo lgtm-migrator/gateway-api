@@ -8,7 +8,7 @@ import { MessagesModel } from '../message/message.model'
 const router = express.Router()
 
 router.get('/numberofunread/admin/:personID',
-  passport.authenticate('jwt'),
+  passport.authenticate('jwt'), 
   utils.checkIsInRole(ROLES.Admin),
   async (req, res) => {
 

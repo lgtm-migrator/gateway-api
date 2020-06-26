@@ -116,7 +116,7 @@ router.get(
 router.put(
   '/status',
   passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin),
+  utils.checkIsInRole(ROLES.Admin), 
   async (req, res) => {
     const { id, activeflag } = req.body;
 

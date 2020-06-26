@@ -7,7 +7,7 @@ const MessageSchema = new Schema({
   messageType: String,
   messageSent: Date,
   isRead: String,
-  messageDescription: String
+  messageDescription: String 
 })
 
 export const MessagesModel = model('Messages', MessageSchema);

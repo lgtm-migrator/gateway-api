@@ -111,7 +111,7 @@ router.post(
   '/review/approve',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin),
-  async (req, res) => {
+  async (req, res) => { 
     const { id, activeflag } = req.body;
     Reviews.findOneAndUpdate({ reviewID: id },
       {
@@ -164,7 +164,7 @@ router.delete(
 
 router.get('/', async (req, res) => {
   //req.params.id is how you get the id from the url
-  var q = Data.find({ type: 'tool' });
+  var q = Data.find({ type: 'tool' }); 
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });

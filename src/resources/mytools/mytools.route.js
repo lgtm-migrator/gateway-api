@@ -20,7 +20,7 @@ router.post('/add',
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     let data = new Data(); 
-    const toolCreator = req.body.toolCreator;
+    const toolCreator = req.body.toolCreator; 
 
     const { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
     data.id = parseInt(Math.random().toString().replace('0.', ''));
@@ -198,5 +198,5 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
       }
       return { success: true, id: message.messageID };
     });
-  });
+  }); 
 }
