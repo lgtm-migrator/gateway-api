@@ -19,29 +19,42 @@ const router = express.Router()
  * Return the details on the tool based on the tool ID.
  */
 router.get('/:toolID', async (req, res) => {
-  var q = Data.aggregate([
-    { $match: { $and: [{ id: parseInt(req.params.toolID) }] } },
-    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-  ]);
-  q.exec((err, data) => {
-    var r = Reviews.aggregate([
-      { $match: { $and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }] } },
-      { $sort: { date: -1 } },
-      { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-      { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
+    var q = Data.aggregate([
+        { $match: { $and: [{ id: parseInt(req.params.toolID) }] } },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
     ]);
-    r.exec(async (err, reviewData) => {
-      if (err) return res.json({ success: false, error: err });
+    q.exec((err, data) => {
+        var p = Data.aggregate([
+            { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.toolID } } }] } },
+        ]);
+        p.exec((err, relatedData) => {
+            relatedData.forEach((dat) => {
+                dat.relatedObjects.forEach((x) => {
+                    if (x.objectId === req.params.toolID && dat.id !== req.params.toolID) {
+                        if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
+                        data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type })
+                    }
+                })
+            });
 
-      let discourseTopic = {};
-      if (data[0].discourseTopicId) {
-        discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
-      }
+            var r = Reviews.aggregate([
+                { $match: { $and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }] } },
+                { $sort: { date: -1 } },
+                { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
+                { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
+            ]);
+            r.exec(async (err, reviewData) => {
+                if (err) return res.json({ success: false, error: err });
 
-      return res.json({ success: true, data: data, reviewData: reviewData, discourseTopic: discourseTopic });
+                let discourseTopic = {};
+                if (data[0].discourseTopicId) {
+                    discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
+                }
+
+                return res.json({ success: true, data: data, reviewData: reviewData, discourseTopic: discourseTopic });
+            });
+        });
     });
-
-  });
 });
 
 /**
