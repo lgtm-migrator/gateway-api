@@ -26,7 +26,7 @@ router.post('/add',
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
     data.name = name;
-    data.link = urlValidator.validateURL(link); 
+    data.link = urlValidator.validateURL(link);  
     data.journal = journal;
     data.journalYear = journalYear; 
     data.description = description;
