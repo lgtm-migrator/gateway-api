@@ -6,7 +6,8 @@ const DataRequestSchema = new Schema({
   dataSetId: String,
   applicationStatus: {
     type: String,
-    default: "inProgress"
+    default: 'inProgress',
+    enum: ['inProgress' , 'submitted', 'accepted']
   },
   jsonSchema: {
     type: String,

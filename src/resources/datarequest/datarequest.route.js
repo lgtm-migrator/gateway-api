@@ -1,7 +1,10 @@
 import express from 'express';
 import passport from 'passport';
+import axios from 'axios';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
+import emailGenerator from '../utilities/emailGenerator.util';
+const sgMail = require('@sendgrid/mail');
 const notificationBuilder = require('../utilities/notificationBuilder');
 
 const router = express.Router();
@@ -88,21 +91,49 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 // @desc    Update request record
 // @access  Private
 router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
+  let metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
   // 1. id is the _id object in mongoo.db not the generated id or dataset Id
-  let {
-    params: { id },
-  } = req;
+  let { params: { id }} = req;
   try {
-    let accessRequest = await DataRequestModel.findOne({ _id: id });
+    const application = await DataRequestModel.findOne({ _id: id });
+    if (application) {
+      // destructure
+      let {questionAnswers, jsonSchema, dataSetId} = application;
+      // parse schema
+      let {pages, questionPanels, questionSets: questions} = JSON.parse(jsonSchema);
+      // parse questionAnswers
+      let answers = JSON.parse(questionAnswers);
+      // GET dataset from metadatacatalogue we need the contactPoint, author and 
+      const response = await axios.get(`${metadataCatalogue}/api/facets/${dataSetId}/profile/uk.ac.hdrukgateway/HdrUkProfilePluginService`);
+      if(!response) {
+        return res.status(400).json({ status: 'error', message: 'No dataset from meta data catalogue.' });
+      }
+      let { firstname, lastname, email } = req.user
+      // DataSet details - if no descsription use abstract
+      let { data: { contactPoint, publisher, description, abstract, title } } = response;
+      // declare recipientTypes, static until otherwise
+      const emailRecipientTypes = ['requester', 'dataCustodian'];
+      // set options
+      let options = {userType: '', userEmail: email, userName: `${firstname} ${lastname}`, custodianEmail: contactPoint, dataSetTitle: title, publisher, description, abstract };
+      // set sendGrid key
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-    if (accessRequest) {
-      let application = await DataRequestModel.findOneAndUpdate({ _id: id }, { $set: { applicationStatus: 'submitted' } }, { new: true });
-      await notificationBuilder.triggerNotificationMessage(
-        application.userId,
-        `You have successfully submitted a Data Access Request for ${application.dataSetId}`,
-        'data access request',
-        application.dataSetId
-      );
+      for (let emailRecipientType of emailRecipientTypes) {
+        let emailTemplate = {};
+
+        options = {...options, userType: emailRecipientType};
+        // build email template
+        emailTemplate = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
+        // send email
+        await sgMail.send(emailTemplate);
+      }
+     
+      application.applicationStatus = 'submitted';
+      // save the application to db
+      await application.save();
+
+      await notificationBuilder.triggerNotificationMessage(application.userId, `You have successfully submitted a Data Access Request for ${application.dataSetId}`,'data access request', application.dataSetId);
+
       return res.status(200).json({ status: 'success', data: application });
     }
   } catch (err) {
