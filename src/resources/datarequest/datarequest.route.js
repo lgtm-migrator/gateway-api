@@ -132,7 +132,7 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
       // save the application to db
       await application.save();
 
-      await notificationBuilder.triggerNotificationMessage(application.userId, `You have successfully submitted a Data Access Request for ${application.dataSetId}`,'data access request', application.dataSetId);
+      await notificationBuilder.triggerNotificationMessage(application.userId, `You have successfully submitted a Data Access Request for ${title}`,'data access request', application.dataSetId);
 
       return res.status(200).json({ status: 'success', data: application });
     }
