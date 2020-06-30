@@ -68,7 +68,7 @@ app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/messages', require('../resources/message/message.route'));
 app.use('/api/v1/reviews', require('../resources/tool/review.route'));
 app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
-app.use('/api/v1/tools', require('../resources/tool/tool.route'));
+app.use('/api/v1/tools', require('../resources/tool/tool.route')); 
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
@@ -79,7 +79,7 @@ app.use('/api/v1/person', require('../resources/person/person.route'));
 
 app.use('/api/v1/mytools', require('../resources/mytools/mytools.route'));
 app.use('/api/v1/project', require('../resources/project/project.route'));
-app.use('/api/v1/paper', require('../resources/paper/paper.route'));
+app.use('/api/v1/paper', require('../resources/paper/paper.route')); 
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/discourse/topic', require('../resources/discourse/discourse.topic.route'));
 
