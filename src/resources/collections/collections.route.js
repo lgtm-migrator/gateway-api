@@ -6,6 +6,7 @@ import { utils } from "../auth";
 import { Collections } from '../collections/collections.model';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model'
+import { getObjectById } from '../tool/data.repository';
 const urlValidator = require('../utilities/urlValidator');
 
 const sgMail = require('@sendgrid/mail'); 
@@ -36,7 +37,7 @@ router.put('/edit',
     var {id, name, description, imageLink, authors, relatedObjects } = req.body;
     imageLink = urlValidator.validateURL(imageLink); 
 
-    Collections.findOneAndUpdate({ id: id },
+    Collections.findOneAndUpdate({ id: id }, 
       {
         name: name,
         description: description,
