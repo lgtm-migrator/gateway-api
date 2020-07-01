@@ -122,6 +122,9 @@ router.put(
   async (req, res) => {
     const { id, activeflag } = req.body;
 
+    // Get the emailNotification status for the current user
+    let {emailNotifications = false} = await getObjectById(req.user.id)
+
     try {
       let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
       if (!tool) {
@@ -138,9 +141,12 @@ router.put(
       if (!tool.discourseTopicId && tool.activeflag === 'active') {
         await createDiscourseTopic(tool);
       }
-      await sendEmailNotifications(tool, activeflag);
+
+      if (emailNotifications)
+        await sendEmailNotifications(tool, activeflag);
 
       return res.json({ success: true });
+      
     } catch (err) {
       console.log(err);
       return res.status(500).json({ success: false, error: err });

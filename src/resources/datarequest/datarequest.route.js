@@ -115,6 +115,7 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
       const emailRecipientTypes = ['requester', 'dataCustodian'];
       // set options
       let options = {userType: '', userEmail: email, userName: `${firstname} ${lastname}`, custodianEmail: contactPoint, dataSetTitle: title, publisher, description, abstract };
+      console.log(options);
       // set sendGrid key
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 

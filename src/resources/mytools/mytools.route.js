@@ -1,5 +1,6 @@
 import express from 'express'
 import { Data } from '../tool/data.model'
+import { getObjectById } from '../tool/data.repository';
 import { MessagesModel } from '../message/message.model'
 import { utils } from "../auth";
 import passport from "passport";
@@ -12,13 +13,17 @@ const sgMail = require('@sendgrid/mail');
 
 const router = express.Router()
 
-// @router   POST /api/v1/mytools/add
+// @router   POST /api/v1F
 // @desc     Add tools user
 // @access   Private
 router.post('/add',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
+    
+    let {emailNotifications = false} = await getObjectById(req.user.id)
+    console.log(emailNotifications);
+
     let data = new Data(); 
     const toolCreator = req.body.toolCreator; 
 
@@ -26,7 +31,7 @@ router.post('/add',
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
     data.name = name;
-    data.link = urlValidator.validateURL(link); 
+    data.link = urlValidator.validateURL(link);  
     data.journal = journal;
     data.journalYear = journalYear; 
     data.description = description;
@@ -99,6 +104,9 @@ router.put(
     var { id, type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
     link = urlValidator.validateURL(link); 
     
+    let {emailNotifications = false} = await getObjectById(req.user.id)
+    console.log(emailNotifications);
+
     if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
     
     let data = {

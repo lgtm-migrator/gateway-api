@@ -126,6 +126,9 @@ router.post(
   utils.checkIsInRole(ROLES.Admin),
   async (req, res) => { 
     const { id, activeflag } = req.body;
+    // Get the emailNotification status for the current user
+    let {emailNotifications = false} = await getObjectById(req.user.id)
+
     Reviews.findOneAndUpdate({ reviewID: id },
       {
         activeflag: activeflag
@@ -137,7 +140,9 @@ router.post(
         const review = await Reviews.findOne({ reviewID: id });
 
         await storeNotificationMessages(review);
-        await sendEmailNotifications(review);
+
+        if(emailNotifications)
+          await sendEmailNotifications(review);
       });
   });
 

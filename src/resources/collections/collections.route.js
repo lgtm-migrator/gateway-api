@@ -7,7 +7,9 @@ import { Collections } from '../collections/collections.model';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model'
 const urlValidator = require('../utilities/urlValidator');
+
 const sgMail = require('@sendgrid/mail'); 
+
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 const router = express.Router()
@@ -15,7 +17,9 @@ const router = express.Router()
 router.get('/:collectionID', async (req, res) => { 
   var q = Collections.aggregate([
     { $match: { $and: [{ id: parseInt(req.params.collectionID) }] } },
+
     { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }  
+
   ]);
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -52,12 +56,15 @@ router.post('/add',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-
     let collections = new Collections();
+
     const collectionCreator = req.body.collectionCreator;
 
-    const {name, description, imageLink, authors, relatedObjects } = req.body; 
-   
+    const {name, description, imageLink, authors, relatedObjects } = req.body;
+
+    // Get the emailNotification status for the current user
+    let {emailNotifications = false} = await getObjectById(req.user.id)
+
     collections.id = parseInt(Math.random().toString().replace('0.', ''));
     collections.name = name;
     collections.description = description;
@@ -73,7 +80,9 @@ router.post('/add',
           });
         }
         await createMessage(0, collections, collections.activeflag, collectionCreator);
-        await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
+
+        if(emailNotifications)
+          await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
       } catch (err) {
         console.log(err);
         // return res.status(500).json({ success: false, error: err });
@@ -178,3 +187,4 @@ router.post('/add',
       await sgMail.send(msg);
     }
   }
+ 
