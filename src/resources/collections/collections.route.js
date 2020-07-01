@@ -6,8 +6,11 @@ import { utils } from "../auth";
 import { Collections } from '../collections/collections.model';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model'
+import { getObjectById } from '../tool/data.repository';
 const urlValidator = require('../utilities/urlValidator');
-const sgMail = require('@sendgrid/mail');
+
+const sgMail = require('@sendgrid/mail'); 
+
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 const router = express.Router()
@@ -15,7 +18,9 @@ const router = express.Router()
 router.get('/:collectionID', async (req, res) => { 
   var q = Collections.aggregate([
     { $match: { $and: [{ id: parseInt(req.params.collectionID) }] } },
-    { $lookup: { from: "collections", localField: "authors", foreignField: "id", as: "persons" } }  
+
+    { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }  
+
   ]);
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -32,22 +37,21 @@ router.put('/edit',
     var {id, name, description, imageLink, authors, relatedObjects } = req.body;
     imageLink = urlValidator.validateURL(imageLink); 
 
-    console.log('req: ' + JSON.stringify(req.body))
-
-    Collections.findOneAndUpdate({ id: id },
+    Collections.findOneAndUpdate({ id: id }, 
       {
         name: name,
         description: description,
         imageLink: imageLink,
-        authors: authors,
+        authors: authors, 
         relatedObjects: relatedObjects
       }, (err) => {
         if(err) {
           return res.json({ success: false, error: err });
         }
-      })    
+      }).then(() => {
+        return res.json({ success: true });
+      })   
   }); 
-
 
 router.post('/add',
   passport.authenticate('jwt'),
@@ -100,11 +104,8 @@ router.post('/add',
   async function createMessage(authorId, collections, activeflag, collectionCreator) {
     let message = new MessagesModel();
     
-    //UPDATE WHEN COLLECTION PAGE IS CREATED AND AVAILABLE TO VIEW
-    // const collectionLink = process.env.homeURL + '/collection/' + collectionId; 
-    const collectionLink = process.env.homeURL; 
+    const collectionLink = process.env.homeURL + '/collection/' + collections.id; 
     const messageRecipients = await UserModel.find({ $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] });
-
     async function saveMessage() { 
       message.messageID = parseInt(Math.random().toString().replace('0.', ''));
       message.messageTo = authorId;
@@ -144,10 +145,7 @@ router.post('/add',
 
     const emailRecipients = await UserModel.find({ $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] });
 
-    //UPDATE WHEN COLLECTION PAGE IS CREATED AND AVAILABLE TO VIEW
-    // const collectionLink = process.env.homeURL + '/collection/' + collections.id + '/' + collections.name
-    const collectionLink = process.env.homeURL;
-
+    const collectionLink = process.env.homeURL + '/collection/' + collections.id;
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     let subject;
     let html;
