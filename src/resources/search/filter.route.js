@@ -11,9 +11,9 @@ router.get('/topic/:type', async (req, res) => {
         if (err) return res.json({ success: false, error: err });
         var tempTopics = [];
         data.map((dat) => {
-            dat.tags.topics.map((topic) => {
+            data.tags ? dat.tags.topics.map((topic) => {
                 topic.length <= 0 ? tempTopics = tempTopics : tempTopics.push(topic.trim());
-            });
+            }) : '' 
         });
 
         const combinedTopics = [];
@@ -66,9 +66,9 @@ router.get('/feature/:type', async (req, res) => {
       if (err) return res.json({ success: false, error: err });
       var tempLanguages = [];
       data.map((dat) => {
-        dat.categories.programmingLanguage.map((language) => {
+        dat.categories.programmingLanguage ? dat.categories.programmingLanguage.map((language) => {
           language.length <= 0 ? tempLanguages=tempLanguages : tempLanguages.push(language.trim());
-        });
+        }) : ''
       });
   
       const combinedLanguages = [];
@@ -91,7 +91,7 @@ router.get('/feature/:type', async (req, res) => {
       if (err) return res.json({ success: false, error: err });
       var tempCategories = [];
       data.map((dat) => {
-        dat.categories.category.length <= 0 ? tempCategories=tempCategories : tempCategories.push(dat.categories.category.trim());
+        !dat.categories.category || dat.categories.category.length <= 0 ? tempCategories=tempCategories : tempCategories.push(dat.categories.category.trim());
       });
   
       const combinedCategories = [];

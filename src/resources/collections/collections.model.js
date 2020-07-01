@@ -10,9 +10,11 @@ const CollectionSchema = new Schema(
     authors: [Number],
     // emailNotifications: Boolean, 
     relatedObjects: [{
-        objectId: String,
+        objectId: String, 
         reason: String,
-        objectType: String
+        objectType: String,
+        user: String,
+        updated: String 
     }],
     activeflag: String
   },

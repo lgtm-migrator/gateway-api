@@ -116,7 +116,7 @@ router.put(
     };
 
     Data.findOneAndUpdate({ id: id },
-      {
+      { 
         type: type,
         name: name,
         link: link,
