@@ -37,13 +37,15 @@ router.put('/edit',
         name: name,
         description: description,
         imageLink: imageLink,
-        authors: authors,
+        authors: authors, 
         relatedObjects: relatedObjects
       }, (err) => {
         if(err) {
           return res.json({ success: false, error: err });
         }
-      })    
+      }).then(() => {
+        return res.json({ success: true });
+      })   
   }); 
 
 router.post('/add',
