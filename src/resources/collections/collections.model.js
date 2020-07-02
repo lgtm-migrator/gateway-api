@@ -22,4 +22,4 @@ const CollectionSchema = new Schema(
   }
 );
 
-export const Collections = model('Collections', CollectionSchema)
+export const Collections = model('Collections', CollectionSchema) 

@@ -1,5 +1,5 @@
 const validateURL = (link) => {
-    if (!/^https?:\/\//i.test(link)) {
+    if (link && !/^https?:\/\//i.test(link)) {
       link = 'https://' + link;
     }
     return link;
