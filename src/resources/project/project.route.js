@@ -3,7 +3,7 @@ import { Data } from '../tool/data.model'
 import { ROLES } from '../user/user.roles'
 import passport from "passport";
 import { utils } from "../auth";
-import {addTool, editTool, deleteTool} from '../tool/data.repository';
+import {addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository';
 
 const router = express.Router();
 
@@ -49,6 +49,59 @@ router.delete('/delete',
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
       await deleteTool(req)
+        .then(response => {
+          return res.json({success: true, response});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
+
+// @router   GET /api/v1/get/admin
+// @desc     Get projects
+// @access   Private
+router.get('/get/admin',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+    async (req, res) => {
+      req.params.type = "project";
+      await getToolsAdmin(req)
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
+
+// @router   GET /api/v1/get/admin
+// @desc     Get projects for an author
+// @access   Private
+router.get('/get',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+    async (req, res) => {
+      req.params.type = "project";
+      await getTools(req)
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
+
+// @router   PUT /api/v1/status
+// @desc     Set project status
+// @access   Private
+router.put('/status',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+    async (req, res) => {
+      await setStatus(req)
         .then(response => {
           return res.json({success: true, response});
         })

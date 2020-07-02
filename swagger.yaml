@@ -794,6 +794,122 @@ paths:
       responses: 
         '200':
           description: OK
+  
+  /v1/tools/get/admin:
+    get:
+      summary: Get tools for admin.
+      security:
+        - cookieAuth: []
+      tags:
+        - Tools
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/tools/get/:
+    get:
+      summary: Get tools for normal user.
+      security:
+        - cookieAuth: []
+      tags:
+        - Tools
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the user
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            example: 8370396016757367
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/tools/status/:
+    put:
+      summary: Change status for a tool.
+      security:
+        - cookieAuth: []
+      tags:
+        - Tools
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                id:
+                  type: number
+                activeflag:
+                  type: string
+              example:   # Sample object
+                id: 662346984100503
+                activeflag: 'active'
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/paper/get/admin:
+    get:
+      summary: Get paper for admin.
+      security:
+        - cookieAuth: []
+      tags:
+        - Paper
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/paper/get/:
+    get:
+      summary: Get paper for normal user.
+      security:
+        - cookieAuth: []
+      tags:
+        - Paper
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the user
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            example: 8370396016757367
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/paper/status/:
+    put:
+      summary: Change status for a paper.
+      security:
+        - cookieAuth: []
+      tags:
+        - Paper
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                id:
+                  type: number
+                activeflag:
+                  type: string
+              example:   # Sample object
+                id: 662346984100503
+                activeflag: 'active'
+      responses: 
+        '200':
+          description: OK
 
   /v1/project/{projectId}:
     get:
@@ -811,38 +927,141 @@ paths:
         '200':
           description: OK
 
-  # /v1/accounts:
+  /v1/project/get/admin:
+    get:
+      summary: Get project for admin.
+      security:
+        - cookieAuth: []
+      tags:
+        - Project
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/project/get/:
+    get:
+      summary: Get project for normal user.
+      security:
+        - cookieAuth: []
+      tags:
+        - Project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the user
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            example: 8370396016757367
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/project/status/:
+    put:
+      summary: Change status for a project.
+      security:
+        - cookieAuth: []
+      tags:
+        - Project
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                id:
+                  type: number
+                activeflag:
+                  type: string
+              example:   # Sample object
+                id: 662346984100503
+                activeflag: 'active'
+      responses: 
+        '200':
+          description: OK
+
+  # /v1/tools/get:
   #   get:
-  #     summary: Account search.
+  #     summary: Tool search.
   #     tags:
-  #       - Account
+  #       - Tool
   #     responses: 
   #       '200':
   #         description: OK
 
-  # /v1/accounts/admin:
+  # /v1/tools/get/admin:
   #   get:
-  #     summary: Account search admins.
+  #     summary: Tool search admins.
   #     tags:
-  #       - Account
+  #       - Tool
   #     responses: 
   #       '200':
   #         description: OK
 
-  # /v1/accounts/status:
+  # /v1/tools/status:
   #   put:
-  #     summary: Account update status.
+  #     summary: Tool update status.
   #     tags:
-  #       - Account
+  #       - Tool
   #     responses: 
   #       '200':
   #         description: OK
 
-  # /v1/accounts:
-  #   delete:
-  #     summary: Deletes an account.
+    # /v1/project/get:
+  #   get:
+  #     summary: Project search.
   #     tags:
-  #       - Account
+  #       - Project
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/project/get/admin:
+  #   get:
+  #     summary: Project search admins.
+  #     tags:
+  #       - Project
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/project/status:
+  #   put:
+  #     summary: Project update status.
+  #     tags:
+  #       - Project
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+     # /v1/paper/get:
+  #   get:
+  #     summary: Paper search.
+  #     tags:
+  #       - Paper
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/paper/get/admin:
+  #   get:
+  #     summary: Paper search admins.
+  #     tags:
+  #       - Paper
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/paper/status:
+  #   put:
+  #     summary: Paper update status.
+  #     tags:
+  #       - Paper
   #     responses: 
   #       '200':
   #         description: OK
