@@ -296,13 +296,13 @@ paths:
         '200':
           description: OK
 
-  /v1/mytools/add:
+  /v1/tools/add:
     post:
-      summary: Add a tool (Project / Tool).
+      summary: Add a tool.
       security:
         - cookieAuth: []
       tags:
-        - MyTools
+        - Tools
       requestBody:
         content:
           application/json:
@@ -348,7 +348,7 @@ paths:
                       items:
                         type: string      
               example:   # Sample object
-                type: 'tool || project'
+                type: 'tool'
                 name: 'Epilepsy data research'
                 link: 'http://epilepsy.org'
                 description: 'Epilespy data research description'
@@ -360,13 +360,13 @@ paths:
         '200':
           description: OK
         
-  /v1/mytools/edit:
+  /v1/tools/edit:
     put:
-      summary: Edit a (Project / tool).
+      summary: Edit a tool.
       security:
         - cookieAuth: []
       tags:
-        - MyTools
+        - Tools
       requestBody:
         content:
           application/json:
@@ -428,6 +428,350 @@ paths:
                 authors: [4495285946631793]
                 tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
                 toolids: []
+      responses: 
+        '200':
+          description: OK
+
+  /v1/tools/delete:
+    delete:
+      summary: Delete a tool.
+      security:
+        - cookieAuth: []
+      tags:
+        - Tools
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: number
+                id: 26542005388306332
+              example:   # Sample object
+                id: 26542005388306332
+      responses: 
+        '200':
+          description: OK
+
+  /v1/project/add:
+    post:
+      summary: Add a project.
+      security:
+        - cookieAuth: []
+      tags:
+        - Project
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                type:
+                  type: string
+                name:
+                  type: string
+                link:
+                  type: string
+                description:
+                  type: string
+                categories:
+                  type: object
+                  properties:
+                    category:
+                      type: string
+                    programmingLanguage:
+                      type: array
+                      items:
+                        type: string
+                    programmingLanguageVersion:
+                      type: string
+                licence:
+                  type: string
+                authors:
+                  type: array
+                  items:
+                    type: number
+                tags:
+                  type: object
+                  properties:
+                    features:
+                      type: array
+                      items:
+                        type: string
+                    topics:
+                      type: array
+                      items:
+                        type: string      
+              example:   # Sample object
+                type: 'project'
+                name: 'Epilepsy data research'
+                link: 'http://epilepsy.org'
+                description: 'Epilespy data research description'
+                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '0.0.0'}
+                licence: 'MIT licence'
+                authors: [4495285946631793]
+                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
+      responses: 
+        '200':
+          description: OK
+        
+  /v1/project/edit:
+    put:
+      summary: Edit a project.
+      security:
+        - cookieAuth: []
+      tags:
+        - Project
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                id:
+                  type: number
+                type:
+                  type: string
+                name:
+                  type: string
+                link:
+                  type: string
+                description:
+                  type: string
+                categories:
+                  type: object
+                  properties:
+                    category:
+                      type: string
+                    programmingLanguage:
+                      type: array
+                      items:
+                        type: string
+                    programmingLanguageVersion:
+                      type: string
+                licence:
+                  type: string
+                authors:
+                  type: array
+                  items:
+                    type: number
+                tags:
+                  type: object
+                  properties:
+                    features:
+                      type: array
+                      items:
+                        type: string
+                    topics:
+                      type: array
+                      items:
+                        type: string    
+                toolids:
+                  type: array
+                  items:
+                    type: string
+              example:   # Sample object
+                id: 26542005388306332
+                type: 'project'
+                name: 'Research Data TEST EPILEPSY'
+                link: 'http://localhost:8080/epilepsy'
+                description: 'Epilespy data research description'
+                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '1.0.0'}
+                licence: 'MIT licence'
+                authors: [4495285946631793]
+                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
+                toolids: []
+      responses: 
+        '200':
+          description: OK
+
+  /v1/project/delete:
+    delete:
+      summary: Delete a project.
+      security:
+        - cookieAuth: []
+      tags:
+        - Project
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: number
+                id: 26542005388306332
+              example:   # Sample object
+                id: 26542005388306332
+      responses: 
+        '200':
+          description: OK
+
+  /v1/paper/add:
+    post:
+      summary: Add a paper.
+      security:
+        - cookieAuth: []
+      tags:
+        - Paper
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                type:
+                  type: string
+                name:
+                  type: string
+                link:
+                  type: string
+                description:
+                  type: string
+                categories:
+                  type: object
+                  properties:
+                    category:
+                      type: string
+                    programmingLanguage:
+                      type: array
+                      items:
+                        type: string
+                    programmingLanguageVersion:
+                      type: string
+                licence:
+                  type: string
+                authors:
+                  type: array
+                  items:
+                    type: number
+                tags:
+                  type: object
+                  properties:
+                    features:
+                      type: array
+                      items:
+                        type: string
+                    topics:
+                      type: array
+                      items:
+                        type: string      
+              example:   # Sample object
+                type: 'paper'
+                name: 'Epilepsy data research'
+                link: 'http://epilepsy.org'
+                description: 'Epilespy data research description'
+                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '0.0.0'}
+                licence: 'MIT licence'
+                authors: [4495285946631793]
+                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
+      responses: 
+        '200':
+          description: OK
+        
+  /v1/paper/edit:
+    put:
+      summary: Edit a paper.
+      security:
+        - cookieAuth: []
+      tags:
+        - Paper
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                id:
+                  type: number
+                type:
+                  type: string
+                name:
+                  type: string
+                link:
+                  type: string
+                description:
+                  type: string
+                categories:
+                  type: object
+                  properties:
+                    category:
+                      type: string
+                    programmingLanguage:
+                      type: array
+                      items:
+                        type: string
+                    programmingLanguageVersion:
+                      type: string
+                licence:
+                  type: string
+                authors:
+                  type: array
+                  items:
+                    type: number
+                tags:
+                  type: object
+                  properties:
+                    features:
+                      type: array
+                      items:
+                        type: string
+                    topics:
+                      type: array
+                      items:
+                        type: string    
+                toolids:
+                  type: array
+                  items:
+                    type: string
+              example:   # Sample object
+                id: 26542005388306332
+                type: 'paper'
+                name: 'Research Data TEST EPILEPSY'
+                link: 'http://localhost:8080/epilepsy'
+                description: 'Epilespy data research description'
+                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '1.0.0'}
+                licence: 'MIT licence'
+                authors: [4495285946631793]
+                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
+                toolids: []
+      responses: 
+        '200':
+          description: OK
+
+  /v1/paper/delete:
+    delete:
+      summary: Delete a paper.
+      security:
+        - cookieAuth: []
+      tags:
+        - Paper
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: number
+                id: 26542005388306332
+              example:   # Sample object
+                id: 26542005388306332
       responses: 
         '200':
           description: OK
@@ -565,29 +909,83 @@ paths:
   #       '200':
   #         description: OK
 
-  # /v1/mytools/add:
+  # /v1/tools/add:
   #   post:
   #     summary: Add a tool.
   #     tags:
-  #       - MyTools
+  #       - Tool
   #     responses: 
   #       '200':
   #         description: OK
 
-  # /v1/mytools/edit:
+  # /v1/tools/edit:
   #   put:
   #     summary: Edit a tool.
   #     tags:
-  #       - MyTools
+  #       - Tool
   #     responses: 
   #       '200':
   #         description: OK
 
-  # /v1/mytools/delete:
+  # /v1/tools/delete:
   #   delete:
   #     summary: delete a tool.
   #     tags:
-  #       - MyTools
+  #       - Tool
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/project/add:
+  #   post:
+  #     summary: Add a project.
+  #     tags:
+  #       - Project
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/project/edit:
+  #   put:
+  #     summary: Edit a project.
+  #     tags:
+  #       - Project
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/project/delete:
+  #   delete:
+  #     summary: delete a project.
+  #     tags:
+  #       - Project
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+   # /v1/paper/add:
+  #   post:
+  #     summary: Add a paper.
+  #     tags:
+  #       - Paper
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/paper/edit:
+  #   put:
+  #     summary: Edit a paper.
+  #     tags:
+  #       - Paper
+  #     responses: 
+  #       '200':
+  #         description: OK
+
+  # /v1/paper/delete:
+  #   delete:
+  #     summary: delete a paper.
+  #     tags:
+  #       - Paper
   #     responses: 
   #       '200':
   #         description: OK
