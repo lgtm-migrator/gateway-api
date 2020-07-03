@@ -9,21 +9,19 @@ const notificationBuilder = require('../utilities/notificationBuilder');
 
 const router = express.Router();
 
-// @route   GET api/v1/data-access-request/:datasetId
+// @route   GET api/v1/data-access-request/dataset/:datasetId
 // @desc    GET Access request for user
 // @access  Private
-router.get('/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
+router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
+  let accessRecord;
+  let data = {};
    try {
-      let data = {};
       // 1. Get dataSetId from params
       let {params: {dataSetId}} = req;
-      console.log(req.params);
       // 2. Get the userId
       let {id: userId} = req.user;
-      console.log(req.user);
       // 3. Find the matching record 
-      const accessRecord = await DataRequestModel.findOne({dataSetId, userId});
-      console.log(accessRecord);
+      accessRecord = await DataRequestModel.findOne({dataSetId, userId});
       // 4. if no record create it and pass back
       if (!accessRecord) {
          // 1. GET the template from the custodian

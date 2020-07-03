@@ -1,5 +1,4 @@
 import express from 'express'
-import axios from 'axios';
 import { DataRequestModel } from '../datarequests/datarequests.model';
 
 const router = express.Router();
