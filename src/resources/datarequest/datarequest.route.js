@@ -9,26 +9,6 @@ const notificationBuilder = require('../utilities/notificationBuilder');
 
 const router = express.Router();
 
-//@route api/v1/data-access-request/:_id
-//@desc GET Access request by _id
-//@access Private
-router.get('/:_id', passport.authenticate('jwt'), async(req, res) => {
-  try {
-    let {params: {_id}} = req;
-    console.log(`DAR ${_id}`);
-    const accessRecord = await DataRequestModel.findOne({_id});
-    console.log(`${accessRecord}`);
-    if(!accessRecord)
-      return res.status(400).json({ status: 'error', message: 'Data Access Request not found.' });
-
-    return res.status(200).json({status: 'success', data: accessRecord});
-  }
-  catch (err) {
-    console.log(err);
-    res.status(500).json({status: 'error', message: err});
-  }
-});
-
 // @route   GET api/v1/data-access-request/dataset/:datasetId
 // @desc    GET Access request for user
 // @access  Private
@@ -40,7 +20,6 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
       let {params: {dataSetId}} = req;
       // 2. Get the userId
       let {id: userId} = req.user;
-      console.log(req.user);
       // 3. Find the matching record 
       accessRecord = await DataRequestModel.findOne({dataSetId, userId});
       // 4. if no record create it and pass back
