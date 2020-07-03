@@ -7,7 +7,7 @@ import { utils } from "../auth";
 import { findPostsByTopicId } from "../discourse/discourse.service";
 import { UserModel } from '../user/user.model'
 import { MessagesModel } from '../message/message.model'
-import {addTool, editTool, deleteTool} from '../tool/data.repository';
+import {addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository';
 const sgMail = require('@sendgrid/mail');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const router = express.Router()
@@ -63,6 +63,58 @@ router.delete('/delete',
     }
 );
 
+// @router   GET /api/v1/get/admin
+// @desc     Get tool
+// @access   Private
+router.get('/get/admin',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+    async (req, res) => {
+      req.params.type = "tool";
+      await getToolsAdmin(req)
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
+
+// @router   GET /api/v1/get/admin
+// @desc     Get tool for an author
+// @access   Private
+router.get('/get',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+    async (req, res) => {
+      req.params.type = "tool";
+      await getTools(req)
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
+
+// @router   PUT /api/v1/status
+// @desc     Set tool status
+// @access   Private
+router.put('/status',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+    async (req, res) => {
+      await setStatus(req)
+        .then(response => {
+          return res.json({success: true, response});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
 
 /**
  * {get} /tool/:toolID Tool
