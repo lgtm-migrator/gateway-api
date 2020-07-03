@@ -38,7 +38,9 @@ const DataSchema = new Schema(
     relatedObjects: [{
         objectId: String,
         reason: String,
-        objectType: String
+        objectType: String,
+        user: String,
+        updated: String
     }]
   },
   { 

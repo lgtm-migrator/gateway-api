@@ -29,7 +29,7 @@ router.get('/:collectionID', async (req, res) => {
 });
 
 
-router.put('/edit',
+router.put('/edit', 
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
@@ -101,7 +101,7 @@ router.post('/add',
 
   module.exports = router;
 
-  async function createMessage(authorId, collections, activeflag, collectionCreator) {
+  async function createMessage(authorId, collections, activeflag, collectionCreator) { 
     let message = new MessagesModel();
     
     const collectionLink = process.env.homeURL + '/collection/' + collections.id; 
