@@ -54,7 +54,7 @@ paths:
         '200':
           description: OK 
 
-  /v1/datasets/search?search={searchTerm}:
+  /v1/datasets/?search={searchTerm}:
     get:
       summary: Returns dataset search results by searchTerm
       tags:
