@@ -198,7 +198,9 @@ router.put(
     let {emailNotifications = false} = await getObjectById(req.user.id)
 
     try {
-      let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
+      await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag }});
+      const tool = await Data.findOne({ id: id });
+        
       if (!tool) {
         return res.status(400).json({ success: false, error: 'Tool not found' });
       }

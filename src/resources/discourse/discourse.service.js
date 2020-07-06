@@ -48,11 +48,29 @@ export async function createDiscourseTopic(tool) {
       'Content-Type': 'application/json',
     },
   };
+  
+  var rawIs, categoryIs;
+  if (tool.type === 'tool') {
+    rawIs = `${tool.description} <br> Original content: ${process.env.homeURL}/tool/${tool.id}`;
+    categoryIs = process.env.DISCOURSE_CATEGORY_TOOLS_ID;
+  }
+  else if (tool.type === 'project') {
+    rawIs = `${tool.description} <br> Original content: ${process.env.homeURL}/project/${tool.id}`;
+    categoryIs = process.env.DISCOURSE_CATEGORY_PROJECTS_ID;
+  }
+  else if (tool.type === 'dataset') {
+    rawIs = `${tool.description} <br> Original content: ${process.env.homeURL}/dataset/${tool.id}`;
+    categoryIs = process.env.DISCOURSE_CATEGORY_DATASETS_ID;
+  }
+  else if (tool.type === 'paper') {
+    rawIs = `${tool.description} <br> Original content: ${process.env.homeURL}/paper/${tool.id}`;
+    categoryIs = process.env.DISCOURSE_CATEGORY_PAPERS_ID;
+  }
 
   const payload = {
     title: tool.name,
-    raw: `${tool.description} <br> Original content: ${process.env.homeURL}/tool/${tool.id}`,
-    category: process.env.DISCOURSE_CATEGORY_TOOLS_ID,
+    raw: rawIs,
+    category: categoryIs
   };
 
   try {

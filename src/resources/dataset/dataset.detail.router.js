@@ -12,7 +12,7 @@ const router = express.Router();
     var metadataCatalogueError = '';
 
     const reqMetadataCatalogue = axios.get(metadataCatalogue + '/api/facets/' + req.params.id + '/profile/uk.ac.hdrukgateway/HdrUkProfilePluginService').catch(err => {metadataCatalogueError = err.message} );
-    const reqMetadataQuality = axios.get(metadataQuality + '/api/v1/' + req.params.id).catch(err => null);
+    const reqMetadataQuality = axios.get(metadataQuality + '/api/v1/' + req.params.id, { timeout:5000 }).catch(err => { console.log('Unable to get metadata quality value'+err.message) });
 
     try {
         const [resMetadataCatalogue, resMetadataQuality] = await axios.all([reqMetadataCatalogue,reqMetadataQuality]);
