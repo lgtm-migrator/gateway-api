@@ -126,7 +126,7 @@ router.get('/:projectID', async (req, res) => {
         var p = Data.aggregate([
             { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.projectID } } }] } },
         ]);
-        p.exec((err, relatedData) => {
+        p.exec( async (err, relatedData) => {
             relatedData.forEach((dat) => {
                 dat.relatedObjects.forEach((x) => {
                     if (x.objectId === req.params.projectID && dat.id !== req.params.projectID) {
