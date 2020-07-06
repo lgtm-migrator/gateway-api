@@ -6,6 +6,8 @@ const DataRequestSchemas = new Schema({
   version: Number,
   dataSetId: String,
   jsonSchema: String,
+}, {
+  timestamps: true 
 });
 
 export const DataRequestSchemaModel = model('data_request_schemas', DataRequestSchemas);
