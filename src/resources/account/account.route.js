@@ -1,24 +1,27 @@
 import express from 'express';
 import passport from "passport";
-import { utils } from "../auth";
+import { utils } from "../auth"; 
 import { ROLES } from '../user/user.roles'
 import { Data } from '../tool/data.model';
+import { Collections } from '../collections/collections.model'; 
 import { MessagesModel } from '../message/message.model';
 import { createDiscourseTopic } from '../discourse/discourse.service'
-
+import { UserModel } from '../user/user.model'
+const sgMail = require('@sendgrid/mail');
 const router = express.Router();
- 
-  /**
-   * {delete} /api/v1/accounts
-   * 
-   * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
-   * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
-   */
-  router.delete(
-    '/',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
+const hdrukEmail = `enquiry@healthdatagateway.org`;
+
+/**
+ * {delete} /api/v1/accounts
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.delete(
+  '/',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
     const { id } = req.body;
     Data.findOneAndDelete({ id: id }, (err) => {
       if (err) return res.send(err);
@@ -26,23 +29,22 @@ const router = express.Router();
     });
   });
 
-  /**
-   * {get} /api/v1/accounts/admin
-   * 
-   * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
-   * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
-   */
-  router.get(
-    '/admin',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin),
-    async (req, res) => {
+/**
+ * {get} /api/v1/accounts/admin
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.get(
+  '/admin',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin),
+  async (req, res) => {
     var result;
     var startIndex = 0;
     var maxResults = 25;
     var typeString = "";
-    var toolStateString = "";
-  
+
     if (req.query.startIndex) {
       startIndex = req.query.startIndex;
     }
@@ -52,46 +54,70 @@ const router = express.Router();
     if (req.query.type) {
       typeString = req.query.type;
     }
-    if (req.query.toolState) {
-      toolStateString = req.query.toolState;
-    }
-  
-    var searchQuery = {
-      $and: [
-        { type: typeString },
-        { activeflag: toolStateString }
-      ]
-    };
-  
+
     var q = Data.aggregate([
-      { $match: { $and: [{ type: typeString }, { activeflag: toolStateString }] } },
-      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-    ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+      { $match: { $and: [{ type: typeString }] } },
+      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+      { $sort: { updatedAt : -1}}
+    ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
     q.exec((err, data) => {
       if (err) return res.json({ success: false, error: err });
       result = res.json({ success: true, data: data });
     });
+    
     return result;
   });
 
-  /**
- * {get} /api/v1/accounts
+/**
+ * {get} /api/v1/accounts/admin/collections
  * 
- * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
- * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ * Returns list of all collections.
  */
-router.get(
-    '/',
+  router.get(
+    '/admin/collections',
     passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+    utils.checkIsInRole(ROLES.Admin),
     async (req, res) => {
+      var result;
+      var startIndex = 0;
+      var maxResults = 25;
+  
+      if (req.query.startIndex) {
+        startIndex = req.query.startIndex;
+      }
+      if (req.query.maxResults) {
+        maxResults = req.query.maxResults;
+      }
+  
+      var q = Collections.aggregate([
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $sort: { updatedAt : -1}}
+      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
+      q.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        result = res.json({ success: true, data: data });
+      });
+      
+      return result;
+    });
+
+/**
+* {get} /api/v1/accounts
+* 
+* Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+* The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+*/
+router.get(
+  '/',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
     var result;
     var startIndex = 0;
     var maxResults = 25;
     var typeString = "";
     var idString = "";
-    var toolStateString = "";
-  
+
     if (req.query.startIndex) {
       startIndex = req.query.startIndex;
     }
@@ -104,14 +130,12 @@ router.get(
     if (req.query.id) {
       idString = req.query.id;
     }
-    if (req.query.toolState) {
-      toolStateString = req.query.toolState;
-    }
-  
+
     var q = Data.aggregate([
-      { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: toolStateString }] } },
-      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-    ]).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+      { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
+      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+      { $sort: { updatedAt : -1}}
+    ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
     q.exec((err, data) => {
       if (err) return res.json({ success: false, error: err });
       result = res.json({ success: true, data: data });
@@ -119,19 +143,60 @@ router.get(
     return result;
   });
 
-  /**
-   * {put} /api/v1/accounts/status
-   * 
-   * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
-   * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
-   */
-  router.put(
-    '/status',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin),
-    async (req, res) => {
-    const { id, activeflag } = req.body;
   
+/**
+* {get} /api/v1/accounts/collections
+* 
+* Returns list of collections.
+*/
+  router.get(
+    '/collections',
+    passport.authenticate('jwt'),
+    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+    async (req, res) => {
+      var result;
+      var startIndex = 0;
+      var maxResults = 25;
+      var idString = "";
+  
+      if (req.query.startIndex) {
+        startIndex = req.query.startIndex;
+      }
+      if (req.query.maxResults) {
+        maxResults = req.query.maxResults; 
+      }
+      if (req.query.id) {
+        idString = req.query.id;
+      }
+  
+      var q = Collections.aggregate([
+        { $match: { $and: [{ authors: parseInt(idString) }] } },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $sort: { updatedAt : -1}}
+      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
+      q.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        result = res.json({ success: true, data: data });
+      });
+      return result;
+    });
+
+/**
+ * {put} /api/v1/accounts/status
+ * 
+ * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
+ * The free word search criteria can be improved on with node modules that specialize with searching i.e. js-search
+ */
+router.put(
+  '/status',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin), 
+  async (req, res) => {
+    const { id, activeflag } = req.body;
+
+    // Get the emailNotification status for the current user
+    let {emailNotifications = false} = await getObjectById(req.user.id)
+
     try {
       await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag }});
       const tool = await Data.findOne({ id: id });
@@ -142,29 +207,69 @@ router.get(
 
       if (tool.authors) {
         tool.authors.forEach(async (authorId) => {
-          await createMessage(authorId, id);
+          await createMessage(authorId, id, tool.name, tool.type, activeflag);
         });
       }
-      await createMessage(0, id);
+      await createMessage(0, id, tool.name, tool.type, activeflag);
 
-      await createDiscourseTopic(tool);
+      if (!tool.discourseTopicId && tool.activeflag === 'active') {
+        await createDiscourseTopic(tool);
+      }
+
+      if (emailNotifications)
+        await sendEmailNotifications(tool, activeflag);
 
       return res.json({ success: true });
-  
+      
     } catch (err) {
       console.log(err);
       return res.status(500).json({ success: false, error: err });
     }
   });
 
-  module.exports = router;
+module.exports = router;
 
-async function createMessage(authorId, toolId) {
+async function createMessage(authorId, toolId, toolName, toolType, activeflag) {
   let message = new MessagesModel();
+  const toolLink = process.env.homeURL + '/tool/' + toolId;
+
+  if (activeflag === 'active') {
+    message.messageType = 'approved';
+    message.messageDescription = `Your ${toolType} ${toolName} has been approved and is now live ${toolLink}`
+  } else if (activeflag === 'archive') {
+    message.messageType = 'rejected';
+    message.messageDescription = `Your ${toolType} ${toolName} has been rejected ${toolLink}`
+  }
   message.messageID = parseInt(Math.random().toString().replace('0.', ''));
   message.messageTo = authorId;
   message.messageObjectID = toolId;
-  message.messageType = 'approved';
   message.messageSent = Date.now();
+  message.isRead = false;
   await message.save();
+}
+
+async function sendEmailNotifications(tool, activeflag) {
+  const emailRecipients = await UserModel.find({ $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] });
+  const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  let subject;
+  let html;
+  //build email
+  if (activeflag === 'active') {
+    subject = `Your ${tool.type} ${tool.name} has been approved and is now live`
+    html = `Your ${tool.type} ${tool.name} has been approved and is now live <br /><br />  ${toolLink}`
+  } else if (activeflag === 'archive') {
+    subject = `Your ${tool.type} ${tool.name} has been rejected`
+    html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  ${toolLink}`
+  }
+
+  for (let emailRecipient of emailRecipients) {
+    const msg = {
+      to: emailRecipient.email,
+      from: `${hdrukEmail}`,
+      subject: subject,
+      html: html
+    };
+    await sgMail.send(msg);
+  }
 }

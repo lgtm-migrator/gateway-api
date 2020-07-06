@@ -3,6 +3,7 @@ import { Data } from '../tool/data.model'
 import { utils } from "../auth";
 import passport from "passport";
 import { ROLES } from '../user/user.roles'
+const urlValidator = require('../utilities/urlValidator');
 
 const router = express.Router()
 
@@ -11,14 +12,19 @@ router.post(
     passport.authenticate('jwt'),
     utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
-    const { id, type, bio, link, orcid } = req.body;
+    const { id, type, bio, emailNotifications, terms } = req.body;
+    let link = urlValidator.validateURL(req.body.link);
+    let orcid = urlValidator.validateOrcidURL(req.body.orcid);
+    console.log(req.body)
     Data.findOneAndUpdate({ id: id },
   
       {
-        type: type,
-        bio: bio,
-        link: link,
-        orcid: orcid,
+        type,
+        bio,
+        link,
+        orcid,
+        emailNotifications,
+        terms
       }, (err) => {
         if (err) return res.json({ success: false, error: err });
         return res.json({ success: true });

@@ -87,7 +87,6 @@ router.get('/', async (req, res) => {
             })
         }
     }
-  
       axios.post(metadataCatalogue + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/customSearch?searchTerm=' + searchString + '&domainType=DataModel&limit=1' + publisher + license + geographicCoverage + ageBand + physicalSampleAvailability + keywords)
       
       .then(function (response){

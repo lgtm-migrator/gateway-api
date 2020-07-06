@@ -25,7 +25,7 @@ router.get(
 
     return res
       .status(200)
-      .cookie('jwt', signToken(req.user), {
+      .cookie('jwt', signToken({_id: req.user._id, id: req.user.id, timeStamp: Date.now()}), {
         httpOnly: true,
       })
       .json({redirectUrl: redirectUrl});

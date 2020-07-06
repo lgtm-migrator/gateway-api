@@ -24,9 +24,9 @@ describe("Search API", () => {
 
   });
 
-  ['blood','cancer', 'epilepsy'].forEach(function(searchString) {
+  ['covid','CMMID'].forEach(function(searchString) {
 
-    test(`Search for string '${searchString}', first result should contain name or description '${searchString}'`, async () => {
+    test(`Search for string '${searchString}', first tool result should contain name or description '${searchString}'`, async () => {
         const response = await testURL.get('/api/v1/search?search='+searchString);
         expect(response.statusCode).toBe(200);
        	let payload = JSON.parse(response.text);
@@ -70,8 +70,39 @@ describe("Search API", () => {
 
   });
 
+  ['annual district death daily','cancer','epilepsy'].forEach(function(searchString) {
 
-  test("Search for string 'cancer' limit results to 40, 40 or less results should be returned", async () => {
+    test(`Search for string '${searchString}', first dataset result should contain title or description '${searchString}'`, async () => {
+        const response = await testURL.get('/api/v1/search?search='+searchString);
+        expect(response.statusCode).toBe(200);
+       	let payload = JSON.parse(response.text);
+        expect(payload).toHaveProperty('success');
+        expect(payload).toHaveProperty('datasetResults');
+        expect(payload['datasetResults'].length).toBeGreaterThanOrEqual(1);
+        expect(payload).toHaveProperty('summary');
+
+
+        expect(payload['datasetResults'][0]).toHaveProperty('title');
+        expect(payload['datasetResults'][0]).toHaveProperty('abstract');
+        //expect(payload['datasetResults'][0]).toHaveProperty('keywords');//cant always be expected
+
+        let title = payload['datasetResults'][0]['title'] || '';
+        let abstract = payload['datasetResults'][0]['abstract'] || '';
+        let keywords = payload['datasetResults'][0]['keywords'] || '';
+
+        let expected = [
+            expect.stringMatching(searchString.toLowerCase()),
+        ];
+
+        expect([title.toLowerCase(), abstract.toLowerCase(), keywords.toLowerCase()]).toEqual(
+            expect.arrayContaining(expected),
+        );
+    });
+
+  });
+
+
+  test("Search for string 'cancer' dataset limit results to 40, 40 or less results should be returned", async () => {
     let searchString = "cancer";
     let maxResults = 40;
 

@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
@@ -7,31 +7,34 @@ const swaggerDocument = YAML.load('./swagger.yaml');
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import logger from 'morgan';
-import passport from "passport";
-import cookieParser from "cookie-parser";
+import passport from 'passport';
+import cookieParser from 'cookie-parser';
 
-import { connectToDatabase } from "./db"
-import { initialiseAuthentication } from "../resources/auth";
+import { connectToDatabase } from './db';
+import { initialiseAuthentication } from '../resources/auth';
 
-require('dotenv').config();
+require('dotenv').config(); 
 
 const API_PORT = process.env.PORT || 3001;
-const session = require("express-session");
+const session = require('express-session');
 var app = express();
 
 var domains = [process.env.homeURL];
 
 var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
-if (arr.length > 0) {
-    //add -api to the sub domain for API requests
+
+if (Array.isArray(arr) && arr.length > 0) {
     domains.push('https://' + arr[2]);
 }
 
-app.use(cors({
-  origin: domains,
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: domains,
+    credentials: true,
+  })
+);
+
 const router = express.Router();
 
 connectToDatabase();
@@ -47,9 +50,9 @@ app.use(passport.session());
 
 app.use(
   session({
-      secret: process.env.JWTSecret,
-      resave: false,
-      saveUninitialized: true
+    secret: process.env.JWTSecret,
+    resave: false,
+    saveUninitialized: true,
   })
 );
 
@@ -64,26 +67,34 @@ app.use('/api/v1/auth/register', require('../resources/user/user.register.route'
 app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/messages', require('../resources/message/message.route'));
 app.use('/api/v1/reviews', require('../resources/tool/review.route'));
-app.use('/api/v1/tools', require('../resources/tool/tool.route'));
-app.use('/api/v1/accounts', require('../resources/account/account.route'));
+app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
+app.use('/api/v1/tools', require('../resources/tool/tool.route')); 
+app.use('/api/v1/accounts', require('../resources/account/account.route')); 
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
-
+ 
 app.use('/api/v1/stats', require('../resources/stats/stats.router'));
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
-app.use('/api/v1/mytools', require('../resources/mytools/mytools.route'));
 app.use('/api/v1/project', require('../resources/project/project.route'));
+app.use('/api/v1/paper', require('../resources/paper/paper.route')); 
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/discourse/topic', require('../resources/discourse/discourse.topic.route'));
 
-app.use('/api/v1/datasets/search', require('../resources/dataset/dataset.search.router'));
-app.use('/api/v1/datasets/filters', require('../resources/dataset/dataset.filters.router')); 
+app.use('/api/v1/datasets/filters', require('../resources/dataset/dataset.filters.router'));
 app.use('/api/v1/datasets/access', require('../resources/dataset/dataset.access.router'));
-app.use('/api/v1/datasets/detail', require('../resources/dataset/dataset.detail.router')); 
+app.use('/api/v1/datasets/detail', require('../resources/dataset/dataset.detail.router'));
 app.use('/api/v1/datasets/filteredsearch', require('../resources/dataset/dataset.searchwithfilters.router')); //search
+app.use('/api/v1/datasets/relatedobjects', require('../resources/dataset/dataset.relatedobjects.router'));
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
+
+app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/datarequest.schemas.route'));
+app.use('/api/v1/data-access-request', require('../resources/datarequest/datarequest.route'));
+app.use('/api/v1/dar', require('../resources/datarequests/datarequests.route'));
+
+app.use('/api/v1/collections', require('../resources/collections/collections.route'));
+
 
 initialiseAuthentication(app);
 

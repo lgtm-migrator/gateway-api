@@ -20,6 +20,7 @@ router.get('/', async (req, res) => {
 
     if (searchString.length > 0) {
         searchQuery["$and"].push({ $text: { $search: searchString } });
+        datasetSearchString = '"' + searchString.split(' ').join('""') + '"';
         //The following code is a workaround for the way search works TODO:work with MDC to improve API
         if (searchString.match(/"/)) {
             //user has added quotes so pass string through
@@ -37,41 +38,47 @@ router.get('/', async (req, res) => {
         getDatasetResult(datasetSearchString, getDatasetFilters(req)),
         getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool')),
         getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project')),
+        getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper')),
         getObjectResult('person', searchAll, searchQuery),
     ]).then((values) => {
         var datasetCount = values[0].results.length || 0;
         var toolCount = values[1].length || 0;
         var projectCount = values[2].length || 0;
-        var personCount = values[3].length || 0;
+        var paperCount = values[3].length || 0;
+        var personCount = values[4].length || 0;
 
         let recordSearchData = new RecordSearchData();
         recordSearchData.searched = searchString;
         recordSearchData.returned.dataset = datasetCount;
         recordSearchData.returned.tool = toolCount;
         recordSearchData.returned.project = projectCount;
+        recordSearchData.returned.paper = paperCount;
         recordSearchData.returned.person = personCount;
         recordSearchData.datesearched = Date.now();
         recordSearchData.save((err) => { });
 
         var filterOptions = getFilterOptions(values)
-        var summary = { datasets: datasetCount, tools: toolCount, projects: projectCount, persons: personCount }
+        var summary = { datasets: datasetCount, tools: toolCount, projects: projectCount, papers: paperCount, persons: personCount }
         
         var datasetIndex = req.query.datasetIndex || 0;
         var toolIndex = req.query.toolIndex || 0;
         var projectIndex = req.query.projectIndex || 0;
+        var paperIndex = req.query.paperIndex || 0;
         var personIndex = req.query.personIndex || 0;
         var maxResults = req.query.maxResults || 40;
 
         var datasetList = values[0].results.slice(datasetIndex, (+datasetIndex + +maxResults));
         var toolList = values[1].slice(toolIndex, (+toolIndex + +maxResults));
         var projectList = values[2].slice(projectIndex, (+projectIndex + +maxResults));
-        var personList = values[3].slice(personIndex, (+personIndex + +maxResults));
+        var paperList = values[3].slice(paperIndex, (+paperIndex + +maxResults));
+        var personList = values[4].slice(personIndex, (+personIndex + +maxResults));
 
         return res.json({
             success: true,
             datasetResults: datasetList,
             toolResults: toolList,
             projectResults: projectList,
+            paperResults: paperList,
             personResults: personList,
             filterOptions: filterOptions,
             summary: summary
@@ -139,7 +146,11 @@ function getObjectFilters(searchQueryStart, req, type) {
     var tooltopics = req.query.tooltopics || "";
 
     var projectcategories = req.query.projectcategories || "";
+    var projectfeatures = req.query.projectfeatures || "";
     var projecttopics = req.query.projecttopics || "";
+
+    var paperfeatures = req.query.paperfeatures || "";
+    var papertopics = req.query.papertopics || "";
 
     if (type === "tool") {
         if (programmingLanguage.length > 0) {
@@ -203,6 +214,18 @@ function getObjectFilters(searchQueryStart, req, type) {
             searchQuery["$and"].push({ "$or": tc });
         }
 
+        if (projectfeatures.length > 0) {
+            var t = [];
+            if (!Array.isArray(projectfeatures)) {
+                t = [{ "tags.features": projectfeatures }];
+            } else {
+                for (var i = 0; i < projectfeatures.length; i++) {
+                    t[i] = { "tags.features": projectfeatures[i] };
+                }
+            }
+            searchQuery["$and"].push({ "$or": t });
+        }
+
         if (projecttopics.length > 0) {
             var t = [];
             if (!Array.isArray(projecttopics)) {
@@ -210,6 +233,31 @@ function getObjectFilters(searchQueryStart, req, type) {
             } else {
                 for (var i = 0; i < projecttopics.length; i++) {
                     t[i] = { "tags.topics": projecttopics[i] };
+                }
+            }
+            searchQuery["$and"].push({ "$or": t });
+        }
+    }
+    else if (type === "paper") {
+        if (paperfeatures.length > 0) {
+            var t = [];
+            if (!Array.isArray(paperfeatures)) {
+                t = [{ "tags.features": paperfeatures }];
+            } else {
+                for (var i = 0; i < paperfeatures.length; i++) {
+                    t[i] = { "tags.features": paperfeatures[i] };
+                }
+            }
+            searchQuery["$and"].push({ "$or": t });
+        }
+
+        if (papertopics.length > 0) {
+            var t = [];
+            if (!Array.isArray(papertopics)) {
+                t = [{ "tags.topics": papertopics }];
+            } else {
+                for (var i = 0; i < papertopics.length; i++) {
+                    t[i] = { "tags.topics": papertopics[i] };
                 }
             }
             searchQuery["$and"].push({ "$or": t });
@@ -303,7 +351,11 @@ function getFilterOptions(values) {
     var toolTopicsFilterOptions = [];
 
     var projectCategoriesFilterOptions = [];
+    var projectFeaturesFilterOptions = [];
     var projectTopicsFilterOptions = [];
+
+    var paperFeaturesFilterOptions = [];
+    var paperTopicsFilterOptions = [];
 
     values[0].results.forEach((dataset) => {
         if (dataset.license && dataset.license !== '' && !licenseFilterOptions.includes(dataset.license)) {
@@ -378,10 +430,37 @@ function getFilterOptions(values) {
             projectCategoriesFilterOptions.push(project.categories.category);
         }
 
+        if (project.tags.features && project.tags.features.length > 0) {
+            project.tags.features.forEach((pf) => {
+                if (!projectFeaturesFilterOptions.includes(pf) && pf !== '') {
+                    projectFeaturesFilterOptions.push(pf);
+                }
+            });
+        }
+
         if (project.tags.topics && project.tags.topics.length > 0) {
-            project.tags.topics.forEach((to) => {
-                if (!projectTopicsFilterOptions.includes(to) && to !== '') {
-                    projectTopicsFilterOptions.push(to);
+            project.tags.topics.forEach((pto) => {
+                if (!projectTopicsFilterOptions.includes(pto) && pto !== '') {
+                    projectTopicsFilterOptions.push(pto);
+
+                }
+            });
+        }
+    })
+
+    values[3].forEach((paper) => {
+        if (paper.tags.features && paper.tags.features.length > 0) {
+            paper.tags.features.forEach((pf) => {
+                if (!paperFeaturesFilterOptions.includes(pf) && pf !== '') {
+                    paperFeaturesFilterOptions.push(pf);
+                }
+            });
+        }
+
+        if (paper.tags.topics && paper.tags.topics.length > 0) {
+            paper.tags.topics.forEach((pat) => {
+                if (!paperTopicsFilterOptions.includes(pat) && pat !== '') {
+                    paperTopicsFilterOptions.push(pat);
                 }
             });
         }
@@ -394,12 +473,18 @@ function getFilterOptions(values) {
         publisherFilterOptions: publisherFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
         ageBandFilterOptions: ageBandFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
         geographicCoverageFilterOptions: geographicCoverageFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        
         toolCategoriesFilterOptions: toolCategoriesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
         programmingLanguageFilterOptions: programmingLanguageFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
         featuresFilterOptions: featuresFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
         toolTopicsFilterOptions: toolTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        
         projectCategoriesFilterOptions: projectCategoriesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        projectTopicsFilterOptions: projectTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
+        projectFeaturesFilterOptions: projectFeaturesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        projectTopicsFilterOptions: projectTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        
+        paperFeaturesFilterOptions: paperFeaturesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        paperTopicsFilterOptions: paperTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
     };
 }
 

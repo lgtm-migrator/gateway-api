@@ -30,7 +30,18 @@ const DataSchema = new Schema(
     counter: Number,
     toolids: [Number],
     discourseTopicId: Number,
-    datasetids: [String]
+    datasetids: [String],
+    emailNotifications: Boolean,
+    terms: Boolean,
+    journal: String,
+    journalYear: Number,
+    relatedObjects: [{
+        objectId: String,
+        reason: String,
+        objectType: String,
+        user: String,
+        updated: String
+    }]
   },
   { 
     collection: 'tools',

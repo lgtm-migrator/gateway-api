@@ -7,6 +7,7 @@ import { updateUser } from '../user/user.service'
 import { createPerson } from '../person/person.service'
 import { ROLES } from '../user/user.roles'
 import { getUserByUserId } from '../user/user.repository'
+const urlValidator = require('../utilities/urlValidator');
 
 const router = express.Router()
 
@@ -26,8 +27,10 @@ router.get('/:personID',
 // @access   Public
 router.post('/', 
     async (req, res) => {
-    const { id, firstname, lastname, email, bio, link, orcid, redirectURL } = req.body
-
+    const { id, firstname, lastname, email, bio, redirectURL, emailNotifications, terms } = req.body
+    let link = urlValidator.validateURL(req.body.link);
+    let orcid = urlValidator.validateOrcidURL(req.body.orcid);
+    
     if (!/\b\w+\@\w+\.\w+(?:\.\w+)?\b/.test(email)) {
         return res.status(500).json({ success: false, data: 'Enter a valid email address.' })
     }
@@ -48,7 +51,9 @@ router.post('/',
             lastname,
             bio,
             link,
-            orcid
+            orcid,
+            emailNotifications,
+            terms
         })
     )
 

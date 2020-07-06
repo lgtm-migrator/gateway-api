@@ -40,11 +40,6 @@ export async function findPostsByTopicId(topicId) {
 }
 
 export async function createDiscourseTopic(tool) {
-
-  if (tool.discourseTopicId || tool.activeflag !== 'active') {
-    throw new Error('Topic already created or object is not active');
-  }
-
   const config = {
     headers: {
       'Api-Key': process.env.DISCOURSE_API_KEY,

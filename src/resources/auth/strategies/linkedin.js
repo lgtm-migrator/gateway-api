@@ -123,11 +123,11 @@ const strategy = app => {
                 }
 
                 return res
-                    .status(200)
-                    .cookie('jwt', signToken(req.user), {
-                        httpOnly: true
-                    })
-                    .redirect(redirectUrl)
+                .status(200)
+                .cookie('jwt', signToken({_id: req.user._id, id: req.user.id, timeStamp: Date.now()}), {
+                    httpOnly: true
+                })
+                .redirect(redirectUrl)
 
             });
         })(req, res, next);
