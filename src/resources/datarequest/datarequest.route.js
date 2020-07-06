@@ -25,7 +25,8 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
       // 4. if no record create it and pass back
       if (!accessRecord) {
          // 1. GET the template from the custodian
-         const accessRequestTemplate = await DataRequestSchemaModel.findOne({ dataSetId , status: 'active' });
+         const accessRequestTemplate = await DataRequestSchemaModel.findOne({ $or: [{dataSetId}, {dataSetId: 'default'}] , status: 'active' }).sort({createdAt: -1});
+         
          if(!accessRequestTemplate) {
             return res
             .status(400)

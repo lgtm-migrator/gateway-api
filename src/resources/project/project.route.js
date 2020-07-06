@@ -122,11 +122,11 @@ router.get('/:projectID', async (req, res) => {
         { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
     ]);
-    q.exec((err, data) => {
+     q.exec((err, data) => {
         var p = Data.aggregate([
             { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.projectID } } }] } },
         ]);
-        p.exec((err, relatedData) => {
+        p.exec(async (err, relatedData) => {
             relatedData.forEach((dat) => {
                 dat.relatedObjects.forEach((x) => {
                     if (x.objectId === req.params.projectID && dat.id !== req.params.projectID) {
@@ -143,7 +143,7 @@ router.get('/:projectID', async (req, res) => {
               discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
             }
 
-        return res.json({ success: true, data: data, discourseTopic: discourseTopic });
+          return res.json({ success: true, data: data, discourseTopic: discourseTopic });
         });
     });
 });
