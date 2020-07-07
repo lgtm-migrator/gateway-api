@@ -82,7 +82,8 @@ const editTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
 
     const toolCreator = req.body.toolCreator;
-    let { id, type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
+    let { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
+    let id = req.params.id;
     link = urlValidator.validateURL(link); 
     
     let {emailNotifications = false} = await getObjectById(req.user.id)
@@ -120,26 +121,36 @@ const editTool = async (req, res) => {
         if (err) {
           reject(new Error(`Failed to update.`));
         }
-      }).then(() => {
-        if (type === 'tool') {
+      }).then((tool) => {
+        if(tool == null){
+          reject(new Error(`No record found with id of ${id}.`));
+        } 
+        else if (type === 'tool') {
           sendEmailNotificationToAuthors(data, toolCreator);
           storeNotificationsForAuthors(data, toolCreator);
         }
-        resolve(id);
+        resolve(tool);
       });
     });
   };
 
   const deleteTool = async(req, res) => {
     return new Promise(async(resolve, reject) => {
-      const { id } = req.body;
-      Data.findOneAndDelete({ id: id }, (err) => {
+      const { id } = req.params.id;
+      Data.findOneAndDelete({ id: req.params.id }, (err) => {
         if (err) reject(err);
 
-        resolve(id);
-      });
-    })
-  };
+        
+      }).then((tool) => {
+        if(tool == null){
+          reject(`No Content`);
+        }
+        else{
+          resolve(id);
+        }
+      }
+    )
+  })};
 
   const getToolsAdmin = async (req, res) => {
     return new Promise(async (resolve, reject) => {
@@ -175,7 +186,7 @@ const editTool = async (req, res) => {
       let startIndex = 0;
       let maxResults = 25;
       let typeString = "";
-      let idString = "";
+      let idString = req.user.id;
   
       if (req.query.startIndex) {
         startIndex = req.query.startIndex;
@@ -205,7 +216,8 @@ const editTool = async (req, res) => {
   const setStatus = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const { id, activeflag } = req.body;
+        const { activeflag } = req.body;
+        const id = req.params.id;
         
         // Get the emailNotification status for the current user
         let {emailNotifications = false} = await getObjectById(req.user.id)

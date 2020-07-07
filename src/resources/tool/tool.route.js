@@ -15,7 +15,7 @@ const router = express.Router()
 // @router   POST /api/v1/add
 // @desc     Add tools user
 // @access   Private
-router.post('/add', 
+router.post('/', 
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
@@ -29,10 +29,11 @@ router.post('/add',
     }
 );
 
-// @router   PUT /api/v1/edit
+// @router   PUT /api/v1/{id}
 // @desc     Edit tools user
 // @access   Private
-router.put('/edit', 
+// router.put('/{id}', 
+router.put('/:id', 
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
@@ -41,68 +42,63 @@ router.put('/edit',
         return res.json({ success: true, response});
       })
       .catch(err => {
-        return res.json({ success: false, err});
+        return res.json({ success: false, error: err.message});
       })
     }
 );
 
-// @router   DELETE /api/v1/delete
+// @router   DELETE /api/v1/:id
 // @desc     Delete tools user
 // @access   Private
-router.delete('/delete',
+router.delete('/:id',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
-      await deleteTool(req)
+      await deleteTool(req, res)
         .then(response => {
           return res.json({success: true, response});
         })
         .catch(err => {
-          return res.json({success: false, err});
+          res.status(204).send(err);
         });
     }
 );
 
 // @router   GET /api/v1/get/admin
-// @desc     Get tool
+// @desc     Returns List of Tool objects
 // @access   Private
-router.get('/get/admin',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin),
-    async (req, res) => {
-      req.params.type = "tool";
-      await getToolsAdmin(req)
-        .then(data => {
-          return res.json({success: true, data});
-        })
-        .catch(err => {
-          return res.json({success: false, err});
-        });
-    }
-);
-
-// @router   GET /api/v1/get/admin
-// @desc     Get tool for an author
-// @access   Private
-router.get('/get',
+router.get('/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
       req.params.type = "tool";
-      await getTools(req)
+      let role = req.user.role;
+
+      if(role === ROLES.Admin){
+        await getToolsAdmin(req)
         .then(data => {
           return res.json({success: true, data});
         })
         .catch(err => {
           return res.json({success: false, err});
         });
+      }
+      else if(role === ROLES.Creator){
+        await getTools(req)
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+      }
     }
 );
 
-// @router   PUT /api/v1/status
+// @router   PATCH /api/v1/status
 // @desc     Set tool status
 // @access   Private
-router.put('/status',
+router.patch('/:id',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin),
     async (req, res) => {
@@ -111,53 +107,58 @@ router.put('/status',
           return res.json({success: true, response});
         })
         .catch(err => {
-          return res.json({success: false, err});
+          return res.json({success: false, error: err.message});
         });
     }
 );
 
 /**
- * {get} /tool/:toolID Tool
+ * {get} /tool/:id Tool
  * 
  * Return the details on the tool based on the tool ID.
  */
-router.get('/:toolID', async (req, res) => { 
-    var q = Data.aggregate([
-        { $match: { $and: [{ id: parseInt(req.params.toolID) }] } },
+router.get('/:id', async (req, res) => { 
+    var query = Data.aggregate([
+        { $match: { $and: [{ id: parseInt(req.params.id) }] } },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
     ]);
-    q.exec((err, data) => {
-        var p = Data.aggregate([
-            { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.toolID } } }] } },
-        ]);
-        p.exec((err, relatedData) => {
-            relatedData.forEach((dat) => {
-                dat.relatedObjects.forEach((x) => {
-                    if (x.objectId === req.params.toolID && dat.id !== req.params.toolID) {
-                        if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
-                        data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type })
-                    }
-                })
-            });
-
-            var r = Reviews.aggregate([
-                { $match: { $and: [{ toolID: parseInt(req.params.toolID) }, { activeflag: 'active' }] } },
-                { $sort: { date: -1 } },
-                { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-                { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
+    query.exec((err, data) => {
+      if(data.length > 0){
+          var p = Data.aggregate([
+              { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.id } } }] } },
             ]);
-            r.exec(async (err, reviewData) => {
-                if (err) return res.json({ success: false, error: err });
+            p.exec((err, relatedData) => {
+                relatedData.forEach((dat) => {
+                    dat.relatedObjects.forEach((x) => {
+                        if (x.objectId === req.params.id && dat.id !== req.params.id) {
+                            if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
+                            data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type })
+                        }
+                    })
+                });
 
-                let discourseTopic = {};
-                if (data[0].discourseTopicId) {
-                    discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
-                }
+                var r = Reviews.aggregate([
+                    { $match: { $and: [{ toolID: parseInt(req.params.id) }, { activeflag: 'active' }] } },
+                    { $sort: { date: -1 } },
+                    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
+                    { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
+                ]);
+                r.exec(async (err, reviewData) => {
+                    if (err) return res.json({ success: false, error: err });
 
-                return res.json({ success: true, data: data, reviewData: reviewData, discourseTopic: discourseTopic });
+                    let discourseTopic = {};
+                    if (data[0].discourseTopicId) {
+                        discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
+                    }
+
+                    return res.json({ success: true, data: data, reviewData: reviewData, discourseTopic: discourseTopic });
+                });
             });
-        });
-    });
+          }
+        else{
+          return res.json({success: false, error: `Tool not found for tool id ${req.params.id}`})
+        }
+      });
 });
 
 /**
@@ -282,15 +283,15 @@ router.delete(
     });
   });
 
-router.get('/', async (req, res) => {
-  //req.params.id is how you get the id from the url
-  var q = Data.find({ type: 'tool' }); 
+// router.get('/', async (req, res) => {
+//   //req.params.id is how you get the id from the url
+//   var q = Data.find({ type: 'tool' }); 
 
-  q.exec((err, data) => {
-    if (err) return res.json({ success: false, error: err });
-    return res.json({ success: true, data: data });
-  });
-});
+//   q.exec((err, data) => {
+//     if (err) return res.json({ success: false, error: err });
+//     return res.json({ success: true, data: data });
+//   });
+// });
 
 module.exports = router
 

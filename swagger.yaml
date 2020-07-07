@@ -296,9 +296,9 @@ paths:
         '200':
           description: OK
 
-  /v1/tools/add:
+  /v1/tools:
     post:
-      summary: Add a tool.
+      summary: Returns new Tool object with ID.
       security:
         - cookieAuth: []
       tags:
@@ -356,102 +356,6 @@ paths:
                 licence: 'MIT licence'
                 authors: [4495285946631793]
                 tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
-      responses: 
-        '200':
-          description: OK
-        
-  /v1/tools/edit:
-    put:
-      summary: Edit a tool.
-      security:
-        - cookieAuth: []
-      tags:
-        - Tools
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - name
-              properties:
-                id:
-                  type: number
-                type:
-                  type: string
-                name:
-                  type: string
-                link:
-                  type: string
-                description:
-                  type: string
-                categories:
-                  type: object
-                  properties:
-                    category:
-                      type: string
-                    programmingLanguage:
-                      type: array
-                      items:
-                        type: string
-                    programmingLanguageVersion:
-                      type: string
-                licence:
-                  type: string
-                authors:
-                  type: array
-                  items:
-                    type: number
-                tags:
-                  type: object
-                  properties:
-                    features:
-                      type: array
-                      items:
-                        type: string
-                    topics:
-                      type: array
-                      items:
-                        type: string    
-                toolids:
-                  type: array
-                  items:
-                    type: string
-              example:   # Sample object
-                id: 26542005388306332
-                type: 'tool'
-                name: 'Research Data TEST EPILEPSY'
-                link: 'http://localhost:8080/epilepsy'
-                description: 'Epilespy data research description'
-                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '1.0.0'}
-                licence: 'MIT licence'
-                authors: [4495285946631793]
-                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
-                toolids: []
-      responses: 
-        '200':
-          description: OK
-
-  /v1/tools/delete:
-    delete:
-      summary: Delete a tool.
-      security:
-        - cookieAuth: []
-      tags:
-        - Tools
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - id
-              properties:
-                id:
-                  type: number
-                id: 26542005388306332
-              example:   # Sample object
-                id: 26542005388306332
       responses: 
         '200':
           description: OK
@@ -775,29 +679,10 @@ paths:
       responses: 
         '200':
           description: OK
-    
-  /v1/tools/{toolID}:
-    get:
-      summary: Returns details for a specific tool.
-      tags:
-        - Tools
-      parameters:
-        - name: toolID
-          in: path
-          required: true
-          description: The ID of the tool
-          schema:
-            type : integer
-            format: int64
-            minimum: 1
-            example: 89522470
-      responses: 
-        '200':
-          description: OK
   
-  /v1/tools/get/admin:
+  /v1/tools/:
     get:
-      summary: Get tools for admin.
+      summary: Returns List of Tool objects.
       security:
         - cookieAuth: []
       tags:
@@ -805,10 +690,106 @@ paths:
       responses: 
         '200':
           description: OK
-  
-  /v1/tools/get/:
+    
+  /v1/tools/{id}:
     get:
-      summary: Get tools for normal user.
+      summary: Returns Tool object.
+      security:
+        - cookieAuth: []
+      tags:
+        - Tools
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the tool
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            example: 900000011
+      responses: 
+        '200':
+          description: OK
+    put:
+      summary: Returns edited Tool object.
+      security:
+        - cookieAuth: []
+      tags:
+        - Tools
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type : integer
+            example: 123
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                id:
+                  type: number
+                type:
+                  type: string
+                name:
+                  type: string
+                link:
+                  type: string
+                description:
+                  type: string
+                categories:
+                  type: object
+                  properties:
+                    category:
+                      type: string
+                    programmingLanguage:
+                      type: array
+                      items:
+                        type: string
+                    programmingLanguageVersion:
+                      type: string
+                licence:
+                  type: string
+                authors:
+                  type: array
+                  items:
+                    type: number
+                tags:
+                  type: object
+                  properties:
+                    features:
+                      type: array
+                      items:
+                        type: string
+                    topics:
+                      type: array
+                      items:
+                        type: string    
+                toolids:
+                  type: array
+                  items:
+                    type: string
+              example:   # Sample object
+                id: 26542005388306332
+                type: 'tool'
+                name: 'Research Data TEST EPILEPSY'
+                link: 'http://localhost:8080/epilepsy'
+                description: 'Epilespy data research description'
+                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '1.0.0'}
+                licence: 'MIT licence'
+                authors: [4495285946631793]
+                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
+                toolids: []
+      responses: 
+        '200':
+          description: OK
+    patch:
+      summary: Change status of Tool object.
       security:
         - cookieAuth: []
       tags:
@@ -817,23 +798,11 @@ paths:
         - name: id
           in: path
           required: true
-          description: The ID of the user
+          description: The ID of the tool
           schema:
             type : integer
             format: int64
-            minimum: 1
-            example: 8370396016757367
-      responses: 
-        '200':
-          description: OK
-  
-  /v1/tools/status/:
-    put:
-      summary: Change status for a tool.
-      security:
-        - cookieAuth: []
-      tags:
-        - Tools
+            example: 5032687830560181
       requestBody:
         content:
           application/json:
@@ -852,6 +821,37 @@ paths:
       responses: 
         '200':
           description: OK
+    delete:
+      summary: Delete a tool.
+      security:
+        - cookieAuth: []
+      tags:
+        - Tools
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type : integer
+            example: 123
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: number
+                id: 26542005388306332
+              example:   # Sample object
+                id: 26542005388306332
+      responses: 
+        '200':
+          description: OK
+        '204':
+          description: No Content
   
   /v1/paper/get/admin:
     get:
