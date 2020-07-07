@@ -47,23 +47,6 @@ router.put('/:id',
     }
 );
 
-// @router   DELETE /api/v1/:id
-// @desc     Delete tools user
-// @access   Private
-router.delete('/:id',
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
-      await deleteTool(req, res)
-        .then(response => {
-          return res.json({success: true, response});
-        })
-        .catch(err => {
-          res.status(204).send(err);
-        });
-    }
-);
-
 // @router   GET /api/v1/get/admin
 // @desc     Returns List of Tool objects
 // @access   Private
@@ -283,15 +266,20 @@ router.delete(
     });
   });
 
-// router.get('/', async (req, res) => {
-//   //req.params.id is how you get the id from the url
-//   var q = Data.find({ type: 'tool' }); 
-
-//   q.exec((err, data) => {
-//     if (err) return res.json({ success: false, error: err });
-//     return res.json({ success: true, data: data });
-//   });
-// });
+//Validation required if Delete is to be implemented
+// router.delete('/:id',
+//   passport.authenticate('jwt'),
+//   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+//     async (req, res) => {
+//       await deleteTool(req, res)
+//         .then(response => {
+//           return res.json({success: true, response});
+//         })
+//         .catch(err => {
+//           res.status(204).send(err);
+//         });
+//     }
+// );
 
 module.exports = router
 

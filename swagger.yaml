@@ -821,37 +821,38 @@ paths:
       responses: 
         '200':
           description: OK
-    delete:
-      summary: Delete a tool.
-      security:
-        - cookieAuth: []
-      tags:
-        - Tools
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type : integer
-            example: 123
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - id
-              properties:
-                id:
-                  type: number
-                id: 26542005388306332
-              example:   # Sample object
-                id: 26542005388306332
-      responses: 
-        '200':
-          description: OK
-        '204':
-          description: No Content
+    # Delete requires validation to be implemented first
+    # delete:
+    #   summary: Delete a tool.
+    #   security:
+    #     - cookieAuth: []
+    #   tags:
+    #     - Tools
+    #   parameters:
+    #     - in: path
+    #       name: id
+    #       required: true
+    #       schema:
+    #         type : integer
+    #         example: 123
+    #   requestBody:
+    #     content:
+    #       application/json:
+    #         schema:      
+    #           type: object
+    #           required:
+    #             - id
+    #           properties:
+    #             id:
+    #               type: number
+    #             id: 26542005388306332
+    #           example:   # Sample object
+    #             id: 26542005388306332
+    #   responses: 
+    #     '200':
+    #       description: OK
+    #     '204':
+    #       description: No Content
   
   /v1/paper/get/admin:
     get:
