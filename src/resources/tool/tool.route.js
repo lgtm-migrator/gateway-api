@@ -103,7 +103,8 @@ router.patch('/:id',
 router.get('/:id', async (req, res) => { 
     var query = Data.aggregate([
         { $match: { $and: [{ id: parseInt(req.params.id) }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "uploader", foreignField: "id", as: "uploaderIs" } }
     ]);
     query.exec((err, data) => {
       if(data.length > 0){
@@ -142,6 +143,26 @@ router.get('/:id', async (req, res) => {
           return res.json({success: false, error: `Tool not found for tool id ${req.params.id}`})
         }
       });
+});
+
+/**
+ * {get} /tool/edit/:id Tool
+ * 
+ * Return the details on the tool based on the tool ID for edit.
+ */
+router.get('/edit/:id', async (req, res) => { 
+    var query = Data.aggregate([
+        { $match: { $and: [{ id: parseInt(req.params.id) }] } },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
+    ]);
+    query.exec((err, data) => {
+        if(data.length > 0){
+            return res.json({ success: true, data: data });
+        }
+        else {
+            return res.json({success: false, error: `Tool not found for tool id ${req.params.id}`})
+        }
+    });
 });
 
 /**

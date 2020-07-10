@@ -10,7 +10,7 @@ const router = express.Router();
 // @router   POST /api/v1/add
 // @desc     Add paper user
 // @access   Private
-router.post('/add', 
+router.post('/', 
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
@@ -27,7 +27,7 @@ router.post('/add',
 // @router   PUT /api/v1/edit
 // @desc     Edit paper user
 // @access   Private
-router.put('/edit', 
+router.put('/:id', 
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
@@ -119,7 +119,8 @@ router.put('/status',
 router.get('/:paperID', async (req, res) => {
     var q = Data.aggregate([
         { $match: { $and: [{ id: parseInt(req.params.paperID) }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "uploader", foreignField: "id", as: "uploaderIs" } }
     ]);
     q.exec((err, data) => {
         var p = Data.aggregate([
@@ -138,6 +139,26 @@ router.get('/:paperID', async (req, res) => {
             if (err) return res.json({ success: false, error: err });
             return res.json({ success: true, data: data });
         });
+    });
+});
+
+/**
+ * {get} /paper/edit/:id Paper
+ * 
+ * Return the details on the paper based on the paper ID for edit.
+ */
+router.get('/edit/:paperID', async (req, res) => { 
+    var query = Data.aggregate([
+        { $match: { $and: [{ id: parseInt(req.params.paperID) }] } },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
+    ]);
+    query.exec((err, data) => {
+        if(data.length > 0){
+            return res.json({ success: true, data: data });
+        }
+        else {
+            return res.json({success: false, error: `Paper not found for paper id ${req.params.id}`})
+        }
     });
 });
 

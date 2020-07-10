@@ -37,6 +37,7 @@ const addTool = async (req, res) => {
       data.activeflag = 'review';
       data.updatedon = Date.now();
       data.relatedObjects = relatedObjects;
+      data.uploader = req.user.id;
       let newDataObj = await data.save();
       if(!newDataObj)
         reject(new Error(`Can't persist data object to DB.`));
@@ -69,7 +70,9 @@ const addTool = async (req, res) => {
       }
 
       if (data.type === 'tool') {
-        await sendEmailNotificationToAuthors(data, toolCreator);
+        if(emailNotifications) {
+            await sendEmailNotificationToAuthors(data, toolCreator);
+        }
       }
       await storeNotificationsForAuthors(data, toolCreator);
 
@@ -84,10 +87,8 @@ const editTool = async (req, res) => {
     const toolCreator = req.body.toolCreator;
     let { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
     let id = req.params.id;
-    link = urlValidator.validateURL(link); 
-    
+
     let {emailNotifications = false} = await getObjectById(req.user.id)
-    console.log(emailNotifications);
 
     if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
     
@@ -101,7 +102,7 @@ const editTool = async (req, res) => {
       {
         type: type,
         name: name,
-        link: link,
+        link: urlValidator.validateURL(link),
         description: description,
         journal: journal,
         journalYear: journalYear,
@@ -126,8 +127,10 @@ const editTool = async (req, res) => {
           reject(new Error(`No record found with id of ${id}.`));
         } 
         else if (type === 'tool') {
-          sendEmailNotificationToAuthors(data, toolCreator);
-          storeNotificationsForAuthors(data, toolCreator);
+            if(emailNotifications) {
+                sendEmailNotificationToAuthors(data, toolCreator);
+            }
+            storeNotificationsForAuthors(data, toolCreator);
         }
         resolve(tool);
       });

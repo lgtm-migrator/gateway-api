@@ -11,7 +11,7 @@ const router = express.Router();
 // @router   POST /api/v1/add
 // @desc     Add project user
 // @access   Private
-router.post('/add', 
+router.post('/', 
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
@@ -28,7 +28,7 @@ router.post('/add',
 // @router   PUT /api/v1/edit
 // @desc     Edit project user
 // @access   Private
-router.put('/edit', 
+router.put('/:id', 
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
@@ -145,6 +145,26 @@ router.get('/:projectID', async (req, res) => {
 
           return res.json({ success: true, data: data, discourseTopic: discourseTopic });
         });
+    });
+});
+
+/**
+ * {get} /project/edit/:id Project
+ * 
+ * Return the details on the project based on the project ID for edit.
+ */
+router.get('/edit/:projectID', async (req, res) => { 
+    var query = Data.aggregate([
+        { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
+    ]);
+    query.exec((err, data) => {
+        if(data.length > 0){
+            return res.json({ success: true, data: data });
+        }
+        else {
+            return res.json({success: false, error: `Project not found for project id ${req.params.id}`})
+        }
     });
 });
 
