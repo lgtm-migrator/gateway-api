@@ -41,7 +41,8 @@ const DataSchema = new Schema(
         objectType: String,
         user: String,
         updated: String
-    }]
+    }],
+    uploader: Number
   },
   { 
     collection: 'tools',
