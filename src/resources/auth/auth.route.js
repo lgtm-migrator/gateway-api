@@ -6,7 +6,7 @@ import { getUserByEmail } from '../user/user.repository'
 import { getRedirectUrl } from '../auth/utils'
 import passport from "passport";
 
-const router = express.Router()
+const router = express.Router();
 
 // @router   POST /api/auth/login
 // @desc     login user
