@@ -85,6 +85,7 @@ app.use('/api/v1/discourse/topic', require('../resources/discourse/discourse.top
 app.use('/api/v1/datasets/filters', require('../resources/dataset/dataset.filters.router'));
 app.use('/api/v1/datasets/access', require('../resources/dataset/dataset.access.router'));
 app.use('/api/v1/datasets/detail', require('../resources/dataset/dataset.detail.router'));
+app.use('/api/v1/datasets/schema', require('../resources/dataset/dataset.schema.router'));
 app.use('/api/v1/datasets/filteredsearch', require('../resources/dataset/dataset.searchwithfilters.router')); //search
 app.use('/api/v1/datasets/relatedobjects', require('../resources/dataset/dataset.relatedobjects.router'));
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
