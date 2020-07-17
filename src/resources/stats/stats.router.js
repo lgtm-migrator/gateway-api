@@ -194,7 +194,66 @@ router.get('/', async (req, res) => {
       return res.json({ success: true, data: data });
     });
   });
+
+  /**
+   * {get} /stats/unmet Unmet Searches
+   * 
+   * Return the details on the unmet searches.
+   */
+  router.get('/unmetDatasets', async (req, res) => {
+    req.entity = "dataset";
+    await getUnmetSearches(req)
+      .then((data) =>{
+        return res.json({ success: true, data: data });
+      })
+      .catch((err) => {
+        return res.json({ success: false, error: err });
+      });
+  });
+
+  router.get('/unmetTools', async (req, res) => {
+    req.entity = "tool";
+    await getUnmetSearches(req)
+      .then((data) =>{
+        return res.json({ success: true, data: data });
+      })
+      .catch((err) => {
+        return res.json({ success: false, error: err });
+      });
+  });
+
+  router.get('/unmetProjects', async (req, res) => {
+    req.entity = "project";
+    await getUnmetSearches(req)
+      .then((data) =>{
+        return res.json({ success: true, data: data });
+      })
+      .catch((err) => {
+        return res.json({ success: false, error: err });
+      });
+  });
   
+  router.get('/unmetPapers', async (req, res) => {
+    req.entity = "paper";
+    await getUnmetSearches(req)
+      .then((data) =>{
+        return res.json({ success: true, data: data });
+      })
+      .catch((err) => {
+        return res.json({ success: false, error: err });
+      });
+  });
+
+  router.get('/unmetPeople', async (req, res) => {
+    req.entity = "person";
+    await getUnmetSearches(req)
+      .then((data) =>{
+        return res.json({ success: true, data: data });
+      })
+      .catch((err) => {
+        return res.json({ success: false, error: err });
+      });
+  });
   /**
    * {get} /stats/popular Popular Objects
    * 
@@ -233,3 +292,43 @@ router.get('/', async (req, res) => {
   
   module.exports = router
 
+  const getUnmetSearches = async(req, res) => {
+    return new Promise(async (resolve, reject) => {
+
+      let searchMonth = parseInt(req.query.month);
+      let searchYear = parseInt(req.query.year);
+      let entitySearch = { ["returned." + req.entity] : {$lte : 0}  };
+      let q = RecordSearchData.aggregate([
+        
+        { $addFields: { "month": {$month: '$createdAt'},
+                        "year": {$year: '$createdAt'}}},
+        {$match:{
+            $and: [
+            { month: searchMonth },
+            { year: searchYear },
+            entitySearch, 
+            { "searched": {$ne :""}}
+            ]
+          }
+        },
+        {
+          $group: {
+            _id: { $toLower: "$searched"},
+            count: { $sum: 1 },
+            maxDatasets: { $max: "$returned.dataset" },
+            maxProjects: { $max: "$returned.project"  },
+            maxTools: {  $max: "$returned.tool" },
+            maxPapers: {  $max: "$returned.paper" },
+            maxPeople: {  $max: "$returned.people" },
+            entity: { $max: req.entity}
+          }
+        },
+        {$sort:{ count : -1}}
+      ]).limit(10);
+    
+      q.exec((err, data) => {
+        if (err) reject(err);
+        return resolve(data);
+      });
+    });
+}
