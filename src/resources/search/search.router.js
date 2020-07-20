@@ -33,7 +33,6 @@ router.get('/', async (req, res) => {
     else {
         searchAll = true;
     }
-
     await Promise.all([
         getDatasetResult(datasetSearchString, getDatasetFilters(req)),
         getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool')),
@@ -154,113 +153,77 @@ function getObjectFilters(searchQueryStart, req, type) {
 
     if (type === "tool") {
         if (programmingLanguage.length > 0) {
-            var pl = [];
-            if (!Array.isArray(programmingLanguage)) {
-                pl = [{ "categories.programmingLanguage": programmingLanguage }];
-            } else {
-                for (var i = 0; i < programmingLanguage.length; i++) {
-                    pl[i] = { "categories.programmingLanguage": programmingLanguage[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": pl });
+            var filterTermArray = [];
+            programmingLanguage.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.programmingLanguage": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (toolcategories.length > 0) {
-            var tc = [];
-            if (!Array.isArray(toolcategories)) {
-                tc = [{ "categories.category": toolcategories }];
-            } else {
-                for (var i = 0; i < toolcategories.length; i++) {
-                    tc[i] = { "categories.category": toolcategories[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": tc });
+            var filterTermArray = [];
+            toolcategories.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.category": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (features.length > 0) {
-            var f = [];
-            if (!Array.isArray(features)) {
-                f = [{ "tags.features": features }];
-            } else {
-                for (var i = 0; i < features.length; i++) {
-                    f[i] = { "tags.features": features[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": f });
+            var filterTermArray = [];
+            features.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (tooltopics.length > 0) {
-            var t = [];
-            if (!Array.isArray(tooltopics)) {
-                t = [{ "tags.topics": tooltopics }];
-            } else {
-                for (var i = 0; i < tooltopics.length; i++) {
-                    t[i] = { "tags.topics": tooltopics[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            tooltopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
     }
     else if (type === "project") {
         if (projectcategories.length > 0) {
-            var tc = [];
-            if (!Array.isArray(projectcategories)) {
-                tc = [{ "categories.category": projectcategories }];
-            } else {
-                for (var i = 0; i < projectcategories.length; i++) {
-                    tc[i] = { "categories.category": projectcategories[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": tc });
+            var filterTermArray = [];
+            projectcategories.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.category": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (projectfeatures.length > 0) {
-            var t = [];
-            if (!Array.isArray(projectfeatures)) {
-                t = [{ "tags.features": projectfeatures }];
-            } else {
-                for (var i = 0; i < projectfeatures.length; i++) {
-                    t[i] = { "tags.features": projectfeatures[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            projectfeatures.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (projecttopics.length > 0) {
-            var t = [];
-            if (!Array.isArray(projecttopics)) {
-                t = [{ "tags.topics": projecttopics }];
-            } else {
-                for (var i = 0; i < projecttopics.length; i++) {
-                    t[i] = { "tags.topics": projecttopics[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            projecttopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
     }
     else if (type === "paper") {
         if (paperfeatures.length > 0) {
-            var t = [];
-            if (!Array.isArray(paperfeatures)) {
-                t = [{ "tags.features": paperfeatures }];
-            } else {
-                for (var i = 0; i < paperfeatures.length; i++) {
-                    t[i] = { "tags.features": paperfeatures[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            paperfeatures.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (papertopics.length > 0) {
-            var t = [];
-            if (!Array.isArray(papertopics)) {
-                t = [{ "tags.topics": papertopics }];
-            } else {
-                for (var i = 0; i < papertopics.length; i++) {
-                    t[i] = { "tags.topics": papertopics[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            papertopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
     }
     return searchQuery;
@@ -271,67 +234,49 @@ function getDatasetFilters(req) {
 
     if (req.query.publisher) {
         if (typeof (req.query.publisher) == 'string') {
-            filterString += '&publisher=' + req.query.publisher;
-        }
-        else if (typeof (req.query.publisher) == 'object') {
-            req.query.publisher.map((pub) => {
-                filterString += filterString + '&publisher=' + pub;
-            })
+            req.query.publisher.split('::').forEach((filterTerm) => {
+                filterString += '&publisher=' + filterTerm;
+            });
         }
     }
 
     if (req.query.license) {
         if (typeof (req.query.license) == 'string') {
-            filterString += '&license=' + req.query.license;
-        }
-        else if (typeof (req.query.license) == 'object') {
-            req.query.license.map((lic) => {
-                filterString += filterString + '&license=' + lic;
-            })
+            req.query.license.split('::').forEach((filterTerm) => {
+                filterString += '&license=' + filterTerm;
+            });
         }
     }
 
     if (req.query.geographiccover) {
         if (typeof (req.query.geographiccover) == 'string') {
-            filterString += '&geographicCoverage=' + req.query.geographiccover;
-        }
-        else if (typeof (req.query.geographiccover) == 'object') {
-            req.query.geographiccover.map((geo) => {
-                filterString += filterString + '&geographicCoverage=' + geo;
-            })
+            req.query.geographiccover.split('::').forEach((filterTerm) => {
+                filterString += '&geographicCoverage=' + filterTerm;
+            });
         }
     }
 
     if (req.query.ageband) {
         if (typeof (req.query.ageband) == 'string') {
-            filterString += '&ageBand=' + req.query.ageband.replace("+", "%2B");
-        }
-        else if (typeof (req.query.ageband) == 'object') {
-            req.query.ageband.map((age) => {
-                filterString += filterString + '&ageBand=' + age.replace("+", "%2B");
-            })
+            req.query.ageband.split('::').forEach((filterTerm) => {
+                filterString += '&ageBand=' + filterTerm.replace("+", "%2B");;
+            });
         }
     }
 
     if (req.query.sampleavailability) {
         if (typeof (req.query.sampleavailability) == 'string') {
-            filterString += '&physicalSampleAvailability=' + req.query.sampleavailability;
-        }
-        else if (typeof (req.query.sampleavailability) == 'object') {
-            req.query.sampleavailability.map((samp) => {
-                filterString += filterString + '&physicalSampleAvailability=' + samp;
-            })
+            req.query.sampleavailability.split('::').forEach((filterTerm) => {
+                filterString += '&physicalSampleAvailability=' + filterTerm;
+            });
         }
     }
 
     if (req.query.keywords) {
         if (typeof (req.query.keywords) == 'string') {
-            filterString += '&keywords=' + req.query.keywords;
-        }
-        else if (typeof (req.query.keywords) == 'object') {
-            req.query.keywords.map((key) => {
-                filterString += filterString + '&keywords=' + key;
-            })
+            req.query.keywords.split('::').forEach((filterTerm) => {
+                filterString += '&keywords=' + filterTerm;
+            });
         }
     }
     return filterString;
