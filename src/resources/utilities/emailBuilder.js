@@ -17,7 +17,7 @@ const setMessageProperties = (emailRecipientType, body, user) => {
   const hdrukEmail = `enquiry@healthdatagateway.org`;
   const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || custodianEmail;
 
-  const msg = {
+  let msg = {
     from: `${hdrukEmail}`,
     subject: `Enquires for ${title} dataset healthdatagateway.org`,
     html: `
@@ -35,7 +35,7 @@ const setMessageProperties = (emailRecipientType, body, user) => {
   };
 
   if (emailRecipientType === 'requester') {
-    msg.to = user.email;
+    msg.to = [ user ];
     msg.html = `Thank you for enquiring about access to the ${title} dataset through the 
         Health Data Research UK Innovation Gateway. The Data Custodian for this dataset 
         has been notified and they will contact you directly in due course.<br /><br />
@@ -50,7 +50,8 @@ const setMessageProperties = (emailRecipientType, body, user) => {
         <br></br>` + msg.html;
   }
   else if (emailRecipientType === 'dataCustodian') {
-    msg.to = `${dataCustodianEmail}`
+    msg.to = [{ email: `${dataCustodianEmail}` }];
+    msg.allowUnsubscribe = false;
   }
   return msg;
 };
