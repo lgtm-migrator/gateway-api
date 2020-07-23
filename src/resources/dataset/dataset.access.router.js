@@ -1,8 +1,8 @@
 import express from 'express'
 import { UserModel } from '../user/user.model';
 import { DataRequestModel } from '../datarequests/datarequests.model';
+import emailGenerator from '../utilities/emailGenerator.util';
 const emailBuilder = require('../utilities/emailBuilder');
-const sgMail = require('@sendgrid/mail');
 const router = express.Router();
 
 // @router   POST /api/v1/datasets/access/request
@@ -27,10 +27,14 @@ router.post('/request', async (req, res) => {
     // 3. send email to requester and custodian of the data
     const emailRecipientTypes = ['requester', 'dataCustodian'];
 
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     for (let emailRecipientType of emailRecipientTypes) {
       let msg = emailBuilder.setMessageProperties(emailRecipientType, req.body, user);
-      await sgMail.send(msg);
+      await emailGenerator.sendEmail(
+        msg.to, 
+        msg.from, 
+        msg.subject, 
+        msg.html, 
+        msg.allowUnsubscribe);
     }
 
     // 4. log access request to data_requests

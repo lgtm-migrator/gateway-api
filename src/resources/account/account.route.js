@@ -7,7 +7,8 @@ import { Collections } from '../collections/collections.model';
 import { MessagesModel } from '../message/message.model';
 import { createDiscourseTopic } from '../discourse/discourse.service'
 import { UserModel } from '../user/user.model'
-const sgMail = require('@sendgrid/mail');
+import emailGenerator from '../utilities/emailGenerator.util';
+
 const router = express.Router();
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
@@ -193,10 +194,6 @@ router.put(
   utils.checkIsInRole(ROLES.Admin), 
   async (req, res) => {
     const { id, activeflag } = req.body;
-
-    // Get the emailNotification status for the current user
-    let {emailNotifications = false} = await getObjectById(req.user.id)
-
     try {
       await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag }});
       const tool = await Data.findOne({ id: id });
@@ -216,8 +213,8 @@ router.put(
         await createDiscourseTopic(tool);
       }
 
-      if (emailNotifications)
-        await sendEmailNotifications(tool, activeflag);
+      // Send email notifications to all admins and authors who have opted in
+      await sendEmailNotifications(tool, activeflag);
 
       return res.json({ success: true });
       
@@ -249,12 +246,12 @@ async function createMessage(authorId, toolId, toolName, toolType, activeflag) {
 }
 
 async function sendEmailNotifications(tool, activeflag) {
-  const emailRecipients = await UserModel.find({ $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] });
-  const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
   let subject;
   let html;
-  //build email
+  // 1. Generate URL for linking tool in email
+  const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
+  
+  // 2. Build HTML for email
   if (activeflag === 'active') {
     subject = `Your ${tool.type} ${tool.name} has been approved and is now live`
     html = `Your ${tool.type} ${tool.name} has been approved and is now live <br /><br />  ${toolLink}`
@@ -263,13 +260,28 @@ async function sendEmailNotifications(tool, activeflag) {
     html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  ${toolLink}`
   }
 
-  for (let emailRecipient of emailRecipients) {
-    const msg = {
-      to: emailRecipient.email,
-      from: `${hdrukEmail}`,
-      subject: subject,
-      html: html
-    };
-    await sgMail.send(msg);
-  }
+  // 3. Query Db for all admins or authors of the tool who have opted in to email updates
+  var q = UserModel.aggregate([
+    // Find all users who are admins or authors of this tool
+    { $match: { $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] } },
+    // Perform lookup to check opt in/out flag in tools schema
+    { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+    // Filter out any user who has opted out of email notifications
+    { $match: { 'tool.emailNotifications': true } },
+    // Reduce response payload size to required fields
+    { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+  ]);
+
+  // 4. Use the returned array of email recipients to generate and send emails with SendGrid
+  q.exec((err, emailRecipients) => {
+    if (err) {
+      return new Error({ success: false, error: err });
+    }
+    emailGenerator.sendEmail(
+      emailRecipients,
+      `${hdrukEmail}`,
+      subject,
+      html
+    );
+  });
 }

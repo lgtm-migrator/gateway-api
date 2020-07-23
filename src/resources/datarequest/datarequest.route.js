@@ -4,6 +4,7 @@ import axios from 'axios';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import emailGenerator from '../utilities/emailGenerator.util';
+
 const sgMail = require('@sendgrid/mail');
 const notificationBuilder = require('../utilities/notificationBuilder');
 
@@ -115,17 +116,27 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
       // set options
       let options = {userType: '', userEmail: email, userName: `${firstname} ${lastname}`, custodianEmail: contactPoint, dataSetTitle: title, publisher, description, abstract };
       console.log(options);
-      // set sendGrid key
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
       for (let emailRecipientType of emailRecipientTypes) {
-        let emailTemplate = {};
+        let msg = {};
 
         options = {...options, userType: emailRecipientType};
         // build email template
-        emailTemplate = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
+        msg = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
+        // if unsubscribe is allowed, pass single user object recipient to generate and append unsub link
+        if(msg.allowUnsubscribe) {
+          msg.to = [ req.user ];
+        } else {
+          // if unsubscribe not allowed, pass email in mock user object
+          msg.to = [{ email: msg.to }];
+        }
         // send email
-        await sgMail.send(emailTemplate);
+        await emailGenerator.sendEmail(
+          msg.to, 
+          msg.from, 
+          msg.subject, 
+          msg.html, 
+          msg.allowUnsubscribe);
       }
      
       application.applicationStatus = 'submitted';

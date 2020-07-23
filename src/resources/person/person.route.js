@@ -4,6 +4,8 @@ import { utils } from "../auth";
 import passport from "passport";
 import { ROLES } from '../user/user.roles'
 import {addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository';
+import emailGenerator from '../utilities/emailGenerator.util';
+import { UserModel } from '../user/user.model'
 const urlValidator = require('../utilities/urlValidator');
 
 const router = express.Router()
@@ -59,6 +61,29 @@ router.put('/',
       return res.json({ success: false, error: err });
     })
   });
+
+// @router   GET /api/v1/person/unsubscribe/:userObjectId
+// @desc     Unsubscribe a single user from email notifications without challenging authentication
+// @access   Public
+router.put('/unsubscribe/:userObjectId', async (req, res) => {
+   const userId = req.params.userObjectId;
+   // 1. Use _id param issued by MongoDb as unique reference to find user entry
+    await UserModel.findOne({ _id: userId })
+      .then(async (user) => {
+        // 2. Find person entry using numeric id and update email notifications to false
+        await Data.findOneAndUpdate({ id: user.id },
+        {
+          emailNotifications: false
+        }).then(() => {
+          // 3a. Return success message
+          return res.json({ success: true, msg: "You've been successfully unsubscribed from all emails. You can change this setting via your account." });
+        });
+      })
+      .catch(() =>{
+        // 3b. Return generic failure message in all cases without disclosing reason or data structure
+        return res.status(500).send({ success: false, msg: "A problem occurred unsubscribing from email notifications." });
+      })
+});
 
   /**
  * {get} /person/:personID Person
