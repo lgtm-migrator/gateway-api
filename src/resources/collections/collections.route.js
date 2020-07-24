@@ -97,6 +97,36 @@ router.post('/add',
 
   }); 
 
+  router.put('/archive', 
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => { 
+
+    var {id, activeflag } = req.body;
+
+    Collections.findOneAndUpdate({ id: id }, 
+      {
+        activeflag: activeflag
+      }, (err) => {
+        if(err) {
+          return res.json({ success: false, error: err }); 
+        }
+      }).then(() => {
+        return res.json({ success: true });
+      })   
+  }); 
+
+  router.delete('/delete/:id', 
+    passport.authenticate('jwt'),
+    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+    async (req, res) => {
+
+      Collections.findOneAndRemove({id: req.params.id}, (err) => {
+        if (err) return res.send(err);
+        return res.json({ success: true });
+      });
+  });
+
   module.exports = router;
 
   async function createMessage(authorId, collections, activeflag, collectionCreator) { 
