@@ -278,7 +278,7 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
     let userObjectId = recipient._id;
     let unsubscribeLink = baseURL + unsubscribeRoute + userObjectId;
     unsubscribeHTML = `<tr>
-                        <td>
+                        <td align="center">
                           <p>You're receiving this message because you have an account in the Innovation Gateway.</p>
                           <p><a style="color: #475da7;" href="${unsubscribeLink}">Unsubscribe</a> if you want to stop receiving these.</p>
                         </td>
@@ -286,7 +286,7 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
   }
 
   // 2. Generate generic HTML email footer
-  return `<div style="margin-top: 23px; font-size:12px; text-align: center; line-height: 18px; color: #3c3c3b">
+  return `<div style="margin-top: 23px; font-size:12px; text-align: center; line-height: 18px; color: #3c3c3b; width: 100%">
             <table
             align="center"
             border="0"
@@ -297,13 +297,13 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
             max-width:700px">
               <tbody>
                 <tr>
-                  <td>
+                  <td align="center">
                     <a style="color: #475da7;" href="https://www.healthdatagateway.org">www.healthdatagateway.org</a>
                   </td>
                 </tr>
                 ${unsubscribeHTML}
                 <tr>
-                  <td>
+                  <td align="center">
                     <span>©️HDR UK ${moment().year()}. All rights reserved.<span/>
                   </td>
                 </tr>
