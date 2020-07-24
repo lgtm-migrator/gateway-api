@@ -278,7 +278,7 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
     let userObjectId = recipient._id;
     let unsubscribeLink = baseURL + unsubscribeRoute + userObjectId;
     unsubscribeHTML = `<tr>
-                        <td>
+                        <td align="center">
                           <p>You're receiving this message because you have an account in the Innovation Gateway.</p>
                           <p><a style="color: #475da7;" href="${unsubscribeLink}">Unsubscribe</a> if you want to stop receiving these.</p>
                         </td>
