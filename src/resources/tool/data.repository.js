@@ -137,9 +137,9 @@ const editTool = async (req, res) => {
           sendEmailNotificationToAuthors(data, toolCreator);
           storeNotificationsForAuthors(data, toolCreator);
         }
-        resolve(tool);
+          resolve(tool);
       });
-    });
+    })
   };
 
   const deleteTool = async(req, res) => {
@@ -163,14 +163,14 @@ const editTool = async (req, res) => {
   const getToolsAdmin = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       let startIndex = 0;
-      let maxResults = 25;
+      let limit = 25;
       let typeString = "";
   
       if (req.query.startIndex) {
         startIndex = req.query.startIndex;
       }
-      if (req.query.maxResults) {
-        maxResults = req.query.maxResults;
+      if (req.query.limit) {
+        limit = req.query.limit;
       }
       if (req.params.type) {
         typeString = req.params.type;
@@ -192,15 +192,15 @@ const editTool = async (req, res) => {
   const getTools = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       let startIndex = 0;
-      let maxResults = 25;
+      let limit = 25;
       let typeString = "";
       let idString = req.user.id;
   
       if (req.query.startIndex) {
         startIndex = req.query.startIndex;
       }
-      if (req.query.maxResults) {
-        maxResults = req.query.maxResults;
+      if (req.query.limit) {
+        limit = req.query.limit;
       }
       if (req.params.type) {
         typeString = req.params.type;

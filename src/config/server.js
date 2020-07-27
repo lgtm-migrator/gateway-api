@@ -77,7 +77,7 @@ app.use('/api/v1/stats', require('../resources/stats/stats.router'));
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
-app.use('/api/v1/project', require('../resources/project/project.route'));
+app.use('/api/v1/projects', require('../resources/project/project.route'));
 app.use('/api/v1/paper', require('../resources/paper/paper.route')); 
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/discourse/topic', require('../resources/discourse/discourse.topic.route'));

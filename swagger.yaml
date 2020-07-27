@@ -453,13 +453,13 @@ paths:
         '200':
           description: OK
 
-  /v1/project/add:
+  /v1/projects:
     post:
-      summary: Add a project.
+      summary: Returns a Project object with ID.
       security:
         - cookieAuth: []
       tags:
-        - Project
+        - Projects
       requestBody:
         content:
           application/json:
@@ -516,14 +516,81 @@ paths:
       responses: 
         '200':
           description: OK
-        
-  /v1/project/edit:
-    put:
-      summary: Edit a project.
+    get:
+      summary: Returns List of Project objects.
       security:
         - cookieAuth: []
       tags:
-        - Project
+        - Projects
+      parameters:
+      - in: path
+        name: maxResults
+        required: false
+        description: Limit the number of results
+        schema:
+          type : integer
+          example: 2
+      responses: 
+        '200':
+          description: OK
+  /v1/projects/{id}:
+    get:
+      summary: Returns Project object.
+      tags:
+        - Projects
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type : integer
+            example: 441788967946948
+      responses: 
+        '200':
+          description: OK
+    patch:
+      summary: Change status of the Project object.
+      security:
+        - cookieAuth: []
+      tags:
+        - Projects
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            example: 662346984100503
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                activeflag:
+                  type: string
+              example:   # Sample object
+                activeflag: 'active'
+      responses: 
+        '200':
+          description: OK
+    put:
+      summary: Returns edited Project object.
+      security:
+        - cookieAuth: []
+      tags:
+        - Projects
+      parameters:
+      - in: path
+        name: id
+        required: true
+        description: The ID of the tool
+        schema:
+          type : integer
+          format: int64
+          example: 26542005388306332
       requestBody:
         content:
           application/json:
@@ -585,30 +652,6 @@ paths:
                 authors: [4495285946631793]
                 tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
                 toolids: []
-      responses: 
-        '200':
-          description: OK
-
-  /v1/project/delete:
-    delete:
-      summary: Delete a project.
-      security:
-        - cookieAuth: []
-      tags:
-        - Project
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - id
-              properties:
-                id:
-                  type: number
-                id: 26542005388306332
-              example:   # Sample object
-                id: 26542005388306332
       responses: 
         '200':
           description: OK
@@ -986,80 +1029,6 @@ paths:
         - cookieAuth: []
       tags:
         - Paper
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - name
-              properties:
-                id:
-                  type: number
-                activeflag:
-                  type: string
-              example:   # Sample object
-                id: 662346984100503
-                activeflag: 'active'
-      responses: 
-        '200':
-          description: OK
-
-  /v1/project/{projectId}:
-    get:
-      summary: Return the details on the project based on the project ID.
-      tags:
-        - Projects
-      parameters:
-        - in: path
-          name: projectId
-          required: true
-          schema:
-            type : string
-            example: b2475d19-75fe-422b-9d0c-c53cdfff8230
-      responses: 
-        '200':
-          description: OK
-
-  /v1/project/get/admin:
-    get:
-      summary: Get project for admin.
-      security:
-        - cookieAuth: []
-      tags:
-        - Project
-      responses: 
-        '200':
-          description: OK
-  
-  /v1/project/get/:
-    get:
-      summary: Get project for normal user.
-      security:
-        - cookieAuth: []
-      tags:
-        - Project
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the user
-          schema:
-            type : integer
-            format: int64
-            minimum: 1
-            example: 8370396016757367
-      responses: 
-        '200':
-          description: OK
-  
-  /v1/project/status/:
-    put:
-      summary: Change status for a project.
-      security:
-        - cookieAuth: []
-      tags:
-        - Project
       requestBody:
         content:
           application/json:
