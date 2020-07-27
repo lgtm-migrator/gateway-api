@@ -97,7 +97,7 @@ router.post('/add',
 
   }); 
 
-  router.put('/archive', 
+  router.put('/status',  
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => { 
