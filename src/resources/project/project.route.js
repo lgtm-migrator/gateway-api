@@ -25,12 +25,11 @@ router.post('/',
     }
 );
 
-
 // @router   GET /api/v1/
-// @desc     Returns List of Project Objects
+// @desc     Returns List of Project Objects Authenticated
 // @access   Private
 router.get(
-  '/',
+  '/getList',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
@@ -57,12 +56,27 @@ router.get(
   }
 );
 
+// @router   GET /api/v1/
+// @desc     Returns List of Project Objects No auth
+//           This unauthenticated route was created specifically for API-docs
+// @access   Public
+router.get(
+  '/',
+  async (req, res) => {
+    req.params.type = 'project';
+      await getToolsAdmin(req)
+        .then((data) => {
+          return res.json({ success: true, data });
+        })
+        .catch((err) => {
+          return res.json({ success: false, err });
+        });
+  }
+);
 
-/**
- * {get} /project​/:project​ID Project
- * 
- * Return the details on the tool based on the tool ID.
- */
+// @router   GET /api/v1/
+// @desc     Returns a Project object
+// @access   Public
 router.get('/:projectID', async (req, res) => {
   var q = Data.aggregate([
       { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
@@ -103,7 +117,7 @@ router.get('/:projectID', async (req, res) => {
   });
 });
 
-// @router   PUT /api/v1/status
+// @router   PATCH /api/v1/status
 // @desc     Set project status
 // @access   Private
 router.patch('/:id',
@@ -120,9 +134,8 @@ router.patch('/:id',
     }
 );
 
-
 // @router   PUT /api/v1/
-// @desc     Edit project user
+// @desc     Edit project 
 // @access   Private
 router.put('/:id', 
   passport.authenticate('jwt'),
@@ -137,26 +150,5 @@ router.put('/:id',
       })
     }
 );
-
-
-/**
- * {get} /project/edit/:id Project
- * 
- * Return the details on the project based on the project ID for edit.
- */
-router.get('/edit/:projectID', async (req, res) => { 
-    var query = Data.aggregate([
-        { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-    ]);
-    query.exec((err, data) => {
-        if(data.length > 0){
-            return res.json({ success: true, data: data });
-        }
-        else {
-            return res.json({success: false, error: `Project not found for project id ${req.params.id}`})
-        }
-    });
-});
 
 module.exports = router;

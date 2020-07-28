@@ -518,18 +518,30 @@ paths:
           description: OK
     get:
       summary: Returns List of Project objects.
-      security:
-        - cookieAuth: []
       tags:
         - Projects
       parameters:
-      - in: path
-        name: maxResults
+      - in: query
+        name: limit
         required: false
         description: Limit the number of results
         schema:
           type : integer
-          example: 2
+          example: 3
+      - in: query
+        name: offset
+        required: false
+        description: Index to offset the search results
+        schema:
+          type : integer
+          example: 1
+      - in: query
+        name: q
+        required: false
+        description: Filter using search query
+        schema:
+          type : string
+          example: epilepsy
       responses: 
         '200':
           description: OK
