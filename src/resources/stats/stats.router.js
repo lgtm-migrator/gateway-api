@@ -70,11 +70,11 @@ router.get('/', async (req, res) => {
       }];
   
     //set the aggregate queries
-    var aggregateQueryTypes = [{ $group: { _id: "$type", count: { $sum: 1 } } }];
+    var aggregateQueryTypes = [{ $match: { activeflag: "active" } },{ $group: { _id: "$type", count: { $sum: 1 } } }];
   
     var q = RecordSearchData.aggregate(aggregateQuerySearches);
 
-    var aggregateAccessRequests = [{ $group: {_id: "accessRequests", count: { $sum: 1 } } }];
+    var aggregateAccessRequests = [{ $match: { applicationStatus: "submitted" } }, { $group: {_id: "accessRequests", count: { $sum: 1 } } }];
 
     var y = DataRequestModel.aggregate(aggregateAccessRequests);
 
@@ -170,7 +170,7 @@ router.get('/', async (req, res) => {
                 obj[headers[j]] = currentline[j].replace(quotesRegex, "$1");
             }
 
-            result.push(obj);
+            result.push(obj); 
         }
 
         result.map((res) => {
@@ -233,7 +233,14 @@ router.get('/', async (req, res) => {
             // { "$match": { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } },
             // some older fields only have timeStamp --> only timeStamp in the production db
             //checking for both currently
-            { "$match": { $or: [ { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} }, { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } ] }},
+            { "$match": {$and: [
+                { $or: [ 
+                  { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} },
+                  { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } 
+                ]
+              },
+              { "applicationStatus": "submitted" } 
+            ]} },
             {
               $group: {
                 _id: 'accessRequestsMonth',
@@ -280,6 +287,74 @@ router.get('/', async (req, res) => {
  
       return result;
   });
+
+  router.get('/uptime/:selectedDate', async (req, res) => { 
+    const monitoring = require('@google-cloud/monitoring');
+    const projectId = 'hdruk-gateway';
+    const client = new monitoring.MetricServiceClient();
+
+    var result;
+
+    var selectedMonthStart = new Date(req.params.selectedDate);
+    selectedMonthStart.setMonth(selectedMonthStart.getMonth());
+    selectedMonthStart.setDate(1);
+    selectedMonthStart.setHours(0,0,0,0);
+
+    var selectedMonthEnd = new Date(req.params.selectedDate);
+    selectedMonthEnd.setMonth(selectedMonthEnd.getMonth()+1);
+    selectedMonthEnd.setDate(0);
+    selectedMonthEnd.setHours(23,59,59,999);
+  
+    const request = {
+      name: client.projectPath(projectId),
+      filter: 'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-uat-cms" AND metric.label."checker_location"="eur-belgium"',
+      
+      interval: {
+        startTime: {
+          seconds: selectedMonthStart.getTime() / 1000,
+        },
+        endTime: {
+          seconds: selectedMonthEnd.getTime() / 1000,
+        },
+      },
+      aggregation: {
+        alignmentPeriod: {
+          seconds: '86400s',
+        },
+        crossSeriesReducer: 'REDUCE_NONE',
+        groupByFields: [
+          'metric.label."checker_location"',
+          'resource.label."instance_id"'
+        ],
+        perSeriesAligner: 'ALIGN_FRACTION_TRUE',
+      },
+
+    };
+
+    // Writes time series data
+    const [timeSeries] = await client.listTimeSeries(request);
+    var dailyUptime = [];
+    var averageUptime;
+
+    timeSeries.forEach(data => {
+     
+        data.points.forEach(data => {
+          dailyUptime.push(data.value.doubleValue)
+        })
+
+        averageUptime = (dailyUptime.reduce((a, b) => a + b, 0) / dailyUptime.length) * 100;
+
+        result = res.json(
+          {
+            'success': true, 'data': averageUptime
+            }
+        )
+    });
+  
+    return result;
+
+  }); 
+  
 
   /**
    * {get} /stats/recent Recent Searches

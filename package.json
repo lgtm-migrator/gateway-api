@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@google-cloud/monitoring": "^2.1.0",
     "@sendgrid/mail": "^7.1.0",
     "async": "^3.2.0",
     "await-to-js": "^2.1.1",
