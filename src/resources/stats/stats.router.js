@@ -307,7 +307,7 @@ router.get('/', async (req, res) => {
   
     const request = {
       name: client.projectPath(projectId),
-      filter: 'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-uat-cms" AND metric.label."checker_location"="eur-belgium"',
+      filter: 'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-production-web-app-qsxe8fXRrBo" AND metric.label."checker_location"="eur-belgium"',
       
       interval: {
         startTime: {
