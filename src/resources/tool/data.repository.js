@@ -137,9 +137,9 @@ const editTool = async (req, res) => {
           sendEmailNotificationToAuthors(data, toolCreator);
           storeNotificationsForAuthors(data, toolCreator);
         }
-        resolve(tool);
+          resolve(tool);
       });
-    });
+    })
   };
 
   const deleteTool = async(req, res) => {
@@ -162,45 +162,54 @@ const editTool = async (req, res) => {
 
   const getToolsAdmin = async (req, res) => {
     return new Promise(async (resolve, reject) => {
+
       let startIndex = 0;
-      let maxResults = 25;
+      let limit = 100;
       let typeString = "";
-  
-      if (req.query.startIndex) {
-        startIndex = req.query.startIndex;
+      let searchString = "";
+      
+      if (req.query.offset) {
+        startIndex = req.query.offset;
       }
-      if (req.query.maxResults) {
-        maxResults = req.query.maxResults;
+      if (req.query.limit) {
+        limit = req.query.limit;
       }
       if (req.params.type) {
         typeString = req.params.type;
       }
-  
-      let query = Data.aggregate([
-        { $match: { $and: [{ type: typeString }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
-        { $sort: { updatedAt : -1}}
-      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
-      query.exec((err, data) => {
-        // if (err) return res.json({ success: false, error: err });
-        if (err) reject({ success: false, error: err });
-        resolve(data);
-      });
+      if (req.query.q) {
+        searchString = req.query.q || "";;
+      }
+
+      let searchQuery = { $and: [{ type: typeString }] };
+      let searchAll = false;
+
+      if (searchString.length > 0) {
+          searchQuery["$and"].push({ $text: { $search: searchString } });
+        }
+      else {
+          searchAll = true;
+      }
+      await Promise.all([
+          getObjectResult(typeString, searchAll, searchQuery, startIndex, limit),
+      ]).then((values) => {
+        resolve(values[0]);
+    });
     });
   }
 
   const getTools = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       let startIndex = 0;
-      let maxResults = 25;
+      let limit = 25;
       let typeString = "";
       let idString = req.user.id;
   
       if (req.query.startIndex) {
         startIndex = req.query.startIndex;
       }
-      if (req.query.maxResults) {
-        maxResults = req.query.maxResults;
+      if (req.query.limit) {
+        limit = req.query.limit;
       }
       if (req.params.type) {
         typeString = req.params.type;
@@ -371,6 +380,34 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
         return { success: true, id: message.messageID };
       });
     }); 
+};
+
+function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
+  let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
+  let q = '';
+
+  if (searchAll) {
+    q = Data.aggregate([
+        { $match: newSearchQuery },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
+        { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
+    ]).sort({ updatedAt : -1}).skip(parseInt(startIndex)).limit(parseInt(limit));
+  }
+  else{
+    q = Data.aggregate([
+      { $match: newSearchQuery },
+      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+      { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
+      { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
+    ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(limit));
+  }
+  return new Promise((resolve, reject) => {
+      q.exec((err, data) => {
+          if (typeof data === "undefined") resolve([]);
+          else resolve(data);
+      })
+  })
 };
 
 export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin }
