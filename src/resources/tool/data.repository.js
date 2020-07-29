@@ -164,7 +164,7 @@ const editTool = async (req, res) => {
     return new Promise(async (resolve, reject) => {
 
       let startIndex = 0;
-      let limit = 100;
+      let limit = 1000;
       let typeString = "";
       let searchString = "";
       
@@ -201,7 +201,7 @@ const editTool = async (req, res) => {
   const getTools = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       let startIndex = 0;
-      let limit = 25;
+      let limit = 1000;
       let typeString = "";
       let idString = req.user.id;
   
