@@ -99,31 +99,70 @@ router.post('/add',
 
   router.put('/status',  
   passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator), 
   async (req, res) => { 
 
     var {id, activeflag } = req.body;
+    var isAuthorAdmin = false; 
 
-    Collections.findOneAndUpdate({ id: id }, 
-      {
-        activeflag: activeflag
-      }, (err) => {
-        if(err) {
-          return res.json({ success: false, error: err }); 
+    var q = Collections.aggregate([
+      { $match: { $and: [{ id: parseInt(req.body.id) }, {authors: req.user.id}] } }
+    ]);
+    q.exec((err, data) => {
+      if(data.length === 1) {
+        isAuthorAdmin = true;
+      } 
+      
+      if(req.user.role === 'Admin') {
+        isAuthorAdmin = true;
+      } 
+
+      if(isAuthorAdmin){
+          Collections.findOneAndUpdate({ id: id },   
+            {
+              activeflag: activeflag
+            }, (err) => {
+              if(err) {
+                return res.json({ success: false, error: err }); 
+              }
+            }).then(() => {
+              return res.json({ success: true });
+            })  
+
+        } else {
+          return res.json({ success: false, error: 'Not authorised' }); 
         }
-      }).then(() => {
-        return res.json({ success: true });
-      })   
+    });
   }); 
 
   router.delete('/delete/:id', 
     passport.authenticate('jwt'),
     utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
+      var isAuthorAdmin = false; 
 
-      Collections.findOneAndRemove({id: req.params.id}, (err) => {
-        if (err) return res.send(err);
-        return res.json({ success: true });
+      var q = Collections.aggregate([
+        { $match: { $and: [{ id: parseInt(req.params.id) }, {authors: req.user.id}] } }
+      ]);
+      q.exec((err, data) => {
+
+        if(data.length === 1) {
+          isAuthorAdmin = true;
+        } 
+        
+        if(req.user.role === 'Admin') {
+        isAuthorAdmin = true;
+        } 
+  
+        if(isAuthorAdmin){
+        Collections.findOneAndRemove({id: req.params.id}, (err) => {
+            if (err) return res.send(err);
+            return res.json({ success: true });
+          });
+  
+          } else {
+          return res.json({ success: false, error: 'Not authorised' }); 
+          }
       });
   });
 
