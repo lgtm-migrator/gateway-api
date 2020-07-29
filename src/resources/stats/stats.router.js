@@ -488,10 +488,10 @@ router.get('/', async (req, res) => {
    * Return the details on the updated objects.
    */
   router.get('/updates', async (req, res) => {
-    var q = Data.find({ counter: { $gt : 0} }).sort({ updatedon: -1 }).limit(10);
+    var q = Data.find({activeflag: "active", counter: { $gt : 0} }).sort({ updatedon: -1 }).limit(10);
   
     if (req.query.type) {
-      q = Data.find({ $and:[ {type : req.query.type, updatedon: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
+      q = Data.find({ $and:[ {type : req.query.type, activeflag: "active", updatedon: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
     }
   
     q.exec((err, data) => {
