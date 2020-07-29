@@ -3,7 +3,7 @@ require('dotenv').config();
 const { google } = require('googleapis')
 
 const scopes = 'https://www.googleapis.com/auth/analytics.readonly'
-const jwt = new google.auth.JWT(process.env.CLIENT_EMAIL, null, process.env.PRIVATE_KEY, scopes)
+const jwt = new google.auth.JWT(process.env.GA_CLIENT_EMAIL, null, process.env.GA_PRIVATE_KEY, scopes)
 
 const view_id = process.env.GA_VIEW_ID
 
