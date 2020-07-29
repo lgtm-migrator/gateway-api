@@ -101,19 +101,19 @@ router.post('/add',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator), 
   async (req, res) => { 
-    var {id, activeflag, userRole, userId } = req.body;
+
+    var {id, activeflag } = req.body;
     var isAuthorAdmin = false; 
 
     var q = Collections.aggregate([
-      { $match: { $and: [{ id: parseInt(req.body.id) }, {authors: req.body.userId}] } }
+      { $match: { $and: [{ id: parseInt(req.body.id) }, {authors: req.user.id}] } }
     ]);
     q.exec((err, data) => {
-    
       if(data.length === 1) {
         isAuthorAdmin = true;
       } 
       
-      if(req.body.userRole === 'Admin') {
+      if(req.user.role === 'Admin') {
         isAuthorAdmin = true;
       } 
 
@@ -142,7 +142,7 @@ router.post('/add',
       var isAuthorAdmin = false; 
 
       var q = Collections.aggregate([
-        { $match: { $and: [{ id: parseInt(req.params.id) }, {authors: req.body.userId}] } }
+        { $match: { $and: [{ id: parseInt(req.params.id) }, {authors: req.user.id}] } }
       ]);
       q.exec((err, data) => {
 
@@ -150,18 +150,18 @@ router.post('/add',
           isAuthorAdmin = true;
         } 
         
-        if(req.body.userRole === 'Admin') {
-          isAuthorAdmin = true;
+        if(req.user.role === 'Admin') {
+        isAuthorAdmin = true;
         } 
   
         if(isAuthorAdmin){
-          Collections.findOneAndRemove({id: req.params.id}, (err) => {
+        Collections.findOneAndRemove({id: req.params.id}, (err) => {
             if (err) return res.send(err);
             return res.json({ success: true });
           });
   
           } else {
-            return res.json({ success: false, error: 'Not authorised' }); 
+          return res.json({ success: false, error: 'Not authorised' }); 
           }
       });
   });
