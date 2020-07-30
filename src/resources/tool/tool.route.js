@@ -145,13 +145,12 @@ router.get('/:id', async (req, res) => {
         relatedData.forEach((dat) => {
           dat.relatedObjects.forEach((x) => {
             if (x.objectId === req.params.id && dat.id !== req.params.id) {
-              if (typeof data[0].relatedObjects === 'undefined')
-                data[0].relatedObjects = [];
-              data[0].relatedObjects.push({
+              let relatedObject = {
                 objectId: dat.id,
                 reason: x.reason,
                 objectType: dat.type,
-              });
+              };
+              data[0].relatedObjects = [relatedObject, ...data[0].relatedObjects || []];
             }
           });
         });
