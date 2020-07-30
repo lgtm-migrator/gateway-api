@@ -40,7 +40,7 @@
   "scripts": {
     "start": "node index.js",
     "server": "nodemon index.js",
-    "debug": "node --inspect=0.0.0.0:3001 index.js",
+    "debug": "nodemon --inspect=0.0.0.0:3001 index.js",
     "build": "",
     "test": "jest",
     "eject": "",
