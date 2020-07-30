@@ -94,10 +94,10 @@ router.get('/get',
     }
 );
 
-// @router   PUT /api/v1/status
+// @router   PATCH /api/v1/status
 // @desc     Set paper status
 // @access   Private
-router.put('/status',
+router.patch('/:id',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin),
     async (req, res) => {
