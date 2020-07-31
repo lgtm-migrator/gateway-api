@@ -1,63 +1,45 @@
 import express from 'express'
-import axios from 'axios';
+import { Data } from '../tool/data.model'
+import { loadDatasets } from './dataset.service';
 const router = express.Router();
 
-/**
- * {get} /dataset/:id get a dataset
- * 
- * Pull data set from remote system
- */
-router.get('/:id', async (req, res) => {
-    var metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
-    var metadataQuality = process.env.metadataQualityURL || 'https://europe-west1-hdruk-gateway.cloudfunctions.net/metadataqualityscore';
-    var metadataCatalogueError = '';
 
-    const reqMetadataCatalogue = axios.get(metadataCatalogue + '/api/dataModels/' + req.params.id).catch(err => {metadataCatalogueError = err.message} );
-    const reqMetadataQuality = axios.get(metadataQuality + '/api/v1/' + req.params.id).catch(err => null);
+router.post('/', async (req, res) => {
+
+    loadDatasets(false)
 
 
-    try {
-        const [resMetadataCatalogue, resMetadataQuality] = await axios.all([reqMetadataCatalogue,reqMetadataQuality]);
+});
 
-        if (resMetadataQuality) {
-            resMetadataCatalogue.data.quality = resMetadataQuality.data;
-        }
+router.get('/:datasetID', async (req, res) => {
+    var q = Data.aggregate([
+        { $match: { $and: [{ datasetid: req.params.datasetID }] } }
+    ]);
+     q.exec((err, data) => {
+        var p = Data.aggregate([
+            { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.datasetID } } }] } },
+        ]);
 
-        return res.json({ 'success': true, 'data': resMetadataCatalogue.data });
+        p.exec( async (err, relatedData) => {
+            relatedData.forEach((dat) => {
+                dat.relatedObjects.forEach((x) => {
+                    if (x.objectId === req.params.datasetID && dat.id !== req.params.datasetID) {
+                        if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
+                        data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type, user: x.user, updated: x.updated })
+                    }
+                })
+            });
 
-    }
-    catch (err) {
-        // handle error
-        return res.json({ success: false, error: metadataCatalogueError + ' (raw message from metadata catalogue)' });
-    }
+            if (err) return res.json({ success: false, error: err });
+            
+            let discourseTopic = {};
+            if (data[0].discourseTopicId) {
+              discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
+            }
 
-  });
+          return res.json({ success: true, data: data, discourseTopic: discourseTopic });
+        });
+    });
+});
 
-
-  router.get('/', async (req, res) => {
-    let metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
-    let searchString = "";
-    let count = 5;
-  
-    if (req.query.search) {
-      searchString = req.query.search;
-    }
-  
-      axios.get(metadataCatalogue + '/api/catalogueItems/search?searchTerm=' + searchString + '&domainType=DataModel&limit=1')
-      .then(function (response){
-        count = response.data.count;
-      })
-      .then(function(){
-        axios.get(metadataCatalogue + '/api/catalogueItems/search?searchTerm=' + searchString + '&domainType=DataModel&limit=' + count )
-        .then(function (response) {
-          // handle success
-          return res.json({ 'success': true, 'data': response.data });
-        })
-        .catch(function (err) {
-          // handle error
-          return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
-        })
-      })
-  });
-
-  module.exports = router;
+module.exports = router;

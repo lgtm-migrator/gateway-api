@@ -3,6 +3,7 @@ import passport from 'passport';
 import axios from 'axios';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
+import { Data } from '../tool/data.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 
 const sgMail = require('@sendgrid/mail');
@@ -51,8 +52,8 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
        } else {
          data = {...accessRecord._doc};
        }
-       console.log(data);
-      return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers)}});
+       let dataset = await Data.findOne({ datasetid: dataSetId });  
+       return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers)}, dataset: dataset});
    }
    catch (err) {
       console.log(err.message);

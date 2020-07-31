@@ -10,6 +10,13 @@ const router = express.Router();
 router.get('/:searchString', async (req, res) => {
     //get all filters
     await Promise.all([
+        licenseFilter(req, 'dataset', req.params.searchString),
+        sampleFilter(req, req.params.searchString),
+        featureFilter(req, 'dataset', req.params.searchString),
+        publisherFilter(req, req.params.searchString),
+        ageBandFilter(req, req.params.searchString),
+        geographicCoverageFilter(req, req.params.searchString),
+
         topicFilter(req, 'tool', req.params.searchString),
         featureFilter(req, 'tool', req.params.searchString),
         languageFilter(req, 'tool', req.params.searchString),
@@ -26,17 +33,24 @@ router.get('/:searchString', async (req, res) => {
         return res.json({
             success: true, 
             allFilters: {
-                toolTopicFilter: values[0],
-                toolFeatureFilter: values[1],
-                toolLanguageFilter: values[2],
-                toolCategoryFilter: values[3],
+                licenseFilter: values[0].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                sampleFilter: values[1].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                datasetFeatureFilter: values[2].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                publisherFilter: values[3].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                ageBandFilter: values[4].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                geographicCoverageFilter: values[5].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
 
-                projectTopicFilter: values[4],
-                projectFeatureFilter: values[5],
-                projectCategoryFilter: values[6],
+                toolTopicFilter: values[6].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                toolFeatureFilter: values[7].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                toolLanguageFilter: values[8].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                toolCategoryFilter: values[9].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
 
-                paperTopicFilter: values[7],
-                paperFeatureFilter: values[8]
+                projectTopicFilter: values[10].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                projectFeatureFilter: values[11].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                projectCategoryFilter: values[12].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+
+                paperTopicFilter: values[13].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                paperFeatureFilter: values[14].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
             }
         });
     });
@@ -47,6 +61,13 @@ router.get('/:searchString', async (req, res) => {
 router.get('/', async (req, res) => {
     //get all filters
     await Promise.all([
+        licenseFilter(req, 'dataset', ''),
+        sampleFilter(req, ''),
+        featureFilter(req, 'dataset', ''),
+        publisherFilter(req, ''),
+        ageBandFilter(req, ''),
+        geographicCoverageFilter(req, ''),
+
         topicFilter(req, 'tool', ''),
         featureFilter(req, 'tool', ''),
         languageFilter(req, 'tool', ''),
@@ -63,17 +84,24 @@ router.get('/', async (req, res) => {
         return res.json({
             success: true, 
             allFilters: {
-                toolTopicFilter: values[0],
-                toolFeatureFilter: values[1],
-                toolLanguageFilter: values[2],
-                toolCategoryFilter: values[3],
+                licenseFilter: values[0].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                sampleFilter: values[1].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                datasetFeatureFilter: values[2].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                publisherFilter: values[3].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                ageBandFilter: values[4].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                geographicCoverageFilter: values[5].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
 
-                projectTopicFilter: values[4],
-                projectFeatureFilter: values[5],
-                projectCategoryFilter: values[6],
+                toolTopicFilter: values[6].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                toolFeatureFilter: values[7].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                toolLanguageFilter: values[8].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                toolCategoryFilter: values[9].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
 
-                paperTopicFilter: values[7],
-                paperFeatureFilter: values[8]
+                projectTopicFilter: values[10].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                projectFeatureFilter: values[11].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                projectCategoryFilter: values[12].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+
+                paperTopicFilter: values[13].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+                paperFeatureFilter: values[14].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
             }
         });
     });
@@ -147,6 +175,127 @@ router.get('/license/:type',
 
 
 
+const sampleFilter = async (req, searchString) => {
+    return new Promise(async (resolve, reject) => {
+        var q = '';
+        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
+        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
+
+        q.exec((err, data) => {
+            if (err) return resolve({})
+            
+            var tempSample = [];
+            if (data.length) {
+                data.map((dat) => {
+                    if (dat.datasetfields.physicalSampleAvailability !== null) {
+                        dat.datasetfields ? dat.datasetfields.physicalSampleAvailability.map((sample) => {
+                            sample.length <= 0 ? tempSample = tempSample : tempSample.push(sample.trim());
+                        }) : ''
+                    }
+                });
+            }
+
+            const combinedSample = [];
+            tempSample.map(temp => {
+                if (combinedSample.indexOf(temp) === -1) {
+                    combinedSample.push(temp)
+                }
+            });
+            
+            resolve(combinedSample);
+        });
+    })
+}
+
+const publisherFilter = async (req, searchString) => {
+    return new Promise(async (resolve, reject) => {
+        var q = '';
+        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
+        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
+
+        q.exec((err, data) => {
+            if (err) return resolve({})
+            
+            var tempPublisher = [];
+            if (data.length) {
+                data.map((dat) => {
+                    if (dat.datasetfields.publisher !== null) {
+                        tempPublisher.push(dat.datasetfields.publisher.trim());
+                    }
+                });
+            }
+
+            const combinedPublisher = [];
+            tempPublisher.map(temp => {
+                if (combinedPublisher.indexOf(temp) === -1) {
+                    combinedPublisher.push(temp)
+                }
+            });
+            
+            resolve(combinedPublisher);
+        });
+    })
+}
+
+const ageBandFilter = async (req, searchString) => {
+    return new Promise(async (resolve, reject) => {
+        var q = '';
+        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
+        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
+
+        q.exec((err, data) => {
+            if (err) return resolve({})
+            
+            var tempAgeBand = [];
+            if (data.length) {
+                data.map((dat) => {
+                    if (dat.datasetfields.ageBand && dat.datasetfields.ageBand !== null) {
+                        tempAgeBand.push(dat.datasetfields.ageBand.trim());
+                    }
+                });
+            }
+
+            const combinedAgeBand = [];
+            tempAgeBand.map(temp => {
+                if (combinedAgeBand.indexOf(temp) === -1) {
+                    combinedAgeBand.push(temp)
+                }
+            });
+            
+            resolve(combinedAgeBand);
+        });
+    })
+}
+
+const geographicCoverageFilter = async (req, searchString) => {
+    return new Promise(async (resolve, reject) => {
+        var q = '';
+        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
+        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
+
+        q.exec((err, data) => {
+            if (err) return resolve({})
+            
+            var tempGeographicCoverage = [];
+            if (data.length) {
+                data.map((dat) => {
+                    if (dat.datasetfields.geographicCoverage && dat.datasetfields.geographicCoverage !== null) {
+                        tempGeographicCoverage.push(dat.datasetfields.geographicCoverage.trim());
+                    }
+                });
+            }
+
+            const combinedGeographicCoverage = [];
+            tempGeographicCoverage.map(temp => {
+                if (combinedGeographicCoverage.indexOf(temp) === -1) {
+                    combinedGeographicCoverage.push(temp)
+                }
+            });
+            
+            resolve(combinedGeographicCoverage);
+        });
+    })
+}
 
 const topicFilter = async (req, type, searchString) => {
     return new Promise(async (resolve, reject) => {
@@ -158,7 +307,7 @@ const topicFilter = async (req, type, searchString) => {
         else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
 
         q.exec((err, data) => {
-            if (err) return res.json({ success: false, error: err });
+            if (err) return resolve({})
             var tempTopics = [];
             if (data.length) {
                 data.map((dat) => {
@@ -192,7 +341,7 @@ const featureFilter = async (req, type, searchString) => {
         else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
 
         q.exec((err, data) => {
-            if (err) return res.json({ success: false, error: err });
+            if (err) return resolve({})
             var tempFeatures = [];
             if (data.length) {
                 data.map((dat) => {
@@ -228,7 +377,7 @@ const languageFilter = async (req, type, searchString) => {
         else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
 
         q.exec((err, data) => {
-            if (err) return res.json({ success: false, error: err });
+            if (err) return resolve({})
             var tempLanguages = [];
             data.map((dat) => {
                 dat.categories.programmingLanguage ? dat.categories.programmingLanguage.map((language) => {
@@ -258,7 +407,7 @@ const categoryFilter = async (req, type, searchString) => {
         else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
 
         q.exec((err, data) => {
-            if (err) return res.json({ success: false, error: err });
+            if (err) return resolve({})
             var tempCategories = [];
             data.map((dat) => {
                 !dat.categories.category || dat.categories.category.length <= 0 ? tempCategories = tempCategories : tempCategories.push(dat.categories.category.trim());
@@ -286,7 +435,7 @@ const licenseFilter = async (req, type, searchString) => {
         else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
 
         q.exec((err, data) => {
-            if (err) return res.json({ success: false, error: err });
+            if (err) return resolve({})
             var tempLicenses = [];
             data.map((dat) => {
                 if (dat.license)
