@@ -72,7 +72,7 @@ describe("Search API", () => {
 
   ['annual district death daily','cancer','epilepsy'].forEach(function(searchString) {
 
-    test(`Search for string '${searchString}', first dataset result should contain title or description '${searchString}'`, async () => {
+    test(`Search for string '${searchString}', first dataset result should contain name or description '${searchString}'`, async () => {
         const response = await testURL.get('/api/v1/search?search='+searchString);
         expect(response.statusCode).toBe(200);
        	let payload = JSON.parse(response.text);
@@ -82,19 +82,19 @@ describe("Search API", () => {
         expect(payload).toHaveProperty('summary');
 
 
-        expect(payload['datasetResults'][0]).toHaveProperty('title');
-        expect(payload['datasetResults'][0]).toHaveProperty('abstract');
+        expect(payload['datasetResults'][0]).toHaveProperty('name');
+        expect(payload['datasetResults'][0]).toHaveProperty('description');
         //expect(payload['datasetResults'][0]).toHaveProperty('keywords');//cant always be expected
 
-        let title = payload['datasetResults'][0]['title'] || '';
-        let abstract = payload['datasetResults'][0]['abstract'] || '';
+        let name = payload['datasetResults'][0]['name'] || '';
+        let description = payload['datasetResults'][0]['description'] || '';
         let keywords = payload['datasetResults'][0]['keywords'] || '';
 
         let expected = [
             expect.stringMatching(searchString.toLowerCase()),
         ];
 
-        expect([title.toLowerCase(), abstract.toLowerCase(), keywords.toLowerCase()]).toEqual(
+        expect([name.toLowerCase(), description.toLowerCase(), keywords.toLowerCase()]).toEqual(
             expect.arrayContaining(expected),
         );
     });
