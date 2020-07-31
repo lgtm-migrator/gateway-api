@@ -7,10 +7,10 @@ const DataSchema = new Schema(
     type: String,
     name: String,
     description: String,
-    rating: Number,
     link: String,
     categories: {
       category: {type: String},
+      //tools related fields
       programmingLanguage: {type: [String]},
       programmingLanguageVersion: {type: String},
     },
@@ -20,21 +20,10 @@ const DataSchema = new Schema(
       features: [String],
       topics: [String],
     },
-    firstname: String,
-    lastname: String,
-    bio: String,
-    link: String,
-    orcid: String,
     activeflag: String,
     updatedon: Date,
     counter: Number,
-    toolids: [Number],
     discourseTopicId: Number,
-    datasetids: [String],
-    emailNotifications: Boolean,
-    terms: Boolean,
-    journal: String,
-    journalYear: Number,
     relatedObjects: [{
         objectId: String,
         reason: String,
@@ -42,7 +31,45 @@ const DataSchema = new Schema(
         user: String,
         updated: String
     }],
-    uploader: Number
+    uploader: Number,
+
+    //paper related fields
+    journal: String,
+    journalYear: Number,
+
+    //person related fields
+    firstname: String,
+    lastname: String,
+    bio: String, //institution
+    orcid: String,
+    emailNotifications: Boolean,
+    terms: Boolean,
+
+    //dataset related fields
+    datasetid: String,
+    datasetfields: {
+        publisher: String,
+        geographicCoverage: String,
+        physicalSampleAvailability: [String],
+        abstract: String,
+        releaseDate: String,
+        accessRequestDuration: String,
+        conformsTo: String,
+        accessRights: String,
+        jurisdiction: String,
+        datasetStartDate: String,
+        datasetEndDate: String,
+        statisticalPopulation: String,
+        ageBand: String,
+        contactPoint: String,
+        metadataquality :{},
+        metadataschema : {}
+    },
+
+    //not used
+    rating: Number, 
+    toolids: [Number], 
+    datasetids: [String]
   },
   { 
     collection: 'tools',

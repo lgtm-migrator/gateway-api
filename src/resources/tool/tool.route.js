@@ -149,6 +149,8 @@ router.get('/:id', async (req, res) => {
                 objectId: dat.id,
                 reason: x.reason,
                 objectType: dat.type,
+                user: x.user, 
+                updated: x.updated
               };
               data[0].relatedObjects = [relatedObject, ...data[0].relatedObjects || []];
             }

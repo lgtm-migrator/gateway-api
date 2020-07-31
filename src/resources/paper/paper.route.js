@@ -131,7 +131,7 @@ router.get('/:paperID', async (req, res) => {
                 dat.relatedObjects.forEach((x) => {
                     if (x.objectId === req.params.paperID && dat.id !== req.params.paperID) {
                         if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
-                        data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type })
+                        data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type, user: x.user, updated: x.updated })
                     }
                 })
             });

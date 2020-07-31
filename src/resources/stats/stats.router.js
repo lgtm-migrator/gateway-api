@@ -77,8 +77,6 @@ router.get('/', async (req, res) => {
     var aggregateAccessRequests = [{ $match: { applicationStatus: "submitted" } }, { $group: {_id: "accessRequests", count: { $sum: 1 } } }];
 
     var y = DataRequestModel.aggregate(aggregateAccessRequests);
-
-    var metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
     
     q.exec((err, dataSearches) => {
       if (err) return res.json({ success: false, error: err });
@@ -101,14 +99,6 @@ router.get('/', async (req, res) => {
         else if(accessRequests && accessRequests.length){
           counts[accessRequests[0]._id] = accessRequests[0].count;
         }
-
-      axios.get(metadataCatalogue + '/api/catalogueItems/search?searchTerm=&domainType=DataModel&limit=1')
-      .catch(function (err) {
-        // handle error
-        return res.json({ success: false, error: err.message + ' (raw message from metadata catalogue)' });
-      })
-      .then(function (response){
-          counts["datasets"] = response.data.count;
   
         if (typeof dataSearches[0].lastDay[0] === "undefined") {
           dataSearches[0].lastDay[0] = { count: 0 };
@@ -138,7 +128,6 @@ router.get('/', async (req, res) => {
             }
           }
         );
-      });
       });
       });
     });
