@@ -23,7 +23,7 @@ router.get('/:id', async (req, res) => {
     }
     else {
         var q = Data.aggregate([
-            { $match: { $and: [{ datasetid: id }] } }
+            { $match: { datasetid: id } }
         ]);
         q.exec((err, data) => {
             if (err) return res.json({ success: false, error: err });

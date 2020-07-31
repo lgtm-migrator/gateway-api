@@ -82,7 +82,7 @@ app.use('/api/v1/paper', require('../resources/paper/paper.route'));
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/discourse/topic', require('../resources/discourse/discourse.topic.route'));
 
-app.use('/api/v1/dataset', require('../resources/dataset/dataset.route'));
+app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
 
 app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/datarequest.schemas.route'));
 app.use('/api/v1/data-access-request', require('../resources/datarequest/datarequest.route'));
