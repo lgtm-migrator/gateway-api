@@ -3,7 +3,34 @@ import moment from 'moment';
 
 const sgMail = require('@sendgrid/mail');
 let questionList = [];
+let excludedQuestionSetIds = ['addApplicant', 'removeApplicant'];
+let autoCompleteLookups = {"fullname": ['orcid', 'email', 'bio']};
 let parent;
+
+
+const _unNestQuestionPanels = (panels) => {
+  return [...panels].reduce((arr, panel) => {
+    // deconstruct questionPanel:[{panel}]
+    let {panelId, pageId, questionSets, questionPanelHeaderText, navHeader} = panel;
+    if(typeof questionSets !== 'undefined') {
+      if (questionSets.length > 1) {
+        // filters excluded questionSetIds
+        let filtered = [...questionSets].filter(item => !excludedQuestionSetIds.includes(item.questionSetId));
+        // builds new array of [{panelId, pageId, etc}]
+        let newPanels = filtered.map((set) => { return { panelId, pageId, questionPanelHeaderText, navHeader,  questionSetId: set.questionSetId }});
+        // update the arr reducer result
+        arr = [...arr, ...newPanels];
+      } else {
+        // deconstruct
+        let [{questionSetId}] = questionSets;
+        // update the arr reducer result
+        arr = [...arr, { panelId, pageId, questionSetId, questionPanelHeaderText, navHeader }];
+      }
+    } 
+    return arr;
+  }, []);
+
+};
 
 /**
  * [_initalQuestionSpread Un-nests the questions from each object[questions]]
@@ -16,20 +43,29 @@ const _initalQuestionSpread = (questions, pages, questionPanels) => {
   if (!questions) return;
   for (let questionSet of questions) {
     let { questionSetId } = questionSet;
-    if (questionSet.hasOwnProperty('questions')) {
+    let [questionId, uniqueId] = questionSetId.split('_');
+    // remove out unwanted buttons or elements
+    if (questionSet.hasOwnProperty('questions') && !excludedQuestionSetIds.includes(questionId)) {
       for (let question of questionSet.questions) {
         // pass in questionPanels
         let questionPanel = [...questionPanels].find(
-          (i) => i.panelId === questionSetId
+          (i) => i.panelId === questionId
         );
+        // find page it belongs too
         let page = [...pages].find((i) => i.pageId === questionPanel.pageId);
-        let obj = {
-          page: page.title,
-          section: questionPanel.navHeader,
-          questionSetId,
-          ...question,
-        };
-        flatQuestionList = [...flatQuestionList, obj];
+        // if page not found skip
+        if(typeof page !== 'undefined') {
+          // if it is a generated field ie ui driven add back on uniqueId
+          let questionTitle = typeof uniqueId !== 'undefined' ? `${questionId}_${uniqueId}` : questionId
+          // create new obj of question for email
+          let obj = {
+            page: page.title,
+            section: questionPanel.navHeader,
+            questionSetId: questionTitle,
+            ...question,
+          };
+          flatQuestionList = [...flatQuestionList, obj];
+        }
       }
     }
   }
@@ -58,10 +94,17 @@ const _getAllQuestionsFlattened = (allQuestions) => {
         parent = { page, section };
       }
       let { questionId, question } = questionObj;
-      questionList = [
-        ...questionList,
-        { questionId, question, page: parent.page, section: parent.section },
-      ];
+      // split up questionId
+      let [qId, uniqueId] = questionId.split('_');
+      // actual quesitonId
+      let questionTitle = typeof uniqueId !== 'undefined' ? `${qId}_${uniqueId}` : qId;
+      // if not in exclude list
+      if(!excludedQuestionSetIds.includes(questionId)) {
+        questionList = [
+          ...questionList,
+          { questionId: questionTitle, question, page: parent.page, section: parent.section },
+        ];
+      }
     }
 
     if (
@@ -185,6 +228,9 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                 </tr>`;
       // console.log(`${section} ${JSON.stringify(questionsArr, null, 2)}`);
       for (let question of questionsArr) {
+        // questionId is fullName not empty and typeof if  not  undefined
+        // go call api
+
         let answer = answers[question.questionId] || `{{empty}}`;
         table += `<tr>
                     <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${question.question}</td>
@@ -222,6 +268,22 @@ const _groupByPageSection = (allQuestions) => {
   return grouped;
 };
 
+const _actualQuestionAnswers = (quesitonAnswers) => {
+  let qa = {...quesitonAnswers};
+
+  return _.reduce((qa), async (obj, value, key) => {
+    let [qId, uniqueId] = key.split('_');
+    let lookup = autoCompleteLookups[`${qId}`];
+    // if question is in lookups lookup = ['value'], value = {orcid:  '', email: ''}
+    if(typeof lookup !== 'undefined' && typeof value === 'object') {
+      console.log('here');
+      // loop over lookup[]
+    } 
+    obj[key] = value;
+    return obj;
+  }, {});
+}
+
 const _generateEmail = (
   questions,
   pages,
@@ -229,13 +291,18 @@ const _generateEmail = (
   questionAnswers,
   options
 ) => {
+  //unnest each questionPanel if questionSets
+  let flatQuestionPanels = _unNestQuestionPanels(questionPanels);
+  let flatQuestionAnswers = _actualQuestionAnswers(questionAnswers);
+  
   let unNestedQuestions = _initalQuestionSpread(
     questions,
     pages,
-    questionPanels
+    flatQuestionPanels
   );
   questionList = [];
   let fullQuestionSet = _getAllQuestionsFlattened(unNestedQuestions);
+  // console.log(questionList);
   let fullQuestions = _groupByPageSection([...questionList]);
   let email = _buildEmail(fullQuestions, questionAnswers, options);
   return email;

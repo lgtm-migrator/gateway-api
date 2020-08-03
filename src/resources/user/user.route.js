@@ -4,6 +4,7 @@ import passport from "passport";
 import { utils } from "../auth";
 import { UserModel } from './user.model'
 import { Data } from '../tool/data.model'
+import helper from '../utilities/helper.util';
 
 const router = express.Router();
 
@@ -28,18 +29,33 @@ router.get(
 // @desc     get all
 // @access   Private
 router.get('/', async (req, res) => {
-    //req.params.id is how you get the id from the url
-    var q = Data.find({ type: 'person' });
+
+    var q = Data.aggregate([
+      // Find all tools with type of person
+      { $match: { type: 'person' } },
+      // Perform lookup to users
+      { $lookup: { from: 'users', localField: 'id', foreignField: 'id', as: 'user' } },
+      // select fields to use
+      { $project: { id :1, firstname: 1, lastname: 1, orcid: 1, bio: 1, email: '$user.email' } },
+      // the email from email
+      { $unwind: '$email' }
+    ]);
 
     q.exec((err, data) => {
-        if (err) return res.json({ success: false, error: err });
-        const users = [];
-        data.map((dat) => {
-        users.push({ id: dat.id, name: dat.firstname + ' ' + dat.lastname })
-        });
-        return res.json({ success: true, data: users });
+      if (err) {
+        return new Error({ success: false, error: err });
+      }
+      
+      const users = [];
+      data.map((dat) => {
+        let {id, firstname, lastname, orcid = '', bio = '', email = ''} = dat;
+        email = helper.censorEmail(email);
+        users.push({ id, orcid, name: `${firstname} ${lastname}`, bio, email});
+      });
+      
+      return res.json({ success: true, data: users });
+
     });
-});
-  
+  });
 
 module.exports = router
