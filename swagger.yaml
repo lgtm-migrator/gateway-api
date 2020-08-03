@@ -353,41 +353,200 @@ paths:
         '200':
           description: OK
 
-  /v1/stats/recent:
+    /v1/datasets/?search={searchTerm}:
     get:
-      summary: Return the details on the recent searches.
+      summary: Returns dataset search results by searchTerm
       tags:
-        - Stats
+        - Datasets
+      parameters:
+        - name: searchTerm
+          in: path
+          required: true
+          description: A search term.
+          schema:
+            type : string
+            example: epilepsy
       responses: 
         '200':
           description: OK
+  
+  /v1/stats/type?rank={rank}:
+  get:
+    summary: Returns the details on recent searches, popular objects or recently updated objects based on the rank query parameter.
+    tags:
+      - Stats
+    parameters:
+      - name: rank
+        in: path
+        required: true
+        description: The type of stat.
+        schema:
+          type : string
+          example: recent
+    responses: 
+      '200':
+        description: OK
 
-  /v1/stats/unmet:
-    get:
-      summary: Return the details on the unmet searches.
-      tags:
-        - Stats
-      responses: 
-        '200':
-          description: OK
+  /v1/stats/kpis?kpi={type}:
+  get:
+    summary: Returns information for KPIs, based on the KPI type parameter.
+    tags:
+      - Stats
+    parameters:
+      - name: type
+        in: path
+        required: true
+        description: The type of KPI.
+        schema:
+          type : string
+          example: technicalmetadata
+    responses: 
+      '200':
+        description: OK
+  
+  /v1/stats/kpis?kpi={type}&selectedDate={selectedDate}:
+  get:
+    summary: Returns information for KPIs, based on the KPI type parameter.
+    tags:
+      - Stats
+    parameters:
+      - name: type
+        in: path
+        required: true
+        description: The type of KPI.
+        schema:
+          type : string
+          example: uptime
+      - name: type
+        in: path
+        required: true
+        description: The type of KPI.
+        schema:
+          type : string
+          example: Wed Jul 01 2020 01:00:00 GMT 0100 (British Summer Time)
+    responses: 
+      '200':
+        description: OK
 
-  /v1/stats/popular:
-    get:
-      summary: Return the details on the popular objects.
-      tags:
-        - Stats
-      responses: 
-        '200':
-          description: OK
+  /v1/stats/unmetDatasets?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for datasets, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
 
-  /v1/stats/updates:
-    get:
-      summary: Return the details on the updated objects.
-      tags:
-        - Stats
-      responses: 
-        '200':
-          description: OK
+  /v1/stats/unmetTools?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for tools, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
+  
+  /v1/stats/unmetProjects?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for projects, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
+
+  /v1/stats/unmetPapers?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for papers, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
+
+  /v1/stats/unmetPeople?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for people, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
 
   /v1/tools:
     post:

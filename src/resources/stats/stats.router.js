@@ -135,264 +135,261 @@ router.get('/', async (req, res) => {
     return result;
   });
 
-  router.get('/technicalmetadata', async (req, res) => { 
-    var result = [];
-    var totalDatasets = 0;
-    var datasetsMetadata = 0;
+  router.get('/kpis', async (req, res) => { 
 
-    axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/datasets.csv')
-    .then(function (csv) {
-        var lines=csv.data.split("\r\n");
-   
-        var commaRegex = /,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/g
-        
-        var quotesRegex = /^"(.*)"$/g
-
-        var headers = lines[0].split(commaRegex).map(h => h.replace(quotesRegex, "$1"));
-
-
-        for(var i=1;i<lines.length-1;i++){
-            var obj = {};
-            var currentline=lines[i].split(commaRegex);
-
-            for(var j=0;j<headers.length;j++){
-                obj[headers[j]] = currentline[j].replace(quotesRegex, "$1");
-            }
-
-            result.push(obj); 
-        }
-
-        result.map((res) => {
-          if(res.dataClassesCount !== '0') {
-              datasetsMetadata++
-          }
-        })
-
-        totalDatasets = result.length;
-
-        return res.json({ 
-          'success': true, 
-          'data': {
-            'totalDatasets': totalDatasets,
-            'datasetsMetadata': datasetsMetadata 
-        }
-        });
-      })
- 
- 
-  });
-
-  router.get('/kpis/:selectedDate', async (req, res) => { 
-    var result;
-
-    var selectedMonthStart = new Date(req.params.selectedDate);
+    var selectedMonthStart = new Date(req.query.selectedDate);
     selectedMonthStart.setMonth(selectedMonthStart.getMonth());
     selectedMonthStart.setDate(1);
     selectedMonthStart.setHours(0,0,0,0);
 
-    var selectedMonthEnd = new Date(req.params.selectedDate);
+    var selectedMonthEnd = new Date(req.query.selectedDate);
     selectedMonthEnd.setMonth(selectedMonthEnd.getMonth()+1);
     selectedMonthEnd.setDate(0);
     selectedMonthEnd.setHours(23,59,59,999);
 
-    var aggregateQuerySearches = [
-      {
-        $facet: {
-          "totalMonth": [
-            { "$match": { "datesearched": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } },
+    switch (req.query.kpi) {
 
-            {
-              $group: {
-                _id: 'totalMonth',
-                count: { $sum: 1 }
-              },
-            }
-          ],
-          "noResultsMonth": [
-            { "$match": { $and: [{"datesearched": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} }, {"returned.dataset": 0}, {"returned.tool": 0}, {"returned.project": 0}, {"returned.paper": 0}, {"returned.person": 0} ] } },
-            {
-              $group: {
-                _id: 'noResultsMonth',
-                count: { $sum: 1 }
-              }, 
-            }
-          ],
-          "accessRequestsMonth": [
-            //used only createdAt first
-            // { "$match": { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } },
-            // some older fields only have timeStamp --> only timeStamp in the production db
-            //checking for both currently
-            { "$match": {$and: [
-                { $or: [ 
-                  { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} },
-                  { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } 
-                ]
-              },
-              { "applicationStatus": "submitted" } 
-            ]} },
-            {
-              $group: {
-                _id: 'accessRequestsMonth',
-                count: { $sum: 1 }
-              }, 
-            }
-          ],
-        }
-      }];
+      case 'technicalmetadata':
+        var result = [];
+        var totalDatasets = 0;
+        var datasetsMetadata = 0;
 
-      var q = RecordSearchData.aggregate(aggregateQuerySearches);
+        axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/datasets.csv')
+        .then(function (csv) {
+            var lines=csv.data.split("\r\n");
+      
+            var commaRegex = /,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/g
+            
+            var quotesRegex = /^"(.*)"$/g
 
-      var y = DataRequestModel.aggregate(aggregateQuerySearches);
+            var headers = lines[0].split(commaRegex).map(h => h.replace(quotesRegex, "$1"));
 
-      q.exec((err, dataSearches) => {
-        if (err) return res.json({ success: false, error: err });
 
-        if (typeof dataSearches[0].totalMonth[0] === "undefined") {
-          dataSearches[0].totalMonth[0] = { count: 0 };
-        }
-        if (typeof dataSearches[0].noResultsMonth[0] === "undefined") {
-          dataSearches[0].noResultsMonth[0] = { count: 0 };
-        }
+            for(var i=1;i<lines.length-1;i++){
+                var obj = {};
+                var currentline=lines[i].split(commaRegex);
 
-      y.exec((err, accessRequests) => {
-        if (err) return res.json({ success: false, error: err });
-
-        if (typeof accessRequests[0].accessRequestsMonth[0] === "undefined") {
-          accessRequests[0].accessRequestsMonth[0] = { count: 0 };
-        }
-
-          result = res.json(
-            {
-              'success': true, 'data':
-              {
-                  'totalMonth': dataSearches[0].totalMonth[0].count,
-                  'noResultsMonth': dataSearches[0].noResultsMonth[0].count,
-                  'accessRequestsMonth': accessRequests[0].accessRequestsMonth[0].count      
+                for(var j=0;j<headers.length;j++){
+                    obj[headers[j]] = currentline[j].replace(quotesRegex, "$1");
                 }
-              }
-          )
-      });
-    });
- 
-      return result;
-  });
 
-  router.get('/uptime/:selectedDate', async (req, res) => { 
-    const monitoring = require('@google-cloud/monitoring');
-    const projectId = 'hdruk-gateway';
-    const client = new monitoring.MetricServiceClient();
-
-    var result;
-
-    var selectedMonthStart = new Date(req.params.selectedDate);
-    selectedMonthStart.setMonth(selectedMonthStart.getMonth());
-    selectedMonthStart.setDate(1);
-    selectedMonthStart.setHours(0,0,0,0);
-
-    var selectedMonthEnd = new Date(req.params.selectedDate);
-    selectedMonthEnd.setMonth(selectedMonthEnd.getMonth()+1);
-    selectedMonthEnd.setDate(0);
-    selectedMonthEnd.setHours(23,59,59,999);
-  
-    const request = {
-      name: client.projectPath(projectId),
-      filter: 'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-production-web-app-qsxe8fXRrBo" AND metric.label."checker_location"="eur-belgium"',
-      
-      interval: {
-        startTime: {
-          seconds: selectedMonthStart.getTime() / 1000,
-        },
-        endTime: {
-          seconds: selectedMonthEnd.getTime() / 1000,
-        },
-      },
-      aggregation: {
-        alignmentPeriod: {
-          seconds: '86400s',
-        },
-        crossSeriesReducer: 'REDUCE_NONE',
-        groupByFields: [
-          'metric.label."checker_location"',
-          'resource.label."instance_id"'
-        ],
-        perSeriesAligner: 'ALIGN_FRACTION_TRUE',
-      },
-
-    };
-
-    // Writes time series data
-    const [timeSeries] = await client.listTimeSeries(request);
-    var dailyUptime = [];
-    var averageUptime;
-
-    timeSeries.forEach(data => {
-     
-        data.points.forEach(data => {
-          dailyUptime.push(data.value.doubleValue)
-        })
-
-        averageUptime = (dailyUptime.reduce((a, b) => a + b, 0) / dailyUptime.length) * 100;
-
-        result = res.json(
-          {
-            'success': true, 'data': averageUptime
+                result.push(obj); 
             }
-        )
-    });
-  
-    return result;
 
-  }); 
-  
+            result.map((res) => {
+              if(res.dataClassesCount !== '0') {
+                  datasetsMetadata++
+              }
+            })
 
-  /**
-   * {get} /stats/recent Recent Searches
-   * 
-   * Return the details on the recent searches.
-   */
-  router.get('/recent', async (req, res) => {
-    var q = RecordSearchData.aggregate([
-      { $match: { $or: [ { "returned.tool": { $gt : 0}}, { "returned.project": { $gt : 0}}, { "returned.person": { $gt : 0}} ] }},
-      {
-        $group: {
-          _id: {$toLower: "$searched"},
-          count: { $sum: 1 },
-          returned: { $first: "$returned" }
-        }
-      },
-      {$sort:{ datesearched : 1}}
-    ]).limit(10);
-  
-    q.exec((err, data) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, data: data });
-    });
-  });
+            totalDatasets = result.length;
 
+            return res.json({ 
+              'success': true, 
+              'data': {
+                'totalDatasets': totalDatasets,
+                'datasetsMetadata': datasetsMetadata 
+            }
+            });
+          })
+      break;
+
+      case 'searchanddar':
+        var result;
+
+        var aggregateQuerySearches = [
+          {
+            $facet: {
+              "totalMonth": [
+                { "$match": { "datesearched": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } },
+
+                {
+                  $group: {
+                    _id: 'totalMonth',
+                    count: { $sum: 1 }
+                  },
+                }
+              ],
+              "noResultsMonth": [
+                { "$match": { $and: [{"datesearched": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} }, {"returned.dataset": 0}, {"returned.tool": 0}, {"returned.project": 0}, {"returned.paper": 0}, {"returned.person": 0} ] } },
+                {
+                  $group: {
+                    _id: 'noResultsMonth',
+                    count: { $sum: 1 }
+                  }, 
+                }
+              ],
+              "accessRequestsMonth": [
+                //used only createdAt first { "$match": { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } },
+                // some older fields only have timeStamp --> only timeStamp in the production db
+                //checking for both currently
+                { "$match": {$and: [
+                    { $or: [ 
+                      { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} },
+                      { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } 
+                    ]
+                  },
+                  { "applicationStatus": "submitted" } 
+                ]} },
+                {
+                  $group: {
+                    _id: 'accessRequestsMonth',
+                    count: { $sum: 1 }
+                  }, 
+                }
+              ],
+            }
+          }];
+
+          var q = RecordSearchData.aggregate(aggregateQuerySearches);
+
+          var y = DataRequestModel.aggregate(aggregateQuerySearches);
+
+          q.exec((err, dataSearches) => {
+            if (err) return res.json({ success: false, error: err });
+
+            if (typeof dataSearches[0].totalMonth[0] === "undefined") {
+              dataSearches[0].totalMonth[0] = { count: 0 };
+            }
+            if (typeof dataSearches[0].noResultsMonth[0] === "undefined") {
+              dataSearches[0].noResultsMonth[0] = { count: 0 };
+            }
+
+          y.exec((err, accessRequests) => {
+            if (err) return res.json({ success: false, error: err });
+
+            if (typeof accessRequests[0].accessRequestsMonth[0] === "undefined") {
+              accessRequests[0].accessRequestsMonth[0] = { count: 0 };
+            }
+
+              result = res.json(
+                {
+                  'success': true, 'data':
+                  {
+                      'totalMonth': dataSearches[0].totalMonth[0].count,
+                      'noResultsMonth': dataSearches[0].noResultsMonth[0].count,
+                      'accessRequestsMonth': accessRequests[0].accessRequestsMonth[0].count      
+                    }
+                  }
+              )
+          });
+        });
   
-  /**
-   * {get} /stats/unmet Unmet Searches 
-   * 
-   * Return the details on the unmet searches.
-   */
-  router.get('/unmet', async (req, res) => {
-    var q = RecordSearchData.aggregate([
+        return result;
+      break;
+
+      case 'uptime':
+        const monitoring = require('@google-cloud/monitoring');
+        const projectId = 'hdruk-gateway';
+        const client = new monitoring.MetricServiceClient();
+
+        var result;
       
-      { $match: { returned: null}},
-      {
-        $group: {
-          _id: { $toLower: "$searched"},
-          count: { $sum: 1 }
-        }
-      },
-      {$sort:{ count : -1}}
-    ]).limit(10);
-  
-    q.exec((err, data) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, data: data });
-    });
+        const request = {
+          name: client.projectPath(projectId),
+          filter: 'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-production-web-app-qsxe8fXRrBo" AND metric.label."checker_location"="eur-belgium"',
+          
+          interval: {
+            startTime: {
+              seconds: selectedMonthStart.getTime() / 1000,
+            },
+            endTime: {
+              seconds: selectedMonthEnd.getTime() / 1000,
+            },
+          },
+          aggregation: {
+            alignmentPeriod: {
+              seconds: '86400s',
+            },
+            crossSeriesReducer: 'REDUCE_NONE',
+            groupByFields: [
+              'metric.label."checker_location"',
+              'resource.label."instance_id"'
+            ],
+            perSeriesAligner: 'ALIGN_FRACTION_TRUE',
+          },
+
+        };
+
+        // Writes time series data
+        const [timeSeries] = await client.listTimeSeries(request);
+        var dailyUptime = [];
+        var averageUptime;
+
+        timeSeries.forEach(data => {
+        
+            data.points.forEach(data => {
+              dailyUptime.push(data.value.doubleValue)
+            })
+
+            averageUptime = (dailyUptime.reduce((a, b) => a + b, 0) / dailyUptime.length) * 100;
+
+            result = res.json(
+              {
+                'success': true, 'data': averageUptime
+                }
+            )
+        });
+      
+        return result;
+      break;
+    }
   });
+
+  router.get('/type', async (req, res) => { 
+
+      switch (req.query.rank) {
+
+      case 'recent':
+          var q = RecordSearchData.aggregate([
+            { $match: { $or: [ { "returned.tool": { $gt : 0}}, { "returned.project": { $gt : 0}}, { "returned.person": { $gt : 0}} ] }},
+            {
+              $group: {
+                _id: {$toLower: "$searched"},
+                count: { $sum: 1 },
+                returned: { $first: "$returned" }
+              }
+            },
+            {$sort:{ datesearched : 1}}
+          ]).limit(10);
+        
+          q.exec((err, data) => {
+            if (err) return res.json({ success: false, error: err });
+            return res.json({ success: true, data: data });
+          });
+        break;
+
+      case 'popular':
+          var q = Data.find({ counter: { $gt : 0} }).sort({ counter: -1 }).limit(10);
+  
+          if (req.query.type) {
+            q = Data.find({ $and:[ {type : req.query.type, counter: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
+          }
+        
+          q.exec((err, data) => {
+            if (err) return res.json({ success: false, error: err });
+            return res.json({ success: true, data: data });
+          });
+      break;
+        
+
+      case 'updates':
+          var q = Data.find({activeflag: "active", counter: { $gt : 0} }).sort({ updatedon: -1 }).limit(10);
+  
+          if (req.query.type) {
+            q = Data.find({ $and:[ {type : req.query.type, activeflag: "active", updatedon: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
+          }
+        
+          q.exec((err, data) => {
+            if (err) return res.json({ success: false, error: err });
+            return res.json({ success: true, data: data });
+          });
+      break;
+      
+    }
+          
+  });
+  
 
   /**
    * {get} /stats/unmet Unmet Searches
@@ -452,41 +449,6 @@ router.get('/', async (req, res) => {
       .catch((err) => {
         return res.json({ success: false, error: err });
       });
-  });
-  /**
-   * {get} /stats/popular Popular Objects
-   * 
-   * Return the details on the popular objects.
-   */
-  router.get('/popular', async (req, res) => {
-    var q = Data.find({ counter: { $gt : 0} }).sort({ counter: -1 }).limit(10);
-  
-    if (req.query.type) {
-      q = Data.find({ $and:[ {type : req.query.type, counter: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
-    }
-  
-    q.exec((err, data) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, data: data });
-    });
-  });
-  
-  /**
-   * {get} /stats/popular Updated Objects
-   * 
-   * Return the details on the updated objects.
-   */
-  router.get('/updates', async (req, res) => {
-    var q = Data.find({activeflag: "active", counter: { $gt : 0} }).sort({ updatedon: -1 }).limit(10);
-  
-    if (req.query.type) {
-      q = Data.find({ $and:[ {type : req.query.type, activeflag: "active", updatedon: { $gt : 0} }]}).sort({ counter: -1 }).limit(10);
-    }
-  
-    q.exec((err, data) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, data: data });
-    });
   });
   
   module.exports = router
