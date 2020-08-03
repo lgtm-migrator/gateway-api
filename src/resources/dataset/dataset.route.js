@@ -5,10 +5,13 @@ const router = express.Router();
 
 
 router.post('/', async (req, res) => {
+    //Check for key
+    if (req.body.key !== process.env.cachingkey) {
+        return res.json({ success: false, error: "Caching failed" });
+    }
 
-    loadDatasets(false)
-
-
+    loadDatasets(req.body.override || false);
+    return res.json({ success: false, message: "Caching started" });
 });
 
 router.get('/:datasetID', async (req, res) => {
