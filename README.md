@@ -15,11 +15,9 @@ Clone the API repository.
 `git clone https://github.com/HDRUK/gateway-api`
 
 #### Step 2 
-Run the npm install and add mongoose, express, body-parser, morgan and cors modules via command line.
-
+Run the npm install
 ```
 npm install
-npm i -S mongoose express body-parser morgan cors
 ```
 
 #### Step 3
@@ -64,3 +62,87 @@ DISCOURSE_SSO_SECRET=
 Start the API via command line.
 
 `node server.js`
+
+### Running using Google Cloud Run
+
+Replace **MY-PROJECT** with the name of your project or use an alternative docker registry.
+
+#### Create the docker image
+
+from the root directory run:
+
+```
+docker build -t  gcr.io/MY-PROJECT/hdruk-gateway-api:latest .
+docker push -t  gcr.io/MY-PROJECT/hdruk-gateway-api:latest .
+```
+
+This will create a docker image in the Google Cloud Container registry with tag latest.
+
+#### Deploy to cloud run manually
+
+The following is an example of using gcloud command to deploy the docker image to cloud run, please change region and other parameters as required.
+
+```
+gcloud run deploy latest-api --image gcr.io/MY-PROJECT/hdruk-gateway-api:latest --platform managed --region europe-west1 --allow-unauthenticated
+```
+
+#### Deploy using terraform
+
+Create a config file (vars.tfvars) with the following parameters (values must be updated as required):
+
+```
+project_id="gcp-project-name"
+environment="latest"
+bucket_name="gcp-project-name"
+region="europe-west1"
+cloud_run_region="europe-west1"
+
+dns_domain="mydomain.here"
+
+database_name="latest"
+database_cluster="cluster-XXXX.gcp.mongodb.net"
+database_username="latest"
+
+google_client_id="googleclientidhere"
+google_client_secret="googlesecrethere"
+jwt_secret="jwtscrethere"
+home_url="https://uat.mydomain.here"
+
+auth_provider_uri="https://connect.openathens.net"
+openid_client_id="idhere"
+openid_client_secret="secrethere"
+
+linkedin_client_id="idhere"
+linkedin_client_secret="secrethere"
+
+sendgrid_api_key="apikeyhere"
+
+data_custodian_email="support@mydomain.here"
+
+api_release_version="gcr.io/gcp-project-name/hdruk-rdt-api:final"
+web_release_version="gcr.io/gcp-project-name/hdruk-rdt-web:final"
+
+mongodbatlas_public_key="pubkeyhere"
+mongodbatlas_private_key="privatekeyhere"
+mongodbatlas_project_id="projectidhere"
+
+discourse_api_key="keyhere"
+discourse_url="https://discourse.mydomain.here"
+discourse_category_tools_id="12345"
+discourse_category_projects_id="123456"
+discourse_sso_secret="secrethere"
+
+ga_view_id="123456789"
+ga_client_email="gaemailhere"
+ga_private_key="keyhere"
+```
+
+Initialise, plan and run the terraform build (please copy the below terrform to your terraform installation directory).
+
+```
+terraform init -var-file=vars.tfvars
+terraform plan -var-file=vars.tfvars -out=tf_apply
+terraform apply tf_apply && rm tf_apply
+```
+
+[Link to terraform file](deployment/GCP/web.tf)
