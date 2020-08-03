@@ -11,12 +11,13 @@ const notificationBuilder = require('../utilities/notificationBuilder');
 
 const router = express.Router();
 
-// @route   GET api/v1/data-access-request/dataset/:datasetId/publisher/:publisher
+// @route   GET api/v1/data-access-request/dataset/:datasetId
 // @desc    GET Access request for user
 // @access  Private
-router.get('/dataset/:dataSetId/publisher/:publisher', passport.authenticate('jwt'), async (req, res) => {
+router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
   let accessRecord;
   let data = {};
+  let dataset;
    try {
       // 1. Get dataSetId from params
       let {params: {dataSetId}} = req;
@@ -24,21 +25,20 @@ router.get('/dataset/:dataSetId/publisher/:publisher', passport.authenticate('jw
       let {id: userId} = req.user;
       // 3. Find the matching record 
       accessRecord = await DataRequestModel.findOne({dataSetId, userId});
-      // 4. if no record create it and pass back
+      // 4. get dataset
+      dataset = await ToolModel.findOne({ datasetid: dataSetId });  
+      // 5. if no record create it and pass back
       if (!accessRecord) {
         //  Remove publisher from URL once PMc completes cache
-        // look up tools on datasetId, use datasetfields: {publisher}
-        // set local publisher variable as publisher = let publisher = publisher
-        // const tool = await ToolModel.findOne({datasetid: dataSetId});
-        //   if(!tool) {
-        //     return res
-        //     .status(500)
-        //     .json({status: 'error', message: 'No dataset available.' });
-        //  }
-        // let {datasetfields: {publisher = ''}} = tool;
+          if(!dataset) {
+            return res
+            .status(500)
+            .json({status: 'error', message: 'No dataset available.' });
+         }
+        let {datasetfields: {publisher = ''}} = dataset;
 
          // 1. GET the template from the custodian
-         const accessRequestTemplate = await DataRequestSchemaModel.findOne({ $or: [{dataSetId}, {publisher: req.params.publisher}, {dataSetId: 'default'}] , status: 'active' }).sort({createdAt: -1});
+         const accessRequestTemplate = await DataRequestSchemaModel.findOne({ $or: [{dataSetId}, {publisher}, {dataSetId: 'default'}] , status: 'active' }).sort({createdAt: -1});
          
          if(!accessRequestTemplate) {
             return res
@@ -46,7 +46,7 @@ router.get('/dataset/:dataSetId/publisher/:publisher', passport.authenticate('jw
             .json({status: 'error', message: 'No Data Access request schema.' });
          }
          // 2. Build up the accessModel for the user
-         let {jsonSchema, version, publisher = ''} = accessRequestTemplate;
+         let {jsonSchema, version} = accessRequestTemplate;
          // 4. create new DataRequestModel
          let record = new DataRequestModel({
             version,
@@ -65,8 +65,7 @@ router.get('/dataset/:dataSetId/publisher/:publisher', passport.authenticate('jw
          data = {...accessRecord._doc};
        }
 
-       let dataset = await ToolModel.findOne({ datasetid: dataSetId });  
-       return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers)}, dataset: dataset});
+       return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers)}, dataset});
    }
    catch (err) {
       console.log(err.message);
