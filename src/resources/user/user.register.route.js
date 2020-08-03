@@ -31,7 +31,7 @@ router.post('/',
     let link = urlValidator.validateURL(req.body.link);
     let orcid = urlValidator.validateOrcidURL(req.body.orcid);
     
-    if (!/\b\w+\@\w+\.\w+(?:\.\w+)?\b/.test(email)) {
+    if (!/\b[a-zA-Z0-9-_.]+\@[a-zA-Z0-9-_]+\.\w+(?:\.\w+)?\b/.test(email)) {
         return res.status(500).json({ success: false, data: 'Enter a valid email address.' })
     }
 
