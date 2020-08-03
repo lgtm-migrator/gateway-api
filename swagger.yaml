@@ -757,7 +757,7 @@ paths:
       - in: path
         name: id
         required: true
-        description: The ID of the tool
+        description: The ID of the project
         schema:
           type : integer
           format: int64
@@ -827,13 +827,13 @@ paths:
         '200':
           description: OK
 
-  /v1/paper/add:
+  /v1/papers:
     post:
-      summary: Add a paper.
+      summary: Returns a Paper object with ID.
       security:
         - cookieAuth: []
       tags:
-        - Paper
+        - Papers
       requestBody:
         content:
           application/json:
@@ -890,14 +890,99 @@ paths:
       responses: 
         '200':
           description: OK
-        
-  /v1/paper/edit:
-    put:
-      summary: Edit a paper.
+    get:
+      summary: Return List of Paper objects.
+      tags:
+        - Papers
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        description: Limit the number of results
+        schema:
+          type : integer
+          example: 3
+      - in: query
+        name: offset
+        required: false
+        description: Index to offset the search results
+        schema:
+          type : integer
+          example: 1
+      - in: query
+        name: q
+        required: false
+        description: Filter using search query
+        schema:
+          type : string
+          example: epilepsy
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/papers/{id}:
+    get:
+      summary: Returns Paper object.
+      tags:
+        - Papers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the user
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            example: 8370396016757367
+      responses: 
+        '200':
+          description: OK
+    patch:
+      summary: Change status of the Paper object.
       security:
         - cookieAuth: []
       tags:
-        - Paper
+        - Papers
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          example: 7485531672584456
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                id:
+                  type: number
+                activeflag:
+                  type: string
+              example:   # Sample object
+                activeflag: 'active'
+      responses: 
+        '200':
+          description: OK
+    put:
+      summary: Returns edited Paper object.
+      security:
+        - cookieAuth: []
+      tags:
+        - Papers
+      parameters:
+      - in: path
+        name: id
+        required: true
+        description: The ID of the paper
+        schema:
+          type : integer
+          format: int64
+          example: 7485531672584456
       requestBody:
         content:
           application/json:
@@ -949,11 +1034,11 @@ paths:
                   items:
                     type: string
               example:   # Sample object
-                id: 26542005388306332
+                id: 7485531672584456
                 type: 'paper'
-                name: 'Research Data TEST EPILEPSY'
+                name: 'Test Paper Title 2'
                 link: 'http://localhost:8080/epilepsy'
-                description: 'Epilespy data research description'
+                description: 'Test abstract 2'
                 categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '1.0.0'}
                 licence: 'MIT licence'
                 authors: [4495285946631793]
@@ -963,30 +1048,6 @@ paths:
         '200':
           description: OK
 
-  /v1/paper/delete:
-    delete:
-      summary: Delete a paper.
-      security:
-        - cookieAuth: []
-      tags:
-        - Paper
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - id
-              properties:
-                id:
-                  type: number
-                id: 26542005388306332
-              example:   # Sample object
-                id: 26542005388306332
-      responses: 
-        '200':
-          description: OK
-  
   /v1/tools/:
     get:
       summary: Returns List of Tool objects.
@@ -1161,63 +1222,7 @@ paths:
     #     '204':
     #       description: No Content
   
-  /v1/paper/get/admin:
-    get:
-      summary: Get paper for admin.
-      security:
-        - cookieAuth: []
-      tags:
-        - Paper
-      responses: 
-        '200':
-          description: OK
   
-  /v1/paper/get/:
-    get:
-      summary: Get paper for normal user.
-      security:
-        - cookieAuth: []
-      tags:
-        - Paper
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the user
-          schema:
-            type : integer
-            format: int64
-            minimum: 1
-            example: 8370396016757367
-      responses: 
-        '200':
-          description: OK
-  
-  /v1/paper/status/:
-    put:
-      summary: Change status for a paper.
-      security:
-        - cookieAuth: []
-      tags:
-        - Paper
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - name
-              properties:
-                id:
-                  type: number
-                activeflag:
-                  type: string
-              example:   # Sample object
-                id: 662346984100503
-                activeflag: 'active'
-      responses: 
-        '200':
-          description: OK
 
   # /v1/tools/get:
   #   get:
