@@ -428,6 +428,126 @@ paths:
       '200':
         description: OK
 
+  /v1/stats/unmetDatasets?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for datasets, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
+
+  /v1/stats/unmetTools?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for tools, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
+  
+  /v1/stats/unmetProjects?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for projects, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
+
+  /v1/stats/unmetPapers?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for papers, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
+
+  /v1/stats/unmetPeople?month={month}&year={year}:
+  get:
+    summary: Returns unmet demand information for people, based on the month and year query params.
+    tags:
+      - Stats
+    parameters:
+      - name: month
+        in: path
+        required: true
+        description: Month number.
+        schema:
+          type : string
+          example: 7
+      - name: year
+        in: path
+        required: true
+        description: Year.
+        schema:
+          type : string
+          example: 2020
+    responses: 
+      '200':
+        description: OK
+
   /v1/tools:
     post:
       summary: Returns new Tool object with ID.
