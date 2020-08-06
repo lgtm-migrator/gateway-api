@@ -417,7 +417,7 @@ paths:
           schema:
             type : string
             example: uptime
-        - name: type
+        - name: selectedDate
           in: path
           required: true
           description: The type of KPI.
