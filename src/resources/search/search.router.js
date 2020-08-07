@@ -128,8 +128,34 @@ function getObjectResult(type, searchAll, searchQuery) {
         q = Data.aggregate([
             { $match: newSearchQuery },
             { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
-            { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
-            { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
+            {
+                $project: {
+                            "_id": 0, 
+                            "id": 1,
+                            "name": 1,
+                            "type": 1,
+                            "description": 1,
+                            "bio": 1,
+                            "categories.category": 1,
+                            "categories.programmingLanguage": 1,
+                            "license": 1,
+                            "tags.features": 1,
+                            "tags.topics": 1,   
+                            "firstname": 1,
+                            "lastname": 1,
+                            "datasetid": 1,
+
+                            "datasetfields.publisher": 1,
+                            "datasetfields.geographicCoverage": 1,
+                            "datasetfields.physicalSampleAvailability": 1,
+                            "datasetfields.abstract": 1,
+                            "datasetfields.ageBand": 1,
+
+                            "persons.id": 1,
+                            "persons.firstname": 1,
+                            "persons.lastname": 1,
+                          }
+              }
         ]).sort({ score: { $meta: "textScore" } });
     }
     
