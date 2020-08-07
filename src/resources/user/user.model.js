@@ -11,7 +11,9 @@ const UserSchema = new Schema({
   providerId: String,
   provider: String,
   role: String,
-  redirectURL: String
+  redirectURL: String,
+  discourseUsername: String,
+  discourseKey: String
 })
 
 export const UserModel = model('User', UserSchema)

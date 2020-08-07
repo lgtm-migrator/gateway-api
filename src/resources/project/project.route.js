@@ -4,7 +4,6 @@ import { ROLES } from '../user/user.roles'
 import passport from "passport";
 import { utils } from "../auth";
 import {addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository';
-import { findPostsByTopicId } from "../discourse/discourse.service";
 
 const router = express.Router();
 
@@ -98,14 +97,8 @@ router.get('/:projectID', async (req, res) => {
               })
           });
 
-          if (err) return res.json({ success: false, error: err });
-          
-          let discourseTopic = {};
-          if (data[0] && data[0].discourseTopicId) {
-            discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
-          }
-
-        return res.json({ success: true, data: data, discourseTopic: discourseTopic });
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true, data: data });
       });
     }
     else{
