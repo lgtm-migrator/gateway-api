@@ -58,15 +58,15 @@ router.get('/logout', function (req, res) {
 // @router   GET /api/auth/status
 // @desc     Return the logged in status of the user and their role.
 // @access   Private
-router.get(
-'/status',
-passport.authenticate('jwt'),
-async (req, res) => {
-    if (req.user) {
-        return res.json({ success: true, data: [{ role: req.user.role, id: req.user.id, name: req.user.firstname + " " + req.user.lastname }] });
-    } else {
-        return res.json({ success: true, data: [{ role: "Reader", id: null, name: null }] });
-    }
+router.get('/status', function (req, res, next) {
+    passport.authenticate('jwt', function (err, user, info) {
+        if (err || !user) {
+            return res.json({ success: true, data: [{ role: "Reader", id: null, name: null, loggedIn: false }] });
+        }
+        else {
+            return res.json({ success: true, data: [{ role: req.user.role, id: req.user.id, name: req.user.firstname + " " + req.user.lastname, loggedIn: true }] });
+        }
+    })(req, res, next);
 });
   
 module.exports = router
