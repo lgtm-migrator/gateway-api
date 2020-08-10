@@ -20,7 +20,7 @@ servers:
 paths:
   /v1/datasets/{datasetID}:
     get:
-      summary: Returns details for a Dataset.
+      summary: Returns Dataset object.
       tags:
         - Datasets
       parameters:
@@ -29,117 +29,39 @@ paths:
           required: true
           description: The ID of the datset
           schema:
-            type : integer
-            format: int64
-            minimum: 1
-            example: 89522470
+            type : string
+            example: '756daeaa-6e47-4269-9df5-477c01cdd271'
       responses: 
         '200':
           description: OK    
 
-  /v1/datasets/detail/{datasetID}:
+  /v1/datasets:
     get:
-      summary: Returns additional details for a dataset from the Metadata catalogue.
+      summary: Returns List of Dataset objects.
       tags:
         - Datasets
       parameters:
-        - in: path
-          name: datasetID
-          required: true
-          description: The ID of the datset
-          schema:
-           type : string
-            example: d3a3935f-b28e-4e74-9b15-9432d611f26c
-      responses: 
-        '200':
-          description: OK 
-
-  /v1/datasets/?search={searchTerm}:
-    get:
-      summary: Returns dataset search results by searchTerm
-      tags:
-        - Datasets
-      parameters:
-        - name: searchTerm
-          in: path
-          required: true
-          description: A search term.
-          schema:
-            type : string
-            example: epilepsy
-      responses: 
-        '200':
-          description: OK
-
-  /v1/datasets/filters?search={searchTerm}:
-    get:
-      summary: Returns filters options for datasets
-      tags:
-        - Datasets
-      parameters:
-        - name: search
-          in: query
-          required: false
-          description: Type of datasearch.
-          schema:
-            type : string
-            example: epilepsy
-      responses: 
-        '200':
-          description: OK
-                
-  /v1/datasets/access/request:
-    post:
-      summary: Access request for dataset
-      security:
-        - cookieAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              properties:
-                title:
-                  type: string
-                  example: 'Epilepsy 12 - National organisation audit'
-                userId:
-                  type: integer
-                  example: 12345654323456
-                dataSetId:
-                  type: string,
-                  example: '2345654323456'
-                researchAim:
-                  type: string
-                  example: 'The aim of your research, description needed.'
-                linkedDataSets:
-                  type: boolean
-                  example: true
-                namesOfDataSets:
-                  type: string
-                  example: 'The name of the datasets that are linked.'
-                dataRequirements:
-                  type: boolean
-                  example: true
-                dataSetParts:
-                  type: string
-                  example: 'The dataset parts that you would like.'
-                startDate:
-                  type: string
-                  example: '19/12/2022'     
-                icoRegistration:
-                  type: string
-                  example: '66252AAA'
-                researchBenefits:
-                  type: string,
-                  example: 'Would benefit would this research provide.'
-                ethicalProcessingEvidence:
-                  type: string
-                  example: 'Ethical processing evidence'
-                contactNumber:
-                  type: string
-                  example: '07656788909'
-      tags:
-        - Datasets
+      - in: query
+        name: limit
+        required: false
+        description: Limit the number of results
+        schema:
+          type : integer
+          example: 3
+      - in: query
+        name: offset
+        required: false
+        description: Index to offset the search results
+        schema:
+          type : integer
+          example: 1
+      - in: query
+        name: q
+        required: false
+        description: Filter using search query
+        schema:
+          type : string
+          example: epilepsy
       responses: 
         '200':
           description: OK
@@ -353,22 +275,7 @@ paths:
         '200':
           description: OK
 
-  /v1/datasets/?search={searchTerm}:
-    get:
-      summary: Returns dataset search results by searchTerm
-      tags:
-        - Datasets
-      parameters:
-        - name: searchTerm
-          in: path
-          required: true
-          description: A search term.
-          schema:
-            type : string
-            example: epilepsy
-      responses: 
-        '200':
-          description: OK
+  
 
   /v1/stats/type?rank={rank}:
     get:
