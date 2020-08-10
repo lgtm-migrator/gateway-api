@@ -74,6 +74,8 @@ app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
  
 app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
+app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
+
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
