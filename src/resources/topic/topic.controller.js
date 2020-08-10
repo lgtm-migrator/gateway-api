@@ -86,18 +86,30 @@ module.exports = {
 
             // TODO: check if user in recipients if not throw error
 
-            // let {_id } = req.user;
+            let {_id: userId } = req.user;
 
             // virtual populate only for topicById
-            const topic = await TopicModel.findById(req.params.id).populate('messages');
-    
-            if(!topic) {
-                return res.status(400).json({ success: false, message: 'No dataset from meta data catalogue.' });
-            }
+            // const topic = await TopicModel.findById(req.params.id).populate('messages');
 
-            //
+            let topic = UserModel.aggregate([
+                // Find topic Id
+                { $match: { _id: req.params.id } },
+                // find user in recipients array
+                { $match: { userId: { $in: recipients } } },
+                // Perform lookup to messages
+                { $lookup: { from: 'Messages', localField: '_id', foreignField: 'topicId', as: 'messages' } },
+                // Reduce response payload 
+                { $project: { _id: 1, title: 1, subTitle: 1, recipients: 1, status: 1, createdDate: 1, createdBy: 1,  'messages': 1 } }
+            ]);
+
+            topic.exec((err, result) => {
+                if (err) {
+                    return res.status(400).json({ success: false, message: 'No topic found.' });
+                }
+               
+                return res.status(200).json({ success: true, data: { result }});
+              });
     
-            return res.status(200).json({ success: true, data: { topic }});
         }
         catch (err) {
             console.error(err.message);
