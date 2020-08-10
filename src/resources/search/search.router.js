@@ -16,11 +16,10 @@ router.get('/', async (req, res) => {
     var searchString = req.query.search || ""; //If blank then return all
     let searchQuery = { $and: [{ activeflag: 'active' }] };
     var searchAll = false;
-    var datasetSearchString = '';
 
     if (searchString.length > 0) {
         searchQuery["$and"].push({ $text: { $search: searchString } });
-        datasetSearchString = '"' + searchString.split(' ').join('""') + '"';
+        /* datasetSearchString = '"' + searchString.split(' ').join('""') + '"';
         //The following code is a workaround for the way search works TODO:work with MDC to improve API
         if (searchString.match(/"/)) {
             //user has added quotes so pass string through
@@ -28,20 +27,20 @@ router.get('/', async (req, res) => {
         } else {
             //no quotes so lets a proximiy search
             datasetSearchString = '"'+searchString+'"~25';
-        }
+        } */
     }
     else {
         searchAll = true;
     }
-
+    
     await Promise.all([
-        getDatasetResult(datasetSearchString, getDatasetFilters(req)),
+        getObjectResult('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset')),
         getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool')),
         getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project')),
         getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper')),
         getObjectResult('person', searchAll, searchQuery),
     ]).then((values) => {
-        var datasetCount = values[0].results.length || 0;
+        var datasetCount = values[0].length || 0;
         var toolCount = values[1].length || 0;
         var projectCount = values[2].length || 0;
         var paperCount = values[3].length || 0;
@@ -67,12 +66,12 @@ router.get('/', async (req, res) => {
         var personIndex = req.query.personIndex || 0;
         var maxResults = req.query.maxResults || 40;
 
-        var datasetList = values[0].results.slice(datasetIndex, (+datasetIndex + +maxResults));
+        var datasetList = values[0].slice(datasetIndex, (+datasetIndex + +maxResults));
         var toolList = values[1].slice(toolIndex, (+toolIndex + +maxResults));
         var projectList = values[2].slice(projectIndex, (+projectIndex + +maxResults));
         var paperList = values[3].slice(paperIndex, (+paperIndex + +maxResults));
         var personList = values[4].slice(personIndex, (+personIndex + +maxResults));
-
+        
         return res.json({
             success: true,
             datasetResults: datasetList,
@@ -86,49 +85,80 @@ router.get('/', async (req, res) => {
     });
 });
 
-function getDatasetResult(searchString, datasetFilters) {
-    var metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
-    var count = 5;
-
-    return new Promise((resolve, reject) => {
-        axios.post(metadataCatalogue + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/customSearch?searchTerm=' + searchString + '&domainType=DataModel&limit=1' + datasetFilters)
-            .then(function (response) {
-                count = response.data.count;
-            })
-            .then(function () {
-                axios.post(metadataCatalogue + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/customSearch?searchTerm=' + searchString + '&domainType=DataModel&limit=' + count + datasetFilters)
-                    .then(function (response) {
-                        resolve(response.data);
-                    })
-                    .catch(function (err) {
-                        reject(err);
-                    })
-            })
-    })
-}
-
 function getObjectResult(type, searchAll, searchQuery) {
     var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
     newSearchQuery["$and"].push({ type: type })
     var q = '';
-
+    
     if (searchAll) {
         q = Data.aggregate([
             { $match: newSearchQuery },
-            { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
-            { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
-            { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
-        ]);
+            { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },            
+            {
+                $project: {
+                            "_id": 0, 
+                            "id": 1,
+                            "name": 1,
+                            "type": 1,
+                            "description": 1,
+                            "bio": 1,
+                            "categories.category": 1,
+                            "categories.programmingLanguage": 1,
+                            "license": 1,
+                            "tags.features": 1,
+                            "tags.topics": 1,   
+                            "firstname": 1,
+                            "lastname": 1,
+                            "datasetid": 1,
+
+                            "datasetfields.publisher": 1,
+                            "datasetfields.geographicCoverage": 1,
+                            "datasetfields.physicalSampleAvailability": 1,
+                            "datasetfields.abstract": 1,
+                            "datasetfields.ageBand": 1,
+
+                            "persons.id": 1,
+                            "persons.firstname": 1,
+                            "persons.lastname": 1,
+                          }
+              }
+        ]).sort({ name : 1 });
     }
     else {
         q = Data.aggregate([
             { $match: newSearchQuery },
             { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
-            { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
-            { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
+            {
+                $project: {
+                            "_id": 0, 
+                            "id": 1,
+                            "name": 1,
+                            "type": 1,
+                            "description": 1,
+                            "bio": 1,
+                            "categories.category": 1,
+                            "categories.programmingLanguage": 1,
+                            "license": 1,
+                            "tags.features": 1,
+                            "tags.topics": 1,   
+                            "firstname": 1,
+                            "lastname": 1,
+                            "datasetid": 1,
+
+                            "datasetfields.publisher": 1,
+                            "datasetfields.geographicCoverage": 1,
+                            "datasetfields.physicalSampleAvailability": 1,
+                            "datasetfields.abstract": 1,
+                            "datasetfields.ageBand": 1,
+
+                            "persons.id": 1,
+                            "persons.firstname": 1,
+                            "persons.lastname": 1,
+                          }
+              }
         ]).sort({ score: { $meta: "textScore" } });
     }
-
+    
     return new Promise((resolve, reject) => {
         q.exec((err, data) => {
             if (typeof data === "undefined") resolve([]);
@@ -140,6 +170,14 @@ function getObjectResult(type, searchAll, searchQuery) {
 
 function getObjectFilters(searchQueryStart, req, type) {
     var searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
+    
+    var license = req.query.license || "";
+    var sample = req.query.sampleavailability || "";
+    var datasetfeature = req.query.keywords || "";
+    var publisher = req.query.publisher || "";
+    var ageBand = req.query.ageband || "";
+    var geographicCoverage = req.query.geographiccover || "";
+
     var programmingLanguage = req.query.programmingLanguage || "";
     var toolcategories = req.query.toolcategories || "";
     var features = req.query.features || "";
@@ -152,195 +190,191 @@ function getObjectFilters(searchQueryStart, req, type) {
     var paperfeatures = req.query.paperfeatures || "";
     var papertopics = req.query.papertopics || "";
 
+    if (type === "dataset") {
+        if (license.length > 0) {
+            var filterTermArray = [];
+            license.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "license": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (sample.length > 0) {
+            var filterTermArray = [];
+            sample.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.physicalSampleAvailability": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (datasetfeature.length > 0) {
+            var filterTermArray = [];
+            datasetfeature.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (publisher.length > 0) {
+            var filterTermArray = [];
+            publisher.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.publisher": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (ageBand.length > 0) {
+            var filterTermArray = [];
+            ageBand.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.ageBand": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (geographicCoverage.length > 0) {
+            var filterTermArray = [];
+            geographicCoverage.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.geographicCoverage": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+    }
+
     if (type === "tool") {
         if (programmingLanguage.length > 0) {
-            var pl = [];
-            if (!Array.isArray(programmingLanguage)) {
-                pl = [{ "categories.programmingLanguage": programmingLanguage }];
-            } else {
-                for (var i = 0; i < programmingLanguage.length; i++) {
-                    pl[i] = { "categories.programmingLanguage": programmingLanguage[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": pl });
+            var filterTermArray = [];
+            programmingLanguage.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.programmingLanguage": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (toolcategories.length > 0) {
-            var tc = [];
-            if (!Array.isArray(toolcategories)) {
-                tc = [{ "categories.category": toolcategories }];
-            } else {
-                for (var i = 0; i < toolcategories.length; i++) {
-                    tc[i] = { "categories.category": toolcategories[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": tc });
+            var filterTermArray = [];
+            toolcategories.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.category": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (features.length > 0) {
-            var f = [];
-            if (!Array.isArray(features)) {
-                f = [{ "tags.features": features }];
-            } else {
-                for (var i = 0; i < features.length; i++) {
-                    f[i] = { "tags.features": features[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": f });
+            var filterTermArray = [];
+            features.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (tooltopics.length > 0) {
-            var t = [];
-            if (!Array.isArray(tooltopics)) {
-                t = [{ "tags.topics": tooltopics }];
-            } else {
-                for (var i = 0; i < tooltopics.length; i++) {
-                    t[i] = { "tags.topics": tooltopics[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            tooltopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
     }
     else if (type === "project") {
         if (projectcategories.length > 0) {
-            var tc = [];
-            if (!Array.isArray(projectcategories)) {
-                tc = [{ "categories.category": projectcategories }];
-            } else {
-                for (var i = 0; i < projectcategories.length; i++) {
-                    tc[i] = { "categories.category": projectcategories[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": tc });
+            var filterTermArray = [];
+            projectcategories.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.category": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (projectfeatures.length > 0) {
-            var t = [];
-            if (!Array.isArray(projectfeatures)) {
-                t = [{ "tags.features": projectfeatures }];
-            } else {
-                for (var i = 0; i < projectfeatures.length; i++) {
-                    t[i] = { "tags.features": projectfeatures[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            projectfeatures.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (projecttopics.length > 0) {
-            var t = [];
-            if (!Array.isArray(projecttopics)) {
-                t = [{ "tags.topics": projecttopics }];
-            } else {
-                for (var i = 0; i < projecttopics.length; i++) {
-                    t[i] = { "tags.topics": projecttopics[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            projecttopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
     }
     else if (type === "paper") {
         if (paperfeatures.length > 0) {
-            var t = [];
-            if (!Array.isArray(paperfeatures)) {
-                t = [{ "tags.features": paperfeatures }];
-            } else {
-                for (var i = 0; i < paperfeatures.length; i++) {
-                    t[i] = { "tags.features": paperfeatures[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            paperfeatures.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
         if (papertopics.length > 0) {
-            var t = [];
-            if (!Array.isArray(papertopics)) {
-                t = [{ "tags.topics": papertopics }];
-            } else {
-                for (var i = 0; i < papertopics.length; i++) {
-                    t[i] = { "tags.topics": papertopics[i] };
-                }
-            }
-            searchQuery["$and"].push({ "$or": t });
+            var filterTermArray = [];
+            papertopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
         }
     }
     return searchQuery;
 }
 
-function getDatasetFilters(req) {
+/* function getDatasetFilters(req) {
     var filterString = '';
 
     if (req.query.publisher) {
         if (typeof (req.query.publisher) == 'string') {
-            filterString += '&publisher=' + req.query.publisher;
-        }
-        else if (typeof (req.query.publisher) == 'object') {
-            req.query.publisher.map((pub) => {
-                filterString += filterString + '&publisher=' + pub;
-            })
+            req.query.publisher.split('::').forEach((filterTerm) => {
+                filterString += '&publisher=' + filterTerm;
+            });
         }
     }
 
     if (req.query.license) {
         if (typeof (req.query.license) == 'string') {
-            filterString += '&license=' + req.query.license;
-        }
-        else if (typeof (req.query.license) == 'object') {
-            req.query.license.map((lic) => {
-                filterString += filterString + '&license=' + lic;
-            })
+            req.query.license.split('::').forEach((filterTerm) => {
+                filterString += '&license=' + filterTerm;
+            });
         }
     }
 
     if (req.query.geographiccover) {
         if (typeof (req.query.geographiccover) == 'string') {
-            filterString += '&geographicCoverage=' + req.query.geographiccover;
-        }
-        else if (typeof (req.query.geographiccover) == 'object') {
-            req.query.geographiccover.map((geo) => {
-                filterString += filterString + '&geographicCoverage=' + geo;
-            })
+            req.query.geographiccover.split('::').forEach((filterTerm) => {
+                filterString += '&geographicCoverage=' + filterTerm;
+            });
         }
     }
 
     if (req.query.ageband) {
         if (typeof (req.query.ageband) == 'string') {
-            filterString += '&ageBand=' + req.query.ageband.replace("+", "%2B");
-        }
-        else if (typeof (req.query.ageband) == 'object') {
-            req.query.ageband.map((age) => {
-                filterString += filterString + '&ageBand=' + age.replace("+", "%2B");
-            })
+            req.query.ageband.split('::').forEach((filterTerm) => {
+                filterString += '&ageBand=' + filterTerm.replace("+", "%2B");;
+            });
         }
     }
 
     if (req.query.sampleavailability) {
         if (typeof (req.query.sampleavailability) == 'string') {
-            filterString += '&physicalSampleAvailability=' + req.query.sampleavailability;
-        }
-        else if (typeof (req.query.sampleavailability) == 'object') {
-            req.query.sampleavailability.map((samp) => {
-                filterString += filterString + '&physicalSampleAvailability=' + samp;
-            })
+            req.query.sampleavailability.split('::').forEach((filterTerm) => {
+                filterString += '&physicalSampleAvailability=' + filterTerm;
+            });
         }
     }
 
     if (req.query.keywords) {
         if (typeof (req.query.keywords) == 'string') {
-            filterString += '&keywords=' + req.query.keywords;
-        }
-        else if (typeof (req.query.keywords) == 'object') {
-            req.query.keywords.map((key) => {
-                filterString += filterString + '&keywords=' + key;
-            })
+            req.query.keywords.split('::').forEach((filterTerm) => {
+                filterString += '&keywords=' + filterTerm;
+            });
         }
     }
     return filterString;
-}
+} */
 
 function getFilterOptions(values) {
     var licenseFilterOptions = [];
     var sampleFilterOptions = [];
-    var keywordsFilterOptions = [];
+    var datasetFeaturesFilterOptions = [];
     var publisherFilterOptions = [];
     var ageBandFilterOptions = [];
     var geographicCoverageFilterOptions = [];
@@ -357,41 +391,37 @@ function getFilterOptions(values) {
     var paperFeaturesFilterOptions = [];
     var paperTopicsFilterOptions = [];
 
-    values[0].results.forEach((dataset) => {
+    values[0].forEach((dataset) => {
         if (dataset.license && dataset.license !== '' && !licenseFilterOptions.includes(dataset.license)) {
             licenseFilterOptions.push(dataset.license);
         }
 
-        if (dataset.physicalSampleAvailability && dataset.physicalSampleAvailability !== '' && !sampleFilterOptions.includes(dataset.physicalSampleAvailability)) {
-            /* var physicalSampleAvailabilitySplit = dataset.physicalSampleAvailability.split(',');
-            physicalSampleAvailabilitySplit.forEach((psa) => {
-                if (!sampleFilterOptions.includes(psa.trim()) && psa !== '') {
-                    sampleFilterOptions.push(psa.trim());
+        if (dataset.datasetfields.physicalSampleAvailability && dataset.datasetfields.physicalSampleAvailability.length > 0) {
+            dataset.datasetfields.physicalSampleAvailability.forEach((fe) => {
+                if (!sampleFilterOptions.includes(fe) && fe !== '') {
+                    sampleFilterOptions.push(fe);
                 }
-            }); */
-            sampleFilterOptions.push(dataset.physicalSampleAvailability);
+            });
         }
 
-        if (dataset.keywords && dataset.keywords !== '' && !keywordsFilterOptions.includes(dataset.keywords)) {
-            /* var keywordsSplit = dataset.keywords.split(',');
-            keywordsSplit.forEach((kw) => {
-                if (!keywordsFilterOptions.includes(kw.trim()) && kw !== '') {
-                    keywordsFilterOptions.push(kw.trim());
+        if (dataset.tags.features && dataset.tags.features.length > 0) {
+            dataset.tags.features.forEach((fe) => {
+                if (!datasetFeaturesFilterOptions.includes(fe) && fe !== '') {
+                    datasetFeaturesFilterOptions.push(fe);
                 }
-            }); */
-            keywordsFilterOptions.push(dataset.keywords);
+            });
+        }
+       
+        if (dataset.datasetfields.publisher && dataset.datasetfields.publisher !== '' && !publisherFilterOptions.includes(dataset.datasetfields.publisher)) {
+            publisherFilterOptions.push(dataset.datasetfields.publisher);
         }
 
-        if (dataset.publisher && dataset.publisher !== '' && !publisherFilterOptions.includes(dataset.publisher)) {
-            publisherFilterOptions.push(dataset.publisher);
+        if (dataset.datasetfields.ageBand && dataset.datasetfields.ageBand !== '' && !ageBandFilterOptions.includes(dataset.datasetfields.ageBand)) {
+            ageBandFilterOptions.push(dataset.datasetfields.ageBand);
         }
 
-        if (dataset.ageBand && dataset.ageBand !== '' && !ageBandFilterOptions.includes(dataset.ageBand)) {
-            ageBandFilterOptions.push(dataset.ageBand);
-        }
-
-        if (dataset.geographicCoverage && dataset.geographicCoverage !== '' && !geographicCoverageFilterOptions.includes(dataset.geographicCoverage)) {
-            geographicCoverageFilterOptions.push(dataset.geographicCoverage);
+        if (dataset.datasetfields.geographicCoverage && dataset.datasetfields.geographicCoverage !== '' && !geographicCoverageFilterOptions.includes(dataset.datasetfields.geographicCoverage)) {
+            geographicCoverageFilterOptions.push(dataset.datasetfields.geographicCoverage);
         }
     })
 
@@ -467,24 +497,24 @@ function getFilterOptions(values) {
     })
 
     return {
-        licenseFilterOptions: licenseFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        sampleFilterOptions: sampleFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        keywordsFilterOptions: keywordsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        publisherFilterOptions: publisherFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        ageBandFilterOptions: ageBandFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        geographicCoverageFilterOptions: geographicCoverageFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        licenseFilterOptions: licenseFilterOptions,
+        sampleFilterOptions: sampleFilterOptions,
+        datasetFeaturesFilterOptions: datasetFeaturesFilterOptions,
+        publisherFilterOptions: publisherFilterOptions,
+        ageBandFilterOptions: ageBandFilterOptions,
+        geographicCoverageFilterOptions: geographicCoverageFilterOptions,
         
-        toolCategoriesFilterOptions: toolCategoriesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        programmingLanguageFilterOptions: programmingLanguageFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        featuresFilterOptions: featuresFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        toolTopicsFilterOptions: toolTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        toolCategoriesFilterOptions: toolCategoriesFilterOptions,
+        programmingLanguageFilterOptions: programmingLanguageFilterOptions,
+        featuresFilterOptions: featuresFilterOptions,
+        toolTopicsFilterOptions: toolTopicsFilterOptions,
         
-        projectCategoriesFilterOptions: projectCategoriesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        projectFeaturesFilterOptions: projectFeaturesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        projectTopicsFilterOptions: projectTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        projectCategoriesFilterOptions: projectCategoriesFilterOptions,
+        projectFeaturesFilterOptions: projectFeaturesFilterOptions,
+        projectTopicsFilterOptions: projectTopicsFilterOptions,
         
-        paperFeaturesFilterOptions: paperFeaturesFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-        paperTopicsFilterOptions: paperTopicsFilterOptions.sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
+        paperFeaturesFilterOptions: paperFeaturesFilterOptions,
+        paperTopicsFilterOptions: paperTopicsFilterOptions
     };
 }
 

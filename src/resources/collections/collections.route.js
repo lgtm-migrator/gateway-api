@@ -7,9 +7,9 @@ import { Collections } from '../collections/collections.model';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model'
 import { getObjectById } from '../tool/data.repository';
-const urlValidator = require('../utilities/urlValidator');
+import emailGenerator from '../utilities/emailGenerator.util';
 
-const sgMail = require('@sendgrid/mail'); 
+const urlValidator = require('../utilities/urlValidator');
 
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
@@ -63,9 +63,6 @@ router.post('/add',
 
     const {name, description, imageLink, authors, relatedObjects } = req.body;
 
-    // Get the emailNotification status for the current user
-    let {emailNotifications = false} = await getObjectById(req.user.id)
-
     collections.id = parseInt(Math.random().toString().replace('0.', ''));
     collections.name = name;
     collections.description = description;
@@ -82,8 +79,9 @@ router.post('/add',
         }
         await createMessage(0, collections, collections.activeflag, collectionCreator);
 
-        if(emailNotifications)
-          await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
+        // Send email notifications to all admins and authors who have opted in
+        await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
+
       } catch (err) {
         console.log(err);
         // return res.status(500).json({ success: false, error: err });
@@ -98,6 +96,75 @@ router.post('/add',
     });
 
   }); 
+
+  router.put('/status',  
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator), 
+  async (req, res) => { 
+
+    var {id, activeflag } = req.body;
+    var isAuthorAdmin = false; 
+
+    var q = Collections.aggregate([
+      { $match: { $and: [{ id: parseInt(req.body.id) }, {authors: req.user.id}] } }
+    ]);
+    q.exec((err, data) => {
+      if(data.length === 1) {
+        isAuthorAdmin = true;
+      } 
+      
+      if(req.user.role === 'Admin') {
+        isAuthorAdmin = true;
+      } 
+
+      if(isAuthorAdmin){
+          Collections.findOneAndUpdate({ id: id },   
+            {
+              activeflag: activeflag
+            }, (err) => {
+              if(err) {
+                return res.json({ success: false, error: err }); 
+              }
+            }).then(() => {
+              return res.json({ success: true });
+            })  
+
+        } else {
+          return res.json({ success: false, error: 'Not authorised' }); 
+        }
+    });
+  }); 
+
+  router.delete('/delete/:id', 
+    passport.authenticate('jwt'),
+    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+    async (req, res) => {
+      var isAuthorAdmin = false; 
+
+      var q = Collections.aggregate([
+        { $match: { $and: [{ id: parseInt(req.params.id) }, {authors: req.user.id}] } }
+      ]);
+      q.exec((err, data) => {
+
+        if(data.length === 1) {
+          isAuthorAdmin = true;
+        } 
+        
+        if(req.user.role === 'Admin') {
+        isAuthorAdmin = true;
+        } 
+  
+        if(isAuthorAdmin){
+        Collections.findOneAndRemove({id: req.params.id}, (err) => {
+            if (err) return res.send(err);
+            return res.json({ success: true });
+          });
+  
+          } else {
+          return res.json({ success: false, error: 'Not authorised' }); 
+          }
+      });
+  });
 
   module.exports = router;
 
@@ -142,14 +209,12 @@ router.post('/add',
   }
   
   async function sendEmailNotifications(collections, activeflag, collectionCreator) {
-
-    const emailRecipients = await UserModel.find({ $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] });
-
-    const collectionLink = process.env.homeURL + '/collection/' + collections.id;
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     let subject;
     let html;
-    //build email
+    // 1. Generate URL for linking collection in email
+    const collectionLink = process.env.homeURL + '/collection/' + collections.id;
+
+    // 2. Build email body
     emailRecipients.map((emailRecipient) => {
       if(activeflag === 'active' && emailRecipient.role === 'Admin'){
         subject = `New collection ${collections.name} has been added and is now live`
@@ -167,25 +232,40 @@ router.post('/add',
       })
     })
 
-
     if (activeflag === 'active') {
       subject = `Your collection ${collections.name} has been approved and is now live`
       html = `Your collection ${collections.name} has been approved and is now live <br /><br />  ${collectionLink}`
     } 
-     //UPDATE WHEN ARCHIVE/DELETE IS AVAILABLE FOR COLLECTIONS
+    //UPDATE WHEN ARCHIVE/DELETE IS AVAILABLE FOR COLLECTIONS
     // else if (activeflag === 'archive') {
     //   subject = `Your collection ${collections.name} has been rejected`
     //   html = `Your collection ${collections.name} has been rejected <br /><br />  ${collectionLink}`
     // }
-  
-    for (let emailRecipient of emailRecipients) {
-      const msg = {
-        to: emailRecipient.email,
-        from: `${hdrukEmail}`,
-        subject: subject,
-        html: html
-      };
-      await sgMail.send(msg);
-    }
+
+    // 3. Query Db for all admins or authors of the collection who have opted in to email updates
+    var q = UserModel.aggregate([
+      // Find all users who are admins or authors of this collection
+      { $match: { $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] } },
+      // Perform lookup to check opt in/out flag in tools schema
+      { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+      // Filter out any user who has opted out of email notifications
+      { $match: { 'tool.emailNotifications': true } },
+      // Reduce response payload size to required fields
+      { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+    ]);
+
+    // 4. Use the returned array of email recipients to generate and send emails with SendGrid
+    q.exec((err, emailRecipients) => {
+      if (err) {
+        return new Error({ success: false, error: err });
+      }
+      emailGenerator.sendEmail(
+        emailRecipients,
+        `${hdrukEmail}`,
+        subject,
+        html
+      );
+    });
   }
  
+  

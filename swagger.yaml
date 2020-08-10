@@ -191,22 +191,115 @@ paths:
         '200':
           description: OK 
         
-  /v1/person/{personID}:
+  /v1/person/{id}:
     get:
       summary: Returns details for a person.
       tags:
         - Person
       parameters:
         - in: path
-          name: personID
+          name: id
           required: true
           description: The ID of the person
           schema:
             type : string
-            example: b2475d19-75fe-422b-9d0c-c53cdfff8230
+            example: 900000014
       responses:
         '200':
-          description: OK 
+          description: OK
+  /v1/person/:
+    get:
+      summary: Returns an array of person objects.
+      tags:
+        - Person
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Returns a new person object.
+      tags:
+        - Person
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - firstname
+                - lastname
+                - bio
+                - link
+                - orcid
+                - emailNotifications
+                - terms
+              properties:
+                firstname:
+                  type: string
+                lastname:
+                  type: string
+                bio:
+                  type: string
+                link:
+                  type: string
+                orcid:
+                  type: string
+                emailNotifications:
+                  type: boolean
+                terms:
+                  type: boolean
+              example:
+                firstname: 'John'
+                lastname: 'Smith'
+                bio: 'Researcher'
+                link: 'http://google.com'
+                orcid: 'https://orcid.org/123456789'
+                emailNotifications: false
+                terms: true
+      responses:
+        '200':
+          description: OK
+    put:
+      summary: Returns edited person object.
+      tags:
+        - Person
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - id
+                - bio
+                - link
+                - orcid
+                - emailNotifications
+                - terms
+              properties:
+                id:
+                  type: string
+                bio:
+                  type: string
+                link:
+                  type: string
+                orcid:
+                  type: string
+                emailNotifications:
+                  type: boolean
+                terms:
+                  type: boolean
+              example:
+                id: '5268590523943617'
+                bio: 'Research assistant'
+                link: 'http://google.com'
+                orcid: 'https://orcid.org/123456789'
+                emailNotifications: false
+                terms: true
+      responses:
+        '200':
+          description: OK
           
   /v1/search:
     get:
@@ -250,7 +343,7 @@ paths:
       responses: 
         '200':
           description: OK
-  
+
   /v1/stats:
     get:
       summary: This will return a JSON document to show high level stats.
@@ -260,38 +353,197 @@ paths:
         '200':
           description: OK
 
-  /v1/stats/recent:
+  /v1/datasets/?search={searchTerm}:
     get:
-      summary: Return the details on the recent searches.
+      summary: Returns dataset search results by searchTerm
       tags:
-        - Stats
+        - Datasets
+      parameters:
+        - name: searchTerm
+          in: path
+          required: true
+          description: A search term.
+          schema:
+            type : string
+            example: epilepsy
       responses: 
         '200':
           description: OK
 
-  /v1/stats/unmet:
+  /v1/stats/type?rank={rank}:
     get:
-      summary: Return the details on the unmet searches.
+      summary: Returns the details on recent searches, popular objects or recently updated objects based on the rank query parameter.
       tags:
         - Stats
+      parameters:
+        - name: rank
+          in: path
+          required: true
+          description: The type of stat.
+          schema:
+            type : string
+            example: recent
       responses: 
         '200':
           description: OK
 
-  /v1/stats/popular:
+  /v1/stats/kpis?kpi={type}:
     get:
-      summary: Return the details on the popular objects.
+      summary: Returns information for KPIs, based on the KPI type parameter.
       tags:
         - Stats
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: The type of KPI.
+          schema:
+            type : string
+            example: technicalmetadata
       responses: 
         '200':
           description: OK
 
-  /v1/stats/updates:
+  /v1/stats/kpis?kpi={type}&selectedDate={selectedDate}:
     get:
-      summary: Return the details on the updated objects.
+      summary: Returns information for KPIs, based on the KPI type parameter.
       tags:
         - Stats
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: The type of KPI.
+          schema:
+            type : string
+            example: uptime
+        - name: selectedDate
+          in: path
+          required: true
+          description: The type of KPI.
+          schema:
+            type : string
+            example: Wed Jul 01 2020 01:00:00 GMT 0100 (British Summer Time)
+      responses: 
+        '200':
+          description: OK
+
+  /v1/stats/unmetDatasets?month={month}&year={year}:
+    get:
+      summary: Returns unmet demand information for datasets, based on the month and year query params.
+      tags:
+        - Stats
+      parameters:
+        - name: month
+          in: path
+          required: true
+          description: Month number.
+          schema:
+            type : string
+            example: 7
+        - name: year
+          in: path
+          required: true
+          description: Year.
+          schema:
+            type : string
+            example: 2020
+      responses: 
+        '200':
+          description: OK
+
+  /v1/stats/unmetTools?month={month}&year={year}:
+    get:
+      summary: Returns unmet demand information for tools, based on the month and year query params.
+      tags:
+        - Stats
+      parameters:
+        - name: month
+          in: path
+          required: true
+          description: Month number.
+          schema:
+            type : string
+            example: 7
+        - name: year
+          in: path
+          required: true
+          description: Year.
+          schema:
+            type : string
+            example: 2020
+      responses: 
+        '200':
+          description: OK
+
+  /v1/stats/unmetProjects?month={month}&year={year}:
+    get:
+      summary: Returns unmet demand information for projects, based on the month and year query params.
+      tags:
+        - Stats
+      parameters:
+        - name: month
+          in: path
+          required: true
+          description: Month number.
+          schema:
+            type : string
+            example: 7
+        - name: year
+          in: path
+          required: true
+          description: Year.
+          schema:
+            type : string
+            example: 2020
+      responses: 
+        '200':
+          description: OK
+
+  /v1/stats/unmetPapers?month={month}&year={year}:
+    get:
+      summary: Returns unmet demand information for papers, based on the month and year query params.
+      tags:
+        - Stats
+      parameters:
+        - name: month
+          in: path
+          required: true
+          description: Month number.
+          schema:
+            type : string
+            example: 7
+        - name: year
+          in: path
+          required: true
+          description: Year.
+          schema:
+            type : string
+            example: 2020
+      responses: 
+        '200':
+          description: OK
+
+  /v1/stats/unmetPeople?month={month}&year={year}:
+    get:
+      summary: Returns unmet demand information for people, based on the month and year query params.
+      tags:
+        - Stats
+      parameters:
+        - name: month
+          in: path
+          required: true
+          description: Month number.
+          schema:
+            type : string
+            example: 7
+        - name: year
+          in: path
+          required: true
+          description: Year.
+          schema:
+            type : string
+            example: 2020
       responses: 
         '200':
           description: OK
@@ -360,13 +612,13 @@ paths:
         '200':
           description: OK
 
-  /v1/project/add:
+  /v1/projects:
     post:
-      summary: Add a project.
+      summary: Returns a Project object with ID.
       security:
         - cookieAuth: []
       tags:
-        - Project
+        - Projects
       requestBody:
         content:
           application/json:
@@ -423,14 +675,93 @@ paths:
       responses: 
         '200':
           description: OK
-        
-  /v1/project/edit:
-    put:
-      summary: Edit a project.
+    get:
+      summary: Returns List of Project objects.
+      tags:
+        - Projects
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        description: Limit the number of results
+        schema:
+          type : integer
+          example: 3
+      - in: query
+        name: offset
+        required: false
+        description: Index to offset the search results
+        schema:
+          type : integer
+          example: 1
+      - in: query
+        name: q
+        required: false
+        description: Filter using search query
+        schema:
+          type : string
+          example: epilepsy
+      responses: 
+        '200':
+          description: OK
+  /v1/projects/{id}:
+    get:
+      summary: Returns Project object.
+      tags:
+        - Projects
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type : integer
+            example: 441788967946948
+      responses: 
+        '200':
+          description: OK
+    patch:
+      summary: Change status of the Project object.
       security:
         - cookieAuth: []
       tags:
-        - Project
+        - Projects
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            example: 662346984100503
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                activeflag:
+                  type: string
+              example:   # Sample object
+                activeflag: 'active'
+      responses: 
+        '200':
+          description: OK
+    put:
+      summary: Returns edited Project object.
+      security:
+        - cookieAuth: []
+      tags:
+        - Projects
+      parameters:
+      - in: path
+        name: id
+        required: true
+        description: The ID of the tool
+        schema:
+          type : integer
+          format: int64
+          example: 26542005388306332
       requestBody:
         content:
           application/json:
@@ -492,30 +823,6 @@ paths:
                 authors: [4495285946631793]
                 tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
                 toolids: []
-      responses: 
-        '200':
-          description: OK
-
-  /v1/project/delete:
-    delete:
-      summary: Delete a project.
-      security:
-        - cookieAuth: []
-      tags:
-        - Project
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - id
-              properties:
-                id:
-                  type: number
-                id: 26542005388306332
-              example:   # Sample object
-                id: 26542005388306332
       responses: 
         '200':
           description: OK
@@ -893,80 +1200,6 @@ paths:
         - cookieAuth: []
       tags:
         - Paper
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - name
-              properties:
-                id:
-                  type: number
-                activeflag:
-                  type: string
-              example:   # Sample object
-                id: 662346984100503
-                activeflag: 'active'
-      responses: 
-        '200':
-          description: OK
-
-  /v1/project/{projectId}:
-    get:
-      summary: Return the details on the project based on the project ID.
-      tags:
-        - Projects
-      parameters:
-        - in: path
-          name: projectId
-          required: true
-          schema:
-            type : string
-            example: b2475d19-75fe-422b-9d0c-c53cdfff8230
-      responses: 
-        '200':
-          description: OK
-
-  /v1/project/get/admin:
-    get:
-      summary: Get project for admin.
-      security:
-        - cookieAuth: []
-      tags:
-        - Project
-      responses: 
-        '200':
-          description: OK
-  
-  /v1/project/get/:
-    get:
-      summary: Get project for normal user.
-      security:
-        - cookieAuth: []
-      tags:
-        - Project
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the user
-          schema:
-            type : integer
-            format: int64
-            minimum: 1
-            example: 8370396016757367
-      responses: 
-        '200':
-          description: OK
-  
-  /v1/project/status/:
-    put:
-      summary: Change status for a project.
-      security:
-        - cookieAuth: []
-      tags:
-        - Project
       requestBody:
         content:
           application/json:

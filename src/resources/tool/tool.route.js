@@ -1,183 +1,256 @@
-import express from 'express'
-import { ROLES } from '../user/user.roles'
+import express from 'express';
+import { ROLES } from '../user/user.roles';
 import { Reviews } from './review.model';
-import { Data } from '../tool/data.model'
-import passport from "passport";
-import { utils } from "../auth";
-import { findPostsByTopicId } from "../discourse/discourse.service";
-import { UserModel } from '../user/user.model'
-import { MessagesModel } from '../message/message.model'
-import {addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository';
-const sgMail = require('@sendgrid/mail');
+import { Data } from '../tool/data.model';
+import passport from 'passport';
+import { utils } from '../auth';
+import { findPostsByTopicId } from '../discourse/discourse.service';
+import { UserModel } from '../user/user.model';
+import { MessagesModel } from '../message/message.model';
+import {
+  addTool,
+  editTool,
+  deleteTool,
+  setStatus,
+  getTools,
+  getToolsAdmin,
+} from '../tool/data.repository';
+import emailGenerator from '../utilities/emailGenerator.util';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
-const router = express.Router()
+const router = express.Router();
 
 // @router   POST /api/v1/add
 // @desc     Add tools user
 // @access   Private
-router.post('/', 
+router.post(
+  '/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
-      await addTool(req)
-      .then(response => {
-        return res.json({ success: true, response});
+  async (req, res) => {
+    await addTool(req)
+      .then((response) => {
+        return res.json({ success: true, response });
       })
-      .catch(err => {
-        return res.json({ success: false, err});
-      })
-    }
+      .catch((err) => {
+        return res.json({ success: false, err });
+      });
+  }
 );
 
 // @router   PUT /api/v1/{id}
 // @desc     Edit tools user
 // @access   Private
-// router.put('/{id}', 
-router.put('/:id', 
+// router.put('/{id}',
+router.put(
+  '/:id',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
-      await editTool(req)
-      .then(response => {
-        return res.json({ success: true, response});
+  async (req, res) => {
+    await editTool(req)
+      .then((response) => {
+        return res.json({ success: true, response });
       })
-      .catch(err => {
-        return res.json({ success: false, error: err.message});
-      })
-    }
+      .catch((err) => {
+        return res.json({ success: false, error: err.message });
+      });
+  }
 );
 
 // @router   GET /api/v1/get/admin
 // @desc     Returns List of Tool objects
 // @access   Private
-router.get('/',
+router.get(
+  '/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
-      req.params.type = "tool";
-      let role = req.user.role;
+  async (req, res) => {
+    req.params.type = 'tool';
+    let role = req.user.role;
 
-      if(role === ROLES.Admin){
-        await getToolsAdmin(req)
-        .then(data => {
-          return res.json({success: true, data});
+    if (role === ROLES.Admin) {
+      await getToolsAdmin(req)
+        .then((data) => {
+          return res.json({ success: true, data });
         })
-        .catch(err => {
-          return res.json({success: false, err});
+        .catch((err) => {
+          return res.json({ success: false, err });
         });
-      }
-      else if(role === ROLES.Creator){
-        await getTools(req)
-        .then(data => {
-          return res.json({success: true, data});
+    } else if (role === ROLES.Creator) {
+      await getTools(req)
+        .then((data) => {
+          return res.json({ success: true, data });
         })
-        .catch(err => {
-          return res.json({success: false, err});
+        .catch((err) => {
+          return res.json({ success: false, err });
         });
-      }
     }
+  }
 );
 
 // @router   PATCH /api/v1/status
 // @desc     Set tool status
 // @access   Private
-router.patch('/:id',
+router.patch(
+  '/:id',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin),
-    async (req, res) => {
-      await setStatus(req)
-        .then(response => {
-          return res.json({success: true, response});
-        })
-        .catch(err => {
-          return res.json({success: false, error: err.message});
-        });
-    }
+  async (req, res) => {
+    await setStatus(req)
+      .then((response) => {
+        return res.json({ success: true, response });
+      })
+      .catch((err) => {
+        return res.json({ success: false, error: err.message });
+      });
+  }
 );
 
 /**
  * {get} /tool/:id Tool
- * 
+ *
  * Return the details on the tool based on the tool ID.
  */
-router.get('/:id', async (req, res) => { 
-    var query = Data.aggregate([
-        { $match: { $and: [{ id: parseInt(req.params.id) }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
-        { $lookup: { from: "tools", localField: "uploader", foreignField: "id", as: "uploaderIs" } }
-    ]);
-    query.exec((err, data) => {
-      if(data.length > 0){
-          var p = Data.aggregate([
-              { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.id } } }] } },
-            ]);
-            p.exec((err, relatedData) => {
-                relatedData.forEach((dat) => {
-                    dat.relatedObjects.forEach((x) => {
-                        if (x.objectId === req.params.id && dat.id !== req.params.id) {
-                            if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
-                            data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type })
-                        }
-                    })
-                });
+router.get('/:id', async (req, res) => {
+  var query = Data.aggregate([
+    { $match: { $and: [{ id: parseInt(req.params.id) }] } },
+    {
+      $lookup: {
+        from: 'tools',
+        localField: 'authors',
+        foreignField: 'id',
+        as: 'persons',
+      },
+    },
+    {
+      $lookup: {
+        from: 'tools',
+        localField: 'uploader',
+        foreignField: 'id',
+        as: 'uploaderIs',
+      },
+    },
+  ]);
+  query.exec((err, data) => {
+    if (data.length > 0) {
+      var p = Data.aggregate([
+        {
+          $match: {
+            $and: [
+              { relatedObjects: { $elemMatch: { objectId: req.params.id } } },
+            ],
+          },
+        },
+      ]);
+      p.exec((err, relatedData) => {
+        relatedData.forEach((dat) => {
+          dat.relatedObjects.forEach((x) => {
+            if (x.objectId === req.params.id && dat.id !== req.params.id) {
+              let relatedObject = {
+                objectId: dat.id,
+                reason: x.reason,
+                objectType: dat.type,
+                user: x.user, 
+                updated: x.updated
+              };
+              data[0].relatedObjects = [relatedObject, ...data[0].relatedObjects || []];
+            }
+          });
+        });
 
-                var r = Reviews.aggregate([
-                    { $match: { $and: [{ toolID: parseInt(req.params.id) }, { activeflag: 'active' }] } },
-                    { $sort: { date: -1 } },
-                    { $lookup: { from: "tools", localField: "reviewerID", foreignField: "id", as: "person" } },
-                    { $lookup: { from: "tools", localField: "replierID", foreignField: "id", as: "owner" } }
-                ]);
-                r.exec(async (err, reviewData) => {
-                    if (err) return res.json({ success: false, error: err });
+        var r = Reviews.aggregate([
+          {
+            $match: {
+              $and: [
+                { toolID: parseInt(req.params.id) },
+                { activeflag: 'active' },
+              ],
+            },
+          },
+          { $sort: { date: -1 } },
+          {
+            $lookup: {
+              from: 'tools',
+              localField: 'reviewerID',
+              foreignField: 'id',
+              as: 'person',
+            },
+          },
+          {
+            $lookup: {
+              from: 'tools',
+              localField: 'replierID',
+              foreignField: 'id',
+              as: 'owner',
+            },
+          },
+        ]);
+        r.exec(async (err, reviewData) => {
+          if (err) return res.json({ success: false, error: err });
 
-                    let discourseTopic = {};
-                    if (data[0].discourseTopicId) {
-                        discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
-                    }
-
-                    return res.json({ success: true, data: data, reviewData: reviewData, discourseTopic: discourseTopic });
-                });
-            });
+          let discourseTopic = {};
+          if (data[0].discourseTopicId) {
+            discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
           }
-        else{
-          return res.json({success: false, error: `Tool not found for tool id ${req.params.id}`})
-        }
+
+          return res.json({
+            success: true,
+            data: data,
+            reviewData: reviewData,
+            discourseTopic: discourseTopic,
+          });
+        });
       });
+    } else {
+      return res.json({
+        success: false,
+        error: `Tool not found for tool id ${req.params.id}`,
+      });
+    }
+  });
 });
 
 /**
  * {get} /tool/edit/:id Tool
- * 
+ *
  * Return the details on the tool based on the tool ID for edit.
  */
-router.get('/edit/:id', async (req, res) => { 
-    var query = Data.aggregate([
-        { $match: { $and: [{ id: parseInt(req.params.id) }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
-    ]);
-    query.exec((err, data) => {
-        if(data.length > 0){
-            return res.json({ success: true, data: data });
-        }
-        else {
-            return res.json({success: false, error: `Tool not found for tool id ${req.params.id}`})
-        }
-    });
+router.get('/edit/:id', async (req, res) => {
+  var query = Data.aggregate([
+    { $match: { $and: [{ id: parseInt(req.params.id) }] } },
+    {
+      $lookup: {
+        from: 'tools',
+        localField: 'authors',
+        foreignField: 'id',
+        as: 'persons',
+      },
+    },
+  ]);
+  query.exec((err, data) => {
+    if (data.length > 0) {
+      return res.json({ success: true, data: data });
+    } else {
+      return res.json({
+        success: false,
+        error: `Tool not found for tool id ${req.params.id}`,
+      });
+    }
+  });
 });
 
 /**
-* {post} /tool/review/add Add review
-* 
-* Authenticate user to see if add review should be displayed.
-* When they submit, authenticate the user, validate the data and add review data to the DB.
-* We will also check the review (Free word entry) for exclusion data (node module?)
-*/
+ * {post} /tool/review/add Add review
+ *
+ * Authenticate user to see if add review should be displayed.
+ * When they submit, authenticate the user, validate the data and add review data to the DB.
+ * We will also check the review (Free word entry) for exclusion data (node module?)
+ */
 router.post(
   '/review/add',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-    let reviews = new Reviews(); 
+    let reviews = new Reviews();
     const { toolID, reviewerID, rating, projectName, review } = req.body;
 
     reviews.reviewID = parseInt(Math.random().toString().replace('0.', ''));
@@ -191,16 +264,17 @@ router.post(
 
     reviews.save(async (err) => {
       if (err) {
-        return res.json({ success: false, error: err })
+        return res.json({ success: false, error: err });
       } else {
         return res.json({ success: true, id: reviews.reviewID });
-      };
+      }
     });
-  });
+  }
+);
 
 /**
  * {post} /tool/reply/add Add reply
- * 
+ *
  * Authenticate user to see if add reply should be displayed.
  * When they submit, authenticate the user, validate the data and add reply data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
@@ -211,51 +285,57 @@ router.post(
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     const { reviewID, replierID, reply } = req.body;
-    Reviews.findOneAndUpdate({ reviewID: reviewID },
+    Reviews.findOneAndUpdate(
+      { reviewID: reviewID },
       {
         replierID: replierID,
         reply: reply,
-        replydate: Date.now()
-      }, (err) => {
+        replydate: Date.now(),
+      },
+      (err) => {
         if (err) return res.json({ success: false, error: err });
         return res.json({ success: true });
-      });
-  });
+      }
+    );
+  }
+);
 
 /**
  * {post} /tool/review/approve Approve review
- * 
+ *
  * Authenticate user to see if user can approve.
  */
 router.post(
   '/review/approve',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin),
-  async (req, res) => { 
+  async (req, res) => {
     const { id, activeflag } = req.body;
-    // Get the emailNotification status for the current user
-    let {emailNotifications = false} = await getObjectById(req.user.id)
 
-    Reviews.findOneAndUpdate({ reviewID: id },
+    Reviews.findOneAndUpdate(
+      { reviewID: id },
       {
-        activeflag: activeflag
-      }, (err) => {
+        activeflag: activeflag,
+      },
+      (err) => {
         if (err) return res.json({ success: false, error: err });
 
         return res.json({ success: true });
-      }).then(async (res) => {
-        const review = await Reviews.findOne({ reviewID: id });
+      }
+    ).then(async (res) => {
+      const review = await Reviews.findOne({ reviewID: id });
 
-        await storeNotificationMessages(review);
+      await storeNotificationMessages(review);
 
-        if(emailNotifications)
-          await sendEmailNotifications(review);
-      });
-  });
+      // Send email notififcation of approval to authors and admins who have opted in
+      await sendEmailNotifications(review);
+    });
+  }
+);
 
 /**
  * {delete} /tool/review/reject Reject review
- * 
+ *
  * Authenticate user to see if user can reject.
  */
 router.delete(
@@ -268,11 +348,12 @@ router.delete(
       if (err) return res.send(err);
       return res.json({ success: true });
     });
-  });
+  }
+);
 
 /**
  * {delete} /tool/review/delete Delete review
- * 
+ *
  * When they delete, authenticate the user and remove the review data from the DB.
  */
 router.delete(
@@ -285,7 +366,8 @@ router.delete(
       if (err) return res.send(err);
       return res.json({ success: true });
     });
-  });
+  }
+);
 
 //Validation required if Delete is to be implemented
 // router.delete('/:id',
@@ -302,14 +384,14 @@ router.delete(
 //     }
 // );
 
-module.exports = router
+module.exports = router;
 
 async function storeNotificationMessages(review) {
-
   const tool = await Data.findOne({ id: review.toolID });
   //Get reviewer name
   const reviewer = await UserModel.findOne({ id: review.reviewerID });
-  const toolLink = process.env.homeURL + '/tool/' + review.toolID + '/' + tool.name
+  const toolLink =
+    process.env.homeURL + '/tool/' + review.toolID + '/' + tool.name;
   //admins
   let message = new MessagesModel();
   message.messageID = parseInt(Math.random().toString().replace('0.', ''));
@@ -318,13 +400,13 @@ async function storeNotificationMessages(review) {
   message.messageType = 'review';
   message.messageSent = Date.now();
   message.isRead = false;
-  message.messageDescription = `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} ${toolLink}`
+  message.messageDescription = `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} ${toolLink}`;
 
   await message.save(async (err) => {
     if (err) {
       return new Error({ success: false, error: err });
     }
-  })
+  });
   //authors
   const authors = tool.authors;
   authors.forEach(async (author) => {
@@ -339,29 +421,33 @@ async function storeNotificationMessages(review) {
 }
 
 async function sendEmailNotifications(review) {
-  //Get email recipients 
-  let emailRecipients = await UserModel.find({ role: 'Admin' });
+  // 1. Retrieve tool for authors and reviewer user plus generate URL for linking tool
   const tool = await Data.findOne({ id: review.toolID });
-
-
-  (await UserModel.find({ id: { $in: tool.authors } }))
-    .forEach(author => {
-      emailRecipients.push(author)
-    });
-
-  //Get reviewer name
   const reviewer = await UserModel.findOne({ id: review.reviewerID });
-  const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name;
 
-  //send emails
-  for (let emailRecipient of emailRecipients) {
-    const msg = {
-      to: emailRecipient.email,
-      from: `${hdrukEmail}`,
-      subject: `Someone reviewed your tool`,
-      html: `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`
-    };
-    await sgMail.send(msg);
-  }
+  // 2. Query Db for all admins or authors of the tool who have opted in to email updates
+  var q = UserModel.aggregate([
+    // Find all users who are admins or authors of this tool
+    { $match: { $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] } },
+    // Perform lookup to check opt in/out flag in tools schema
+    { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+    // Filter out any user who has opted out of email notifications
+    { $match: { 'tool.emailNotifications': true } },
+    // Reduce response payload size to required fields
+    { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+  ]);
+
+  // 3. Use the returned array of email recipients to generate and send emails with SendGrid
+  q.exec((err, emailRecipients) => {
+    if (err) {
+      return new Error({ success: false, error: err });
+    }
+    emailGenerator.sendEmail(
+      emailRecipients,
+      `${hdrukEmail}`,
+      `Someone reviewed your tool`,
+      `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`
+    );
+  });
 }

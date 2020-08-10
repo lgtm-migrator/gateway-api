@@ -2,12 +2,30 @@ import express from 'express';
 import passport from 'passport';
 import axios from 'axios';
 import { DataRequestModel } from './datarequest.model';
+import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import emailGenerator from '../utilities/emailGenerator.util';
+
 const sgMail = require('@sendgrid/mail');
 const notificationBuilder = require('../utilities/notificationBuilder');
 
 const router = express.Router();
+
+// @route   GET api/v1/data-access-request
+// @desc    GET Access requests for user
+// @access  Private
+router.get('/', passport.authenticate('jwt'), async (req, res) => {
+    let idString = req.user.id;
+    
+    let query = DataRequestModel.aggregate([
+        { $match: { $and: [{ userId: parseInt(idString) }, { "dataSetId":{$ne:null} }] } },
+        { $lookup: { from: "tools", localField: "dataSetId", foreignField: "datasetid", as: "dataset" } }
+      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
+      query.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true, data: data });
+      });
+});
 
 // @route   GET api/v1/data-access-request/dataset/:datasetId
 // @desc    GET Access request for user
@@ -15,6 +33,7 @@ const router = express.Router();
 router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res) => {
   let accessRecord;
   let data = {};
+  let dataset;
    try {
       // 1. Get dataSetId from params
       let {params: {dataSetId}} = req;
@@ -22,10 +41,20 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
       let {id: userId} = req.user;
       // 3. Find the matching record 
       accessRecord = await DataRequestModel.findOne({dataSetId, userId});
-      // 4. if no record create it and pass back
+      // 4. get dataset
+      dataset = await ToolModel.findOne({ datasetid: dataSetId });  
+      // 5. if no record create it and pass back
       if (!accessRecord) {
+        //  Remove publisher from URL once PMc completes cache
+          if(!dataset) {
+            return res
+            .status(500)
+            .json({status: 'error', message: 'No dataset available.' });
+         }
+        let {datasetfields: {publisher = ''}} = dataset;
+
          // 1. GET the template from the custodian
-         const accessRequestTemplate = await DataRequestSchemaModel.findOne({ $or: [{dataSetId}, {dataSetId: 'default'}] , status: 'active' }).sort({createdAt: -1});
+         const accessRequestTemplate = await DataRequestSchemaModel.findOne({ $or: [{dataSetId}, {publisher}, {dataSetId: 'default'}] , status: 'active' }).sort({createdAt: -1});
          
          if(!accessRequestTemplate) {
             return res
@@ -40,6 +69,7 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
             userId,
             dataSetId,
             jsonSchema,
+            publisher,
             questionAnswers: "{}",
             applicationStatus: "inProgress"
          });
@@ -50,8 +80,8 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
        } else {
          data = {...accessRecord._doc};
        }
-       console.log(data);
-      return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers)}});
+
+       return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers)}, dataset});
    }
    catch (err) {
       console.log(err.message);
@@ -68,6 +98,7 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
     const {
       params: { id },
     } = req;
+    console.log(req.body);
     // 2. find data request by _id and update via body
     let accessRequestRecord = await DataRequestModel.findByIdAndUpdate(id, req.body, { new: true });
     // 3. check access record
@@ -115,17 +146,27 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
       // set options
       let options = {userType: '', userEmail: email, userName: `${firstname} ${lastname}`, custodianEmail: contactPoint, dataSetTitle: title, publisher, description, abstract };
       console.log(options);
-      // set sendGrid key
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
       for (let emailRecipientType of emailRecipientTypes) {
-        let emailTemplate = {};
+        let msg = {};
 
         options = {...options, userType: emailRecipientType};
         // build email template
-        emailTemplate = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
+        msg = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
+        // if unsubscribe is allowed, pass single user object recipient to generate and append unsub link
+        if(msg.allowUnsubscribe) {
+          msg.to = [ req.user ];
+        } else {
+          // if unsubscribe not allowed, pass email in mock user object
+          msg.to = [{ email: msg.to }];
+        }
         // send email
-        await sgMail.send(emailTemplate);
+        await emailGenerator.sendEmail(
+          msg.to, 
+          msg.from, 
+          msg.subject, 
+          msg.html, 
+          msg.allowUnsubscribe);
       }
      
       application.applicationStatus = 'submitted';

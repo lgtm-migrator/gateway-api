@@ -2,10 +2,10 @@ import { Data } from './data.model';
 import { MessagesModel } from '../message/message.model'
 import { UserModel } from '../user/user.model'
 import { createDiscourseTopic } from '../discourse/discourse.service'
+import emailGenerator from '../utilities/emailGenerator.util';
 const asyncModule = require('async');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const urlValidator = require('../utilities/urlValidator');
-const sgMail = require('@sendgrid/mail');
 
 export async function getObjectById(id) {
     return await Data.findOne({ id }).exec()
@@ -13,9 +13,6 @@ export async function getObjectById(id) {
 
 const addTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
-
-      let {emailNotifications = false} = await getObjectById(req.user.id)
-      console.log(emailNotifications);
       let data = new Data(); 
       const toolCreator = req.body.toolCreator; 
       const { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
@@ -54,25 +51,36 @@ const addTool = async (req, res) => {
       if(!newMessageObj)
         reject(new Error(`Can't persist message to DB.`));
 
-      // send email to Admin when new tool or project has been added
-      const emailRecipients = await UserModel.find({ role: 'Admin' });
-      const toolLink = process.env.homeURL + '/tool/' + data.id + '/' + data.name
+      // 1. Generate URL for linking tool from email
+      const toolLink = process.env.homeURL + '/' + data.type + '/' + data.id 
 
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-      for (let emailRecipient of emailRecipients) {
-        const msg = {
-          to: emailRecipient.email,
-          from: `${hdrukEmail}`,
-          subject: `A new ${data.type} has been added and is ready for review`,
-          html: `Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`
-        };
-        await sgMail.send(msg);
-      }
+      // 2. Query Db for all admins who have opted in to email updates
+      var q = UserModel.aggregate([
+        // Find all users who are admins
+        { $match: { role: 'Admin' } },
+        // Perform lookup to check opt in/out flag in tools schema
+        { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+        // Filter out any user who has opted out of email notifications
+        { $match: { 'tool.emailNotifications': true } },
+        // Reduce response payload size to required fields
+        { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+      ]);
+
+      // 3. Use the returned array of email recipients to generate and send emails with SendGrid
+      q.exec((err, emailRecipients) => {
+        if (err) {
+          return new Error({ success: false, error: err });
+        }
+        emailGenerator.sendEmail(
+          emailRecipients,
+          `${hdrukEmail}`,
+          `A new ${data.type} has been added and is ready for review`,
+          `Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`
+        );
+      });
 
       if (data.type === 'tool') {
-        if(emailNotifications) {
-            await sendEmailNotificationToAuthors(data, toolCreator);
-        }
+          await sendEmailNotificationToAuthors(data, toolCreator);
       }
       await storeNotificationsForAuthors(data, toolCreator);
 
@@ -87,8 +95,6 @@ const editTool = async (req, res) => {
     const toolCreator = req.body.toolCreator;
     let { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
     let id = req.params.id;
-
-    let {emailNotifications = false} = await getObjectById(req.user.id)
 
     if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
     
@@ -127,14 +133,13 @@ const editTool = async (req, res) => {
           reject(new Error(`No record found with id of ${id}.`));
         } 
         else if (type === 'tool') {
-            if(emailNotifications) {
-                sendEmailNotificationToAuthors(data, toolCreator);
-            }
-            storeNotificationsForAuthors(data, toolCreator);
+          // Send email notification of update to all authors who have opted in to updates
+          sendEmailNotificationToAuthors(data, toolCreator);
+          storeNotificationsForAuthors(data, toolCreator);
         }
-        resolve(tool);
+          resolve(tool);
       });
-    });
+    })
   };
 
   const deleteTool = async(req, res) => {
@@ -157,45 +162,54 @@ const editTool = async (req, res) => {
 
   const getToolsAdmin = async (req, res) => {
     return new Promise(async (resolve, reject) => {
+
       let startIndex = 0;
-      let maxResults = 25;
+      let limit = 1000;
       let typeString = "";
-  
-      if (req.query.startIndex) {
-        startIndex = req.query.startIndex;
+      let searchString = "";
+      
+      if (req.query.offset) {
+        startIndex = req.query.offset;
       }
-      if (req.query.maxResults) {
-        maxResults = req.query.maxResults;
+      if (req.query.limit) {
+        limit = req.query.limit;
       }
       if (req.params.type) {
         typeString = req.params.type;
       }
-  
-      let query = Data.aggregate([
-        { $match: { $and: [{ type: typeString }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
-        { $sort: { updatedAt : -1}}
-      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
-      query.exec((err, data) => {
-        // if (err) return res.json({ success: false, error: err });
-        if (err) reject({ success: false, error: err });
-        resolve(data);
-      });
+      if (req.query.q) {
+        searchString = req.query.q || "";;
+      }
+
+      let searchQuery = { $and: [{ type: typeString }] };
+      let searchAll = false;
+
+      if (searchString.length > 0) {
+          searchQuery["$and"].push({ $text: { $search: searchString } });
+        }
+      else {
+          searchAll = true;
+      }
+      await Promise.all([
+          getObjectResult(typeString, searchAll, searchQuery, startIndex, limit),
+      ]).then((values) => {
+        resolve(values[0]);
+    });
     });
   }
 
   const getTools = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       let startIndex = 0;
-      let maxResults = 25;
+      let limit = 1000;
       let typeString = "";
       let idString = req.user.id;
   
       if (req.query.startIndex) {
         startIndex = req.query.startIndex;
       }
-      if (req.query.maxResults) {
-        maxResults = req.query.maxResults;
+      if (req.query.limit) {
+        limit = req.query.limit;
       }
       if (req.params.type) {
         typeString = req.params.type;
@@ -221,9 +235,6 @@ const editTool = async (req, res) => {
       try {
         const { activeflag } = req.body;
         const id = req.params.id;
-        
-        // Get the emailNotification status for the current user
-        let {emailNotifications = false} = await getObjectById(req.user.id)
       
         let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
         if (!tool) {
@@ -240,9 +251,9 @@ const editTool = async (req, res) => {
         if (!tool.discourseTopicId && tool.activeflag === 'active') {
           await createDiscourseTopic(tool);
         }
-  
-        if (emailNotifications)
-          await sendEmailNotifications(tool, activeflag);
+        
+        // Send email notification of status update to admins and authors who have opted in
+        await sendEmailNotifications(tool, activeflag);
   
         resolve(id);
         
@@ -255,7 +266,7 @@ const editTool = async (req, res) => {
 
   async function createMessage(authorId, toolId, toolName, toolType, activeflag) {
     let message = new MessagesModel();
-    const toolLink = process.env.homeURL + '/tool/' + toolId;
+    const toolLink = process.env.homeURL + '/' + toolType + '/' + toolId;
   
     if (activeflag === 'active') {
       message.messageType = 'approved';
@@ -273,12 +284,12 @@ const editTool = async (req, res) => {
   }
   
   async function sendEmailNotifications(tool, activeflag) {
-    const emailRecipients = await UserModel.find({ $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] });
-    const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     let subject;
     let html;
-    //build email
+    // 1. Generate tool URL for linking user from email
+    const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id
+
+    // 2. Build email body
     if (activeflag === 'active') {
       subject = `Your ${tool.type} ${tool.name} has been approved and is now live`
       html = `Your ${tool.type} ${tool.name} has been approved and is now live <br /><br />  ${toolLink}`
@@ -286,33 +297,61 @@ const editTool = async (req, res) => {
       subject = `Your ${tool.type} ${tool.name} has been rejected`
       html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  ${toolLink}`
     }
-  
-    for (let emailRecipient of emailRecipients) {
-      const msg = {
-        to: emailRecipient.email,
-        from: `${hdrukEmail}`,
-        subject: subject,
-        html: html
-      };
-      await sgMail.send(msg);
-    }
+    
+    // 3. Find all authors of the tool who have opted in to email updates
+    var q = UserModel.aggregate([
+      // Find all authors of this tool
+      { $match: { $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] } },
+      // Perform lookup to check opt in/out flag in tools schema
+      { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+      // Filter out any user who has opted out of email notifications
+      { $match: { 'tool.emailNotifications': true } },
+      // Reduce response payload size to required fields
+      { $project: {_id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+    ]);
+
+    // 4. Use the returned array of email recipients to generate and send emails with SendGrid
+    q.exec((err, emailRecipients) => {
+      if (err) {
+        return new Error({ success: false, error: err });
+      }
+      emailGenerator.sendEmail(
+        emailRecipients,
+        `${hdrukEmail}`,
+        subject,
+        html
+      );
+    });
   }
 
 async function sendEmailNotificationToAuthors(tool, toolOwner) {
-    //Get email recipients 
+    // 1. Generate tool URL for linking user from email
     const toolLink = process.env.homeURL + '/tool/' + tool.id
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  
-    (await UserModel.find({ id: { $in: tool.authors } }))
-      .forEach(async (user) => {
-        const msg = {
-          to: user.email,
-          from: `${hdrukEmail}`,
-          subject: `${toolOwner.name} added you as an author of the tool ${tool.name}`,
-          html: `${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`
-        };
-        await sgMail.send(msg);
-      });
+    
+    // 2. Find all authors of the tool who have opted in to email updates
+    var q = UserModel.aggregate([
+      // Find all authors of this tool
+      { $match: { id: { $in: tool.authors } } },
+      // Perform lookup to check opt in/out flag in tools schema
+      { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+      // Filter out any user who has opted out of email notifications
+      { $match: { 'tool.emailNotifications': true } },
+      // Reduce response payload size to required fields
+      { $project: {_id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+    ]);
+
+    // 3. Use the returned array of email recipients to generate and send emails with SendGrid
+    q.exec((err, emailRecipients) => {
+      if (err) {
+        return new Error({ success: false, error: err });
+      }
+      emailGenerator.sendEmail(
+        emailRecipients,
+        `${hdrukEmail}`,
+        `${toolOwner.name} added you as an author of the tool ${tool.name}`,
+        `${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`
+      );
+    });
   };
 
 async function storeNotificationsForAuthors(tool, toolOwner) {
@@ -341,6 +380,34 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
         return { success: true, id: message.messageID };
       });
     }); 
+};
+
+function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
+  let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
+  let q = '';
+
+  if (searchAll) {
+    q = Data.aggregate([
+        { $match: newSearchQuery },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
+        { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
+    ]).sort({ updatedAt : -1}).skip(parseInt(startIndex)).limit(parseInt(limit));
+  }
+  else{
+    q = Data.aggregate([
+      { $match: newSearchQuery },
+      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+      { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
+      { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
+    ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(limit));
+  }
+  return new Promise((resolve, reject) => {
+      q.exec((err, data) => {
+          if (typeof data === "undefined") resolve([]);
+          else resolve(data);
+      })
+  })
 };
 
 export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin }

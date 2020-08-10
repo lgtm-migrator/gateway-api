@@ -10,12 +10,13 @@ const router = express.Router();
 // @desc     Add a data request schema
 // @access   Private
 router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-const { version, status, dataSetId, jsonSchema } = req.body;
+  const { version, status, dataSetId, jsonSchema, publisher } = req.body;
   const dataRequestSchema = new DataRequestSchemaModel();
   dataRequestSchema.id = parseInt(Math.random().toString().replace('0.', ''));
   dataRequestSchema.status = status;
   dataRequestSchema.version = version;
   dataRequestSchema.dataSetId = dataSetId;
+  dataRequestSchema.publisher = publisher;
   dataRequestSchema.jsonSchema = JSON.stringify(jsonSchema);
 
   await dataRequestSchema.save(async (err) => {
@@ -34,7 +35,10 @@ router.get('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
   let dataRequestSchema = await DataRequestSchemaModel.findOne({ $and: [{ dataSetId: dataSetId }, { status: 'active' }] });
   return res.json({ jsonSchema: dataRequestSchema.jsonSchema });
 });
+
 module.exports = router;
+
+
 
 async function archiveOtherVersions(id, dataSetId, status) {
   try {
