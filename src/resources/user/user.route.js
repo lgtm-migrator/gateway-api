@@ -29,33 +29,31 @@ router.get(
 // @desc     get all
 // @access   Private
 router.get('/', async (req, res) => {
-
+    
     var q = Data.aggregate([
-      // Find all tools with type of person
-      { $match: { type: 'person' } },
-      // Perform lookup to users
-      { $lookup: { from: 'users', localField: 'id', foreignField: 'id', as: 'user' } },
-      // select fields to use
-      { $project: { id :1, firstname: 1, lastname: 1, orcid: 1, bio: 1, email: '$user.email' } },
-      // the email from email
-      { $unwind: '$email' }
+        // Find all tools with type of person
+        { $match: { type: 'person' } },
+        // Perform lookup to users
+        { $lookup: { from: 'users', localField: 'id', foreignField: 'id', as: 'user' } },
+        // select fields to use
+        { $project: { id: 1, firstname: 1, lastname: 1, orcid: 1, bio: 1, email: '$user.email' } },
     ]);
 
     q.exec((err, data) => {
-      if (err) {
-        return new Error({ success: false, error: err });
-      }
-      
-      const users = [];
-      data.map((dat) => {
-        let {id, firstname, lastname, orcid = '', bio = '', email = ''} = dat;
-        email = helper.censorEmail(email);
-        users.push({ id, orcid, name: `${firstname} ${lastname}`, bio, email});
-      });
-      
-      return res.json({ success: true, data: users });
+        if (err) {
+            return new Error({ success: false, error: err });
+        }
+
+        const users = [];
+        data.map((dat) => {
+            let { id, firstname, lastname, orcid = '', bio = '', email = '' } = dat;
+            if (email.length !== 0) email = helper.censorEmail(email[0]);
+            users.push({ id, orcid, name: `${firstname} ${lastname}`, bio, email });
+        });
+
+        return res.json({ success: true, data: users });
 
     });
-  });
+});
 
 module.exports = router
