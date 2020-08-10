@@ -11,7 +11,7 @@ module.exports = {
 
             let subTitle = '';
 
-            let {_id: createdBy} = req.user;
+            let {id: createdBy} = req.user;
 
             const { relatedEntity } = req.body;
 
@@ -42,6 +42,7 @@ module.exports = {
                 relatedEntity,
                 createdBy,
                 createdDate: Date.now(),
+                recipients: [947228017269611, 6818273838765221, 5385077600698822, 6936200071297669, 21385050357328940, 6689395059831886]
             });
     
             if(!topic) 
@@ -77,13 +78,31 @@ module.exports = {
     // GET api/v1/topics
     getTopics: async(req, res) => {
         // check if user / publisher
+        try {
+            let {id: userId} = req.user;
+            TopicModel.aggregate([
+                // add in the currentUser as userId
+                { $addFields: { "userId": userId }},
+                // find if status active and user in recipients arr
+                { $match: { $and: [ { status: 'active' }, { userId: { $in: recipients} } ]}},
+                // project
+                { $project: { _id: 1, title: 1, subTitle: 1, status: 1, createdDate: 1 }}
+            ]).exec(err, result => {
+                if(err)
+                    return res.status(401).json({ success: false, message: 'No topics found.' });
 
-        // if user get topics for created
+                    return res.status(200).json({ success: true, data: { result }});
+            })
+
+        } catch(err) {
+            console.error(err.message);
+            return res.status(500).json(err);
+        }
     },
     // GET api/v1/topics/:id
     getTopicById: async(req, res) => {
         try {
-            let {_id: userId } = req.user;
+            let {id: userId } = req.user;
             TopicModel.aggregate([
                 // Find topic Id
                 { $match: { _id: req.params.id } },
@@ -92,9 +111,24 @@ module.exports = {
                 // find if user in recipients
                 { $match: {userId: { $in : recipients }}},
                 // Perform lookup to messages
-                { $lookup: { from: 'Messages', localField: '_id', foreignField: 'topicId', as: 'messages' } },
+                { $lookup: { from: 'messages', localField: '_id', foreignField: 'topicId', as: 'messages' } },
+                // lookup user as not using documentObjectId
+                { $lookup: { from: 'users', localField: 'id', foreignField: 'id', as: 'user' } },
                 // Reduce response payload 
-                { $project: { _id: 1, title: 1, subTitle: 1, recipients: 1, status: 1, createdDate: 1, createdBy: 1,  'messages': 1 } }
+                { $project: { 
+                        _id: 1, 
+                        title: 1, 
+                        subTitle: 1, 
+                        recipients: 1, 
+                        status: 1, 
+                        createdDate: 1, 
+                        createdBy: { 
+                            firstname: '$user.firstname', 
+                            lastname: '$user.lastname', 
+                            id: '$user.id' }, 
+                        'messages': 1 
+                    } 
+                }
             ]).exec((err, result) => {
                 if (err) {
                     return res.status(401).json({ success: false, message: 'No topic found.' });
