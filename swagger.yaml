@@ -369,7 +369,7 @@ paths:
       responses: 
         '200':
           description: OK
-          
+
   /v1/stats?rank={rank}:
     get:
       summary: Returns the details on recent searches, popular objects or recently updated objects based on the rank query parameter.
@@ -387,19 +387,26 @@ paths:
         '200':
           description: OK
   
-  /v1/stats?rank=unmet&type={type}?month={month}&year={year}:
+  /v1/stats?rank={rank}&type={type}&month={month}&year={year}:
     get:
       summary: Returns unmet demand information for the resource type specified, based on the month and year query params.
       tags:
         - Stats
       parameters:
+        - name: rank
+          in: path
+          required: true
+          description: The type of stat.
+          schema:
+            type : string
+            example: unmet
         - name: type
-        in: path
-        required: true
-        description: Resource type.
-        schema:
-          type : string
-          example: Tools
+          in: path
+          required: true
+          description: Resource type.
+          schema:
+            type : string
+            example: Tools
         - name: month
           in: path
           required: true
@@ -422,7 +429,7 @@ paths:
     get:
       summary: Returns information for KPIs, based on the KPI type parameter.
       tags:
-        - Stats
+        - KPIs
       parameters:
         - name: type
           in: path
@@ -437,9 +444,9 @@ paths:
 
   /v1/kpis?kpi={type}&selectedDate={selectedDate}:
     get:
-      summary: Returns information for KPIs, based on the KPI type parameter.
+      summary: Returns information for KPIs, based on the KPI type and selectedDate parameters.
       tags:
-        - Stats
+        - KPIs
       parameters:
         - name: type
           in: path
@@ -451,7 +458,7 @@ paths:
         - name: selectedDate
           in: path
           required: true
-          description: The type of KPI.
+          description: Full date time string.
           schema:
             type : string
             example: Wed Jul 01 2020 01:00:00 GMT 0100 (British Summer Time)
