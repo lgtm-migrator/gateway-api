@@ -60,7 +60,7 @@ module.exports = {
         try {
             const { id } = req.params;
 
-            if(!id ) 
+            if(!id) 
                 return res.status(404).json({ success: false, message: 'Topic Id not found.' });
             
             const topic = await TopicModel.findByIdAndUpdate( id, { isDeleted: true, status: 'closed', expiryDate: Date.now() }, {new: true});
@@ -83,33 +83,24 @@ module.exports = {
     // GET api/v1/topics/:id
     getTopicById: async(req, res) => {
         try {
-
-            // TODO: check if user in recipients if not throw error
-
             let {_id: userId } = req.user;
-
-            // virtual populate only for topicById
-            // const topic = await TopicModel.findById(req.params.id).populate('messages');
-
-            let topic = UserModel.aggregate([
+            TopicModel.aggregate([
                 // Find topic Id
                 { $match: { _id: req.params.id } },
-                // find user in recipients array
-                { $match: { userId: { $in: recipients } } },
+                // add in the currentUser as userId
+                { $addFields: { "userId": userId }},
+                // find if user in recipients
+                { $match: {userId: { $in : recipients }}},
                 // Perform lookup to messages
                 { $lookup: { from: 'Messages', localField: '_id', foreignField: 'topicId', as: 'messages' } },
                 // Reduce response payload 
                 { $project: { _id: 1, title: 1, subTitle: 1, recipients: 1, status: 1, createdDate: 1, createdBy: 1,  'messages': 1 } }
-            ]);
-
-            topic.exec((err, result) => {
+            ]).exec((err, result) => {
                 if (err) {
-                    return res.status(400).json({ success: false, message: 'No topic found.' });
+                    return res.status(401).json({ success: false, message: 'No topic found.' });
                 }
-               
                 return res.status(200).json({ success: true, data: { result }});
-              });
-    
+            });
         }
         catch (err) {
             console.error(err.message);
