@@ -450,8 +450,117 @@ router.get('/', async (req, res) => {
         return res.json({ success: false, error: err });
       });
   });
+
+  router.get('/topSearches', async (req, res) => {
+    await getTopSearches(req)
+      .then((data) =>{
+        return res.json({ success: true, data: data });
+      })
+      .catch((err) => {
+        return res.json({ success: false, error: err });
+      });
+  });
   
   module.exports = router
+
+  const getTopSearches = async(req, res) => {
+    return new Promise(async (resolve, reject) => {
+      let searchMonth = parseInt(req.query.month);
+      let searchYear = parseInt(req.query.year);
+
+      let q = RecordSearchData.aggregate([
+
+        { $addFields: { "month": {$month: '$createdAt'},
+                          "year": {$year: '$createdAt'}}},
+          {$match:{
+              $and: [
+              { month: searchMonth },
+              { year: searchYear },
+              { "searched": {$ne :""}}
+              ]
+            }
+          },
+          {
+            $group: {
+              _id: { $toLower: "$searched"},
+              count: { $sum: 1 },
+            }
+          },
+          {$sort:{ count : -1}}
+        ]).limit(10);
+
+        q.exec(async (err, topSearches) => {
+          if (err) reject(err);
+
+          let resolvedArray = await Promise.all(topSearches.map(async(topSearch) => {
+            let searchQuery = { $and: [{ activeflag: 'active' }] };
+            searchQuery["$and"].push({ $text: { $search: topSearch._id } });
+
+            await Promise.all([
+
+              getObjectResult('dataset', searchQuery),
+              getObjectResult('tool', searchQuery),
+              getObjectResult('project', searchQuery),
+              getObjectResult('paper', searchQuery)
+
+            ]).then((resources) => { 
+              topSearch.datasets = resources[0].length;
+              topSearch.tools = resources[1].length;
+              topSearch.projects = resources[2].length;
+              topSearch.papers = resources[3].length;
+            })
+            return topSearch;
+          }))
+          resolve(resolvedArray);
+        });
+      });
+  }
+
+  function getObjectResult(type, searchQuery) {
+    var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
+    newSearchQuery["$and"].push({ type: type })
+    var q = '';
+    
+    q = Data.aggregate([
+        { $match: newSearchQuery },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },            
+        {
+            $project: {
+                        "_id": 0, 
+                        "id": 1,
+                        "name": 1,
+                        "type": 1,
+                        "description": 1,
+                        "bio": 1,
+                        "categories.category": 1,
+                        "categories.programmingLanguage": 1,
+                        "license": 1,
+                        "tags.features": 1,
+                        "tags.topics": 1,   
+                        "firstname": 1,
+                        "lastname": 1,
+                        "datasetid": 1,
+
+                        "datasetfields.publisher": 1,
+                        "datasetfields.geographicCoverage": 1,
+                        "datasetfields.physicalSampleAvailability": 1,
+                        "datasetfields.abstract": 1,
+                        "datasetfields.ageBand": 1,
+
+                        "persons.id": 1,
+                        "persons.firstname": 1,
+                        "persons.lastname": 1,
+                      }
+          }
+    ]).sort({ name : 1 });
+    
+    return new Promise((resolve, reject) => {
+        q.exec((err, data) => {
+            if (typeof data === "undefined") resolve([]);
+            else resolve(data);
+        })
+    })
+}
 
   const getUnmetSearches = async(req, res) => {
     return new Promise(async (resolve, reject) => {
