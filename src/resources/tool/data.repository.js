@@ -52,7 +52,7 @@ const addTool = async (req, res) => {
         reject(new Error(`Can't persist message to DB.`));
 
       // 1. Generate URL for linking tool from email
-      const toolLink = process.env.homeURL + '/' + data.type + '/' + data.id + '/' + data.name
+      const toolLink = process.env.homeURL + '/' + data.type + '/' + data.id 
 
       // 2. Query Db for all admins who have opted in to email updates
       var q = UserModel.aggregate([
@@ -287,7 +287,7 @@ const editTool = async (req, res) => {
     let subject;
     let html;
     // 1. Generate tool URL for linking user from email
-    const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id + '/' + tool.name
+    const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id
 
     // 2. Build email body
     if (activeflag === 'active') {

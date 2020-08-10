@@ -11,6 +11,22 @@ const notificationBuilder = require('../utilities/notificationBuilder');
 
 const router = express.Router();
 
+// @route   GET api/v1/data-access-request
+// @desc    GET Access requests for user
+// @access  Private
+router.get('/', passport.authenticate('jwt'), async (req, res) => {
+    let idString = req.user.id;
+    
+    let query = DataRequestModel.aggregate([
+        { $match: { $and: [{ userId: parseInt(idString) }, { "dataSetId":{$ne:null} }] } },
+        { $lookup: { from: "tools", localField: "dataSetId", foreignField: "datasetid", as: "dataset" } }
+      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
+      query.exec((err, data) => {
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true, data: data });
+      });
+});
+
 // @route   GET api/v1/data-access-request/dataset/:datasetId
 // @desc    GET Access request for user
 // @access  Private

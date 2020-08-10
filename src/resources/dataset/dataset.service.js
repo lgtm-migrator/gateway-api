@@ -2,7 +2,104 @@ import { Data } from '../tool/data.model'
 import axios from 'axios';
 import emailGenerator from '../utilities/emailGenerator.util';
 
+export async function loadDataset(datasetID) {
+    var metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
+    const datasetCall = axios.get(metadataCatalogueLink + '/api/facets/'+ datasetID +'/profile/uk.ac.hdrukgateway/HdrUkProfilePluginService', { timeout:5000 }).catch(err => { console.log('Unable to get dataset details '+err.message) }); 
+    const metadataQualityCall = axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/metadata_quality.json', { timeout:5000 }).catch(err => { console.log('Unable to get metadata quality value '+err.message) }); 
+    const metadataSchemaCall = axios.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/'+ datasetID, { timeout:5000 }).catch(err => { console.log('Unable to get metadata schema '+err.message) }); 
+    const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetID+'/dataClasses', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
+    const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetID+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
+    const [dataset, metadataQualityList, metadataSchema, dataClass, versionLinks] = await axios.all([datasetCall, metadataQualityCall, metadataSchemaCall, dataClassCall, versionLinksCall]);
+
+    var technicaldetails = [];
+
+    await dataClass.data.items.reduce(
+        (p, dataclassMDC) => p.then(
+            () => (new Promise(resolve => {
+                setTimeout(async function () {
+                    const dataClassElementCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetID+'/dataClasses/'+dataclassMDC.id+'/dataElements', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass element '+err.message) }); 
+                    const [dataClassElement] = await axios.all([dataClassElementCall]);
+                    var dataClassElementArray = []
+
+                        dataClassElement.data.items.forEach((element) => {
+                        dataClassElementArray.push(
+                            {
+                                "id": element.id,
+                                "domainType": element.domainType,
+                                "label": element.label,
+                                "description": element.description,
+                                "dataType": {
+                                    "id": element.dataType.id,
+                                    "domainType": element.dataType.domainType,
+                                    "label": element.dataType.label
+                                }
+                            }
+                        );
+                    });
+                    
+                    technicaldetails.push({
+                        "id": dataclassMDC.id,
+                        "domainType": dataclassMDC.domainType,
+                        "label": dataclassMDC.label,
+                        "description": dataclassMDC.description,
+                        "elements": dataClassElementArray
+                    })
+
+                    resolve(null)
+                }, 500)
+            }))
+        ),
+        Promise.resolve(null)
+    );
+    
+    var uniqueID='';
+    while (uniqueID === '') {
+        uniqueID = parseInt(Math.random().toString().replace('0.', ''));
+        if (await Data.find({ id: uniqueID }).length === 0) {
+            uniqueID = '';
+        }
+    }
+    
+    var keywordArray = splitString(dataset.data.keywords)
+    var physicalSampleAvailabilityArray = splitString(dataset.data.physicalSampleAvailability)
+    
+    const metadataQuality = metadataQualityList.data.find(x => x.id === datasetID);
+
+    var data = new Data(); 
+    data.id = uniqueID;
+    data.datasetid = dataset.data.id;
+    data.type = 'dataset';
+    data.activeflag = 'archive';
+    
+    data.name = dataset.data.title;
+    data.description = dataset.data.description;
+    data.license = dataset.data.license;
+    data.tags.features = keywordArray;
+    data.datasetfields.publisher = dataset.data.publisher;
+    data.datasetfields.geographicCoverage = dataset.data.geographicCoverage;
+    data.datasetfields.physicalSampleAvailability = physicalSampleAvailabilityArray;
+    data.datasetfields.abstract = dataset.data.abstract;
+    data.datasetfields.releaseDate = dataset.data.releaseDate;
+    data.datasetfields.accessRequestDuration = dataset.data.accessRequestDuration;
+    data.datasetfields.conformsTo = dataset.data.conformsTo;
+    data.datasetfields.accessRights = dataset.data.accessRights;
+    data.datasetfields.jurisdiction = dataset.data.jurisdiction;
+    data.datasetfields.datasetStartDate = dataset.data.datasetStartDate;
+    data.datasetfields.datasetEndDate = dataset.data.datasetEndDate;
+    data.datasetfields.statisticalPopulation = dataset.data.statisticalPopulation;
+    data.datasetfields.ageBand = dataset.data.ageBand;
+    data.datasetfields.contactPoint = dataset.data.contactPoint;
+    
+    data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
+    data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
+    data.datasetfields.technicaldetails = technicaldetails;
+    data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
+
+    return await data.save();
+}
+
 export async function loadDatasets(override) {
+    console.log("Starting run at "+Date())
     const hdrukEmail = 'paul.mccafferty@paconsulting.com';//`enquiry@healthdatagateway.org`;
     var metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
         
@@ -57,29 +154,64 @@ export async function loadDatasets(override) {
 
     const metadataQualityList = await axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/metadata_quality.json', { timeout:5000 }).catch(err => { console.log('Unable to get metadata quality value '+err.message) }); 
     var datasetsMDCIDs = []
+    var counter = 0;
 
     await datasetsMDCList.results.reduce(
         (p, datasetMDC) => p.then(
             () => (new Promise(resolve => {
                 setTimeout(async function () {
+                    counter++;
                     var datasetHDR = await Data.findOne({ datasetid: datasetMDC.id });
                     datasetsMDCIDs.push({ datasetid: datasetMDC.id });
                     
                     const metadataQuality = metadataQualityList.data.find(x => x.id === datasetMDC.id);
                     
                     const metadataSchemaCall = axios.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/'+ datasetMDC.id, { timeout:5000 }).catch(err => { console.log('Unable to get metadata schema '+err.message) }); 
-                    const [metadataSchema] = await axios.all([metadataSchemaCall]);
+                    const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses?all=true', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
+                    const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetMDC.id+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
+                    const [metadataSchema, dataClass, versionLinks] = await axios.all([metadataSchemaCall, dataClassCall, versionLinksCall]);
                     
-                    /* 
-                    Technical metadata calls - https://github.com/HDRUK/datasets/blob/master/datasets.py
-                    API_BASE_URL="https://metadata-catalogue.org/hdruk/api"
-                    DATA_MODELS = API_BASE_URL + "/dataModels"
-                    DATA_MODEL_ID = API_BASE_URL + "/facets/{MODEL_ID}/profile/uk.ac.hdrukgateway/HdrUkProfilePluginService"
-                    DATA_MODEL_CLASSES = DATA_MODELS + "/{MODEL_ID}/dataClasses"
-                    DATA_MODEL_CLASSES_ELEMENTS = DATA_MODEL_CLASSES + "/{CLASS_ID}/dataElements"
-                    DATA_MODEL_SEMANTIC_LINKS = API_BASE_URL + "/catalogueItems/{MODEL_ID}/semanticLinks"
-                    */
+                    var technicaldetails = [];
 
+                    await dataClass.data.items.reduce(
+                        (p, dataclassMDC) => p.then(
+                            () => (new Promise(resolve => {
+                                setTimeout(async function () {
+                                    const dataClassElementCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses/'+dataclassMDC.id+'/dataElements?all=true', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass element '+err.message) }); 
+                                    const [dataClassElement] = await axios.all([dataClassElementCall]);
+                                    var dataClassElementArray = []
+
+                                     dataClassElement.data.items.forEach((element) => {
+                                        dataClassElementArray.push(
+                                            {
+                                                "id": element.id,
+                                                "domainType": element.domainType,
+                                                "label": element.label,
+                                                "description": element.description,
+                                                "dataType": {
+                                                    "id": element.dataType.id,
+                                                    "domainType": element.dataType.domainType,
+                                                    "label": element.dataType.label
+                                                }
+                                            }
+                                        );
+                                    });
+                                    
+                                    technicaldetails.push({
+                                        "id": dataclassMDC.id,
+                                        "domainType": dataclassMDC.domainType,
+                                        "label": dataclassMDC.label,
+                                        "description": dataclassMDC.description,
+                                        "elements": dataClassElementArray
+                                    })
+
+                                    resolve(null)
+                                }, 500)
+                            }))
+                        ),
+                        Promise.resolve(null)
+                    );
+                    
                     if (datasetHDR) {
                         //Edit
                         var keywordArray = splitString(datasetMDC.keywords)
@@ -111,7 +243,9 @@ export async function loadDatasets(override) {
                                     contactPoint: datasetMDC.contactPoint,
                                     
                                     metadataquality: metadataQuality ? metadataQuality : {},
-                                    metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {}
+                                    metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
+                                    technicaldetails: technicaldetails,
+                                    versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : []
                                 },
                             }
                         );
@@ -156,9 +290,12 @@ export async function loadDatasets(override) {
                         
                         data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
                         data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
+                        data.datasetfields.technicaldetails = technicaldetails;
+                        data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
 
                         await data.save(); 
                     }
+                    console.log("Finished "+counter+" of "+datasetsMDCCount);
                     resolve(null)
                 }, 500)
             }))
@@ -167,7 +304,7 @@ export async function loadDatasets(override) {
     );
 
     var datasetsHDRIDs = await Data.aggregate([{ $match: { type: 'dataset' } },{ $project: { "_id": 0, "datasetid": 1 } }]);
-    
+
     let datasetsNotFound = datasetsHDRIDs.filter(o1 => !datasetsMDCIDs.some(o2 => o1.datasetid === o2.datasetid));
 
     await Promise.all( datasetsNotFound.map( async (dataset) => {
@@ -178,7 +315,7 @@ export async function loadDatasets(override) {
             }
         );
     }))
-    
+    console.log("Update Completed at "+Date())
     return "Update completed";
 };
 

@@ -1,26 +1,35 @@
 import express from 'express'
 import { Data } from '../tool/data.model'
-import { loadDatasets } from './dataset.service';
+import { loadDataset, loadDatasets } from './dataset.service';
 import { getToolsAdmin } from '../tool/data.repository';
 
 const router = express.Router();
 
 
 router.post('/', async (req, res) => {
+    //Check to see if header is in json format
+    var parsedBody = {}
+    if (req.header('content-type') === 'application/json') {
+        parsedBody = req.body;
+    } else {
+        parsedBody = JSON.parse(req.body);
+    }
     //Check for key
-    if (req.body.key !== process.env.cachingkey) {
+    if (parsedBody.key !== process.env.cachingkey) {
         return res.json({ success: false, error: "Caching failed" });
     }
 
-    loadDatasets(req.body.override || false);
-    return res.json({ success: false, message: "Caching started" });
+    loadDatasets(parsedBody.override || false);
+    return res.json({ success: true, message: "Caching started" });
 });
 
 router.get('/:datasetID', async (req, res) => {
     var q = Data.aggregate([
         { $match: { $and: [{ datasetid: req.params.datasetID }] } }
     ]);
-     q.exec((err, data) => {
+     q.exec(async (err, data) => {
+        if (data.length === 0) data[0] = await loadDataset(req.params.datasetID)
+
         var p = Data.aggregate([
             { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.datasetID } } }] } },
         ]);
