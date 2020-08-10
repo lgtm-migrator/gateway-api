@@ -1,13 +1,12 @@
-import express from 'express'
-import { utils } from "../auth";
+import express from 'express';
 import passport from "passport";
+import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
 import { MessagesModel } from '../message/message.model'
-import { TopicModel } from './topic.model'
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
-
-const router = express.Router()
+// by default route has access to its own, allows access to parent param
+const router = express.Router({ mergeParams: true});
 
 router.get('/test',
   passport.authenticate('jwt'), 
@@ -174,11 +173,11 @@ router.post(
     )
   });
 
-router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     let data = new Data();
 
-    const { type, name, link, description, categories, license, authors, tags, toolids, datasetids } = req.body;
+    const { type, topicId, name, link, description, categories, license, authors, tags, toolids, datasetids } = req.body;
     data.id = parseInt(Math.random().toString().replace('0.', ''));
     data.type = type;
 
@@ -190,15 +189,16 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
       message.messageObjectID = data.id;
       message.messageType = 'add';
       message.messageSent = Date.now();
-      message.isRead = false;
+      message.topicId = topicId
+      message.isRead = false
       message.save((err) => {
-        if (err) return res.json({ success: false, error: err });
+        if (err) 
+          return res.json({ success: false, error: err });
+
         return res.json({ success: true, id: data.id });
       });
     });
   });
+ 
 
-
-  
-
-module.exports = router
+  module.exports = router; 
