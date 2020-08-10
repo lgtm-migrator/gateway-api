@@ -136,4 +136,19 @@ router.put('/:id',
     }
 );
 
+router.get('/edit/:paperID', async (req, res) => { 
+  var query = Data.aggregate([
+      { $match: { $and: [{ id: parseInt(req.params.paperID) }] } },
+      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
+  ]);
+  query.exec((err, data) => {
+      if(data.length > 0){
+          return res.json({ success: true, data: data });
+      }
+      else {
+          return res.json({success: false, error: `Paper not found for paper id ${req.params.id}`})
+      }
+  });
+});
+
 module.exports = router;
