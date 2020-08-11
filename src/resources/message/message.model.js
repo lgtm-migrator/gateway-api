@@ -12,7 +12,7 @@ const MessageSchema = new Schema({
            'approved', 
            'author'
           ],
-    default: 'message'
+    default: 'notification'
   },
   createdBy:{
     type: Schema.Types.ObjectId, 

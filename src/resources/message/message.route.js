@@ -2,9 +2,11 @@ import express from 'express';
 import passport from "passport";
 import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
-import { MessagesModel } from '../message/message.model'
+import { MessagesModel } from './message.model'
 import mongoose from 'mongoose';
 import { TopicModel } from '../topic/topic.model';
+
+const messageController = require('../message/message.controller');
 
 // by default route has access to its own, allows access to parent param
 const router = express.Router({ mergeParams: true});
@@ -155,12 +157,10 @@ router.get(
     });
   });
 
-
 router.post(
   '/markasread',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-
   async (req, res) => {
     console.log('in markAsRead');
     const messageIds = req.body;
@@ -174,29 +174,19 @@ router.post(
     )
   });
 
-router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-  async (req, res) => {
+  // @route   POST api/messages
+  // @desc    POST A message
+  // @access  Private
+  router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.createMessage);
 
-    let { _id: createdBy } = req.user
+  // @route   DELETE api/messages/:id
+  // @desc    DELETE A message soft delete
+  // @access  Private
+  router.delete('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.deleteMessage);
 
-    const { type, topicId = '', messageDescription } = req.body;
-
-    const message = await MessagesModel.create({
-      messageID: parseInt(Math.random().toString().replace('0.', '')),
-      messageTo: 0,
-      messageObjectID: parseInt(Math.random().toString().replace('0.', '')),
-      messageDescription,
-      topicId,
-      createdBy,
-    });
-
-    if(!message) 
-      return res.status(500).json({ success: false, message: 'Could not save message to database.' });
-            
-            
-    return res.status(201).json({ success: true, data: { message }});
-
-  });
- 
+  // @route   PUT api/messages
+  // @desc    PUT Update a message
+  // @access  Private
+  //router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.updateMessage);
 
   module.exports = router; 
