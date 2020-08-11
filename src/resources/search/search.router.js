@@ -5,7 +5,7 @@ import { RecordSearchData } from '../search/record.search.model';
 import { Data } from '../tool/data.model'
 
 const router = express.Router();
- 
+  
 /**
  * {get} /api/search Search tools
  * 
@@ -128,6 +128,8 @@ function getObjectResult(type, searchAll, searchQuery) {
                             "persons.id": 1,
                             "persons.firstname": 1,
                             "persons.lastname": 1,
+
+                            "activeflag": 1,
                           }
               }
         ]).sort({ name : 1 });
@@ -162,6 +164,9 @@ function getObjectResult(type, searchAll, searchQuery) {
                             "persons.id": 1,
                             "persons.firstname": 1,
                             "persons.lastname": 1,
+
+                            "activeflag": 1,
+
                           }
               }
         ]).sort({ score: { $meta: "textScore" } });
