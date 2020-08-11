@@ -176,21 +176,21 @@ router.post(
 router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
 
-    let { id: createdBy } = req.user
+    let { _id: createdBy } = req.user
 
-    const { type, topicId = '', description } = req.body;
+    const { type, topicId = '', messageDescription } = req.body;
 
     const message = await MessagesModel.create({
       messageID: parseInt(Math.random().toString().replace('0.', '')),
       messageTo: 0,
       messageObjectID: parseInt(Math.random().toString().replace('0.', '')),
-      messageDescription: description,
+      messageDescription,
       topicId,
       createdBy
     });
 
     if(!message) 
-      return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
+      return res.status(500).json({ success: false, message: 'Could not save message to database.' });
             
             
     return res.status(201).json({ success: true, data: { message }});

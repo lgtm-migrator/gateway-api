@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { TopicModel } from './topic.model';
 import { Data as ToolModel } from '../tool/data.model';
 
@@ -11,7 +12,7 @@ module.exports = {
 
             let subTitle = '';
 
-            let {id: createdBy} = req.user;
+            let {_id: createdBy} = req.user;
 
             const { relatedEntity } = req.body;
 
@@ -42,7 +43,14 @@ module.exports = {
                 relatedEntity,
                 createdBy,
                 createdDate: Date.now(),
-                recipients: [947228017269611, 6818273838765221, 5385077600698822, 6936200071297669, 21385050357328940, 6689395059831886]
+                recipients: [
+                    "5e6f984a0a7300dc8f6fb195", 
+                    "5eb29430861979081c1f6acd", 
+                    "5eb2f98760ac5289acdd2511", 
+                    "5ec3e1a996d46c775670a88d", 
+                    "5ede1713384b64b655b9dd13", 
+                    "5f03530178e28143d7af2eb1"
+                ]
             });
     
             if(!topic) 
@@ -102,39 +110,26 @@ module.exports = {
     // GET api/v1/topics/:id
     getTopicById: async(req, res) => {
         try {
-            let {id: userId } = req.user;
-            TopicModel.aggregate([
-                // Find topic Id
-                { $match: { _id: req.params.id } },
-                // add in the currentUser as userId
-                { $addFields: { "userId": userId }},
-                // find if user in recipients
-                { $match: {userId: { $in : 'recipients' }}},
-                // Perform lookup to messages
-                { $lookup: { from: 'messages', localField: '_id', foreignField: 'topicId', as: 'messages' } },
-                // lookup user as not using documentObjectId
-                { $lookup: { from: 'users', localField: 'id', foreignField: 'id', as: 'user' } },
-                // Reduce response payload 
-                { $project: { 
-                        _id: 1, 
-                        title: 1, 
-                        subTitle: 1, 
-                        recipients: 1, 
-                        status: 1, 
-                        createdDate: 1, 
-                        createdBy: { 
-                            firstname: '$user.firstname', 
-                            lastname: '$user.lastname', 
-                            id: '$user.id' }, 
-                        'messages': 1 
-                    } 
-                }
-            ]).exec((err, result) => {
-                if (err) {
-                    return res.status(401).json({ success: false, message: err.message });
-                }
-                return res.status(200).json({ success: true, data: { result }});
+            let {_id: userId } = req.user;
+
+           const topic = await TopicModel.findOne({ 
+                _id: new mongoose.Types.ObjectId(req.params.id), 
+                recipients: { $elemMatch : { $eq: userId }}
+            }).populate({
+                path:  'topicMessages',
+                select: 'messageDescription createdDate isRead _id',
+                options: { sort: '-createdDate' },
+                    populate: { 
+                        path:  'createdBy',
+                        model: 'User',
+                        select: '-_id firstname lastname'
+                    }
             });
+
+            if (!topic) 
+                return res.status(401).json({ success: false, message: 'An error occured' });
+                    
+            return res.status(200).json({ success: true, topic});
         }
         catch (err) {
             console.error(err.message);

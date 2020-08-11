@@ -13,7 +13,8 @@ const TopicSchema = new Schema({
         trim: true
     },
     recipients: [{
-        type: Number
+        type: Schema.Types.ObjectId,
+        ref: 'User'
     }],
     status:  {
         type: String,
@@ -28,8 +29,8 @@ const TopicSchema = new Schema({
         type: Date
     },
     createdBy: {
-        type: Number,
-        required: [true, 'Must be a valid user']
+        type: Schema.Types.ObjectId,
+        ref: 'User'
     },
     relatedEntity: {
         type: Schema.Types.ObjectId,
@@ -45,10 +46,23 @@ const TopicSchema = new Schema({
 });
 
 // Virtual Populate  - Topic to bring back messages if topics querried messages without persisting it to the db, it doesnt slow down the query - populate in route
-// TopicSchema.virtual('messages', {
-//     ref: 'Messages',
-//     foreignField: 'topicId',
-//     localFied: '_id'
-// });
+TopicSchema.virtual('topicMessages', {
+    ref: 'Messages',
+    foreignField: 'topicId',
+    localField: '_id'
+});
+
+TopicSchema.pre(/^find/, function(next) {
+    this.populate({
+        path: 'createdBy',
+        select: 'firstname lastname'
+    });
+
+    next();
+});
+
+
+
+
 
 export const TopicModel = model('Topics', TopicSchema);

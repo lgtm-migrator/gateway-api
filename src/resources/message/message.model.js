@@ -15,8 +15,8 @@ const MessageSchema = new Schema({
     default: 'message'
   },
   createdBy:{
-    type: Number,
-    required: [true, 'User is required']
+    type: Schema.Types.ObjectId, 
+    ref: 'User'
   },
   createdDate: {
     type: Date,
@@ -36,12 +36,5 @@ const MessageSchema = new Schema({
   toObject: { virtuals: true}
 });
 
-// MessageSchema.pre(/^find/, (next) => {
-//   }).populate({
-//     path: 'user',
-//     select: 'firstname lastname'
-//   });
-//   next();
-// })
 
 export const MessagesModel = model('Messages', MessageSchema);
