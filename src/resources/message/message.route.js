@@ -175,29 +175,26 @@ router.post(
 
 router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-    let data = new Data();
 
-    const { type, topicId, name, link, description, categories, license, authors, tags, toolids, datasetids } = req.body;
-    data.id = parseInt(Math.random().toString().replace('0.', ''));
-    data.type = type;
+    let { id: createdBy } = req.user
 
+    const { type, topicId = '', description } = req.body;
 
-    data.save((err) => {
-      let message = new MessagesModel();
-      message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-      message.messageTo = 0;
-      message.messageObjectID = data.id;
-      message.messageType = 'add';
-      message.messageSent = Date.now();
-      message.topicId = topicId
-      message.isRead = false
-      message.save((err) => {
-        if (err) 
-          return res.json({ success: false, error: err });
-
-        return res.json({ success: true, id: data.id });
-      });
+    const message = await MessagesModel.create({
+      messageID: parseInt(Math.random().toString().replace('0.', '')),
+      messageTo: 0,
+      messageObjectID: parseInt(Math.random().toString().replace('0.', '')),
+      messageDescription: description,
+      topicId,
+      createdBy
     });
+
+    if(!message) 
+      return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
+            
+            
+    return res.status(201).json({ success: true, data: { message }});
+
   });
  
 

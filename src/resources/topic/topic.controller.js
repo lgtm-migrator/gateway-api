@@ -1,6 +1,6 @@
+import express from 'express';
 import { TopicModel } from './topic.model';
 import { Data as ToolModel } from '../tool/data.model';
-import e from 'express';
 
 module.exports = {
     // POST /api/v1/topics
@@ -109,7 +109,7 @@ module.exports = {
                 // add in the currentUser as userId
                 { $addFields: { "userId": userId }},
                 // find if user in recipients
-                { $match: {userId: { $in : recipients }}},
+                { $match: {userId: { $in : 'recipients' }}},
                 // Perform lookup to messages
                 { $lookup: { from: 'messages', localField: '_id', foreignField: 'topicId', as: 'messages' } },
                 // lookup user as not using documentObjectId
@@ -131,7 +131,7 @@ module.exports = {
                 }
             ]).exec((err, result) => {
                 if (err) {
-                    return res.status(401).json({ success: false, message: 'No topic found.' });
+                    return res.status(401).json({ success: false, message: err.message });
                 }
                 return res.status(200).json({ success: true, data: { result }});
             });

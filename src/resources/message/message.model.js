@@ -2,6 +2,7 @@ import { model, Schema } from 'mongoose'
 
 const MessageSchema = new Schema({
   messageID: Number,
+  messageObjectID: Number,
   messageDescription: String,
   messageType: {
     type: String,
@@ -13,13 +14,9 @@ const MessageSchema = new Schema({
           ],
     default: 'message'
   },
-  messageTo: [{
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  }],
   createdBy:{
-    type: Schema.Types.ObjectId,
-    ref: 'User'
+    type: Number,
+    required: [true, 'User is required']
   },
   createdDate: {
     type: Date,
