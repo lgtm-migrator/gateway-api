@@ -29,15 +29,19 @@ export async function updateUser({
     id,
     firstname,
     lastname,
-    email
+    email,
+    discourseKey,
+    discourseUsername
 }) {
     return new Promise(async (resolve, reject) => {
         return resolve(
             await UserModel.findOneAndUpdate({ id: id },
             {
-                firstname: firstname,
-                lastname: lastname,
-                email: email
+                firstname,
+                lastname,
+                email,
+                discourseKey,
+                discourseUsername
             })
         )
     })
