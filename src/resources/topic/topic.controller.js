@@ -57,7 +57,7 @@ module.exports = {
                 return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
             
             
-            return res.status(201).json({ success: true, data: { topic }});
+            return res.status(201).json({ success: true, topic });
     
         } catch (err) {
             console.error(err.message);
@@ -87,20 +87,17 @@ module.exports = {
     getTopics: async(req, res) => {
         // check if user / publisher
         try {
-            let {id: userId} = req.user;
-            TopicModel.aggregate([
-                // add in the currentUser as userId
-                { $addFields: { "userId": userId }},
-                // find if status active and user in recipients arr
-                { $match: { $and: [ { status: 'active' }, { userId: { $in: recipients} } ]}},
-                // project
-                { $project: { _id: 1, title: 1, subTitle: 1, status: 1, createdDate: 1 }}
-            ]).exec(err, result => {
-                if(err)
-                    return res.status(401).json({ success: false, message: 'No topics found.' });
+            let {_id: userId} = req.user;
 
-                    return res.status(200).json({ success: true, data: { result }});
-            })
+            const topics = await TopicModel.find({ 
+                recipients: { $elemMatch : { $eq: userId }},
+                status: 'active'
+            });
+
+            if (!topics) 
+                return res.status(401).json({ success: false, message: 'An error occured' });
+                    
+            return res.status(200).json({ success: true, topics});
 
         } catch(err) {
             console.error(err.message);
@@ -112,18 +109,9 @@ module.exports = {
         try {
             let {_id: userId } = req.user;
 
-           const topic = await TopicModel.findOne({ 
-                _id: new mongoose.Types.ObjectId(req.params.id), 
-                recipients: { $elemMatch : { $eq: userId }}
-            }).populate({
-                path:  'topicMessages',
-                select: 'messageDescription createdDate isRead _id',
-                options: { sort: '-createdDate' },
-                    populate: { 
-                        path:  'createdBy',
-                        model: 'User',
-                        select: '-_id firstname lastname'
-                    }
+            const topic = await TopicModel.findOne({ 
+                    _id: new mongoose.Types.ObjectId(req.params.id), 
+                    recipients: { $elemMatch : { $eq: userId }}
             });
 
             if (!topic) 

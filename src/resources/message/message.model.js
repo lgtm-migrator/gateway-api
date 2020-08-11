@@ -27,7 +27,7 @@ const MessageSchema = new Schema({
     enum : ['true','false'],
     default: 'false'
   },
-  topicId: { 
+  topic: { 
     type: Schema.Types.ObjectId, 
     ref: 'Topic'
   }

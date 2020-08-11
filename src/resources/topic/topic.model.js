@@ -48,14 +48,22 @@ const TopicSchema = new Schema({
 // Virtual Populate  - Topic to bring back messages if topics querried messages without persisting it to the db, it doesnt slow down the query - populate in route
 TopicSchema.virtual('topicMessages', {
     ref: 'Messages',
-    foreignField: 'topicId',
+    foreignField: 'topic',
     localField: '_id'
 });
 
-TopicSchema.pre(/^find/, function(next) {
+TopicSchema.pre('findOne', function(next) {
     this.populate({
         path: 'createdBy',
-        select: 'firstname lastname'
+        select: 'firstname lastname',
+        path:  'topicMessages',
+        select: 'messageDescription createdDate isRead _id',
+        options: { sort: '-createdDate' },
+            populate: { 
+                path:  'createdBy',
+                model: 'User',
+                select: '-_id firstname lastname'
+            }
     });
 
     next();

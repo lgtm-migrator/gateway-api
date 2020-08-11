@@ -4,6 +4,7 @@ import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
 import { MessagesModel } from '../message/message.model'
 import mongoose from 'mongoose';
+import { TopicModel } from '../topic/topic.model';
 
 // by default route has access to its own, allows access to parent param
 const router = express.Router({ mergeParams: true});
@@ -186,7 +187,7 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
       messageObjectID: parseInt(Math.random().toString().replace('0.', '')),
       messageDescription,
       topicId,
-      createdBy
+      createdBy,
     });
 
     if(!message) 

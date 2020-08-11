@@ -23,6 +23,10 @@ router.post('/', passport.authenticate('jwt'), topicController.postTopic);
 // @access  Private
 router.delete('/:id', passport.authenticate('jwt'), topicController.deleteTopic);
 
+// @route   GET api/topics
+// @desc    GET A a list of topics
+// @access  Private
+router.get('/', passport.authenticate('jwt'), topicController.getTopics);
 
 // @route   GET api/topics/:id
 // @desc    GET A topic by :id
