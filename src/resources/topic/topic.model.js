@@ -39,6 +39,9 @@ const TopicSchema = new Schema({
     isDeleted: {
         type: Boolean,
         default: false
+    },
+    unreadMessages: {
+        type: Boolean
     }
 }, {
     toJSON:     { virtuals: true },
@@ -52,12 +55,12 @@ TopicSchema.virtual('topicMessages', {
     localField: '_id'
 });
 
-TopicSchema.pre('findOne', function(next) {
+TopicSchema.pre(/^find/, function(next) {
     this.populate({
         path: 'createdBy',
         select: 'firstname lastname',
         path:  'topicMessages',
-        select: 'messageDescription createdDate isRead _id',
+        select: 'messageDescription createdDate isRead _id readBy',
         options: { sort: '-createdDate' },
             populate: { 
                 path:  'createdBy',

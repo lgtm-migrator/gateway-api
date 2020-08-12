@@ -24,4 +24,5 @@ router.get('/', passport.authenticate('jwt'), topicController.getTopics);
 // @access  Private
 router.get('/:id', passport.authenticate('jwt'), topicController.getTopicById);
 
+
 module.exports = router

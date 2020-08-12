@@ -180,13 +180,18 @@ router.post(
   router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.createMessage);
 
   // @route   DELETE api/messages/:id
-  // @desc    DELETE A message soft delete
+  // @desc    DELETE Delete a message
   // @access  Private
   router.delete('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.deleteMessage);
 
   // @route   PUT api/messages
   // @desc    PUT Update a message
   // @access  Private
-  //router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.updateMessage);
+  router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.updateMessage);
+
+// @route   GET api/messages/unread/count
+// @desc    GET the number of unread messages for a user
+// @access  Private
+router.get('/unread/count', passport.authenticate('jwt'), messageController.getUnreadMessageCount);
 
   module.exports = router; 

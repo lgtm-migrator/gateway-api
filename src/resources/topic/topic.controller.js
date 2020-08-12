@@ -7,11 +7,7 @@ module.exports = {
     buildRecipients: async (teamId, createdBy) => {
         // NB Recipients to be injected once teams has been completed PMc
         return [
-            "5e6f984a0a7300dc8f6fb195", 
             "5eb29430861979081c1f6acd", 
-            "5eb2f98760ac5289acdd2511", 
-            "5ec3e1a996d46c775670a88d", 
-            "5ede1713384b64b655b9dd13", 
             "5f03530178e28143d7af2eb1"
         ];
     },
@@ -38,16 +34,18 @@ module.exports = {
                 default:
                     console.log('default');
             }
-            // 6. Create new topic against related object with recipients
+            // 6. Get recipients for topic/message
+            const recipients = await module.exports.buildRecipients(0, createdBy);
+            // 7. Create new topic against related object with recipients
             const topic = await TopicModel.create({
                 title,
                 subTitle,
                 relatedObjectId,
                 createdBy,
                 createdDate: Date.now(),
-                recipients: buildRecipients(teamId, createdBy)
+                recipients
             });
-            // 7. Return created object
+            // 8. Return created object
             return topic;
         } catch (err) {
             console.error(err.message);
@@ -99,10 +97,18 @@ module.exports = {
                 status: 'active'
             });
 
-            if (!topics) 
-                return res.status(401).json({ success: false, message: 'An error occured' });
-                    
-            return res.status(200).json({ success: true, topics});
+            topics.forEach(topic => {
+                topic.topicMessages.forEach(message => {
+                    if(message.readBy.includes(userId)) {
+                        topic.unreadMessages = false;
+                    } else {
+                        topic.unreadMessages = true;
+                        return;
+                    }
+                })
+            });
+            
+            return res.status(200).json({ success: true, topics });
 
         } catch(err) {
             console.error(err.message);
@@ -117,6 +123,15 @@ module.exports = {
             const topic = await TopicModel.findOne({ 
                     _id: new mongoose.Types.ObjectId(req.params.id), 
                     recipients: { $elemMatch : { $eq: userId }}
+            });
+
+            topic.topicMessages.forEach(message => {
+                if(message.readBy.includes(userId)) {
+                    topic.unreadMessages = false;
+                } else {
+                    topic.unreadMessages = true;
+                    return;
+                }
             });
 
             if (!topic) 
