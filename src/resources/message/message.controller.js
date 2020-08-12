@@ -35,8 +35,11 @@ module.exports = {
             // 6. Return 500 error if message was not successfully created
             if(!message) 
                 return res.status(500).json({ success: false, message: 'Could not save message to database.' });
+
+            // 7. Email recipients who have opted in to email communications
+            
                    
-            // 7. Return successful response with message data
+            // 8. Return successful response with message data
             return res.status(201).json({ success: true, data: { message }});
         } catch (err) {
             console.error(err.message);
