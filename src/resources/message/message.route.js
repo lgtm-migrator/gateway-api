@@ -189,9 +189,9 @@ router.post(
   // @access  Private
   router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.updateMessage);
 
-// @route   GET api/messages/unread/count
-// @desc    GET the number of unread messages for a user
-// @access  Private
-router.get('/unread/count', passport.authenticate('jwt'), messageController.getUnreadMessageCount);
+  // @route   GET api/messages/unread/count
+  // @desc    GET the number of unread messages for a user
+  // @access  Private
+  router.get('/unread/count', passport.authenticate('jwt'), messageController.getUnreadMessageCount);
 
   module.exports = router; 
