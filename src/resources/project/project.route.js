@@ -78,7 +78,7 @@ router.get(
 // @access   Public
 router.get('/:projectID', async (req, res) => {
   var q = Data.aggregate([
-      { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
+       { $match: { $and: [{ id: parseInt(req.params.projectID) }, {type: 'project'}] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
   ]);
    q.exec((err, data) => {
@@ -102,10 +102,11 @@ router.get('/:projectID', async (req, res) => {
       });
     }
     else{
-      return res.json({
-        success: false,
-        error: `Project not found for project id ${req.params.projectID}`,
-      });
+      return res.status(404).send(`Project not found for Id: ${req.params.projectID}`);
+      // res.json({
+      //   success: false,
+      //   error: `Project not found for project id ${req.params.projectID}`,
+      // });
     }
   });
 });

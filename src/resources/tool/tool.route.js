@@ -111,7 +111,7 @@ router.patch(
  */
 router.get('/:id', async (req, res) => {
   var query = Data.aggregate([
-    { $match: { $and: [{ id: parseInt(req.params.id) }] } },
+    { $match: { $and: [{ id: parseInt(req.params.id) }, {type: 'tool'}]} },
     {
       $lookup: {
         from: 'tools',
@@ -194,10 +194,7 @@ router.get('/:id', async (req, res) => {
         });
       });
     } else {
-      return res.json({
-        success: false,
-        error: `Tool not found for tool id ${req.params.id}`,
-      });
+      return res.status(404).send(`Tool not found for Id: ${req.params.id}`);
     }
   });
 });
