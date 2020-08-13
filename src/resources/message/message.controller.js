@@ -33,7 +33,8 @@ module.exports = {
                 messageDescription,
                 topic,
                 createdBy,
-                type
+                type,
+                readBy: [new mongoose.Types.ObjectId(createdBy)]
             });
             // 6. Return 500 error if message was not successfully created
             if(!message) 
@@ -43,11 +44,13 @@ module.exports = {
                 if(_.isEmpty(topicObj)) {
                     topicObj = await topicController.getTopicById(topic);
                 }
-                // 8. Find recipients who have opted in to email updates
+                // 8. Find recipients who have opted in to email updates and exclude the requesting user
                 let messageRecipients = await UserModel.find({ _id: { $in: topicObj.recipients } }).populate('additionalInfo');
                 let optedInEmailRecipients = [...messageRecipients].filter(function(user) {
-                let { additionalInfo: { emailNotifications }} = user;
-                    return emailNotifications === true;
+                let { additionalInfo: { emailNotifications }, _id} = user;
+                    console.log(user);
+                    console.log(_id);
+                    return emailNotifications === true && _id.toString() !== createdBy.toString();
                 });
                 const hdrukEmail = `enquiry@healthdatagateway.org`;
                 // 9. Send email
