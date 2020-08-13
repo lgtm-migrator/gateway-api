@@ -32,7 +32,7 @@ const TopicSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User'
     },
-    relatedEntity: {
+    relatedObjectId: {
         type: Schema.Types.ObjectId,
         ref: 'Data'
     },
@@ -41,7 +41,10 @@ const TopicSchema = new Schema({
         default: false
     },
     unreadMessages: {
-        type: Boolean
+        type: Number
+    },
+    lastUnreadMessage: {
+        type: Date
     }
 }, {
     toJSON:     { virtuals: true },

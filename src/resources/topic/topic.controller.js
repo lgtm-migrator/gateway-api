@@ -97,16 +97,23 @@ module.exports = {
                 status: 'active'
             });
 
+            // Append property to indicate the number of unread messages
             topics.forEach(topic => {
+                topic.unreadMessages = 0;
                 topic.topicMessages.forEach(message => {
-                    if(message.readBy.includes(userId)) {
-                        topic.unreadMessages = false;
-                    } else {
-                        topic.unreadMessages = true;
-                        return;
+                    if(!message.readBy.includes(userId)) {
+                        topic.unreadMessages ++;
                     }
+                    // Calculate last unread message date at topic level
+                    topic.lastUnreadMessage = topic.topicMessages.reduce((a, b) => {
+                        console.log (Date(a.createdDate) > new Date(b.createdDate) ? a : b);
+                        return (new Date(a.createdDate) > new Date(b.createdDate) ? a : b).createdDate;
+                    });
                 })
             });
+
+            // Sort topics by most unread first followed by created date
+            topics.sort((a, b) => a.unreadMessages - b.unreadMessages || b.lastUnreadMessage - a.lastUnreadMessage);
             
             return res.status(200).json({ success: true, topics });
 
@@ -125,14 +132,12 @@ module.exports = {
                     recipients: { $elemMatch : { $eq: userId }}
             });
 
+            // Append property to indicate the number of unread messages
             topic.topicMessages.forEach(message => {
-                if(message.readBy.includes(userId)) {
-                    topic.unreadMessages = false;
-                } else {
-                    topic.unreadMessages = true;
-                    return;
+                if(!message.readBy.includes(userId)) {
+                    topic.unreadMessages ++;
                 }
-            });
+            })
 
             if (!topic) 
                 return res.status(500).json({ success: false, message: 'An error occured' });
