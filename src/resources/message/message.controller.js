@@ -22,7 +22,7 @@ module.exports = {
                 // 3. If topic was not successfully created, throw error response
                 if(!topicObj) 
                     return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
-                // 4. Pass new topic Id and set message type
+                // 4. Pass new topic Id
                 topic = topicObj._id;
             } 
             // 5. Create new message
@@ -48,8 +48,6 @@ module.exports = {
                 let messageRecipients = await UserModel.find({ _id: { $in: topicObj.recipients } }).populate('additionalInfo');
                 let optedInEmailRecipients = [...messageRecipients].filter(function(user) {
                 let { additionalInfo: { emailNotifications }, _id} = user;
-                    console.log(user);
-                    console.log(_id);
                     return emailNotifications === true && _id.toString() !== createdBy.toString();
                 });
                 const hdrukEmail = `enquiry@healthdatagateway.org`;
