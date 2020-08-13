@@ -36,7 +36,7 @@ const MessageSchema = new Schema({
     ref: 'User'
   }],
   createdByName: {
-    type: String
+    type: Object
   }
 },{
   toJSON: { virtuals: true},

@@ -12,7 +12,7 @@ module.exports = {
     createMessage: async (req, res) => {
         debugger;
         try {
-            const { _id: createdBy } = req.user
+            const { _id: createdBy, firstname, lastname } = req.user
             let { type = 'notification', topic = '', messageDescription, relatedObjectId } = req.body;
             let topicObj = {};
             // 1. If the message type is 'message' and topic id is empty
@@ -64,7 +64,7 @@ module.exports = {
                 );
             }
             // 10. Return successful response with message data
-            message.createdByName = `${req.user.firstname} ${req.user.lastname}`;
+            message.createdByName = { firstname, lastname };
             return res.status(201).json({ success: true, message });
         } catch (err) {
             console.error(err.message);
