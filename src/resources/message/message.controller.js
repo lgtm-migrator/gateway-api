@@ -10,6 +10,7 @@ const topicController = require('../topic/topic.controller');
 module.exports = {
     // POST /api/v1/messages
     createMessage: async (req, res) => {
+        debugger;
         try {
             const { _id: createdBy } = req.user
             let { type = 'notification', topic = '', messageDescription, relatedObjectId } = req.body;
@@ -42,7 +43,10 @@ module.exports = {
             // 7. Prepare to send email if a new message has been created
             if(type === 'message') {
                 if(_.isEmpty(topicObj)) {
-                    topicObj = await topicController.getTopicById(topic);
+                    topicObj = await topicController.findTopic(topic, createdBy);
+                }
+                if(!topicObj) {
+                    return res.status(500).json({ success: false, message: 'An error occurred sending email notifications to topic recipients' });
                 }
                 // 8. Find recipients who have opted in to email updates and exclude the requesting user
                 let messageRecipients = await UserModel.find({ _id: { $in: topicObj.recipients } }).populate('additionalInfo');

@@ -79,4 +79,13 @@ const DataSchema = new Schema(
   }
 );
 
+DataSchema.virtual('team', {
+  ref: 'Data',
+  foreignField: 'datasetfields.publisher',
+  localField: 'datasetfields.publisher',
+  justOne: true,
+  match: { type: 'team' },
+  options: { select: '_id id activeflag members' }
+});
+
 export const Data = model('Data', DataSchema)
