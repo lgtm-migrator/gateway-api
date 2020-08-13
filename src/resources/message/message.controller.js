@@ -64,7 +64,8 @@ module.exports = {
                 );
             }
             // 10. Return successful response with message data
-            return res.status(201).json({ success: true, data: { message }});
+            message.createdByName = `${req.user.firstname} ${req.user.lastname}`;
+            return res.status(201).json({ success: true, message });
         } catch (err) {
             console.error(err.message);
             return res.status(500).json(err);

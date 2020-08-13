@@ -34,7 +34,10 @@ const MessageSchema = new Schema({
   readBy: [{
     type: Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  createdByName: {
+    type: String
+  }
 },{
   toJSON: { virtuals: true},
   toObject: { virtuals: true}
