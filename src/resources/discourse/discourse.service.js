@@ -67,19 +67,20 @@ export async function createDiscourseTopic(tool) {
   // 2. Depending on tool type passed, generate initial post content based on tool description and original content link
   var rawIs, categoryIs;
   if (tool.type === 'tool') {
-    rawIs = `${tool.description} <br> Original content: ${process.env.homeURL}/tool/${tool.id}`;
+    rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/tool/${tool.id}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_TOOLS_ID;
   }
   else if (tool.type === 'project') {
-    rawIs = `${tool.description} <br> Original content: ${process.env.homeURL}/project/${tool.id}`;
+    rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/project/${tool.id}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_PROJECTS_ID;
   }
   else if (tool.type === 'dataset') {
-    rawIs = `${tool.description} <br> Original content: ${process.env.homeURL}/dataset/${tool.id}`;
+    let { datasetFields : { abstract }} = tool;
+    rawIs = `${abstract} <br><br> Original content: ${process.env.homeURL}/dataset/${tool.id}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_DATASETS_ID;
   }
   else if (tool.type === 'paper') {
-    rawIs = `${tool.description} <br> Original content: ${process.env.homeURL}/paper/${tool.id}`;
+    rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/paper/${tool.id}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_PAPERS_ID;
   }
   // 3. Assemble payload for creating a topic in Discourse
