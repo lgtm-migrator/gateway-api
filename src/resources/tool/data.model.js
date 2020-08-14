@@ -68,6 +68,14 @@ const DataSchema = new Schema(
         versionLinks: []
     },
 
+    //teams related fields
+    members: [{
+      memberid: {type: Schema.Types.ObjectId,
+        ref: 'User'},
+      roles: [String]
+    }],
+    imageURL: String,
+
     //not used
     rating: Number, 
     toolids: [Number], 

@@ -41,7 +41,8 @@ const TopicSchema = new Schema({
         default: false
     },
     unreadMessages: {
-        type: Number
+        type: Number,
+        default: 0
     },
     lastUnreadMessage: {
         type: Date

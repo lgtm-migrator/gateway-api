@@ -1,17 +1,18 @@
 import mongoose from 'mongoose';
 import { TopicModel } from './topic.model';
 import { Data as ToolModel } from '../tool/data.model';
+import _ from 'lodash';
 
 module.exports = {
-    // TODO Lookup teams and insert into recipients
     buildRecipients: async (tool, createdBy) => {
         console.log(tool.team);
-        debugger;
-        // NB Recipients to be injected once teams has been completed PMc
-        return [
-            "5eb29430861979081c1f6acd", 
-            "5f03530178e28143d7af2eb1"
-        ];
+        const { team: { members }} = tool || [];
+        let recipients = members.map(m => m.memberid);
+        return recipients || [];
+        // return [
+        //     "5eb29430861979081c1f6acd", 
+        //     "5f03530178e28143d7af2eb1"
+        // ];
     },
 
     buildTopic: async (context) => {
@@ -19,13 +20,17 @@ module.exports = {
             let subTitle = '';
             const { createdBy, relatedObjectId} = context;
             // 1. Topic cannot be created without related object i.e. data/project/tool/paper
-            if(!relatedObjectId)
+            if(!relatedObjectId) {
+                console.error('No related object Id passed to build topic');
                 return undefined;
+            }
             // 2. Find the related object in MongoDb and include team data
             const tool = await ToolModel.findById(relatedObjectId).populate('team');
             // 3. Return undefined if no object exists
-            if(!tool)
+            if(!tool) {
+                console.error(`Failed to find related tool with objectId: ${relatedObjectId}`);
                 return undefined;
+            }
             // 4. Deconstruct tool props
             let { name: title, type, datasetfields } = tool;
             // 5. Switch based on related object type
@@ -39,6 +44,10 @@ module.exports = {
             }
             // 6. Get recipients for topic/message
             const recipients = await module.exports.buildRecipients(tool, createdBy);
+            if(_.isEmpty(recipients)) {
+                console.error('A topic cannot be created without recipients');
+                return undefined;
+            }
             // 7. Create new topic against related object with recipients
             const topic = await TopicModel.create({
                 title,
@@ -62,7 +71,6 @@ module.exports = {
                     _id: new mongoose.Types.ObjectId(topicId), 
                     recipients: { $elemMatch : { $eq: userId }}
             });
-            console.log(topicId, userId);
             if (!topic) 
                 return undefined
 
@@ -90,6 +98,8 @@ module.exports = {
 
             if(!topic)
                 return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
+
+                return res.status(201).json({ success: true, topic }); 
 
         } catch (err) {
             console.error(err.message);

@@ -4,6 +4,7 @@ import { TopicModel } from '../topic/topic.model';
 import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
+import { Data as ToolModel } from '../tool/data.model';
 
 const topicController = require('../topic/topic.controller');
 
@@ -13,19 +14,34 @@ module.exports = {
         debugger;
         try {
             const { _id: createdBy, firstname, lastname } = req.user
-            let { type = 'notification', topic = '', messageDescription, relatedObjectId } = req.body;
+            let { messageType = 'notification', topic = '', messageDescription, relatedObjectId } = req.body;
             let topicObj = {};
             // 1. If the message type is 'message' and topic id is empty
-            if(_.isEmpty(topic) && type === 'message')
-            {
-                //2. Create new topic
-                topicObj = await topicController.buildTopic({createdBy, relatedObjectId});
-                // 3. If topic was not successfully created, throw error response
-                if(!topicObj) 
-                    return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
-                // 4. Pass new topic Id
-                topic = topicObj._id;
-            } 
+            if(messageType === 'message') {
+                if(_.isEmpty(topic)) {
+                    // 2. Create new topic
+                    topicObj = await topicController.buildTopic({createdBy, relatedObjectId});
+                    // 3. If topic was not successfully created, throw error response
+                    if(!topicObj) 
+                        return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
+                    // 4. Pass new topic Id
+                    topic = topicObj._id;
+                }  else {
+                    // 2. Find the existing topic
+                    topicObj = await topicController.findTopic(topic, createdBy);
+                    // 3. Return not found if it was not found
+                    if(!topicObj) {
+                        return res.status(404).json({ success: false, message: 'The topic specified could not be found' });
+                    }
+                    // 4. Find the related object in MongoDb and include team data to update topic recipients in case teams have changed
+                    const tool = await ToolModel.findById(relatedObjectId).populate('team');
+                    // 5. Return undefined if no object exists
+                    if(!tool)
+                        return undefined;
+                    topicObj.recipients = await topicController.buildRecipients(tool, createdBy);
+                    await topicObj.save();
+                }
+            }
             // 5. Create new message
             const message = await MessagesModel.create({
                 messageID: parseInt(Math.random().toString().replace('0.', '')),
@@ -34,20 +50,14 @@ module.exports = {
                 messageDescription,
                 topic,
                 createdBy,
-                type,
+                messageType,
                 readBy: [new mongoose.Types.ObjectId(createdBy)]
             });
             // 6. Return 500 error if message was not successfully created
             if(!message) 
                 return res.status(500).json({ success: false, message: 'Could not save message to database.' });
             // 7. Prepare to send email if a new message has been created
-            if(type === 'message') {
-                if(_.isEmpty(topicObj)) {
-                    topicObj = await topicController.findTopic(topic, createdBy);
-                }
-                if(!topicObj) {
-                    return res.status(500).json({ success: false, message: 'An error occurred sending email notifications to topic recipients' });
-                }
+            if(messageType === 'message') {
                 // 8. Find recipients who have opted in to email updates and exclude the requesting user
                 let messageRecipients = await UserModel.find({ _id: { $in: topicObj.recipients } }).populate('additionalInfo');
                 let optedInEmailRecipients = [...messageRecipients].filter(function(user) {
@@ -142,14 +152,14 @@ module.exports = {
     getUnreadMessageCount: async(req, res) => {
         try {
             let {_id: userId } = req.user;
+            let unreadMessageCount = 0;
 
+            // 1. Find all active topics the user is a member of
             const topics = await TopicModel.find({ 
                 recipients: { $elemMatch : { $eq: userId }},
                 status: 'active'
             });
-
-            let unreadMessageCount = 0;
-
+            // 2. Iterate through each topic and aggregate unread messages
             topics.forEach(topic => {
                 topic.topicMessages.forEach(message => {
                     if(!message.readBy.includes(userId)) {
@@ -157,7 +167,7 @@ module.exports = {
                     }
                 })
             });
-                    
+            // 3. Return the number of unread messages
             return res.status(200).json({ success: true, count: unreadMessageCount });
         }
         catch (err) {

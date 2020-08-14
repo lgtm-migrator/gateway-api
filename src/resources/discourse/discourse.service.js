@@ -64,6 +64,7 @@ export async function createDiscourseTopic(tool) {
       'Content-Type': 'application/json',
     },
   };
+  debugger;
   // 2. Depending on tool type passed, generate initial post content based on tool description and original content link
   var rawIs, categoryIs;
   if (tool.type === 'tool') {
@@ -75,8 +76,8 @@ export async function createDiscourseTopic(tool) {
     categoryIs = process.env.DISCOURSE_CATEGORY_PROJECTS_ID;
   }
   else if (tool.type === 'dataset') {
-    let { datasetFields : { abstract }} = tool;
-    rawIs = `${abstract} <br><br> Original content: ${process.env.homeURL}/dataset/${tool.id}`;
+    let { datasetfields : { abstract }} = tool;
+    rawIs = `${tool.description || abstract} <br><br> Original content: ${process.env.homeURL}/dataset/${tool.id}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_DATASETS_ID;
   }
   else if (tool.type === 'paper') {
