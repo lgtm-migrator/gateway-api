@@ -289,19 +289,18 @@ router.post(
     );
   }
 );
-
+ 
 /**
  * {post} /tool/review/approve Approve review
  *
  * Authenticate user to see if user can approve.
  */
-router.post(
+router.put(
   '/review/approve',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin),
   async (req, res) => {
     const { id, activeflag } = req.body;
-
     Reviews.findOneAndUpdate(
       { reviewID: id },
       {
