@@ -56,6 +56,34 @@ router.get(
 );
 
 // @router   GET /api/v1/
+// @desc     Validates that a paper link does not exist on the gateway
+// @access   Private
+router.post(
+  '/validate',
+  passport.authenticate('jwt'),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  async (req, res) => {
+    try {
+      const { link } = req.body;
+      if(!link) {
+        return res.status(500).json({ success: false });
+      }
+      
+      const papers = await Data.find({ type: "paper", link: link.trim() }).count();
+
+      if(papers > 0)
+        return res.status(200).json({ duplicateLink: "This link is already associated to another paper on the HDR-UK Innovation Gateway" });
+      
+      return res.status(200).json({ success: true });
+
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ success: false, error: 'Paper link validation failed' });
+    }
+  }
+);
+
+// @router   GET /api/v1/
 // @desc     Returns List of Paper Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
