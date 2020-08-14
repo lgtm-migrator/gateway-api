@@ -68,6 +68,14 @@ const DataSchema = new Schema(
         versionLinks: []
     },
 
+    //teams related fields
+    members: [{
+      memberid: {type: Schema.Types.ObjectId,
+        ref: 'User'},
+      roles: [String]
+    }],
+    imageURL: String,
+
     //not used
     rating: Number, 
     toolids: [Number], 
@@ -78,5 +86,14 @@ const DataSchema = new Schema(
     timestamps: true 
   }
 );
+
+DataSchema.virtual('team', {
+  ref: 'Data',
+  foreignField: 'datasetfields.publisher',
+  localField: 'datasetfields.publisher',
+  justOne: true,
+  match: { type: 'team' },
+  options: { select: '_id id activeflag members' }
+});
 
 export const Data = model('Data', DataSchema)
