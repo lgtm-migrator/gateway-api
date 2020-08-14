@@ -71,7 +71,7 @@ router.post(
         return res.status(200).json({ success: true });
       }
       // 3. Use MongoDb to perform a direct comparison on all paper links, trimming leading and trailing white space from the request body
-      const papers = await Data.find({ type: "paper", link: link.trim() }).count();
+      const papers = await Data.find({ type: "paper", link: link.trim(), activeflag: {$ne: "rejected"} }).count();
       // 4. If any results are found, return error that the link exists on the Gateway already
       if(papers > 0)
         return res.status(200).json({ success: true, error: "This link is already associated to another paper on the HDR-UK Innovation Gateway" });
