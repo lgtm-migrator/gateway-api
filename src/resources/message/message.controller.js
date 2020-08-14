@@ -38,6 +38,7 @@ module.exports = {
                     // 5. Return undefined if no object exists
                     if(!tool)
                         return undefined;
+                        
                     topicObj.recipients = await topicController.buildRecipients(tool, createdBy);
                     await topicObj.save();
                 }
