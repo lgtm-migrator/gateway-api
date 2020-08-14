@@ -55,7 +55,7 @@ router.get(
   }
 );
 
-// @router   GET /api/v1/
+// @router   POST /api/v1/
 // @desc     Validates that a paper link does not exist on the gateway
 // @access   Private
 router.post(
@@ -64,18 +64,19 @@ router.post(
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     try {
+      // 1. Deconstruct message body which contains the link entered by the user against a paper
       const { link } = req.body;
+      // 2. Front end validation should prevent this occurrence, but we return success if empty string or not param is passed
       if(!link) {
-        return res.status(500).json({ success: false });
+        return res.status(200).json({ success: true });
       }
-      
+      // 3. Use MongoDb to perform a direct comparison on all paper links, trimming leading and trailing white space from the request body
       const papers = await Data.find({ type: "paper", link: link.trim() }).count();
-
+      // 4. If any results are found, return error that the link exists on the Gateway already
       if(papers > 0)
-        return res.status(200).json({ duplicateLink: "This link is already associated to another paper on the HDR-UK Innovation Gateway" });
-      
+        return res.status(200).json({ success: true, error: "This link is already associated to another paper on the HDR-UK Innovation Gateway" });
+      // 5. Otherwise return valid
       return res.status(200).json({ success: true });
-
     } catch (error) {
       console.error(error);
       return res.status(500).json({ success: false, error: 'Paper link validation failed' });
