@@ -32,7 +32,7 @@ module.exports = {
                 return undefined;
             }
             // 4. Deconstruct tool props
-            let { name: title, type, datasetfields } = tool;
+            let { name: title, type, datasetfields, datasetid = '' } = tool;
             // 5. Switch based on related object type
             switch(type) {
                 // If dataset, we require the publisher
@@ -55,7 +55,8 @@ module.exports = {
                 relatedObjectId,
                 createdBy,
                 createdDate: Date.now(),
-                recipients
+                recipients,
+                dataSetId: datasetid
             });
             // 8. Return created object
             return topic;

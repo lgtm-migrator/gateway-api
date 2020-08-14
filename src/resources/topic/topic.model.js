@@ -46,6 +46,9 @@ const TopicSchema = new Schema({
     },
     lastUnreadMessage: {
         type: Date
+    },
+    dataSetId: {
+        type: String
     }
 }, {
     toJSON:     { virtuals: true },
