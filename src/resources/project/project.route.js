@@ -103,10 +103,6 @@ router.get('/:projectID', async (req, res) => {
     }
     else{
       return res.status(404).send(`Project not found for Id: ${req.params.projectID}`);
-      // res.json({
-      //   success: false,
-      //   error: `Project not found for project id ${req.params.projectID}`,
-      // });
     }
   });
 });
