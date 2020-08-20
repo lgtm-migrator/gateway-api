@@ -5,58 +5,77 @@ import _ from 'lodash';
 
 module.exports = {
     buildRecipients: async (tool, createdBy) => {
-        console.log(tool.team);
-        const { team: { members }} = tool || [];
+        // 1. Extract team members for tool
+        const { team } = tool;
+        // 2. Cause error if no members found
+        if(_.isNull(team)) {
+            console.error('A topic cannot be created without a receiving team');
+            return [];
+        }
+        let { members } = team;
+        if(_.isNull(members || members.length === 0)) {
+            console.error('A topic cannot be created with only the creating user');
+            return [];
+        }
         let recipients = members.map(m => m.memberid);
-        return recipients || [];
-        // return [
-        //     "5eb29430861979081c1f6acd", 
-        //     "5f03530178e28143d7af2eb1"
-        // ];
+        // 3. Return team recipients plus the user that created the message
+        recipients = [...recipients, createdBy];
+        return recipients;
     },
 
     buildTopic: async (context) => {
         try {
             let subTitle = '';
-            const { createdBy, relatedObjectId} = context;
+            let dataSetIds = [];
+            let tags = [];
+            const { createdBy, relatedObjectIds } = context;
             // 1. Topic cannot be created without related object i.e. data/project/tool/paper
-            if(!relatedObjectId) {
+            if(_.isEmpty(relatedObjectIds)) {
                 console.error('No related object Id passed to build topic');
                 return undefined;
             }
-            // 2. Find the related object in MongoDb and include team data
-            const tool = await ToolModel.findById(relatedObjectId).populate('team');
+            // 2. Find the related object(s) in MongoDb and include team data
+            const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate('team');
             // 3. Return undefined if no object exists
-            if(!tool) {
-                console.error(`Failed to find related tool with objectId: ${relatedObjectId}`);
+            if(_.isEmpty(tools)) {
+                console.error(`Failed to find related tool(s) with objectId(s): ${relatedObjectIds.join(', ')}`);
                 return undefined;
             }
-            // 4. Deconstruct tool props
-            let { name: title, type, datasetfields, datasetid = '' } = tool;
-            // 5. Switch based on related object type
-            switch(type) {
-                // If dataset, we require the publisher
-                case 'dataset':
-                    ({publisher: subTitle} = datasetfields);
-                    break;
-                default:
-                    console.log('default');
-            }
-            // 6. Get recipients for topic/message
-            const recipients = await module.exports.buildRecipients(tool, createdBy);
+            // 4. Deconstruct first tool to extract generic info for topic
+            let { datasetfields: { publisher: title }} = tools[0];
+            // 5. Iterate through each tool
+            tools.forEach(tool => {
+                // 6. Switch based on related object type
+                switch(tool.type) {
+                    // 7. If dataset, we require the publisher
+                    case 'dataset':
+                        let { name: title, datasetid = '' } = tool;
+                        subTitle = _.isEmpty(subTitle) ? title : `${subTitle}, ${title}`
+                        dataSetIds.push(datasetid);
+                        tags.push(title);
+                        break;
+                    default:
+                        console.log('default');
+                }
+            });
+            // 8. Get recipients for topic/message using the first tool (same team exists as each publisher is the same)
+            const recipients = await module.exports.buildRecipients(tools[0], createdBy);
             if(_.isEmpty(recipients)) {
                 console.error('A topic cannot be created without recipients');
                 return undefined;
             }
-            // 7. Create new topic against related object with recipients
+            // Future extension could be to iterate through tools at this point to generate a topic for each publisher
+            // This also requires refactor of above code to break down dataset titles into individual messages
+            // 9. Create new topic against related objects with recipients
             const topic = await TopicModel.create({
                 title,
                 subTitle,
-                relatedObjectId,
+                relatedObjectIds,
                 createdBy,
                 createdDate: Date.now(),
                 recipients,
-                dataSetId: datasetid
+                dataSetIds,
+                tags
             });
             // 8. Return created object
             return topic;
@@ -94,8 +113,8 @@ module.exports = {
     createTopic: async (req, res) => {
         try {
             const { _id: createdBy } = req.user;
-            const { relatedObjectId } = req.body;
-            const topic = await buildTopic({createdBy, relatedObjectId});
+            const { relatedObjectIds } = req.body;
+            const topic = await buildTopic({createdBy, relatedObjectIds });
 
             if(!topic)
                 return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
@@ -153,7 +172,7 @@ module.exports = {
             });
 
             // Sort topics by most unread first followed by created date
-            topics.sort((a, b) => a.unreadMessages - b.unreadMessages || b.lastUnreadMessage - a.lastUnreadMessage);
+            topics.sort((a, b) => b.unreadMessages - a.unreadMessages || b.lastUnreadMessage - a.lastUnreadMessage || b.createdDate - a.createdDate);
             
             return res.status(200).json({ success: true, topics });
 
@@ -165,12 +184,24 @@ module.exports = {
     // GET api/v1/topics/:id
     getTopicById: async(req, res) => {
         try {
+            // 1. Get the topic from the database
             const topic = await module.exports.findTopic(req.params.id, req.user._id);
-
+            // 2. Keep a copy of the unmodified topic for returning in this response
+            const dispatchTopic = topic.toJSON();
             if(!topic)
                 return res.status(404).json({ success: false, message: 'Could not find topic specified.' });
-
-            return res.status(200).json({ success: true, topic });
+            // 3. If there any unread messages, mark them as read 
+            if(topic.unreadMessages > 0) {
+                topic.topicMessages.forEach(async (message) => {
+                    message.readBy.push(req.user._id)
+                    await message.save();
+                });
+                topic.unreadMessages = 0;
+                // 4. Save topic to Mongo
+                await topic.save();
+            }
+            // 5. Return original topic so unread messages are displayed correctly
+            return res.status(200).json({ success: true, topic: dispatchTopic });
 
         } catch (err) {
             console.error(err.message);
