@@ -75,11 +75,33 @@ router.get('', async (req, res) => {
         }];
     
       //set the aggregate queries
-      var aggregateQueryTypes = [{ $match: { activeflag: "active" } },{ $group: { _id: "$type", count: { $sum: 1 } } }];
+      var aggregateQueryTypes = [
+				{
+					$match: {
+						$and: [
+							{ activeflag: "active" },
+							{ "datasetfields.publisher": { $ne: "HDR UK" } },
+						],
+					},
+				},
+				{ $group: { _id: "$type", count: { $sum: 1 } } },
+			];
     
       var q = RecordSearchData.aggregate(aggregateQuerySearches);
 
-      var aggregateAccessRequests = [{ $match: { applicationStatus: "submitted" } }, { $group: {_id: "accessRequests", count: { $sum: 1 } } }];
+      var aggregateAccessRequests = [
+				{ $match: { applicationStatus: "submitted" } },
+				{
+					$lookup: {
+						from: "tools",
+						localField: "datasetid",
+						foreignField: "datasetid",
+						as: "publisher",
+					},
+				},
+				{ $match: { "datasetfields.publisher": { $ne: "HDR UK" } } },
+				{ $group: { _id: "accessRequests", count: { $sum: 1 } } },
+			];
 
       var y = DataRequestModel.aggregate(aggregateAccessRequests);
       
