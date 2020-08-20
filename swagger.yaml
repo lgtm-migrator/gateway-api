@@ -35,7 +35,7 @@ paths:
         '200':
           description: OK    
 
-  /v1/datasets:
+  /v1/datasets/:
     get:
       summary: Returns List of Dataset objects.
       tags:
@@ -129,6 +129,7 @@ paths:
       responses:
         '200':
           description: OK
+          
   /v1/person/:
     get:
       summary: Returns an array of person objects.
@@ -219,11 +220,8 @@ paths:
                 orcid: 'https://orcid.org/123456789'
                 emailNotifications: false
                 terms: true
-      responses:
-        '200':
-          description: OK
           
-  /v1/search:
+  /v1/search/:
     get:
       tags:
         - Search
@@ -266,7 +264,6 @@ paths:
         '200':
           description: OK
 
-
   /v1/datasets/?search={searchTerm}:
     get:
       summary: Returns dataset search results by searchTerm
@@ -284,7 +281,7 @@ paths:
         '200':
           description: OK
 
-  /v1/stats:
+  /v1/stats/:
     get:
       summary: This will return a JSON document to show high level stats.
       tags:
@@ -412,72 +409,193 @@ paths:
       responses: 
         '200':
           description: OK
-
-  /v1/tools:
-    post:
-      summary: Returns new Tool object with ID.
+          
+  /v1/messages/{id}:
+  
+    delete:
+      summary: Delete a Message
       security:
         - cookieAuth: []
       tags:
-        - Tools
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - name
-              properties:
-                type:
-                  type: string
-                name:
-                  type: string
-                link:
-                  type: string
-                description:
-                  type: string
-                categories:
-                  type: object
-                  properties:
-                    category:
-                      type: string
-                    programmingLanguage:
-                      type: array
-                      items:
-                        type: string
-                    programmingLanguageVersion:
-                      type: string
-                licence:
-                  type: string
-                authors:
-                  type: array
-                  items:
-                    type: number
-                tags:
-                  type: object
-                  properties:
-                    features:
-                      type: array
-                      items:
-                        type: string
-                    topics:
-                      type: array
-                      items:
-                        type: string      
-              example:   # Sample object
-                type: 'tool'
-                name: 'Epilepsy data research'
-                link: 'http://epilepsy.org'
-                description: 'Epilespy data research description'
-                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '0.0.0'}
-                licence: 'MIT licence'
-                authors: [4495285946631793]
-                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
+        - Messages
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the Message
+          schema:
+            type: string
+            example: "5ee249426136805fbf094eef"
+      responses:
+        '204':
+          description: Ok
+        
+    put:
+      summary: Update a single Message
+      security:
+        - cookieAuth: []
+      tags:
+        - Messages
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the Message
+          schema:
+            type: string
+            example: "5ee249426136805fbf094eef"
+        - in: body 
+          name: payload
+          description: Payload for updating existing Message
+          schema: 
+            type: object
+            properties:
+              isRead:
+                type: boolean
+              messageDescription:
+                type: string
+              messageType:
+                type: string
+      responses: 
+        '204':
+          description: OK 
+    
+    
+  /v1/messages/unread/count:
+  
+    get:
+      summary: Returns the number of unread messages for the authenticated user
+      security:
+        - cookieAuth: []
+      tags:
+        - Messages
       responses: 
         '200':
+          description: OK 
+            
+  /v1/messages/:
+  
+    post:
+      summary: Returns a new Message object and creates an associated parent Topic if a Topic is not specified in request body
+      security:
+        - cookieAuth: []
+      tags:
+        - Messages
+      parameters:
+        - in: body 
+          name: payload
+          description: Payload for updating existing Message
+          schema: 
+            type: object
+            properties:
+              isRead:
+                type: boolean
+              messageDescription:
+                type: string
+              messageType:
+                type: string
+      responses: 
+        '201':
           description: OK
-
-  /v1/projects:
+          
+  /v1/topics/:
+    post:
+      summary: Returns a new Topic object with ID (Does not create any associated messages)
+      security:
+        - cookieAuth: []
+      tags:
+        - Topics
+      parameters:
+        - in: body 
+          name: payload
+          description: Payload for posting new message Topic
+          schema: 
+            type: object
+            properties:
+              relatedObjectIds:
+                type: array
+                example: "['1','2','3']"
+      responses:
+        '201':
+          description: A new Topic
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: object
+                    description: Generated ID
+                  title:
+                    type: string
+                    description: Title of message
+                  subtitle:
+                    type: string
+                    description: Subtitle of message
+                  relatedObjectIds:
+                    type: array
+                    description: Object ID this Topic is related to
+                  createdBy:
+                    type: object
+                    description: User that created the topic
+                  createdDate:
+                    type: date
+                    description: Date the topic was created
+                  recipients:
+                    type: array
+                    description: Collection of user IDs
+                  tags:
+                    type: array
+                    description: Collection of tags to describe topic
+    get:
+      summary: Returns a list of all topics that the authenticated user is a recipient or member of
+      security:
+        - cookieAuth: []
+      tags:
+        - Topics
+      responses:
+        '200':
+          description: Ok                
+    
+                    
+  /v1/topics/{id}:
+    get:
+      summary: Returns Topic object by ID
+      security:
+        - cookieAuth: []
+      tags:
+        - Topics
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the topic
+          schema:
+            type: string
+            example: "5ee249426136805fbf094eef"
+      responses:
+        '200':
+          description: Ok
+          
+    delete:
+      summary: Soft deletes a message Topic but does not affect associated messages
+      security:
+        - cookieAuth: []
+      tags:
+        - Topics
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the Topic
+          schema:
+            type: string
+            example: "5ee249426136805fbf094eef"
+      responses:
+        '204':
+          description: Ok
+            
+  /v1/projects/:
     post:
       summary: Returns a Project object with ID.
       security:
@@ -540,6 +658,7 @@ paths:
       responses: 
         '200':
           description: OK
+          
     get:
       summary: Returns List of Project objects.
       tags:
@@ -569,6 +688,7 @@ paths:
       responses: 
         '200':
           description: OK
+          
   /v1/projects/{id}:
     get:
       summary: Returns Project object.
@@ -692,7 +812,7 @@ paths:
         '200':
           description: OK
 
-  /v1/papers:
+  /v1/papers/:
     post:
       summary: Returns a Paper object with ID.
       security:
@@ -923,7 +1043,69 @@ paths:
       responses: 
         '200':
           description: OK
-    
+    post:
+      summary: Returns new Tool object with ID.
+      security:
+        - cookieAuth: []
+      tags:
+        - Tools
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                type:
+                  type: string
+                name:
+                  type: string
+                link:
+                  type: string
+                description:
+                  type: string
+                categories:
+                  type: object
+                  properties:
+                    category:
+                      type: string
+                    programmingLanguage:
+                      type: array
+                      items:
+                        type: string
+                    programmingLanguageVersion:
+                      type: string
+                licence:
+                  type: string
+                authors:
+                  type: array
+                  items:
+                    type: number
+                tags:
+                  type: object
+                  properties:
+                    features:
+                      type: array
+                      items:
+                        type: string
+                    topics:
+                      type: array
+                      items:
+                        type: string      
+              example:   # Sample object
+                type: 'tool'
+                name: 'Epilepsy data research'
+                link: 'http://epilepsy.org'
+                description: 'Epilespy data research description'
+                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '0.0.0'}
+                licence: 'MIT licence'
+                authors: [4495285946631793]
+                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
+      responses: 
+        '200':
+          description: OK
+          
   /v1/tools/{id}:
     get:
       summary: Returns Tool object.
@@ -1086,6 +1268,10 @@ paths:
     #       description: OK
     #     '204':
     #       description: No Content
+    
+
+  
+
   
   
 
