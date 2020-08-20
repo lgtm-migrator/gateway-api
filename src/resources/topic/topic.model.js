@@ -32,10 +32,10 @@ const TopicSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User'
     },
-    relatedObjectId: {
+    relatedObjectIds: [{
         type: Schema.Types.ObjectId,
         ref: 'Data'
-    },
+    }],
     isDeleted: {
         type: Boolean,
         default: false
@@ -47,9 +47,12 @@ const TopicSchema = new Schema({
     lastUnreadMessage: {
         type: Date
     },
-    dataSetId: {
+    dataSetIds: [{
         type: String
-    }
+    }],
+    tags: [{
+        type: String
+    }]
 }, {
     toJSON:     { virtuals: true },
     toObject:   { virtuals: true }

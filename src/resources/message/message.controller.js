@@ -13,13 +13,13 @@ module.exports = {
     createMessage: async (req, res) => {
         try {
             const { _id: createdBy, firstname, lastname } = req.user
-            let { messageType = 'notification', topic = '', messageDescription, relatedObjectId } = req.body;
+            let { messageType = 'notification', topic = '', messageDescription, relatedObjectIds } = req.body;
             let topicObj = {};
             // 1. If the message type is 'message' and topic id is empty
             if(messageType === 'message') {
                 if(_.isEmpty(topic)) {
                     // 2. Create new topic
-                    topicObj = await topicController.buildTopic({createdBy, relatedObjectId});
+                    topicObj = await topicController.buildTopic({createdBy, relatedObjectIds });
                     // 3. If topic was not successfully created, throw error response
                     if(!topicObj) 
                         return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
@@ -32,13 +32,13 @@ module.exports = {
                     if(!topicObj) {
                         return res.status(404).json({ success: false, message: 'The topic specified could not be found' });
                     }
-                    // 4. Find the related object in MongoDb and include team data to update topic recipients in case teams have changed
-                    const tool = await ToolModel.findById(relatedObjectId).populate('team');
-                    // 5. Return undefined if no object exists
-                    if(!tool)
+                    // 4. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
+                    const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate('team');
+                    // 5. Return undefined if no object(s) exists
+                    if(_.isEmpty(tools))
                         return undefined;
                         
-                    topicObj.recipients = await topicController.buildRecipients(tool, createdBy);
+                    topicObj.recipients = await topicController.buildRecipients(tools[0], createdBy);
                     await topicObj.save();
                 }
             }
