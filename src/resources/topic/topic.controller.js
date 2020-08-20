@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { TopicModel } from './topic.model';
 import { Data as ToolModel } from '../tool/data.model';
-import _, { forEach } from 'lodash';
+import _ from 'lodash';
 
 module.exports = {
     buildRecipients: async (tool, createdBy) => {
@@ -20,7 +20,7 @@ module.exports = {
         let recipients = members.map(m => m.memberid);
         // 3. Return team recipients plus the user that created the message
         recipients = [...recipients, createdBy];
-        return recipients || [];
+        return recipients;
     },
 
     buildTopic: async (context) => {
