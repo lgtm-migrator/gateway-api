@@ -60,7 +60,7 @@ router.put(
 // @desc     Returns List of Tool objects
 // @access   Private
 router.get(
-  '/',
+  '/getList',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
@@ -84,6 +84,24 @@ router.get(
           return res.json({ success: false, err });
         });
     }
+  }
+);
+
+// @router   GET /api/v1/
+// @desc     Returns List of Tool Objects No auth
+//           This unauthenticated route was created specifically for API-docs
+// @access   Public
+router.get(
+  '/',
+  async (req, res) => {
+    req.params.type = 'tool';
+      await getToolsAdmin(req)
+        .then((data) => {
+          return res.json({ success: true, data });
+        })
+        .catch((err) => {
+          return res.json({ success: false, err });
+        });
   }
 );
 
