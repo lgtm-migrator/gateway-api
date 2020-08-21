@@ -40,7 +40,7 @@ module.exports = {
                 return undefined;
             }
             // 4. Deconstruct first tool to extract generic info for topic
-            let { datasetfields: { publisher }} = tools[0];
+            let { datasetfields: { publisher: publisherId }} = tools[0];
             // 5. Iterate through each tool
             tools.forEach(tool => {
                 // 6. Switch based on related object type
@@ -49,7 +49,7 @@ module.exports = {
                     case 'dataset':
                         let { name: title, datasetid = '' } = tool;
                         subTitle = _.isEmpty(subTitle) ? title : `${subTitle}, ${title}`
-                        datasets.push({ datasetId: datasetid, publisher });
+                        datasets.push({ datasetId: datasetid, publisher: publisherId });
                         tags.push(title);
                         break;
                     default:
