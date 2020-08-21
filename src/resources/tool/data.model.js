@@ -1,4 +1,7 @@
-import { model, Schema } from 'mongoose'
+import { model, Schema } from 'mongoose';
+//DO NOT DELETE publisher and team model below
+import { PublisherModel } from '../publisher/publisher.model';
+import { TeamModel } from '../team/team.model';
 
 // this will be our data base's data structure 
 const DataSchema = new Schema(
@@ -68,14 +71,6 @@ const DataSchema = new Schema(
         versionLinks: []
     },
 
-    //teams related fields
-    members: [{
-      memberid: {type: Schema.Types.ObjectId,
-        ref: 'User'},
-      roles: [String]
-    }],
-    imageURL: String,
-
     //not used
     rating: Number, 
     toolids: [Number], 
@@ -87,13 +82,11 @@ const DataSchema = new Schema(
   }
 );
 
-DataSchema.virtual('team', {
-  ref: 'Data',
-  foreignField: 'datasetfields.publisher',
+DataSchema.virtual('publisher', {
+  ref: 'Publisher',
+  foreignField: 'name',
   localField: 'datasetfields.publisher',
-  justOne: true,
-  match: { type: 'team' },
-  options: { select: '_id id activeflag members' }
+  justOne: true
 });
 
 export const Data = model('Data', DataSchema)

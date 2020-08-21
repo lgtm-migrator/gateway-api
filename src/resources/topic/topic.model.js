@@ -1,5 +1,4 @@
 import { model, Schema } from 'mongoose'
-import { stringify } from 'query-string';
 
 const TopicSchema = new Schema({
     title: {
@@ -47,8 +46,13 @@ const TopicSchema = new Schema({
     lastUnreadMessage: {
         type: Date
     },
-    dataSetIds: [{
-        type: String
+    datasets: [{
+        datasetId: {
+            type: String
+        },
+        publisher: {
+            type: String
+        }
     }],
     tags: [{
         type: String

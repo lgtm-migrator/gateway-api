@@ -4,10 +4,8 @@ import { Data as ToolModel } from '../tool/data.model';
 import _ from 'lodash';
 
 module.exports = {
-    buildRecipients: async (tool, createdBy) => {
-        // 1. Extract team members for tool
-        const { team } = tool;
-        // 2. Cause error if no members found
+    buildRecipients: async (team, createdBy) => {
+        // 1. Cause error if no members found
         if(_.isNull(team)) {
             console.error('A topic cannot be created without a receiving team');
             return [];
@@ -18,7 +16,7 @@ module.exports = {
             return [];
         }
         let recipients = members.map(m => m.memberid);
-        // 3. Return team recipients plus the user that created the message
+        // 2. Return team recipients plus the user that created the message
         recipients = [...recipients, createdBy];
         return recipients;
     },
@@ -26,7 +24,7 @@ module.exports = {
     buildTopic: async (context) => {
         try {
             let subTitle = '';
-            let dataSetIds = [];
+            let datasets = [];
             let tags = [];
             const { createdBy, relatedObjectIds } = context;
             // 1. Topic cannot be created without related object i.e. data/project/tool/paper
@@ -35,7 +33,8 @@ module.exports = {
                 return undefined;
             }
             // 2. Find the related object(s) in MongoDb and include team data
-            const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate('team');
+            const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate({ path: 'publisher', populate: { path: 'team' }});
+            debugger;
             // 3. Return undefined if no object exists
             if(_.isEmpty(tools)) {
                 console.error(`Failed to find related tool(s) with objectId(s): ${relatedObjectIds.join(', ')}`);
@@ -51,7 +50,7 @@ module.exports = {
                     case 'dataset':
                         let { name: title, datasetid = '' } = tool;
                         subTitle = _.isEmpty(subTitle) ? title : `${subTitle}, ${title}`
-                        dataSetIds.push(datasetid);
+                        datasets.push({ datasetId: datasetid, publisher: title });
                         tags.push(title);
                         break;
                     default:
@@ -59,7 +58,17 @@ module.exports = {
                 }
             });
             // 8. Get recipients for topic/message using the first tool (same team exists as each publisher is the same)
-            const recipients = await module.exports.buildRecipients(tools[0], createdBy);
+            let { publisher = '' } = tools[0];
+            if(_.isEmpty(publisher)) {
+                console.error(`No publisher associated to this dataset`);
+                return undefined;
+            }
+            let { team = [] } = publisher;
+            if(_.isEmpty(team)) {
+                console.error(`No team associated to publisher, cannot message`);
+                return undefined;
+            }
+            const recipients = await module.exports.buildRecipients(team, createdBy);
             if(_.isEmpty(recipients)) {
                 console.error('A topic cannot be created without recipients');
                 return undefined;
@@ -74,7 +83,7 @@ module.exports = {
                 createdBy,
                 createdDate: Date.now(),
                 recipients,
-                dataSetIds,
+                datasets,
                 tags
             });
             // 8. Return created object
