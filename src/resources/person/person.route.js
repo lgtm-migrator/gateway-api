@@ -39,13 +39,15 @@ router.put('/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-  const { id, bio, emailNotifications, terms } = req.body;
+  const { id, firstname, lastname, bio, emailNotifications, terms } = req.body;
   const type = 'person';
   let link = urlValidator.validateURL(req.body.link);
   let orcid = urlValidator.validateOrcidURL(req.body.orcid);
   console.log(req.body)
   await Data.findOneAndUpdate({ id: id },
     {
+      firstname,
+      lastname,
       type,
       bio,
       link,
@@ -53,7 +55,9 @@ router.put('/',
       emailNotifications,
       terms
     },
-    {new:true})
+    {new:true});
+    await UserModel.findOneAndUpdate({ id: id }, 
+      { $set: { firstname: firstname, lastname: lastname } })
     .then(person => {
       return res.json({ success: true, data: person});
     })
