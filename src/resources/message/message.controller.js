@@ -34,7 +34,6 @@ module.exports = {
                     }
                     // 4. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
                     const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate({ path: 'publisher', populate: { path: 'team' }});
-                    debugger;
                     // 5. Return undefined if no object(s) exists
                     if(_.isEmpty(tools))
                         return undefined;
