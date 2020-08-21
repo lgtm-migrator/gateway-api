@@ -33,12 +33,24 @@ module.exports = {
                         return res.status(404).json({ success: false, message: 'The topic specified could not be found' });
                     }
                     // 4. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
-                    const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate('team');
+                    const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate({ path: 'publisher', populate: { path: 'team' }});
+                    debugger;
                     // 5. Return undefined if no object(s) exists
                     if(_.isEmpty(tools))
                         return undefined;
-                        
-                    topicObj.recipients = await topicController.buildRecipients(tools[0], createdBy);
+                    
+                    // 6. Get recipients for new message
+                    let { publisher = '' } = tools[0];
+                    if(_.isEmpty(publisher)) {
+                        console.error(`No publisher associated to this dataset`);
+                        return res.status(500).json({ success: false, message: 'No publisher associated to this dataset' });
+                    }
+                    let { team = [] } = publisher;
+                    if(_.isEmpty(team)) {
+                        console.error(`No team associated to publisher, cannot message`);
+                        return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
+                    }
+                    topicObj.recipients = await topicController.buildRecipients(team, createdBy);
                     await topicObj.save();
                 }
             }
