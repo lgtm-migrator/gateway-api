@@ -34,14 +34,13 @@ module.exports = {
             }
             // 2. Find the related object(s) in MongoDb and include team data
             const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate({ path: 'publisher', populate: { path: 'team' }});
-            debugger;
             // 3. Return undefined if no object exists
             if(_.isEmpty(tools)) {
                 console.error(`Failed to find related tool(s) with objectId(s): ${relatedObjectIds.join(', ')}`);
                 return undefined;
             }
             // 4. Deconstruct first tool to extract generic info for topic
-            let { datasetfields: { publisher: title }} = tools[0];
+            let { datasetfields: { publisher }} = tools[0];
             // 5. Iterate through each tool
             tools.forEach(tool => {
                 // 6. Switch based on related object type
@@ -50,7 +49,7 @@ module.exports = {
                     case 'dataset':
                         let { name: title, datasetid = '' } = tool;
                         subTitle = _.isEmpty(subTitle) ? title : `${subTitle}, ${title}`
-                        datasets.push({ datasetId: datasetid, publisher: title });
+                        datasets.push({ datasetId: datasetid, publisher });
                         tags.push(title);
                         break;
                     default:
