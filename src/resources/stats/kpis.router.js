@@ -1,5 +1,4 @@
 import express from 'express';
-import axios from 'axios';
 import { RecordSearchData } from '../search/record.search.model';
 import { Data } from '../tool/data.model';
 import {DataRequestModel} from '../datarequests/datarequests.model';
@@ -19,50 +18,66 @@ router.get('', async (req, res) => {
     selectedMonthEnd.setHours(23,59,59,999);
 
     switch (req.query.kpi) {
-
       case 'technicalmetadata':
-        var result = [];
-        var totalDatasets = 0;
-        var datasetsMetadata = 0;
+        var totalDatasetsQuery = [
+					{
+						$facet: {
+							TotalDataSets: [
+								{
+									$match: {
+										$and: [
+											{ activeflag: "active" },
+											{ type: "dataset" },
+											{ "datasetfields.publisher": { $ne: "HDR UK" } },
+										],
+									},
+								},
+								{ $count: "TotalDataSets" },
+							],
+							TotalMetaData: [
+								{
+									$match: {
+										activeflag: "active",
+										type: "dataset",
+										"datasetfields.technicaldetails": {
+											$exists: true,
+											$not: {
+												$size: 0,
+											},
+										},
+									},
+								},
+								{
+									$count: "TotalMetaData",
+								},
+							],
+						},
+					},
+				];
 
-        axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/datasets.csv')
-        .then(function (csv) {
-            var lines=csv.data.split("\r\n");
-      
-            var commaRegex = /,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/g
-            
-            var quotesRegex = /^"(.*)"$/g
+				var q = Data.aggregate(totalDatasetsQuery);
 
-            var headers = lines[0].split(commaRegex).map(h => h.replace(quotesRegex, "$1"));
+				var result;
+				q.exec((err, dataSets) => {
+					if (err) return res.json({ success: false, error: err });
 
+					if (typeof dataSets[0].TotalDataSets[0] === "undefined") {
+						dataSets[0].TotalDataSets[0].TotalDataSets = 0;
+					}
+					if (typeof dataSets[0].TotalMetaData[0] === "undefined") {
+						dataSets[0].TotalMetaData[0].TotalMetaData = 0;
+					}
 
-            for(var i=1;i<lines.length-1;i++){
-                var obj = {};
-                var currentline=lines[i].split(commaRegex);
+					result = res.json({
+						success: true,
+						data: {
+							totalDatasets: dataSets[0].TotalDataSets[0].TotalDataSets,
+							datasetsMetadata: dataSets[0].TotalMetaData[0].TotalMetaData,
+						},
+					});
+				});
 
-                for(var j=0;j<headers.length;j++){
-                    obj[headers[j]] = currentline[j].replace(quotesRegex, "$1");
-                }
-
-                result.push(obj); 
-            }
-
-            result.map((res) => {
-              if(res.dataClassesCount !== '0') {
-                  datasetsMetadata++
-              }
-            })
-
-            totalDatasets = result.length;
-
-            return res.json({ 
-              'success': true, 
-              'data': {
-                'totalDatasets': totalDatasets,
-                'datasetsMetadata': datasetsMetadata 
-            }
-            });
-          })
+				return result;
       break;
 
       case 'searchanddar':
