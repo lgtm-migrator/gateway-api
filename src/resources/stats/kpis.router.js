@@ -109,20 +109,27 @@ router.get('', async (req, res) => {
                 //used only createdAt first { "$match": { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } },
                 // some older fields only have timeStamp --> only timeStamp in the production db
                 //checking for both currently
-                { "$match": {$and: [
-                    { $or: [ 
+                { $match: {
+                  $and: [{ 
+                    $or: [ 
                       { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} },
-                      { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } 
-                    ]
-                  },
-                  { "applicationStatus": "submitted" } 
-                ]} },
+                      { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } ]
+                    },
+                    {
+                      "applicationStatus": "submitted"
+                    }]
+                  }
+                },
                 {
-                  $group: {
-                    _id: 'accessRequestsMonth',
-                    count: { $sum: 1 }
-                  }, 
-                }
+                  $lookup: {
+                    from: "tools",
+                    localField: "dataSetId",
+                    foreignField: "datasetid",
+                    as: "publisher",
+                  },
+                },
+                { $match: { "publisher.datasetfields.publisher": { $ne: "HDR UK" } } },
+                { $group: { _id: 'accessRequestsMonth', count: { $sum: 1 } }, }
               ],
             }
           }];
