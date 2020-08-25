@@ -21,6 +21,7 @@ module.exports = {
     },
     buildTopic: async (context) => {
         try {
+            let title = '';
             let subTitle = '';
             let datasets = [];
             let tags = [];
@@ -43,9 +44,11 @@ module.exports = {
                 switch(tool.type) {
                     // 6. If dataset, we require the publisher
                     case 'dataset':
-                        let { name: datasetTitle, datasetid = '' } = tool;
+                        let { name: datasetTitle, datasetid = '', datasetfields: { publisher } } = tool;
+                        // set title of topic which is publisher
+                        title = publisher;
                         subTitle = _.isEmpty(subTitle) ? datasetTitle : `${subTitle}, ${datasetTitle}`
-                        datasets.push({ datasetId: datasetid, publisher: title });
+                        datasets.push({ datasetId: datasetid, publisher});
                         tags.push(datasetTitle);
                         break;
                     default:
@@ -116,8 +119,9 @@ module.exports = {
             const { relatedObjectIds } = req.body;
             const topic = await buildTopic({createdBy, relatedObjectIds });
             if(!topic)
-                return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
-                return res.status(201).json({ success: true, topic }); 
+                return res.status(500).json({ success: false, message: 'Could not save topic to database.' }); 
+                
+            return res.status(201).json({ success: true, topic }); 
         } catch (err) {
             console.error(err.message);
             return res.status(500).json(err);
