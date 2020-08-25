@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import { TopicModel } from './topic.model';
 import { Data as ToolModel } from '../tool/data.model';
 import _ from 'lodash';
-
 module.exports = {
     buildRecipients: async (team, createdBy) => {
         // 1. Cause error if no members found
@@ -20,9 +19,9 @@ module.exports = {
         recipients = [...recipients, createdBy];
         return recipients;
     },
-
     buildTopic: async (context) => {
         try {
+            let title = '';
             let subTitle = '';
             let datasets = [];
             let tags = [];
@@ -45,9 +44,11 @@ module.exports = {
                 switch(tool.type) {
                     // 6. If dataset, we require the publisher
                     case 'dataset':
-                        let { name: datasetTitle, datasetid = '' } = tool;
+                        let { name: datasetTitle, datasetid = '', datasetfields: { publisher } } = tool;
+                        // set title of topic which is publisher
+                        title = publisher;
                         subTitle = _.isEmpty(subTitle) ? datasetTitle : `${subTitle}, ${datasetTitle}`
-                        datasets.push({ datasetId: datasetid, publisher: title });
+                        datasets.push({ datasetId: datasetid, publisher});
                         tags.push(datasetTitle);
                         break;
                     default:
@@ -90,7 +91,6 @@ module.exports = {
             return undefined;
         }
     },
-
     findTopic: async (topicId, userId) => {
         try {
             const topic = await TopicModel.findOne({ 
@@ -99,14 +99,12 @@ module.exports = {
             });
             if (!topic) 
                 return undefined
-
             // Append property to indicate the number of unread messages
             topic.topicMessages.forEach(message => {
                 if(!message.readBy.includes(userId)) {
                     topic.unreadMessages ++;
                 }
             })
-
             return topic;
         }
         catch (err) {
@@ -114,19 +112,16 @@ module.exports = {
             return undefined;
         }
     },
-
     // POST /api/v1/topics
     createTopic: async (req, res) => {
         try {
             const { _id: createdBy } = req.user;
             const { relatedObjectIds } = req.body;
             const topic = await buildTopic({createdBy, relatedObjectIds });
-
             if(!topic)
-                return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
-
-                return res.status(201).json({ success: true, topic }); 
-
+                return res.status(500).json({ success: false, message: 'Could not save topic to database.' }); 
+                
+            return res.status(201).json({ success: true, topic }); 
         } catch (err) {
             console.error(err.message);
             return res.status(500).json(err);
@@ -136,16 +131,11 @@ module.exports = {
     deleteTopic: async(req, res) => { 
         try {
             const { id } = req.params;
-
             if(!id) 
                 return res.status(404).json({ success: false, message: 'Topic Id not found.' });
-            
             const topic = await TopicModel.findByIdAndUpdate( id, { isDeleted: true, status: 'closed', expiryDate: Date.now() }, {new: true});
-
             console.log(topic);
-
             return res.status(204).json({success: true});
-
         } catch (err) {
             console.error(err.message);
             return res.status(500).json(err);
@@ -156,12 +146,10 @@ module.exports = {
         // check if user / publisher
         try {
             let {_id: userId} = req.user;
-
             const topics = await TopicModel.find({ 
                 recipients: { $elemMatch : { $eq: userId }},
                 status: 'active'
             });
-
             // Append property to indicate the number of unread messages
             topics.forEach(topic => {
                 topic.unreadMessages = 0;
@@ -176,12 +164,9 @@ module.exports = {
                     });
                 })
             });
-
             // Sort topics by most unread first followed by created date
             topics.sort((a, b) => b.unreadMessages - a.unreadMessages || b.lastUnreadMessage - a.lastUnreadMessage || b.createdDate - a.createdDate);
-            
             return res.status(200).json({ success: true, topics });
-
         } catch(err) {
             console.error(err.message);
             return res.status(500).json(err);
@@ -208,7 +193,6 @@ module.exports = {
             }
             // 5. Return original topic so unread messages are displayed correctly
             return res.status(200).json({ success: true, topic: dispatchTopic });
-
         } catch (err) {
             console.error(err.message);
             return res.status(500).json(err);

@@ -93,12 +93,12 @@ router.get('', async (req, res) => {
 				{
 					$lookup: {
 						from: "tools",
-						localField: "datasetid",
+						localField: "dataSetId",
 						foreignField: "datasetid",
 						as: "publisher",
 					},
 				},
-				{ $match: { "datasetfields.publisher": { $ne: "HDR UK" } } },
+				{ $match: { "publisher.datasetfields.publisher": { $ne: "HDR UK" } } },
 				{ $group: { _id: "accessRequests", count: { $sum: 1 } } },
 			];
 
