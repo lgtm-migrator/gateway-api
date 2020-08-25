@@ -44,7 +44,7 @@ const strategy = app => {
                 providerId: profile._json.eduPersonTargetedID,
                 firstname: '',
                 lastname: '',
-                email: profile._json.eduPersonScopedAffiliation,
+                email: '',
                 password: null,
                 role: ROLES.Creator
             })
