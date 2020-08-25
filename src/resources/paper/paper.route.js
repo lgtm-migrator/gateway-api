@@ -169,22 +169,6 @@ router.get('/:paperID', async (req, res) => {
     }
     });
 });
-// @router   PUT /api/v1/
-// @desc     Returns edited Paper object.
-// @access   Private
-// router.put('/:id', 
-//   passport.authenticate('jwt'),
-//   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-//     async (req, res) => {
-//       await editTool(req)
-//       .then(response => {
-//         return res.json({ success: true, response});
-//       })
-//       .catch(err => {
-//         return res.json({ success: false, err});
-//       })
-//     }
-// );
 
 router.get('/edit/:paperID', async (req, res) => { 
   var query = Data.aggregate([
