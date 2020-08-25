@@ -3,7 +3,7 @@ import { Data } from '../tool/data.model'
 import { ROLES } from '../user/user.roles'
 import passport from "passport";
 import { utils } from "../auth";
-import {addTool, editTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository';
+import {addTool, editTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository'; 
 
 const router = express.Router();
 
@@ -30,7 +30,7 @@ router.post('/',
 router.get(
   '/getList',
   passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+  utils.checkIsInRole(ROLES.Admin, ROLES.Creator), 
   async (req, res) => {
     req.params.type = 'paper';
     let role = req.user.role;
@@ -172,19 +172,19 @@ router.get('/:paperID', async (req, res) => {
 // @router   PUT /api/v1/
 // @desc     Returns edited Paper object.
 // @access   Private
-router.put('/:id', 
-  passport.authenticate('jwt'),
-  utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
-      await editTool(req)
-      .then(response => {
-        return res.json({ success: true, response});
-      })
-      .catch(err => {
-        return res.json({ success: false, err});
-      })
-    }
-);
+// router.put('/:id', 
+//   passport.authenticate('jwt'),
+//   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+//     async (req, res) => {
+//       await editTool(req)
+//       .then(response => {
+//         return res.json({ success: true, response});
+//       })
+//       .catch(err => {
+//         return res.json({ success: false, err});
+//       })
+//     }
+// );
 
 router.get('/edit/:paperID', async (req, res) => { 
   var query = Data.aggregate([
