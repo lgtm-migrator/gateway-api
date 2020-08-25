@@ -39,24 +39,22 @@ module.exports = {
                 console.error(`Failed to find related tool(s) with objectId(s): ${relatedObjectIds.join(', ')}`);
                 return undefined;
             }
-            // 4. Deconstruct first tool to extract generic info for topic
-            let { datasetfields: { publisher: publisherId }} = tools[0];
-            // 5. Iterate through each tool
+            // 4. Iterate through each tool
             tools.forEach(tool => {
-                // 6. Switch based on related object type
+                // 5. Switch based on related object type
                 switch(tool.type) {
-                    // 7. If dataset, we require the publisher
+                    // 6. If dataset, we require the publisher
                     case 'dataset':
-                        let { name: title, datasetid = '' } = tool;
-                        subTitle = _.isEmpty(subTitle) ? title : `${subTitle}, ${title}`
-                        datasets.push({ datasetId: datasetid, publisher: publisherId });
-                        tags.push(title);
+                        let { name: datasetTitle, datasetid = '' } = tool;
+                        subTitle = _.isEmpty(subTitle) ? datasetTitle : `${subTitle}, ${datasetTitle}`
+                        datasets.push({ datasetId: datasetid, publisher: title });
+                        tags.push(datasetTitle);
                         break;
                     default:
                         console.log('default');
                 }
             });
-            // 8. Get recipients for topic/message using the first tool (same team exists as each publisher is the same)
+            // 7. Get recipients for topic/message using the first tool (same team exists as each publisher is the same)
             let { publisher = '' } = tools[0];
             if(_.isEmpty(publisher)) {
                 console.error(`No publisher associated to this dataset`);
@@ -74,7 +72,7 @@ module.exports = {
             }
             // Future extension could be to iterate through tools at this point to generate a topic for each publisher
             // This also requires refactor of above code to break down dataset titles into individual messages
-            // 9. Create new topic against related objects with recipients
+            // 8. Create new topic against related objects with recipients
             const topic = await TopicModel.create({
                 title,
                 subTitle,
@@ -85,7 +83,7 @@ module.exports = {
                 datasets,
                 tags
             });
-            // 8. Return created object
+            // 9. Return created object
             return topic;
         } catch (err) {
             console.error(err.message);

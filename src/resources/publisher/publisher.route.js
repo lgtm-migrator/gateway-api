@@ -10,4 +10,9 @@ const router = express.Router();
 // @access  Private
 router.get('/:id', passport.authenticate('jwt'), publisherController.getPublisherById);
 
+// @route   GET api/publishers/:id/datasets
+// @desc    GET all datasets owned by publisher
+// @access  Private
+router.get('/:id/datasets', passport.authenticate('jwt'), publisherController.getPublisherDatasets);
+
 module.exports = router
