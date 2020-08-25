@@ -59,7 +59,7 @@ export async function createDiscourseTopic(tool) {
     categoryIs = process.env.DISCOURSE_CATEGORY_PROJECTS_ID;
   }
   else if (tool.type === 'dataset') {
-      var description = tool.description || tool.abstract;
+      var description = tool.description || tool.datasetfields.abstract;
     rawIs = `${description} <br> Original content: ${process.env.homeURL}/dataset/${tool.datasetid}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_DATASETS_ID;
   }
