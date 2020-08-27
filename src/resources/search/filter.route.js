@@ -1,5 +1,6 @@
 import express from 'express'
 import { Data } from '../tool/data.model'
+import _ from 'lodash';
 
 const router = express.Router();
 
@@ -7,112 +8,199 @@ const router = express.Router();
 // @route   GET api/v1/search/filter
 // @desc    GET Get all filters
 // @access  Public
-router.get('/:searchString', async (req, res) => {
-    //get all filters
-    await Promise.all([
-        licenseFilter(req, 'dataset', req.params.searchString),
-        sampleFilter(req, req.params.searchString),
-        featureFilter(req, 'dataset', req.params.searchString),
-        publisherFilter(req, req.params.searchString),
-        ageBandFilter(req, req.params.searchString),
-        geographicCoverageFilter(req, req.params.searchString),
-
-        topicFilter(req, 'tool', req.params.searchString),
-        featureFilter(req, 'tool', req.params.searchString),
-        languageFilter(req, 'tool', req.params.searchString),
-        categoryFilter(req, 'tool', req.params.searchString),
-
-        topicFilter(req, 'project', req.params.searchString),
-        featureFilter(req, 'project', req.params.searchString),
-        categoryFilter(req, 'project', req.params.searchString),
-
-        topicFilter(req, 'paper', req.params.searchString),
-        featureFilter(req, 'paper', req.params.searchString)
-        
-    ]).then((values) => {
-        return res.json({
-            success: true, 
-            allFilters: {
-                licenseFilter: values[0].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                sampleFilter: values[1].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                datasetFeatureFilter: values[2].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                publisherFilter: values[3].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                ageBandFilter: values[4].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                geographicCoverageFilter: values[5].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-
-                toolTopicFilter: values[6].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolFeatureFilter: values[7].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolLanguageFilter: values[8].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolCategoryFilter: values[9].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-
-                projectTopicFilter: values[10].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                projectFeatureFilter: values[11].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                projectCategoryFilter: values[12].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-
-                paperTopicFilter: values[13].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                paperFeatureFilter: values[14].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
-            }
-        });
-    });
-});
-
-//To be refactored and moved to its own filter.repository :)
-
 router.get('/', async (req, res) => {
-    //get all filters
-    await Promise.all([
-        licenseFilter(req, 'dataset', ''),
-        sampleFilter(req, ''),
-        featureFilter(req, 'dataset', ''),
-        publisherFilter(req, ''),
-        ageBandFilter(req, ''),
-        geographicCoverageFilter(req, ''),
-
-        topicFilter(req, 'tool', ''),
-        featureFilter(req, 'tool', ''),
-        languageFilter(req, 'tool', ''),
-        categoryFilter(req, 'tool', ''),
-
-        topicFilter(req, 'project', ''),
-        featureFilter(req, 'project', ''),
-        categoryFilter(req, 'project', ''),
-
-        topicFilter(req, 'paper', ''),
-        featureFilter(req, 'paper', '')
+    var searchString = req.query.search || ""; //If blank then return all
+    var tab = req.query.tab || ""; //If blank then return all
+    if (tab === '') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
         
-    ]).then((values) => {
-        return res.json({
-            success: true, 
-            allFilters: {
-                licenseFilter: values[0].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                sampleFilter: values[1].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                datasetFeatureFilter: values[2].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                publisherFilter: values[3].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                ageBandFilter: values[4].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                geographicCoverageFilter: values[5].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        await Promise.all([
+            getFilter(searchString, 'dataset', 'license', false, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.publisher', false, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, activeFiltersQuery),
 
-                toolTopicFilter: values[6].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolFeatureFilter: values[7].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolLanguageFilter: values[8].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolCategoryFilter: values[9].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+            getFilter(searchString, 'tool', 'tags.topic', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'categories.programmingLanguage', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery),
 
-                projectTopicFilter: values[10].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                projectFeatureFilter: values[11].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                projectCategoryFilter: values[12].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+            getFilter(searchString, 'project', 'tags.topics', true, activeFiltersQuery),
+            getFilter(searchString, 'project', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'project', 'categories.category', false, activeFiltersQuery),
 
-                paperTopicFilter: values[13].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                paperFeatureFilter: values[14].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
-            }
+            getFilter(searchString, 'paper', 'tags.topics', true, activeFiltersQuery),
+            getFilter(searchString, 'paper', 'tags.features', true, activeFiltersQuery)  
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    licenseFilter: values[0][0],
+                    sampleFilter: values[1][0],
+                    datasetFeatureFilter: values[2][0],
+                    publisherFilter: values[3][0],
+                    ageBandFilter: values[4][0],
+                    geographicCoverageFilter: values[5][0],
+                    phenotypesFilter: values[6][0],
+
+                    toolTopicFilter: values[6][0],
+                    toolFeatureFilter: values[7][0],
+                    toolLanguageFilter: values[8][0],
+                    toolCategoryFilter: values[9][0],
+
+                    projectTopicFilter: values[10][0],
+                    projectFeatureFilter: values[11][0],
+                    projectCategoryFilter: values[12][0],
+
+                    paperTopicFilter: values[13][0],
+                    paperFeatureFilter: values[14][0]
+                },
+                filterOptions: {
+                    licenseFilterOptions: values[0][1],
+                    sampleFilterOptions: values[1][1],
+                    datasetFeaturesFilterOptions: values[2][1],
+                    publisherFilterOptions: values[3][1],
+                    ageBandFilterOptions: values[4][1],
+                    geographicCoverageFilterOptions: values[5][1],
+                    phenotypesOptions: values[6][1],
+
+                    toolTopicsFilterOptions: values[7][1],
+                    featuresFilterOptions: values[8][1],
+                    programmingLanguageFilterOptions: values[9][1],
+                    toolCategoriesFilterOptions: values[10][1],
+
+                    projectTopicsFilterOptions: values[11][1],
+                    projectFeaturesFilterOptions: values[12][1],
+                    projectCategoriesFilterOptions: values[13][1],
+
+                    paperTopicsFilterOptions: values[14][1],
+                    paperFeaturesFilterOptions: values[15][1]
+                }
+            });
         });
-    });
+    }
+    else if (tab === 'Datasets') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
+        
+        await Promise.all([
+            getFilter(searchString, 'dataset', 'license', false, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.publisher', false, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, activeFiltersQuery)
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    licenseFilter: values[0][0],
+                    sampleFilter: values[1][0],
+                    datasetFeatureFilter: values[2][0],
+                    publisherFilter: values[3][0],
+                    ageBandFilter: values[4][0],
+                    geographicCoverageFilter: values[5][0],
+                    phenotypesFilter: values[6][0]
+                },
+                filterOptions: {
+                    licenseFilterOptions: values[0][1],
+                    sampleFilterOptions: values[1][1],
+                    datasetFeaturesFilterOptions: values[2][1],
+                    publisherFilterOptions: values[3][1],
+                    ageBandFilterOptions: values[4][1],
+                    geographicCoverageFilterOptions: values[5][1],
+                    phenotypesOptions: values[6][1]
+                }
+            });
+        });
+    }
+    else if (tab === 'Tools') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
+        
+        await Promise.all([
+            getFilter(searchString, 'tool', 'tags.topics', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'categories.programmingLanguage', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery)      
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    toolTopicFilter: values[0][0],
+                    toolFeatureFilter: values[1][0],
+                    toolLanguageFilter: values[2][0],
+                    toolCategoryFilter: values[3][0]
+                },
+                filterOptions: {
+                    toolTopicsFilterOptions: values[0][1],
+                    featuresFilterOptions: values[1][1],
+                    programmingLanguageFilterOptions: values[2][1],
+                    toolCategoriesFilterOptions: values[3][1]
+                }
+            });
+        });
+    }
+    else if (tab === 'Projects') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
+        
+        await Promise.all([
+            getFilter(searchString, 'project', 'tags.topics', true, activeFiltersQuery),
+            getFilter(searchString, 'project', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'project', 'categories.category', false, activeFiltersQuery)  
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    projectTopicFilter: values[0][0],
+                    projectFeatureFilter: values[1][0],
+                    projectCategoryFilter: values[2][0],
+                },
+                filterOptions: {
+                    projectTopicsFilterOptions: values[0][1],
+                    projectFeaturesFilterOptions: values[1][1],
+                    projectCategoriesFilterOptions: values[2][1]
+                }
+            });
+        });
+    }
+    else if (tab === 'Papers') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
+        
+        await Promise.all([
+            getFilter(searchString, 'paper', 'tags.topics', true, activeFiltersQuery),
+            getFilter(searchString, 'paper', 'tags.features', true, activeFiltersQuery)
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    paperTopicFilter: values[0][0],
+                    paperFeatureFilter: values[1][0]
+                },
+                filterOptions: {
+                    paperTopicsFilterOptions: values[0][1],
+                    paperFeaturesFilterOptions: values[1][1]
+                }
+            });
+        });
+    }
 });
-
-
-
 
 router.get('/topic/:type',
     async (req, res) => {
-      await topicFilter(req)
+      await getFilter('', req.params.type, 'tags.topics', true)
         .then(data => {
           return res.json({success: true, data});
         })
@@ -124,7 +212,7 @@ router.get('/topic/:type',
 
 router.get('/feature/:type',
     async (req, res) => {
-      await featureFilter(req)
+      await getFilter('', req.params.type, 'tags.features', true)
         .then(data => {
           return res.json({success: true, data});
         })
@@ -136,7 +224,7 @@ router.get('/feature/:type',
 
 router.get('/language/:type',
     async (req, res) => {
-      await languageFilter(req)
+      await getFilter('', req.params.type, 'categories.programmingLanguage', true)
         .then(data => {
           return res.json({success: true, data});
         })
@@ -148,7 +236,7 @@ router.get('/language/:type',
 
 router.get('/category/:type',
     async (req, res) => {
-      await categoryFilter(req)
+      await getFilter('', req.params.type, 'categories.category', false)  
         .then(data => {
           return res.json({success: true, data});
         })
@@ -160,7 +248,7 @@ router.get('/category/:type',
 
 router.get('/license/:type',
     async (req, res) => {
-      await licenseFilter(req)
+      await getFilter('', req.params.type, 'license', false)
         .then(data => {
           return res.json({success: true, data});
         })
@@ -172,286 +260,309 @@ router.get('/license/:type',
 
 
   
-
-
-
-const sampleFilter = async (req, searchString) => {
+const getFilter = async (searchString, type, field, isArray, activeFiltersQuery) => {
     return new Promise(async (resolve, reject) => {
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
+        var q = '', p = '';
+        var combinedResults = [], activeCombinedResults = [];
 
+        if (searchString) q = Data.aggregate(filterQueryGenerator(field, searchString, type, isArray, {}));
+        else q = Data.aggregate(filterQueryGenerator(field, '', type, isArray, {}));
+        
         q.exec((err, data) => {
             if (err) return resolve({})
-            
-            var tempSample = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.datasetfields.physicalSampleAvailability !== null) {
-                        dat.datasetfields ? dat.datasetfields.physicalSampleAvailability.map((sample) => {
-                            sample.length <= 0 ? tempSample = tempSample : tempSample.push(sample.trim());
-                        }) : ''
-                    }
-                });
-            }
 
-            const combinedSample = [];
-            tempSample.map(temp => {
-                if (combinedSample.indexOf(temp) === -1) {
-                    combinedSample.push(temp)
-                }
-            });
+            if (data.length) {
+                data.forEach((dat) => {
+                    if (dat.result && dat.result !== '') {
+                        if (field === 'datasetfields.phenotypes') combinedResults.push(dat.result.name.trim());
+                        else combinedResults.push(dat.result.trim());
+                    }
+                })
+            }
+ 
+            var newSearchQuery = JSON.parse(JSON.stringify(activeFiltersQuery));
+            newSearchQuery["$and"].push({ type: type })
             
-            resolve(combinedSample);
+            if (searchString) p = Data.aggregate(filterQueryGenerator(field, searchString, type, isArray, newSearchQuery));
+            else p = Data.aggregate(filterQueryGenerator(field, '', type, isArray, newSearchQuery));
+            
+            p.exec((activeErr, activeData) => {
+                if (activeData.length) {
+                    activeData.forEach((dat) => {
+                        if (dat.result && dat.result !== '') {
+                            if (field === 'datasetfields.phenotypes') activeCombinedResults.push(dat.result.name.trim());
+                            else activeCombinedResults.push(dat.result.trim());
+                        }
+                    })
+                }
+                resolve([combinedResults, activeCombinedResults]);
+            });
         });
     })
 }
 
-const publisherFilter = async (req, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
+function filterQueryGenerator(filter, searchString, type, isArray, activeFiltersQuery) {
+    var queryArray = []
 
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            
-            var tempPublisher = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.datasetfields.publisher !== null) {
-                        tempPublisher.push(dat.datasetfields.publisher.trim());
-                    }
-                });
+    if (!_.isEmpty(activeFiltersQuery)) {
+        queryArray.push({ $match: activeFiltersQuery});
+    }
+    else {
+        if (searchString !=='') queryArray.push({ $match: { $and: [{ $text: { $search: searchString } }, { type: type }, { activeflag: 'active' }] } });
+        else queryArray.push({ $match: { $and: [{ type: type }, { activeflag: 'active' }] } });
+    }
+
+    queryArray.push(
+        { 
+            "$project" : { 
+                "result" : "$"+filter, 
+                "_id": 0
             }
+        }
+    );
+    
+    if (isArray) {
+        queryArray.push({"$unwind": '$result'});
+        queryArray.push({"$unwind": '$result'});
+    } 
 
-            const combinedPublisher = [];
-            tempPublisher.map(temp => {
-                if (combinedPublisher.indexOf(temp) === -1) {
-                    combinedPublisher.push(temp)
+    queryArray.push(
+        { 
+            "$group" : { 
+                "_id" : null, 
+                "distinct" : { 
+                    "$addToSet" : "$$ROOT"
                 }
-            });
-            
-            resolve(combinedPublisher);
-        });
-    })
+            }
+        }, 
+        { 
+            "$unwind" : { 
+                "path" : "$distinct", 
+                "preserveNullAndEmptyArrays" : false
+            }
+        }, 
+        { 
+            "$replaceRoot" : { 
+                "newRoot" : "$distinct"
+            }
+        },
+        {
+            "$sort": {
+                "result": 1
+            }
+        }
+    );
+
+    return queryArray;
 }
 
-const ageBandFilter = async (req, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
+function filterQueryGenerator2(filter, searchString, type, isArray) {
+    var queryArray = []
 
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            
-            var tempAgeBand = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.datasetfields.ageBand && dat.datasetfields.ageBand !== null) {
-                        tempAgeBand.push(dat.datasetfields.ageBand.trim());
-                    }
-                });
+    if (searchString !=='') queryArray.push({ $match: { $and: [{ $text: { $search: searchString } }, { type: type }, { activeflag: 'active' }] } });
+    else queryArray.push({ $match: { $and: [{ type: type }, { activeflag: 'active' }] } });
+    
+    queryArray.push(
+        { 
+            "$project" : { 
+                "result" : "$"+filter, 
+                "_id": 0
             }
+        }
+    );
+    
+    if (isArray) {
+        queryArray.push({"$unwind": '$result'});
+        queryArray.push({"$unwind": '$result'});
+    } 
 
-            const combinedAgeBand = [];
-            tempAgeBand.map(temp => {
-                if (combinedAgeBand.indexOf(temp) === -1) {
-                    combinedAgeBand.push(temp)
+    queryArray.push(
+        { 
+            "$group" : { 
+                "_id" : null, 
+                "distinct" : { 
+                    "$addToSet" : "$$ROOT"
                 }
-            });
-            
-            resolve(combinedAgeBand);
-        });
-    })
+            }
+        }, 
+        { 
+            "$unwind" : { 
+                "path" : "$distinct", 
+                "preserveNullAndEmptyArrays" : false
+            }
+        }, 
+        { 
+            "$replaceRoot" : { 
+                "newRoot" : "$distinct"
+            }
+        },
+        {
+            "$sort": {
+                "result": 1
+            }
+        }
+    );
+
+    return queryArray;
 }
 
-const geographicCoverageFilter = async (req, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
+function getObjectFilters(searchQueryStart, req, type) {
+    var searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
+    
+    var license = req.query.license || "";
+    var sample = req.query.sampleavailability || "";
+    var datasetfeature = req.query.keywords || "";
+    var publisher = req.query.publisher || "";
+    var ageBand = req.query.ageband || "";
+    var geographicCoverage = req.query.geographiccover || "";
+    var phenotypes = req.query.phenotypes || "";
 
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            
-            var tempGeographicCoverage = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.datasetfields.geographicCoverage && dat.datasetfields.geographicCoverage !== null) {
-                        tempGeographicCoverage.push(dat.datasetfields.geographicCoverage.trim());
-                    }
-                });
-            }
+    var programmingLanguage = req.query.programmingLanguage || "";
+    var toolcategories = req.query.toolcategories || "";
+    var features = req.query.features || "";
+    var tooltopics = req.query.tooltopics || "";
 
-            const combinedGeographicCoverage = [];
-            tempGeographicCoverage.map(temp => {
-                if (combinedGeographicCoverage.indexOf(temp) === -1) {
-                    combinedGeographicCoverage.push(temp)
-                }
+    var projectcategories = req.query.projectcategories || "";
+    var projectfeatures = req.query.projectfeatures || "";
+    var projecttopics = req.query.projecttopics || "";
+
+    var paperfeatures = req.query.paperfeatures || "";
+    var papertopics = req.query.papertopics || "";
+
+    if (type === "dataset") {
+        if (license.length > 0) {
+            var filterTermArray = [];
+            license.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "license": filterTerm })
             });
-            
-            resolve(combinedGeographicCoverage);
-        });
-    })
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (sample.length > 0) {
+            var filterTermArray = [];
+            sample.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.physicalSampleAvailability": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (datasetfeature.length > 0) {
+            var filterTermArray = [];
+            datasetfeature.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (publisher.length > 0) {
+            var filterTermArray = [];
+            publisher.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.publisher": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (ageBand.length > 0) {
+            var filterTermArray = [];
+            ageBand.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.ageBand": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (geographicCoverage.length > 0) {
+            var filterTermArray = [];
+            geographicCoverage.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.geographicCoverage": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (phenotypes.length > 0) {
+            var filterTermArray = [];
+            phenotypes.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "datasetfields.phenotypes.name": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+    }
+
+    if (type === "tool") {
+        if (programmingLanguage.length > 0) {
+            var filterTermArray = [];
+            programmingLanguage.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.programmingLanguage": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (toolcategories.length > 0) {
+            var filterTermArray = [];
+            toolcategories.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.category": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (features.length > 0) {
+            var filterTermArray = [];
+            features.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (tooltopics.length > 0) {
+            var filterTermArray = [];
+            tooltopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+    }
+    else if (type === "project") {
+        if (projectcategories.length > 0) {
+            var filterTermArray = [];
+            projectcategories.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "categories.category": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (projectfeatures.length > 0) {
+            var filterTermArray = [];
+            projectfeatures.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (projecttopics.length > 0) {
+            var filterTermArray = [];
+            projecttopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+    }
+    else if (type === "paper") {
+        if (paperfeatures.length > 0) {
+            var filterTermArray = [];
+            paperfeatures.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.features": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+
+        if (papertopics.length > 0) {
+            var filterTermArray = [];
+            papertopics.split('::').forEach((filterTerm) => {
+                filterTermArray.push({ "tags.topics": filterTerm })
+            });
+            searchQuery["$and"].push({ "$or": filterTermArray });
+        }
+    }
+    return searchQuery;
 }
-
-const topicFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempTopics = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.tags.topics !== null) {
-                        dat.tags ? dat.tags.topics.map((topic) => {
-                            topic.length <= 0 ? tempTopics = tempTopics : tempTopics.push(topic.trim());
-                        }) : ''
-                    }
-                });
-            }
-
-            const combinedTopics = [];
-            tempTopics.map(temp => {
-                if (combinedTopics.indexOf(temp) === -1) {
-                    combinedTopics.push(temp)
-                }
-            });
-            
-            resolve(combinedTopics);
-        });
-    })
-};
-
-const featureFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempFeatures = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (typeof dat.tags.features !== 'undefined' && dat.tags.features !== null && dat.tags.features.length > 0) {
-                        dat.tags.features.map((feature) => {
-                            feature.length <= 0 ? tempFeatures = tempFeatures : tempFeatures.push(feature.trim());
-                        });
-                    }
-                });
-            }
-
-            const combinedFeatures = [];
-            if (tempFeatures.length) {
-                tempFeatures.map(temp => {
-                    if (combinedFeatures.indexOf(temp) === -1) {
-                        combinedFeatures.push(temp)
-                    }
-                });
-            }
-
-            resolve(combinedFeatures);
-        });
-    })
-};
-
-const languageFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempLanguages = [];
-            data.map((dat) => {
-                dat.categories.programmingLanguage ? dat.categories.programmingLanguage.map((language) => {
-                    language.length <= 0 ? tempLanguages = tempLanguages : tempLanguages.push(language.trim());
-                }) : ''
-            });
-
-            const combinedLanguages = [];
-            tempLanguages.map(temp => {
-                if (combinedLanguages.indexOf(temp) === -1) {
-                    combinedLanguages.push(temp)
-                }
-            });
-
-            resolve(combinedLanguages);
-        });
-    })
-};
-
-const categoryFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempCategories = [];
-            data.map((dat) => {
-                !dat.categories.category || dat.categories.category.length <= 0 ? tempCategories = tempCategories : tempCategories.push(dat.categories.category.trim());
-            });
-
-            const combinedCategories = [];
-            tempCategories.map(temp => {
-                if (combinedCategories.indexOf(temp) === -1) {
-                    combinedCategories.push(temp)
-                }
-            });
-
-            resolve(combinedCategories);
-        });
-    })
-};
-
-const licenseFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempLicenses = [];
-            data.map((dat) => {
-                if (dat.license)
-                    dat.license.length <= 0 ? tempLicenses = tempLicenses : tempLicenses.push(dat.license.trim());
-            });
-
-            const combinedLicenses = [];
-            tempLicenses.map(temp => {
-                if (combinedLicenses.indexOf(temp) === -1) {
-                    combinedLicenses.push(temp)
-                }
-            });
-
-            resolve(combinedLicenses);
-        });
-    })
-};
 
 module.exports = router;
