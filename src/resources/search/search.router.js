@@ -15,7 +15,6 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     var authorID = parseInt(req.query.userID);
     var searchString = req.query.search || ""; //If blank then return all
-    var tab = req.query.tab || "";
     let searchQuery = { $and: [{ activeflag: 'active' }] };
 
     if(req.query.form){
@@ -41,93 +40,59 @@ router.get('/', async (req, res) => {
         searchAll = true;
     }
     
-    var allResults = [], datasetResults = [], toolResults = [], projectResults = [], paperResults = [], personResults = [];
+    await Promise.all([
+        getObjectResult('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset')),
+        getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool')),
+        getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project')),
+        getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper')),
+        getObjectResult('person', searchAll, searchQuery),
+    ]).then((values) => {
+        var datasetCount = values[0].length || 0;
+        var toolCount = values[1].length || 0;
+        var projectCount = values[2].length || 0;
+        var paperCount = values[3].length || 0;
+        var personCount = values[4].length || 0;
 
-    if (tab === '') {
-        allResults = await Promise.all([
-            getObjectResult('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset'), req.query.datasetIndex || 0, req.query.maxResults || 40),
-            getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), req.query.toolIndex || 0, req.query.maxResults || 40),
-            getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project'), req.query.projectIndex || 0, req.query.maxResults || 40),
-            getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), req.query.paperIndex || 0, req.query.maxResults || 40),
-            getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40)
-        ]);
-    }
-    else if (tab === 'Datasets') {
-        datasetResults = await Promise.all([
-            getObjectResult('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset'), req.query.datasetIndex || 0, req.query.maxResults || 40)
-        ]);
-    }
-    else if (tab === 'Tools') {
-        toolResults = await Promise.all([
-            getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), req.query.toolIndex || 0, req.query.maxResults || 40)
-        ]);
-    }
-    else if (tab === 'Projects') {
-        projectResults = await Promise.all([
-            getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project'), req.query.projectIndex || 0, req.query.maxResults || 40)
-        ]);
-    }
-    else if (tab === 'Papers') {
-        paperResults = await Promise.all([
-            getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), req.query.paperIndex || 0, req.query.maxResults || 40)
-        ]);
-    }
-    else if (tab === 'People') {
-        personResults = await Promise.all([
-            getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40)
-        ]);
-    }
+        let recordSearchData = new RecordSearchData();
+        recordSearchData.searched = searchString;
+        recordSearchData.returned.dataset = datasetCount;
+        recordSearchData.returned.tool = toolCount;
+        recordSearchData.returned.project = projectCount;
+        recordSearchData.returned.paper = paperCount;
+        recordSearchData.returned.person = personCount;
+        recordSearchData.datesearched = Date.now();
+        recordSearchData.save((err) => { });
 
-    var summaryCounts = await Promise.all([
-        getObjectCount('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset')),
-        getObjectCount('tool', searchAll, getObjectFilters(searchQuery, req, 'tool')),
-        getObjectCount('project', searchAll, getObjectFilters(searchQuery, req, 'project')),
-        getObjectCount('paper', searchAll, getObjectFilters(searchQuery, req, 'paper')),
-        getObjectCount('person', searchAll, searchQuery)
-    ]);
+        var filterOptions = getFilterOptions(values)
+        var summary = { datasets: datasetCount, tools: toolCount, projects: projectCount, papers: paperCount, persons: personCount }
+        
+        var datasetIndex = req.query.datasetIndex || 0;
+        var toolIndex = req.query.toolIndex || 0;
+        var projectIndex = req.query.projectIndex || 0;
+        var paperIndex = req.query.paperIndex || 0;
+        var personIndex = req.query.personIndex || 0;
+        var maxResults = req.query.maxResults || 40;
 
-
-    var summary = { 
-        datasets: summaryCounts[0][0] !== undefined ? summaryCounts[0][0].count : 0, 
-        tools: summaryCounts[1][0] !== undefined ? summaryCounts[1][0].count : 0,
-        projects: summaryCounts[2][0] !== undefined ? summaryCounts[2][0].count : 0,
-        papers: summaryCounts[3][0] !== undefined ? summaryCounts[3][0].count : 0,
-        persons: summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0 
-    }
-
-    let recordSearchData = new RecordSearchData();
-    recordSearchData.searched = searchString;
-    recordSearchData.returned.dataset = summaryCounts[0][0] !== undefined ? summaryCounts[0][0].count : 0;
-    recordSearchData.returned.tool = summaryCounts[1][0] !== undefined ? summaryCounts[1][0].count : 0;
-    recordSearchData.returned.project = summaryCounts[2][0] !== undefined ? summaryCounts[2][0].count : 0;
-    recordSearchData.returned.paper = summaryCounts[3][0] !== undefined ? summaryCounts[3][0].count : 0;
-    recordSearchData.returned.person = summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0;
-    recordSearchData.datesearched = Date.now();
-    recordSearchData.save((err) => { });
-
-    if (tab === '') {
+        var datasetList = values[0].slice(datasetIndex, (+datasetIndex + +maxResults));
+        var toolList = values[1].slice(toolIndex, (+toolIndex + +maxResults));
+        var projectList = values[2].slice(projectIndex, (+projectIndex + +maxResults));
+        var paperList = values[3].slice(paperIndex, (+paperIndex + +maxResults));
+        var personList = values[4].slice(personIndex, (+personIndex + +maxResults));
+        
         return res.json({
             success: true,
-            datasetResults: allResults[0],
-            toolResults: allResults[1],
-            projectResults: allResults[2],
-            paperResults: allResults[3],
-            personResults: allResults[4],
+            datasetResults: datasetList,
+            toolResults: toolList,
+            projectResults: projectList,
+            paperResults: paperList,
+            personResults: personList,
+            filterOptions: filterOptions,
             summary: summary
         });
-    }
-    return res.json({
-        success: true,
-        datasetResults: datasetResults[0],
-        toolResults: toolResults[0],
-        projectResults: projectResults[0],
-        paperResults: paperResults[0],
-        personResults: personResults[0],
-        summary: summary
     });
 });
 
-function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults) {
+function getObjectResult(type, searchAll, searchQuery) {
     var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
     newSearchQuery["$and"].push({ type: type })
 
@@ -159,7 +124,6 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults) {
                             "datasetfields.physicalSampleAvailability": 1,
                             "datasetfields.abstract": 1,
                             "datasetfields.ageBand": 1,
-                            "datasetfields.phenotypes": 1,
 
                             "persons.id": 1,
                             "persons.firstname": 1,
@@ -168,7 +132,7 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults) {
                             "activeflag": 1,
                           }
               }
-        ]).sort({ name : 1 }).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+        ]).sort({ name : 1 });
     }
     else {
         q = Data.aggregate([
@@ -196,67 +160,15 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults) {
                             "datasetfields.physicalSampleAvailability": 1,
                             "datasetfields.abstract": 1,
                             "datasetfields.ageBand": 1,
-                            "datasetfields.phenotypes": 1,
 
                             "persons.id": 1,
                             "persons.firstname": 1,
                             "persons.lastname": 1,
 
                             "activeflag": 1,
+
                           }
               }
-        ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(maxResults));
-    }
-    
-    return new Promise((resolve, reject) => {
-        q.exec((err, data) => {
-            if (typeof data === "undefined") resolve([]);
-            else resolve(data);
-        })
-    })
-}
-
-function getObjectCount(type, searchAll, searchQuery) {
-    var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
-    newSearchQuery["$and"].push({ type: type })
-    var q = '';
-    
-    if (searchAll) {
-        q = Data.aggregate([
-            { $match: newSearchQuery }, 
-            {
-                "$group": {
-                    "_id": {},
-                    "count": {
-                        "$sum": 1
-                    }
-                }
-            }, 
-            {
-                "$project": {
-                    "count": "$count",
-                    "_id": 0
-                }
-            }
-        ]);
-    }
-    else {
-        q = Data.aggregate([
-            { $match: newSearchQuery },
-            {
-                "$group": {
-                    "_id": {},
-                    "count": {
-                        "$sum": 1
-                    }
-                }
-            }, 
-            {
-                "$project": {
-                    "count": "$count",
-                    "_id": 0
-                }
-            }
         ]).sort({ score: { $meta: "textScore" } });
     }
     
@@ -268,7 +180,7 @@ function getObjectCount(type, searchAll, searchQuery) {
     })
 }
 
-//Move to services
+
 function getObjectFilters(searchQueryStart, req, type) {
     var searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
     
@@ -278,7 +190,6 @@ function getObjectFilters(searchQueryStart, req, type) {
     var publisher = req.query.publisher || "";
     var ageBand = req.query.ageband || "";
     var geographicCoverage = req.query.geographiccover || "";
-    var phenotypes = req.query.phenotypes || "";
 
     var programmingLanguage = req.query.programmingLanguage || "";
     var toolcategories = req.query.toolcategories || "";
@@ -337,14 +248,6 @@ function getObjectFilters(searchQueryStart, req, type) {
             var filterTermArray = [];
             geographicCoverage.split('::').forEach((filterTerm) => {
                 filterTermArray.push({ "datasetfields.geographicCoverage": filterTerm })
-            });
-            searchQuery["$and"].push({ "$or": filterTermArray });
-        }
-
-        if (phenotypes.length > 0) {
-            var filterTermArray = [];
-            phenotypes.split('::').forEach((filterTerm) => {
-                filterTermArray.push({ "datasetfields.phenotypes.name": filterTerm })
             });
             searchQuery["$and"].push({ "$or": filterTermArray });
         }
@@ -426,6 +329,200 @@ function getObjectFilters(searchQueryStart, req, type) {
         }
     }
     return searchQuery;
+}
+
+/* function getDatasetFilters(req) {
+    var filterString = '';
+    if (req.query.publisher) {
+        if (typeof (req.query.publisher) == 'string') {
+            req.query.publisher.split('::').forEach((filterTerm) => {
+                filterString += '&publisher=' + filterTerm;
+            });
+        }
+    }
+    if (req.query.license) {
+        if (typeof (req.query.license) == 'string') {
+            req.query.license.split('::').forEach((filterTerm) => {
+                filterString += '&license=' + filterTerm;
+            });
+        }
+    }
+    if (req.query.geographiccover) {
+        if (typeof (req.query.geographiccover) == 'string') {
+            req.query.geographiccover.split('::').forEach((filterTerm) => {
+                filterString += '&geographicCoverage=' + filterTerm;
+            });
+        }
+    }
+    if (req.query.ageband) {
+        if (typeof (req.query.ageband) == 'string') {
+            req.query.ageband.split('::').forEach((filterTerm) => {
+                filterString += '&ageBand=' + filterTerm.replace("+", "%2B");;
+            });
+        }
+    }
+    if (req.query.sampleavailability) {
+        if (typeof (req.query.sampleavailability) == 'string') {
+            req.query.sampleavailability.split('::').forEach((filterTerm) => {
+                filterString += '&physicalSampleAvailability=' + filterTerm;
+            });
+        }
+    }
+    if (req.query.keywords) {
+        if (typeof (req.query.keywords) == 'string') {
+            req.query.keywords.split('::').forEach((filterTerm) => {
+                filterString += '&keywords=' + filterTerm;
+            });
+        }
+    }
+    return filterString;
+} */
+
+function getFilterOptions(values) {
+    var licenseFilterOptions = [];
+    var sampleFilterOptions = [];
+    var datasetFeaturesFilterOptions = [];
+    var publisherFilterOptions = [];
+    var ageBandFilterOptions = [];
+    var geographicCoverageFilterOptions = [];
+
+    var toolCategoriesFilterOptions = [];
+    var programmingLanguageFilterOptions = [];
+    var featuresFilterOptions = [];
+    var toolTopicsFilterOptions = [];
+
+    var projectCategoriesFilterOptions = [];
+    var projectFeaturesFilterOptions = [];
+    var projectTopicsFilterOptions = [];
+
+    var paperFeaturesFilterOptions = [];
+    var paperTopicsFilterOptions = [];
+
+    values[0].forEach((dataset) => {
+        if (dataset.license && dataset.license !== '' && !licenseFilterOptions.includes(dataset.license)) {
+            licenseFilterOptions.push(dataset.license);
+        }
+
+        if (dataset.datasetfields.physicalSampleAvailability && dataset.datasetfields.physicalSampleAvailability.length > 0) {
+            dataset.datasetfields.physicalSampleAvailability.forEach((fe) => {
+                if (!sampleFilterOptions.includes(fe) && fe !== '') {
+                    sampleFilterOptions.push(fe);
+                }
+            });
+        }
+
+        if (dataset.tags.features && dataset.tags.features.length > 0) {
+            dataset.tags.features.forEach((fe) => {
+                if (!datasetFeaturesFilterOptions.includes(fe) && fe !== '') {
+                    datasetFeaturesFilterOptions.push(fe);
+                }
+            });
+        }
+       
+        if (dataset.datasetfields.publisher && dataset.datasetfields.publisher !== '' && !publisherFilterOptions.includes(dataset.datasetfields.publisher)) {
+            publisherFilterOptions.push(dataset.datasetfields.publisher);
+        }
+
+        if (dataset.datasetfields.ageBand && dataset.datasetfields.ageBand !== '' && !ageBandFilterOptions.includes(dataset.datasetfields.ageBand)) {
+            ageBandFilterOptions.push(dataset.datasetfields.ageBand);
+        }
+
+        if (dataset.datasetfields.geographicCoverage && dataset.datasetfields.geographicCoverage !== '' && !geographicCoverageFilterOptions.includes(dataset.datasetfields.geographicCoverage)) {
+            geographicCoverageFilterOptions.push(dataset.datasetfields.geographicCoverage);
+        }
+    })
+
+    values[1].forEach((tool) => {
+        if (tool.categories && tool.categories.category && tool.categories.category !== '' && !toolCategoriesFilterOptions.includes(tool.categories.category)) {
+            toolCategoriesFilterOptions.push(tool.categories.category);
+        }
+
+        if (tool.categories.programmingLanguage && tool.categories.programmingLanguage.length > 0) {
+            tool.categories.programmingLanguage.forEach((pl) => {
+                if (!programmingLanguageFilterOptions.includes(pl) && pl !== '') {
+                    programmingLanguageFilterOptions.push(pl);
+                }
+            });
+        }
+
+        if (tool.tags.features && tool.tags.features.length > 0) {
+            tool.tags.features.forEach((fe) => {
+                if (!featuresFilterOptions.includes(fe) && fe !== '') {
+                    featuresFilterOptions.push(fe);
+                }
+            });
+        }
+
+        if (tool.tags.topics && tool.tags.topics.length > 0) {
+            tool.tags.topics.forEach((to) => {
+                if (!toolTopicsFilterOptions.includes(to) && to !== '') {
+                    toolTopicsFilterOptions.push(to);
+                }
+            });
+        }
+    })
+
+    values[2].forEach((project) => {
+        if (project.categories && project.categories.category && project.categories.category !== '' && !projectCategoriesFilterOptions.includes(project.categories.category)) {
+            projectCategoriesFilterOptions.push(project.categories.category);
+        }
+
+        if (project.tags.features && project.tags.features.length > 0) {
+            project.tags.features.forEach((pf) => {
+                if (!projectFeaturesFilterOptions.includes(pf) && pf !== '') {
+                    projectFeaturesFilterOptions.push(pf);
+                }
+            });
+        }
+
+        if (project.tags.topics && project.tags.topics.length > 0) {
+            project.tags.topics.forEach((pto) => {
+                if (!projectTopicsFilterOptions.includes(pto) && pto !== '') {
+                    projectTopicsFilterOptions.push(pto);
+
+                }
+            });
+        }
+    })
+
+    values[3].forEach((paper) => {
+        if (paper.tags.features && paper.tags.features.length > 0) {
+            paper.tags.features.forEach((pf) => {
+                if (!paperFeaturesFilterOptions.includes(pf) && pf !== '') {
+                    paperFeaturesFilterOptions.push(pf);
+                }
+            });
+        }
+
+        if (paper.tags.topics && paper.tags.topics.length > 0) {
+            paper.tags.topics.forEach((pat) => {
+                if (!paperTopicsFilterOptions.includes(pat) && pat !== '') {
+                    paperTopicsFilterOptions.push(pat);
+                }
+            });
+        }
+    })
+
+    return {
+        licenseFilterOptions: licenseFilterOptions,
+        sampleFilterOptions: sampleFilterOptions,
+        datasetFeaturesFilterOptions: datasetFeaturesFilterOptions,
+        publisherFilterOptions: publisherFilterOptions,
+        ageBandFilterOptions: ageBandFilterOptions,
+        geographicCoverageFilterOptions: geographicCoverageFilterOptions,
+        
+        toolCategoriesFilterOptions: toolCategoriesFilterOptions,
+        programmingLanguageFilterOptions: programmingLanguageFilterOptions,
+        featuresFilterOptions: featuresFilterOptions,
+        toolTopicsFilterOptions: toolTopicsFilterOptions,
+        
+        projectCategoriesFilterOptions: projectCategoriesFilterOptions,
+        projectFeaturesFilterOptions: projectFeaturesFilterOptions,
+        projectTopicsFilterOptions: projectTopicsFilterOptions,
+        
+        paperFeaturesFilterOptions: paperFeaturesFilterOptions,
+        paperTopicsFilterOptions: paperTopicsFilterOptions
+    };
 }
 
 module.exports = router;

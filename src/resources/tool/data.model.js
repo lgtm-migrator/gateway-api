@@ -69,8 +69,7 @@ const DataSchema = new Schema(
         metadataquality : {},
         metadataschema : {},
         technicaldetails : [],
-        versionLinks: [],
-        phenotypes: []
+        versionLinks: []
     },
 
     //not used
