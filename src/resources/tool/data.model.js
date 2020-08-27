@@ -4,7 +4,7 @@ import { PublisherModel } from '../publisher/publisher.model';
 import { TeamModel } from '../team/team.model';
 
 // this will be our data base's data structure 
-const DataSchema = new Schema(
+const DataSchema = new Schema( 
   {
     id: Number,
     type: String,
@@ -17,7 +17,7 @@ const DataSchema = new Schema(
       programmingLanguage: {type: [String]},
       programmingLanguageVersion: {type: String},
     },
-    license: String,
+    license: String, 
     authors: [Number],
     tags: {
       features: [String],
@@ -39,6 +39,7 @@ const DataSchema = new Schema(
     //paper related fields
     journal: String,
     journalYear: Number,
+    isPreprint: Boolean,
 
     //person related fields
     firstname: String,
