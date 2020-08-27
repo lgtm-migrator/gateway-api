@@ -1,6 +1,10 @@
 import { model, Schema } from 'mongoose'
 
 const PublisherSchema = new Schema({
+  id: {
+    type: Number,
+    unique: true
+  },
   name: String,
   active: { 
       type: Boolean, 
