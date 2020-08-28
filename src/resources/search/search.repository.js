@@ -37,7 +37,8 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                 "persons.lastname": 1,
 
                 "activeflag": 1,
-                "counter": 1
+                "counter": 1,
+                "datasetfields.metadataquality.quality_score": 1
             }
         }
     ];
