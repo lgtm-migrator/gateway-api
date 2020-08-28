@@ -44,36 +44,36 @@ router.get('/', async (req, res) => {
 
     if (tab === '') {
         allResults = await Promise.all([
-            getObjectResult('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset'), req.query.datasetIndex || 0, req.query.maxResults || 40, req.query.datasetSort),
-            getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), req.query.toolIndex || 0, req.query.maxResults || 40, req.query.datasetSort),
-            getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project'), req.query.projectIndex || 0, req.query.maxResults || 40, req.query.datasetSort),
-            getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), req.query.paperIndex || 0, req.query.maxResults || 40, req.query.datasetSort),
-            getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.datasetSort)
+            getObjectResult('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset'), req.query.datasetIndex || 0, req.query.maxResults || 40, req.query.datasetSort || ''),
+            getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), req.query.toolIndex || 0, req.query.maxResults || 40, req.query.toolSort || ''),
+            getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project'), req.query.projectIndex || 0, req.query.maxResults || 40, req.query.projectSort || ''),
+            getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), req.query.paperIndex || 0, req.query.maxResults || 40, req.query.paperSort || ''),
+            getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.personSort)
         ]);
     }
     else if (tab === 'Datasets') {
         datasetResults = await Promise.all([
-            getObjectResult('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset'), req.query.datasetIndex || 0, req.query.maxResults || 40, req.query.datasetSort)
+            getObjectResult('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset'), req.query.datasetIndex || 0, req.query.maxResults || 40, req.query.datasetSort || '')
         ]);
     }
     else if (tab === 'Tools') {
         toolResults = await Promise.all([
-            getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), req.query.toolIndex || 0, req.query.maxResults || 40, req.query.datasetSort)
+            getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), req.query.toolIndex || 0, req.query.maxResults || 40, req.query.toolSort || '')
         ]);
     }
     else if (tab === 'Projects') {
         projectResults = await Promise.all([
-            getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project'), req.query.projectIndex || 0, req.query.maxResults || 40, req.query.datasetSort)
+            getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project'), req.query.projectIndex || 0, req.query.maxResults || 40, req.query.projectSort || '')
         ]);
     }
     else if (tab === 'Papers') {
         paperResults = await Promise.all([
-            getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), req.query.paperIndex || 0, req.query.maxResults || 40, req.query.datasetSort)
+            getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), req.query.paperIndex || 0, req.query.maxResults || 40, req.query.paperSort || '')
         ]);
     }
     else if (tab === 'People') {
         personResults = await Promise.all([
-            getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.datasetSort)
+            getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.personSort || '')
         ]);
     }
 
