@@ -13,28 +13,27 @@ router.get('/', async (req, res) => {
     if (tab === '') {
         let searchQuery = { $and: [{ activeflag: 'active' }] };
         if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
-        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
         
         await Promise.all([
-            getFilter(searchString, 'dataset', 'license', false, activeFiltersQuery),
-            getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, activeFiltersQuery),
-            getFilter(searchString, 'dataset', 'tags.features', true, activeFiltersQuery),
-            getFilter(searchString, 'dataset', 'datasetfields.publisher', false, activeFiltersQuery),
-            getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, activeFiltersQuery),
-            getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, activeFiltersQuery),
-            getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'license', false, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'tags.features', true, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.publisher', false, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, getObjectFilters(searchQuery, req, 'dataset')),
 
-            getFilter(searchString, 'tool', 'tags.topic', true, activeFiltersQuery),
-            getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
-            getFilter(searchString, 'tool', 'categories.programmingLanguage', true, activeFiltersQuery),
-            getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'tags.topic', true, getObjectFilters(searchQuery, req, 'tool')),
+            getFilter(searchString, 'tool', 'tags.features', true, getObjectFilters(searchQuery, req, 'tool')),
+            getFilter(searchString, 'tool', 'categories.programmingLanguage', true, getObjectFilters(searchQuery, req, 'tool')),
+            getFilter(searchString, 'tool', 'categories.category', false, getObjectFilters(searchQuery, req, 'tool')),
 
-            getFilter(searchString, 'project', 'tags.topics', true, activeFiltersQuery),
-            getFilter(searchString, 'project', 'tags.features', true, activeFiltersQuery),
-            getFilter(searchString, 'project', 'categories.category', false, activeFiltersQuery),
+            getFilter(searchString, 'project', 'tags.topics', true, getObjectFilters(searchQuery, req, 'project')),
+            getFilter(searchString, 'project', 'tags.features', true, getObjectFilters(searchQuery, req, 'project')),
+            getFilter(searchString, 'project', 'categories.category', false, getObjectFilters(searchQuery, req, 'project')),
 
-            getFilter(searchString, 'paper', 'tags.topics', true, activeFiltersQuery),
-            getFilter(searchString, 'paper', 'tags.features', true, activeFiltersQuery)  
+            getFilter(searchString, 'paper', 'tags.topics', true, getObjectFilters(searchQuery, req, 'project')),
+            getFilter(searchString, 'paper', 'tags.features', true, getObjectFilters(searchQuery, req, 'project'))  
         ]).then((values) => {
             return res.json({
                 success: true, 
@@ -123,7 +122,7 @@ router.get('/', async (req, res) => {
     else if (tab === 'Tools') {
         let searchQuery = { $and: [{ activeflag: 'active' }] };
         if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
-        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'tool')
         
         await Promise.all([
             getFilter(searchString, 'tool', 'tags.topics', true, activeFiltersQuery),
@@ -151,7 +150,7 @@ router.get('/', async (req, res) => {
     else if (tab === 'Projects') {
         let searchQuery = { $and: [{ activeflag: 'active' }] };
         if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
-        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'project')
         
         await Promise.all([
             getFilter(searchString, 'project', 'tags.topics', true, activeFiltersQuery),
@@ -176,7 +175,7 @@ router.get('/', async (req, res) => {
     else if (tab === 'Papers') {
         let searchQuery = { $and: [{ activeflag: 'active' }] };
         if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
-        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'paper')
         
         await Promise.all([
             getFilter(searchString, 'paper', 'tags.topics', true, activeFiltersQuery),

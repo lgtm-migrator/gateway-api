@@ -120,7 +120,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
     var searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
     
     let { 
-        license = '', sample = '', datasetfeature = '', publisher = '', ageBand = '', geographicCoverage = '', phenotypes = '', 
+        license = '', sampleavailability = '', keywords = '', publisher = '', ageband = '', geographiccover = '', phenotypes = '', 
         programmingLanguage = '', toolcategories = '', features = '', tooltopics = '', 
         projectcategories = '', projectfeatures = '', projecttopics = '', 
         paperfeatures = '', papertopics = '' 
@@ -135,17 +135,17 @@ export function getObjectFilters(searchQueryStart, req, type) {
             searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
-        if (sample.length > 0) {
+        if (sampleavailability.length > 0) {
             var filterTermArray = [];
-            sample.split('::').forEach((filterTerm) => {
+            sampleavailability.split('::').forEach((filterTerm) => {
                 filterTermArray.push({ "datasetfields.physicalSampleAvailability": filterTerm })
             });
             searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
-        if (datasetfeature.length > 0) {
+        if (keywords.length > 0) {
             var filterTermArray = [];
-            datasetfeature.split('::').forEach((filterTerm) => {
+            keywords.split('::').forEach((filterTerm) => {
                 filterTermArray.push({ "tags.features": filterTerm })
             });
             searchQuery["$and"].push({ "$or": filterTermArray });
@@ -159,17 +159,17 @@ export function getObjectFilters(searchQueryStart, req, type) {
             searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
-        if (ageBand.length > 0) {
+        if (ageband.length > 0) {
             var filterTermArray = [];
-            ageBand.split('::').forEach((filterTerm) => {
+            ageband.split('::').forEach((filterTerm) => {
                 filterTermArray.push({ "datasetfields.ageBand": filterTerm })
             });
             searchQuery["$and"].push({ "$or": filterTermArray });
         }
 
-        if (geographicCoverage.length > 0) {
+        if (geographiccover.length > 0) {
             var filterTermArray = [];
-            geographicCoverage.split('::').forEach((filterTerm) => {
+            geographiccover.split('::').forEach((filterTerm) => {
                 filterTermArray.push({ "datasetfields.geographicCoverage": filterTerm })
             });
             searchQuery["$and"].push({ "$or": filterTermArray });
