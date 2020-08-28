@@ -1,7 +1,6 @@
 import express from 'express'
 
 import { RecordSearchData } from '../search/record.search.model';
-import { Data } from '../tool/data.model'
 import { getObjectResult, getObjectCount, getObjectFilters } from './search.repository';
 
 const router = express.Router();
