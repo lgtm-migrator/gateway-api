@@ -201,7 +201,7 @@ router.get('/', async (req, res) => {
 // @access  Public
 router.get('/topic/:type',
     async (req, res) => {
-      await getFilter('', req.params.type, 'tags.topics', true)
+      await getFilter('', req.params.type, 'tags.topics', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -216,7 +216,7 @@ router.get('/topic/:type',
 // @access  Public
 router.get('/feature/:type',
     async (req, res) => {
-      await getFilter('', req.params.type, 'tags.features', true)
+      await getFilter('', req.params.type, 'tags.features', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -231,7 +231,7 @@ router.get('/feature/:type',
 // @access  Public
 router.get('/language/:type',
     async (req, res) => {
-      await getFilter('', req.params.type, 'categories.programmingLanguage', true)
+      await getFilter('', req.params.type, 'categories.programmingLanguage', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -246,7 +246,7 @@ router.get('/language/:type',
 // @access  Public
 router.get('/category/:type',
     async (req, res) => {
-      await getFilter('', req.params.type, 'categories.category', false)  
+      await getFilter('', req.params.type, 'categories.category', false, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -261,7 +261,7 @@ router.get('/category/:type',
 // @access  Public
 router.get('/license/:type',
     async (req, res) => {
-      await getFilter('', req.params.type, 'license', false)
+      await getFilter('', req.params.type, 'license', false, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
