@@ -10,6 +10,7 @@ const DataSchema = new Schema(
     type: String,
     name: String,
     description: String,
+    resultsInsights: String,
     link: String,
     categories: {
       category: {type: String},
