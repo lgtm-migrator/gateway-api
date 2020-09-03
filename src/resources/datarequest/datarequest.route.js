@@ -1,6 +1,5 @@
 import express from 'express';
 import passport from 'passport';
-import axios from 'axios';
 import { DataRequestModel } from './datarequest.model';
 import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
@@ -246,24 +245,23 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
     const {
       params: { id },
     } = req;
-
-    // 2. Pull out aboutApplication selected datasets to update datasetIds array
-    let updateObj = req.body;
-    let { aboutApplication } = req.body;
+    // 2. Destructure body and update only specific fields by building a segregated non-user specified update object
+    let updateObj;
+    let { aboutApplication, questionAnswers } = req.body;
     if(aboutApplication) {
       let parsedObj = JSON.parse(aboutApplication);
       let updatedDatasetIds = parsedObj.selectedDatasets.map(dataset => dataset.datasetId);
-      updateObj = { ...req.body,  datasetIds: updatedDatasetIds };
+      updateObj = { aboutApplication,  datasetIds: updatedDatasetIds };
     }
-
+    if(questionAnswers) {
+      updateObj = { ...updateObj, questionAnswers };
+    }
     // 3. Find data request by _id and update via body
     let accessRequestRecord = await DataRequestModel.findByIdAndUpdate(id, updateObj, { new: true });
-
     // 4. Check access record
     if (!accessRequestRecord) {
       return res.status(400).json({ status: 'error', message: 'Data Access Request not found.' });
     }
-
     // 5. Return new data object
     return res.status(200).json({
       status: 'success',
