@@ -4,6 +4,7 @@ const DataRequestSchema = new Schema({
   version: Number,
   userId: Number,
   dataSetId: String,
+  datasetIds: [{ type: String}],
   applicationStatus: {
     type: String,
     default: 'inProgress',
@@ -16,9 +17,29 @@ const DataRequestSchema = new Schema({
   questionAnswers: {
     type: String,
     default: "{}"
+  },
+  aboutApplication: {
+    type: String,
+    default: "{}"
   }
 }, {
-    timestamps: true 
+    timestamps: true,
+    toJSON:     { virtuals: true },
+    toObject:   { virtuals: true }
+});
+
+DataRequestSchema.virtual('datasets', {
+  ref: 'Data',
+  foreignField: 'datasetid',
+  localField: 'datasetIds',
+  justOne: false
+});
+
+DataRequestSchema.virtual('dataset', {
+  ref: 'Data',
+  foreignField: 'datasetid',
+  localField: 'dataSetId',
+  justOne: true
 });
 
 export const DataRequestModel = model('data_request', DataRequestSchema)

@@ -179,10 +179,10 @@ const _buildSubjectTitle = (user, title) => {
  */
 const _buildEmail = (fullQuestions, questionAnswers, options) => {
   let parent;
-  let { userType, userName, userEmail, custodianEmail, dataSetTitle } = options;
+  let { userType, userName, userEmail, custodianEmail, datasetTitles } = options;
   const hdrukEmail = `enquiry@healthdatagateway.org`;
   const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || custodianEmail;
-  let subject = _buildSubjectTitle(userType, dataSetTitle);
+  let subject = _buildSubjectTitle(userType, datasetTitles);
   let questionTree = { ...fullQuestions };
   let answers = { ...questionAnswers };
   let pages = Object.keys(questionTree);
@@ -211,8 +211,8 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                   <td bgcolor="#fff" style="padding: 0; border: 0;">
                     <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
-                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dataSetTitle}</td>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of submission</td>
@@ -283,7 +283,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
   let msg = {
     from: hdrukEmail,
     to: userType.toUpperCase() === 'DATACUSTODIAN' ? dataCustodianEmail : userEmail,
-    subject: `Enquires for ${dataSetTitle} dataset healthdatagateway.org`,
+    subject: `Enquires for ${datasetTitles} dataset healthdatagateway.org`,
     html: table,
     allowUnsubscribe: userType.toUpperCase() === 'DATACUSTODIAN' ? false : true,
   };
