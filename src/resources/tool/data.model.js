@@ -79,7 +79,9 @@ const DataSchema = new Schema(
   },
   { 
     collection: 'tools',
-    timestamps: true 
+    timestamps: true ,
+    toJSON:     { virtuals: true },
+    toObject:   { virtuals: true }
   }
 );
 
