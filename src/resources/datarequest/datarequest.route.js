@@ -42,9 +42,9 @@ router.get('/:requestId', passport.authenticate('jwt'), async (req, res) => {
       // 1. Get dataSetId from params
       let {params: {requestId}} = req;
       // 2. Get the userId
-      let {id: userId} = req.user;
+      let {id: userId, _id} = req.user;
       // 3. Find the matching record and include attached datasets records with publisher details
-      let accessRecord = await DataRequestModel.findOne({_id: requestId}).populate({ path: 'datasets dataset', populate: { path: 'publisher' }});
+      let accessRecord = await DataRequestModel.findOne({_id: requestId}).populate({ path: 'datasets dataset', populate: { path: 'publisher', populate: { path: 'team'}}});
       //TODO check user is owner of DAR or is a member of the publisher team (return 401 if not)
       // 4. If no matching application found, return 404
       if (!accessRecord) {
@@ -54,10 +54,41 @@ router.get('/:requestId', passport.authenticate('jwt'), async (req, res) => {
       }
       // 5. Ensure single datasets are mapped correctly into array
       if (_.isEmpty(accessRecord.datasets)) {
-        accessRecord.datasets = [accessRecord.dataset];
+        accessRecord.datasets = [...accessRecord.dataset];
       }
-      // 6. Return application form
-      return res.status(200).json({status: 'success', data: {...accessRecord._doc, jsonSchema: JSON.parse(accessRecord.jsonSchema), questionAnswers: JSON.parse(accessRecord.questionAnswers), aboutApplication: JSON.parse(accessRecord.aboutApplication)}, datasets: accessRecord.datasets || [accessRecord.dataset]});
+      // 6. Check if requesting user is custodian member or applicant/collaborator
+      let found = false, userType = '', readOnly = true;
+      if(_.has(accessRecord.datasets[0].toObject(), 'publisher.team.members')) {
+        let { members } = accessRecord.datasets[0].publisher.team.toObject();
+        found = members.some(el => el.memberid.toString() === _id.toString());
+      }
+
+      if(!found && accessRecord.userId !== userId) {
+        return res.status(401).json({status: 'failure', message: 'Unauthorised'});
+      }
+
+      if(found) {
+        userType = 'Custodian'
+      } else {
+        userType = 'Applicant'
+      }
+
+      if(userType === 'Applicant' && (accessRecord.applicationStatus === 'inProgress' || accessRecord.applicationStatus === 'submitted' )) {
+        readOnly = false;
+      }
+
+      // 7. Return application form
+      return res.status(200).json({
+        status: 'success', 
+        data: {
+          ...accessRecord._doc, 
+          jsonSchema: JSON.parse(accessRecord.jsonSchema), 
+          questionAnswers: JSON.parse(accessRecord.questionAnswers), 
+          aboutApplication: JSON.parse(accessRecord.aboutApplication), 
+          datasets: accessRecord.datasets,
+          readOnly,
+          userType 
+        }});
    }
    catch (err) {
       console.error(err.message);
@@ -119,7 +150,15 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
          data = {...accessRecord._doc};
        }
 
-       return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers), aboutApplication: JSON.parse(data.aboutApplication)}, dataset});
+       return res.status(200).json({
+         status: 'success', 
+         data: {
+           ...data, 
+           jsonSchema: JSON.parse(data.jsonSchema), 
+           questionAnswers: JSON.parse(data.questionAnswers), 
+           aboutApplication: JSON.parse(data.aboutApplication),
+           dataset
+        }});
    }
    catch (err) {
       console.log(err.message);
@@ -182,7 +221,15 @@ router.get('/datasets/:datasetIds', passport.authenticate('jwt'), async (req, re
          data = {...accessRecord._doc};
        }
 
-       return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers), aboutApplication: JSON.parse(data.aboutApplication)}, datasets});
+       return res.status(200).json({
+         status: 'success', 
+         data: {
+           ...data, 
+           jsonSchema: JSON.parse(data.jsonSchema), 
+           questionAnswers: JSON.parse(data.questionAnswers), 
+           aboutApplication: JSON.parse(data.aboutApplication), 
+           datasets
+        }});
    }
    catch (err) {
       console.log(err.message);
