@@ -33,6 +33,8 @@ const strategy = app => {
         profile,
         done 
     ) => {
+        if (!profile || !profile._json || !profile._json.eduPersonTargetedID || profile._json.eduPersonTargetedID === '') return done("loginError");
+        
         let [err, user] = await to(getUserByProviderId(profile._json.eduPersonTargetedID))
         if (err || user) {
             return done(err, user)
@@ -64,51 +66,77 @@ const strategy = app => {
         },
         passport.authenticate('oidc')
     )
+    
+    app.get('/auth/oidc/callback', (req, res, next) => {
+        passport.authenticate('oidc', (err, user, info) => {
+            if (err || !user) {
+                //loginError
+                if (err === 'loginError') return res.status(200).redirect(process.env.homeURL+'/loginerror')
+                
+                // failureRedirect
+                var redirect = '/';
+                let returnPage = null;
 
-    app.get(
-        `/auth/oidc/callback`,
-        passport.authenticate('oidc', { failureRedirect: '/login' }),
-        async (req, res) => {
-            var redirect = '/account';
-
-            let returnPage = null;
-            let queryStringParsed = null;
-            if (req.param.returnpage) {
-                returnPage = Url.parse(req.param.returnpage);
-                redirect = returnPage.path;
-                queryStringParsed = queryString.parse(returnPage.query);
-            }
-
-            let [profileErr, profile] = await to(getObjectById(req.user.id))
-            
-            if (!profile) {
-                await to(updateRedirectURL({id: req.user.id, redirectURL: redirect}))
-                return res.redirect(process.env.homeURL+'/completeRegistration/'+req.user.id)
-            }
-
-            if (req.param.returnpage) {
-                delete req.param.returnpage;
-            }
-
-            let redirectUrl = process.env.homeURL + redirect;
-            
-            if (queryStringParsed && queryStringParsed.sso && queryStringParsed.sig) {
-                try {
-                    redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
-                } catch (err) {
-                    console.error(err);
-                    return res.status(500).send('Error authenticating the user.');
+                if (req.param.returnpage) {
+                    returnPage = Url.parse(req.param.returnpage);
+                    redirect = returnPage.path;
+                    delete req.param.returnpage;
                 }
+                
+                let redirectUrl = process.env.homeURL + redirect;
+
+                return res
+                    .status(200)
+                    .redirect(redirectUrl)
             }
-            
-            return res
+
+            req.login(user, async (err) => {
+                if (err) {
+                    return next(err);
+                }
+
+                var redirect = '/';
+
+                let returnPage = null;
+                let queryStringParsed = null;
+                if (req.param.returnpage) {
+                    returnPage = Url.parse(req.param.returnpage);
+                    redirect = returnPage.path;
+                    queryStringParsed = queryString.parse(returnPage.query);
+                }
+
+                let [profileErr, profile] = await to(getObjectById(req.user.id))
+
+                if (!profile) {
+                    await to(updateRedirectURL({ id: req.user.id, redirectURL: redirect }))
+                    return res.redirect(process.env.homeURL + '/completeRegistration/' + req.user.id)
+                }
+
+                if (req.param.returnpage) {
+                    delete req.param.returnpage;
+                }
+
+                let redirectUrl = process.env.homeURL + redirect;
+
+                if (queryStringParsed && queryStringParsed.sso && queryStringParsed.sig) {
+                    try {
+                        redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
+                    } catch (err) {
+                        console.error(err);
+                        return res.status(500).send('Error authenticating the user.');
+                    }
+                }
+
+                return res
                 .status(200)
                 .cookie('jwt', signToken({_id: req.user._id, id: req.user.id, timeStamp: Date.now()}), {
                     httpOnly: true
                 })
                 .redirect(redirectUrl)
-        }
-    )
+
+            });
+        })(req, res, next);
+    });
 
     return app
 }
