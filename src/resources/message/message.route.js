@@ -62,7 +62,7 @@ router.get('/numberofunread/admin/:personID',
 
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ $or: [{ messageTo: idString }, { messageTo: 0 }] }] } },
-      { $sort: { messageSent: -1 } },
+      { $sort: { createdDate: -1 } },
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
     ]).limit(50);
     m.exec((err, data) => {
@@ -95,6 +95,7 @@ router.get('/numberofunread/:personID',
     }
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ messageTo: idString }] } },
+      { $sort: { createdDate: -1 } },
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
     ]).limit(50);
     m.exec((err, data) => {
@@ -122,6 +123,7 @@ router.get('/:personID',
     }
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ messageTo: idString }] } },
+      { $sort: { createdDate: -1 } },
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
     ]).limit(50);
     m.exec((err, data) => {
@@ -148,7 +150,7 @@ router.get(
 
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ $or: [{ messageTo: idString }, { messageTo: 0 }] }] } },
-      { $sort: { messageSent: -1 } },
+      { $sort: { createdDate: -1 } },
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
     ]).limit(50);
     m.exec((err, data) => {
