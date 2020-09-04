@@ -5,6 +5,8 @@ import axios from 'axios';
 import { HmacSHA256 } from 'crypto-js';
 import base64url from "base64url";
 import _ from 'lodash';
+import { Collection } from 'mongoose';
+import { Collections } from '../collections/collections.model';
 
 /**
  * Gets a Discourse topic containing posts
@@ -83,6 +85,10 @@ export async function createDiscourseTopic(tool) {
     rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/paper/${tool.id}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_PAPERS_ID;
   }
+  else if (tool.type === 'collection') {
+    rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/collection/${tool.id}`;
+    categoryIs = process.env.DISCOURSE_CATEGORY_COLLECTIONS_ID;
+  }
   // 3. Assemble payload for creating a topic in Discourse
   const payload = {
     title: tool.name,
@@ -98,12 +104,21 @@ export async function createDiscourseTopic(tool) {
     );
     // 5. If post was successful, update tool in MongoDb with topic identifier
     if (res.data.topic_id) {
-      await Data.findOneAndUpdate(
-        { id: tool.id },
-        { $set: { discourseTopicId: res.data.topic_id } }
-      );
-      // 6. Return the topic identifier
-      return res.data.topic_id;
+      // 6. Check tool type and Return the topic identifier
+      if(tool.type === 'collection'){
+          await Collections.findOneAndUpdate(
+            { id: tool.id },
+            { $set: { discourseTopicId: res.data.topic_id } }
+          );
+          return res.data.topic_id;
+      }
+      else{
+        await Data.findOneAndUpdate(
+          { id: tool.id },
+          { $set: { discourseTopicId: res.data.topic_id } }
+        );
+        return res.data.topic_id;
+      }
     }
   } catch (err) {
     console.error(err);

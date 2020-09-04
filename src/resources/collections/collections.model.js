@@ -9,6 +9,8 @@ const CollectionSchema = new Schema(
     imageLink: String,
     authors: [Number],
     // emailNotifications: Boolean, 
+    counter: Number,
+    discourseTopicId: Number,
     relatedObjects: [{
         objectId: String, 
         reason: String,

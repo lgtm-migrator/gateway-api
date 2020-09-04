@@ -1,6 +1,7 @@
 import express from 'express';
 import { createDiscourseTopic, getDiscourseTopic, deleteDiscoursePost, createDiscoursePost, updateDiscoursePost } from './discourse.service';
 import { Data } from '../tool/data.model';
+import { Collections } from '../collections/collections.model';
 import { ROLES } from '../user/user.roles'
 import passport from "passport";
 import { utils } from "../auth";
@@ -114,26 +115,49 @@ router.post(
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
     try {
-      let { toolId, topicId, comment } = req.body;
+      let { toolId, collectionId, topicId, comment } = req.body;
       // 1. Check if the topicId has been passed, if it is 0, the topic needs to be created
       if(!topicId) {
-        // 2. Get the tool details from MongoDb to create the new topic
-        await Data.findOne({ id: toolId }).then( async (tool) => {
-          // 3. If no tool was found, return 404
-          if (!tool) {
-            return res.status(404).json({ success: false, error: 'Tool not found.' });
-          }
-          // 4. Create a new Discourse topic for the tool
-          topicId = await createDiscourseTopic(tool);
-          // 5. Add the user's post to the new topic
-          await createDiscoursePost(topicId, comment, req.user);
-          // 6. Get topic for return
-          const topic = await getDiscourseTopic(topicId, req.user);
-          // 7. Return success with topic data
-          return res.json({success: true, topic });
-        }).catch((error) => {
-          return res.status(500).json({ success: false, error: error.message });
-        });
+      // 2. Check if comment is on a tool or collection
+        if(toolId){
+          // 3. Get the tool details from MongoDb to create the new topic
+          await Data.findOne({ id: toolId }).then( async (tool) => {
+            // 4. If no tool was found, return 404
+            if (!tool) {
+              return res.status(404).json({ success: false, error: 'Tool not found.' });
+            }
+            // 5. Create a new Discourse topic for the tool
+            topicId = await createDiscourseTopic(tool);
+            // 6. Add the user's post to the new topic
+            await createDiscoursePost(topicId, comment, req.user);
+            // 7. Get topic for return
+            const topic = await getDiscourseTopic(topicId, req.user);
+            // 8. Return success with topic data
+            return res.json({success: true, topic });
+          }).catch((error) => {
+            return res.status(500).json({ success: false, error: error.message });
+          });
+        }
+        else if(collectionId){
+          // 3. Get the collection details from MongoDb to create the new topic
+          await Collections.findOne({ id: collectionId }).then( async (collection) => {
+            // 4. If no collection was found, return 404
+            if (!collection) {
+              return res.status(404).json({ success: false, error: 'Collection not found.' });
+            }
+            // 5. Create a new Discourse topic for the collection
+            collection.type = 'collection';
+            topicId = await createDiscourseTopic(collection);
+            // 6. Add the user's post to the new topic
+            await createDiscoursePost(topicId, comment, req.user);
+            // 7. Get topic for return
+            const topic = await getDiscourseTopic(topicId, req.user);
+            // 8. Return success with topic data
+            return res.json({success: true, topic });
+          }).catch((error) => {
+            return res.status(500).json({ success: false, error: error.message });
+          });
+        }
       } else {
         // 2. Add the user's post to the existing topic
         await createDiscoursePost(topicId, comment, req.user);
