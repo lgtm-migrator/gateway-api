@@ -1,7 +1,7 @@
 import express from 'express'
 import { Data } from '../tool/data.model'
 import { loadDataset, loadDatasets } from './dataset.service';
-import { findPostsByTopicId } from "../discourse/discourse.service";
+import { getToolsAdmin } from '../tool/data.repository';
 const router = express.Router();
 
 
@@ -44,15 +44,28 @@ router.get('/:datasetID', async (req, res) => {
             });
 
             if (err) return res.json({ success: false, error: err });
-            
-            let discourseTopic = {};
-            if (data[0].discourseTopicId) {
-              discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
-            }
-
-          return res.json({ success: true, data: data, discourseTopic: discourseTopic });
+            return res.json({ success: true, data: data });
         });
     });
 });
+
+
+// @router   GET /api/v1/
+// @desc     Returns List of Dataset Objects No auth
+//           This unauthenticated route was created specifically for API-docs
+// @access   Public
+router.get(
+    '/',
+    async (req, res) => {
+      req.params.type = 'dataset';
+        await getToolsAdmin(req)
+          .then((data) => {
+            return res.json({ success: true, data });
+          })
+          .catch((err) => {
+            return res.json({ success: false, err });
+          });
+    }
+  );
 
 module.exports = router;

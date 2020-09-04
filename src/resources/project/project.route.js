@@ -4,7 +4,6 @@ import { ROLES } from '../user/user.roles'
 import passport from "passport";
 import { utils } from "../auth";
 import {addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository';
-import { findPostsByTopicId } from "../discourse/discourse.service";
 
 const router = express.Router();
 
@@ -79,7 +78,7 @@ router.get(
 // @access   Public
 router.get('/:projectID', async (req, res) => {
   var q = Data.aggregate([
-      { $match: { $and: [{ id: parseInt(req.params.projectID) }] } },
+       { $match: { $and: [{ id: parseInt(req.params.projectID) }, {type: 'project'}] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
   ]);
    q.exec((err, data) => {
@@ -98,21 +97,12 @@ router.get('/:projectID', async (req, res) => {
               })
           });
 
-          if (err) return res.json({ success: false, error: err });
-          
-          let discourseTopic = {};
-          if (data[0] && data[0].discourseTopicId) {
-            discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
-          }
-
-        return res.json({ success: true, data: data, discourseTopic: discourseTopic });
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true, data: data });
       });
     }
     else{
-      return res.json({
-        success: false,
-        error: `Project not found for project id ${req.params.projectID}`,
-      });
+      return res.status(404).send(`Project not found for Id: ${req.params.projectID}`);
     }
   });
 });

@@ -1,13 +1,21 @@
 import _ from 'lodash';
 import moment from 'moment';
+import { UserModel } from '../user/user.model';
+import helper from '../utilities/helper.util';
 
 const sgMail = require('@sendgrid/mail');
+let parent, qsId;
 let questionList = [];
 let excludedQuestionSetIds = ['addApplicant', 'removeApplicant'];
-let autoCompleteLookups = {"fullname": ['orcid', 'email', 'bio']};
-let parent;
+let autoCompleteLookups = {"fullname": ['email']};
 
-
+/**
+ * [_unNestQuestionPanels]
+ *
+ * @desc    Un-nests the questions panels removes unused buttons from schema
+ * @param   {Array<Object>} [{panelId, pageId, questionSets, ...}]
+ * @return  {Array<Object>} [{panel}, {}]
+ */
 const _unNestQuestionPanels = (panels) => {
   return [...panels].reduce((arr, panel) => {
     // deconstruct questionPanel:[{panel}]
@@ -15,9 +23,12 @@ const _unNestQuestionPanels = (panels) => {
     if(typeof questionSets !== 'undefined') {
       if (questionSets.length > 1) {
         // filters excluded questionSetIds
-        let filtered = [...questionSets].filter(item => !excludedQuestionSetIds.includes(item.questionSetId));
+        let filtered = [...questionSets].filter(item => {
+          let [questionId, uniqueId] = item.questionSetId.split('_');
+          return !excludedQuestionSetIds.includes(questionId);
+        });
         // builds new array of [{panelId, pageId, etc}]
-        let newPanels = filtered.map((set) => { return { panelId, pageId, questionPanelHeaderText, navHeader,  questionSetId: set.questionSetId }});
+        let newPanels = filtered.map((set) => { return { panelId, pageId, questionPanelHeaderText, navHeader, questionSetId: set.questionSetId }});
         // update the arr reducer result
         arr = [...arr, ...newPanels];
       } else {
@@ -33,37 +44,52 @@ const _unNestQuestionPanels = (panels) => {
 };
 
 /**
- * [_initalQuestionSpread Un-nests the questions from each object[questions]]
+ * [_initalQuestionSpread]
  *
+ * @desc    Un-nests the questions from each object[questions]
+ * @param   {Object}        {'questionId', ...}
  * @return  {Array<Object>} [{question}, {}]
  */
 const _initalQuestionSpread = (questions, pages, questionPanels) => {
   let flatQuestionList = [];
-
   if (!questions) return;
   for (let questionSet of questions) {
-    let { questionSetId } = questionSet;
-    let [questionId, uniqueId] = questionSetId.split('_');
+
+    let { questionSetId, questionSetHeader } = questionSet;
+
+    let [qSId, uniqueQsId] = questionSetId.split('_');
+
+    // question set full Id ie: applicant_hUad8
+    let qsFullId = typeof uniqueQsId !== 'undefined' ? `${qSId}_${uniqueQsId}` : qSId;
     // remove out unwanted buttons or elements
-    if (questionSet.hasOwnProperty('questions') && !excludedQuestionSetIds.includes(questionId)) {
+    if (!excludedQuestionSetIds.includes(qSId) && questionSet.hasOwnProperty('questions')) {
+
       for (let question of questionSet.questions) {
+        //deconstruct quesitonId from question
+        let {questionId} = question;
+
+        // split questionId
+        let [qId, uniqueQId] = questionId.split('_');
+
         // pass in questionPanels
         let questionPanel = [...questionPanels].find(
-          (i) => i.panelId === questionId
+          (i) => i.panelId === qSId
         );
         // find page it belongs too
         let page = [...pages].find((i) => i.pageId === questionPanel.pageId);
-        // if page not found skip
-        if(typeof page !== 'undefined') {
+
+        // if page not found skip and the questionId isnt excluded
+        if (typeof page !== 'undefined' && !excludedQuestionSetIds.includes(qId)) {
+
           // if it is a generated field ie ui driven add back on uniqueId
-          let questionTitle = typeof uniqueId !== 'undefined' ? `${questionId}_${uniqueId}` : questionId
-          // create new obj of question for email
           let obj = {
             page: page.title,
             section: questionPanel.navHeader,
-            questionSetId: questionTitle,
+            questionSetId: qsFullId,
+            questionSetHeader,
             ...question,
           };
+          // update flatQuestionList array, spread previous add new object
           flatQuestionList = [...flatQuestionList, obj];
         }
       }
@@ -79,30 +105,30 @@ const _initalQuestionSpread = (questions, pages, questionPanels) => {
  */
 const _getAllQuestionsFlattened = (allQuestions) => {
   let child;
-
   if (!allQuestions) return;
 
   for (let questionObj of allQuestions) {
     if (questionObj.hasOwnProperty('questionId')) {
-      // console.log(questionObj);
       if (
         questionObj.hasOwnProperty('page') &&
         questionObj.hasOwnProperty('section')
       ) {
-        let { page, section } = questionObj;
+        let { page, section, questionSetId, questionSetHeader } = questionObj;
+        if(typeof questionSetId !== 'undefined')
+          qsId = questionSetId
         // set the parent page and parent section as nested wont have reference to its parent
-        parent = { page, section };
+        parent = { page, section, questionSetId: qsId, questionSetHeader };
       }
-      let { questionId, question } = questionObj;
+      let { questionId, question} = questionObj;
       // split up questionId
       let [qId, uniqueId] = questionId.split('_');
       // actual quesitonId
       let questionTitle = typeof uniqueId !== 'undefined' ? `${qId}_${uniqueId}` : qId;
       // if not in exclude list
-      if(!excludedQuestionSetIds.includes(questionId)) {
+      if(!excludedQuestionSetIds.includes(questionTitle)) {
         questionList = [
           ...questionList,
-          { questionId: questionTitle, question, page: parent.page, section: parent.section },
+          { questionId: questionTitle, question, questionSetHeader: parent.questionSetHeader, questionSetId: qsId, page: parent.page, section: parent.section },
         ];
       }
     }
@@ -129,8 +155,13 @@ const _getAllQuestionsFlattened = (allQuestions) => {
   }
 };
 
+const _formatSectionTitle = (value) => {
+  let [questionId, uniqueId] = value.split('_');
+  return _.capitalize(questionId);
+}
+
 const _buildSubjectTitle = (user, title) => {
-  if (user === 'dataCustodian') {
+  if (user.toUpperCase() === 'DATACUSTODIAN') {
     return `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
   } else {
     return `You have requested access to ${title}. The custodian will be in contact about the application.`;
@@ -138,19 +169,20 @@ const _buildSubjectTitle = (user, title) => {
 };
 
 /**
- * [_buildEmail Build a string for the email template]
+ * [_buildEmail]
  *
- * @param   {<Object>}  questions
- * @param   {<Object>}  answers
- * @param   {<Object>}  options
- * @return  {<String>} Questions Answered
+ * @desc    Build email template for Data access request
+ * @param   {Object}  questions
+ * @param   {Object}  answers
+ * @param   {Object}  options
+ * @return  {String} Questions Answered
  */
 const _buildEmail = (fullQuestions, questionAnswers, options) => {
   let parent;
-  let { userType, userName, userEmail, custodianEmail, dataSetTitle } = options;
+  let { userType, userName, userEmail, custodianEmail, datasetTitles } = options;
   const hdrukEmail = `enquiry@healthdatagateway.org`;
   const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || custodianEmail;
-  let subject = _buildSubjectTitle(userType, dataSetTitle);
+  let subject = _buildSubjectTitle(userType, datasetTitles);
   let questionTree = { ...fullQuestions };
   let answers = { ...questionAnswers };
   let pages = Object.keys(questionTree);
@@ -179,8 +211,8 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                   <td bgcolor="#fff" style="padding: 0; border: 0;">
                     <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
-                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dataSetTitle}</td>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of submission</td>
@@ -190,7 +222,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicant</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${userName}, ${userEmail}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${userName}, ${_displayCorrectEmailAddress(userEmail, userType)}</td>
                       </tr>
                     </table>
                   </td>
@@ -198,7 +230,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                `;
 
   let pageCount = 0;
-  // [Safe People, SafeProject]
+  // render page [Safe People, SafeProject]
   for (let page of pages) {
     // page count for styling
     pageCount++;
@@ -212,26 +244,33 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                       <h2 style="font-size: 18px; color: #29235c !important; margin: -25px 0 15px 0;">${page}</h2>
                     </td>
                   </tr>`;
+    
+  
     // Safe People = [Applicant, Principle Investigator, ...]
-    let sectionKeys = Object.keys(parent);
+    // Safe People to order array for applicant 
+    let sectionKeys;
+    if(page.toUpperCase() === 'SAFE PEOPLE')
+      sectionKeys = Object.keys({...parent}).sort();
+    else
+      sectionKeys = Object.keys({...parent});
+    
     // styling for last child
     let sectionCount = 0;
-    // console.log(`SECTIONS: ${sectionKeys}`);
+    // render section
     for (let section of sectionKeys) {
       let questionsArr = questionTree[page][section];
+      let [questionObj] = questionsArr;
+      let sectionTitle = _formatSectionTitle(questionObj.questionSetHeader);
       sectionCount++;
       table += `<tr style="width: 600">
                     <!-- Key Section --> 
                     <td><h3 style="font-size: 16px; color :#29235c; margin: ${
                       sectionCount !== 1 ? '25px 0 0 0;' : '10px 0 0 0;'
-                    }">${section}</h3></td>
+                    }">${sectionTitle}</h3></td>
                 </tr>`;
-      // console.log(`${section} ${JSON.stringify(questionsArr, null, 2)}`);
+      // render question
       for (let question of questionsArr) {
-        // questionId is fullName not empty and typeof if  not  undefined
-        // go call api
-
-        let answer = answers[question.questionId] || `{{empty}}`;
+        let answer = answers[question.questionId] || `-`;
         table += `<tr>
                     <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${question.question}</td>
                     <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${answer}</td>
@@ -240,78 +279,150 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
     }
     table += `</table></td></tr>`;
   }
-
   table += ` </tbody></table></div>`;
-
   let msg = {
     from: hdrukEmail,
-    to: userType === 'dataCustodian' ? dataCustodianEmail : userEmail,
-    subject: `Enquires for ${dataSetTitle} dataset healthdatagateway.org`,
+    to: userType.toUpperCase() === 'DATACUSTODIAN' ? dataCustodianEmail : userEmail,
+    subject: `Enquires for ${datasetTitles} dataset healthdatagateway.org`,
     html: table,
-    allowUnsubscribe: userType === 'dataCustodian' ? false : true,
+    allowUnsubscribe: userType.toUpperCase() === 'DATACUSTODIAN' ? false : true,
   };
-
   return msg;
 };
 
+/**
+ * [_groupByPageSection]
+ * 
+ * @desc    This function will group all the  questions into the correct format for emailBuilder
+ * @return  {Object} {Safe People: {Applicant: [], Applicant_U8ad: []}, Safe Project: {}}
+ */
 const _groupByPageSection = (allQuestions) => {
+  // group by page [Safe People, Safe Project]
   let groupedByPage = _.groupBy(allQuestions, (item) => {
     return item.page;
   });
 
+  // within grouped [Safe People: {Applicant, Applicant1, Something}]
   let grouped = _.forEach(groupedByPage, (value, key) => {
     groupedByPage[key] = _.groupBy(groupedByPage[key], (item) => {
-      return item.section;
+      return item.questionSetId;
     });
   });
 
   return grouped;
 };
 
-const _actualQuestionAnswers = (quesitonAnswers) => {
+/**
+ * [_actualQuestionAnswers]
+ * 
+ * @desc    This function will repopulate any fiels populated by autoFill answers
+ * @param   {Object} questionAnswers {fullname: '', ...} 
+ * @param   {Object} options {userType, ...} 
+ * @return  {Object} {fullname: 'James Swallow', email: 'james@gmail.com'}
+ */
+const _actualQuestionAnswers = async (quesitonAnswers, options) => {
+  let obj =  {};
+  // test for user type custodian || user
+  let { userType } = options;
+  // spread questionAnswers to new var
   let qa = {...quesitonAnswers};
-
-  return _.reduce((qa), async (obj, value, key) => {
+  // get object keys of questionAnswers
+  let keys = Object.keys(qa);
+  // loop questionAnswer keys
+  for (const key of keys) {
+    // get value of key
+    let value = qa[key];
+    // split the key up for unique purposes
     let [qId, uniqueId] = key.split('_');
+    // check if key in lookup
     let lookup = autoCompleteLookups[`${qId}`];
-    // if question is in lookups lookup = ['value'], value = {orcid:  '', email: ''}
-    if(typeof lookup !== 'undefined' && typeof value === 'object') {
-      console.log('here');
-      // loop over lookup[]
-    } 
-    obj[key] = value;
-    return obj;
-  }, {});
+    // if key exists and it has an object do relevant data setting
+    if(typeof lookup !== 'undefined' && typeof value === 'object') { 
+      switch(qId) {
+        case 'fullname':
+            // get user by :id {fullname, email}
+            const response = await _getUserDetails(value);
+            // deconstruct response
+            let {fullname, email} = response;
+            // set fullname: 'James Swallow'
+            obj[key] = fullname;
+            // show  full email for custodian or redacted for non custodians
+            let validEmail =  _displayCorrectEmailAddress(email, userType);
+            // check  if uniqueId and set email field 
+            typeof uniqueId !== 'undefined' ? obj[`email_${uniqueId}`] = validEmail : obj[`email`] = validEmail;
+          break;
+        default:
+          obj[key] = value;
+      }  
+    }
+  }
+  // return out the update values write over questionAnswers;
+  return {...qa, ...obj};
 }
 
-const _generateEmail = (
+/**
+ * [_displayCorrectEmailAddress]
+ * 
+ * @desc    This function will return a obfuscated email based on user role
+ * @param   {String}  'your@gmail.com'
+ * @param   {String}  'dataCustodian'
+ * @return  {String}  'r********@**********m'
+ */
+const _displayCorrectEmailAddress  = (email, userType) =>  {
+  return userType.toUpperCase() === 'DATACUSTODIAN' ? email : helper.censorEmail(email);
+}
+
+/**
+ * [_getUserDetails]
+ * 
+ * @desc    This function will return the user infromation from mongodb
+ * @param   {Int}  98767876
+ * @return  {Object} {fullname: 'James Swallow', email: 'james@gmail.com'}
+ */
+const _getUserDetails = async (userObj) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      let  {id} = userObj;
+      const doc = await UserModel.findOne({id}).exec();
+      let { firstname = '', lastname  = '', email = '' } = doc;
+      resolve({fullname: `${firstname} ${lastname}`, email});
+    }
+    catch (err) {
+      reject({fullname: '',  email: ''});
+    }
+  });
+}
+
+const _generateEmail = async (
   questions,
   pages,
   questionPanels,
   questionAnswers,
   options
 ) => {
-  //unnest each questionPanel if questionSets
-  let flatQuestionPanels = _unNestQuestionPanels(questionPanels);
-  let flatQuestionAnswers = _actualQuestionAnswers(questionAnswers);
-  
-  let unNestedQuestions = _initalQuestionSpread(
-    questions,
-    pages,
-    flatQuestionPanels
-  );
+  // reset questionList arr
   questionList = [];
+  // set questionAnswers
+  let flatQuestionAnswers = await _actualQuestionAnswers(questionAnswers, options)
+  // unnest each questionPanel if questionSets
+  let flatQuestionPanels = _unNestQuestionPanels(questionPanels);
+  // unnest question flat
+  let unNestedQuestions = _initalQuestionSpread(questions, pages, flatQuestionPanels);
+  // assigns to questionList
   let fullQuestionSet = _getAllQuestionsFlattened(unNestedQuestions);
-  // console.log(questionList);
+  // fullQuestions [SafePeople: {Applicant: {}, Applicant_aca: {}}, SafeProject:{}]
   let fullQuestions = _groupByPageSection([...questionList]);
-  let email = _buildEmail(fullQuestions, questionAnswers, options);
+  // build up  email with  values
+  let email = _buildEmail(fullQuestions, flatQuestionAnswers, options);
+  // return email
   return email;
 };
 
 /**
- * [_sendEmail Send an email to an array of users using Twilio SendGrid]
+ * [_sendEmail]
  *
- * @param   {<Object>}  context
+ * @desc    Send an email to an array of users using Twilio SendGrid
+ * @param   {Object}  context
  */
 const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true) => {
   // 1. Apply SendGrid API key from environment variable

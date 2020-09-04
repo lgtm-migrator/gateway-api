@@ -4,7 +4,6 @@ import { Reviews } from './review.model';
 import { Data } from '../tool/data.model';
 import passport from 'passport';
 import { utils } from '../auth';
-import { findPostsByTopicId } from '../discourse/discourse.service';
 import { UserModel } from '../user/user.model';
 import { MessagesModel } from '../message/message.model';
 import {
@@ -130,7 +129,7 @@ router.patch(
  */
 router.get('/:id', async (req, res) => {
   var query = Data.aggregate([
-    { $match: { $and: [{ id: parseInt(req.params.id) }] } },
+    { $match: { $and: [{ id: parseInt(req.params.id) }, {type: 'tool'}]} },
     {
       $lookup: {
         from: 'tools',
@@ -205,24 +204,15 @@ router.get('/:id', async (req, res) => {
         r.exec(async (err, reviewData) => {
           if (err) return res.json({ success: false, error: err });
 
-          let discourseTopic = {};
-          if (data[0].discourseTopicId) {
-            discourseTopic = await findPostsByTopicId(data[0].discourseTopicId);
-          }
-
           return res.json({
             success: true,
             data: data,
-            reviewData: reviewData,
-            discourseTopic: discourseTopic,
+            reviewData: reviewData
           });
         });
       });
     } else {
-      return res.json({
-        success: false,
-        error: `Tool not found for tool id ${req.params.id}`,
-      });
+      return res.status(404).send(`Tool not found for Id: ${req.params.id}`);
     }
   });
 });
@@ -317,19 +307,18 @@ router.post(
     );
   }
 );
-
+ 
 /**
  * {post} /tool/review/approve Approve review
  *
  * Authenticate user to see if user can approve.
  */
-router.post(
+router.put(
   '/review/approve',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin),
   async (req, res) => {
     const { id, activeflag } = req.body;
-
     Reviews.findOneAndUpdate(
       { reviewID: id },
       {

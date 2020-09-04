@@ -60,11 +60,13 @@ app.use(
 app.use('/api', router);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.use('/api/v1/auth/soo/discourse', require('../resources/auth/sso/sso.discourse.router'));
+app.use('/api/v1/auth/sso/discourse', require('../resources/auth/sso/sso.discourse.router'));
 app.use('/api/v1/auth', require('../resources/auth/auth.route'));
 app.use('/api/v1/auth/register', require('../resources/user/user.register.route'));
 
 app.use('/api/v1/users', require('../resources/user/user.route'));
+app.use('/api/v1/topics', require('../resources/topic/topic.route')); 
+app.use('/api/v1/publishers', require('../resources/publisher/publisher.route')); 
 app.use('/api/v1/messages', require('../resources/message/message.route')); 
 app.use('/api/v1/reviews', require('../resources/tool/review.route'));
 app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
@@ -74,13 +76,15 @@ app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
  
 app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
+app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
+
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
 app.use('/api/v1/projects', require('../resources/project/project.route'));
-app.use('/api/v1/paper', require('../resources/paper/paper.route')); 
+app.use('/api/v1/papers', require('../resources/paper/paper.route')); 
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
-app.use('/api/v1/discourse/topic', require('../resources/discourse/discourse.topic.route'));
+app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
 

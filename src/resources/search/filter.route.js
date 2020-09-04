@@ -1,118 +1,207 @@
 import express from 'express'
-import { Data } from '../tool/data.model'
+import { getObjectFilters, getFilter } from './search.repository';
 
 const router = express.Router();
 
 
 // @route   GET api/v1/search/filter
-// @desc    GET Get all filters
+// @desc    GET Get filters
 // @access  Public
-router.get('/:searchString', async (req, res) => {
-    //get all filters
-    await Promise.all([
-        licenseFilter(req, 'dataset', req.params.searchString),
-        sampleFilter(req, req.params.searchString),
-        featureFilter(req, 'dataset', req.params.searchString),
-        publisherFilter(req, req.params.searchString),
-        ageBandFilter(req, req.params.searchString),
-        geographicCoverageFilter(req, req.params.searchString),
-
-        topicFilter(req, 'tool', req.params.searchString),
-        featureFilter(req, 'tool', req.params.searchString),
-        languageFilter(req, 'tool', req.params.searchString),
-        categoryFilter(req, 'tool', req.params.searchString),
-
-        topicFilter(req, 'project', req.params.searchString),
-        featureFilter(req, 'project', req.params.searchString),
-        categoryFilter(req, 'project', req.params.searchString),
-
-        topicFilter(req, 'paper', req.params.searchString),
-        featureFilter(req, 'paper', req.params.searchString)
-        
-    ]).then((values) => {
-        return res.json({
-            success: true, 
-            allFilters: {
-                licenseFilter: values[0].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                sampleFilter: values[1].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                datasetFeatureFilter: values[2].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                publisherFilter: values[3].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                ageBandFilter: values[4].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                geographicCoverageFilter: values[5].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-
-                toolTopicFilter: values[6].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolFeatureFilter: values[7].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolLanguageFilter: values[8].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolCategoryFilter: values[9].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-
-                projectTopicFilter: values[10].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                projectFeatureFilter: values[11].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                projectCategoryFilter: values[12].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-
-                paperTopicFilter: values[13].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                paperFeatureFilter: values[14].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
-            }
-        });
-    });
-});
-
-//To be refactored and moved to its own filter.repository :)
-
 router.get('/', async (req, res) => {
-    //get all filters
-    await Promise.all([
-        licenseFilter(req, 'dataset', ''),
-        sampleFilter(req, ''),
-        featureFilter(req, 'dataset', ''),
-        publisherFilter(req, ''),
-        ageBandFilter(req, ''),
-        geographicCoverageFilter(req, ''),
-
-        topicFilter(req, 'tool', ''),
-        featureFilter(req, 'tool', ''),
-        languageFilter(req, 'tool', ''),
-        categoryFilter(req, 'tool', ''),
-
-        topicFilter(req, 'project', ''),
-        featureFilter(req, 'project', ''),
-        categoryFilter(req, 'project', ''),
-
-        topicFilter(req, 'paper', ''),
-        featureFilter(req, 'paper', '')
+    var searchString = req.query.search || ""; //If blank then return all
+    var tab = req.query.tab || ""; //If blank then return all
+    if (tab === '') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
         
-    ]).then((values) => {
-        return res.json({
-            success: true, 
-            allFilters: {
-                licenseFilter: values[0].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                sampleFilter: values[1].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                datasetFeatureFilter: values[2].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                publisherFilter: values[3].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                ageBandFilter: values[4].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                geographicCoverageFilter: values[5].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+        await Promise.all([
+            getFilter(searchString, 'dataset', 'license', false, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'tags.features', true, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.publisher', false, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, getObjectFilters(searchQuery, req, 'dataset')),
+            getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, getObjectFilters(searchQuery, req, 'dataset')),
 
-                toolTopicFilter: values[6].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolFeatureFilter: values[7].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolLanguageFilter: values[8].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                toolCategoryFilter: values[9].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+            getFilter(searchString, 'tool', 'tags.topic', true, getObjectFilters(searchQuery, req, 'tool')),
+            getFilter(searchString, 'tool', 'tags.features', true, getObjectFilters(searchQuery, req, 'tool')),
+            getFilter(searchString, 'tool', 'categories.programmingLanguage', true, getObjectFilters(searchQuery, req, 'tool')),
+            getFilter(searchString, 'tool', 'categories.category', false, getObjectFilters(searchQuery, req, 'tool')),
 
-                projectTopicFilter: values[10].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                projectFeatureFilter: values[11].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                projectCategoryFilter: values[12].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
+            getFilter(searchString, 'project', 'tags.topics', true, getObjectFilters(searchQuery, req, 'project')),
+            getFilter(searchString, 'project', 'tags.features', true, getObjectFilters(searchQuery, req, 'project')),
+            getFilter(searchString, 'project', 'categories.category', false, getObjectFilters(searchQuery, req, 'project')),
 
-                paperTopicFilter: values[13].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; }),
-                paperFeatureFilter: values[14].sort(function (a, b) { return (a.toUpperCase() < b.toUpperCase()) ? -1 : (a.toUpperCase() > b.toUpperCase()) ? 1 : 0; })
-            }
+            getFilter(searchString, 'paper', 'tags.topics', true, getObjectFilters(searchQuery, req, 'project')),
+            getFilter(searchString, 'paper', 'tags.features', true, getObjectFilters(searchQuery, req, 'project'))  
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    licenseFilter: values[0][0],
+                    sampleFilter: values[1][0],
+                    datasetFeatureFilter: values[2][0],
+                    publisherFilter: values[3][0],
+                    ageBandFilter: values[4][0],
+                    geographicCoverageFilter: values[5][0],
+                    phenotypesFilter: values[6][0],
+
+                    toolTopicFilter: values[6][0],
+                    toolFeatureFilter: values[7][0],
+                    toolLanguageFilter: values[8][0],
+                    toolCategoryFilter: values[9][0],
+
+                    projectTopicFilter: values[10][0],
+                    projectFeatureFilter: values[11][0],
+                    projectCategoryFilter: values[12][0],
+
+                    paperTopicFilter: values[13][0],
+                    paperFeatureFilter: values[14][0]
+                },
+                filterOptions: {
+                    licenseFilterOptions: values[0][1],
+                    sampleFilterOptions: values[1][1],
+                    datasetFeaturesFilterOptions: values[2][1],
+                    publisherFilterOptions: values[3][1],
+                    ageBandFilterOptions: values[4][1],
+                    geographicCoverageFilterOptions: values[5][1],
+                    phenotypesOptions: values[6][1],
+
+                    toolTopicsFilterOptions: values[7][1],
+                    featuresFilterOptions: values[8][1],
+                    programmingLanguageFilterOptions: values[9][1],
+                    toolCategoriesFilterOptions: values[10][1],
+
+                    projectTopicsFilterOptions: values[11][1],
+                    projectFeaturesFilterOptions: values[12][1],
+                    projectCategoriesFilterOptions: values[13][1],
+
+                    paperTopicsFilterOptions: values[14][1],
+                    paperFeaturesFilterOptions: values[15][1]
+                }
+            });
         });
-    });
+    }
+    else if (tab === 'Datasets') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset')
+        
+        await Promise.all([
+            getFilter(searchString, 'dataset', 'license', false, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.publisher', false, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, activeFiltersQuery),
+            getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, activeFiltersQuery)
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    licenseFilter: values[0][0],
+                    sampleFilter: values[1][0],
+                    datasetFeatureFilter: values[2][0],
+                    publisherFilter: values[3][0],
+                    ageBandFilter: values[4][0],
+                    geographicCoverageFilter: values[5][0],
+                    phenotypesFilter: values[6][0]
+                },
+                filterOptions: {
+                    licenseFilterOptions: values[0][1],
+                    sampleFilterOptions: values[1][1],
+                    datasetFeaturesFilterOptions: values[2][1],
+                    publisherFilterOptions: values[3][1],
+                    ageBandFilterOptions: values[4][1],
+                    geographicCoverageFilterOptions: values[5][1],
+                    phenotypesOptions: values[6][1]
+                }
+            });
+        });
+    }
+    else if (tab === 'Tools') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'tool')
+        
+        await Promise.all([
+            getFilter(searchString, 'tool', 'tags.topics', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'categories.programmingLanguage', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery)      
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    toolTopicFilter: values[0][0],
+                    toolFeatureFilter: values[1][0],
+                    toolLanguageFilter: values[2][0],
+                    toolCategoryFilter: values[3][0]
+                },
+                filterOptions: {
+                    toolTopicsFilterOptions: values[0][1],
+                    featuresFilterOptions: values[1][1],
+                    programmingLanguageFilterOptions: values[2][1],
+                    toolCategoriesFilterOptions: values[3][1]
+                }
+            });
+        });
+    }
+    else if (tab === 'Projects') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'project')
+        
+        await Promise.all([
+            getFilter(searchString, 'project', 'tags.topics', true, activeFiltersQuery),
+            getFilter(searchString, 'project', 'tags.features', true, activeFiltersQuery),
+            getFilter(searchString, 'project', 'categories.category', false, activeFiltersQuery)  
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    projectTopicFilter: values[0][0],
+                    projectFeatureFilter: values[1][0],
+                    projectCategoryFilter: values[2][0],
+                },
+                filterOptions: {
+                    projectTopicsFilterOptions: values[0][1],
+                    projectFeaturesFilterOptions: values[1][1],
+                    projectCategoriesFilterOptions: values[2][1]
+                }
+            });
+        });
+    }
+    else if (tab === 'Papers') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'paper')
+        
+        await Promise.all([
+            getFilter(searchString, 'paper', 'tags.topics', true, activeFiltersQuery),
+            getFilter(searchString, 'paper', 'tags.features', true, activeFiltersQuery)
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    paperTopicFilter: values[0][0],
+                    paperFeatureFilter: values[1][0]
+                },
+                filterOptions: {
+                    paperTopicsFilterOptions: values[0][1],
+                    paperFeaturesFilterOptions: values[1][1]
+                }
+            });
+        });
+    }
 });
 
-
-
-
+// @route   GET api/v1/search/filter/topic/:type
+// @desc    GET Get list of topics by entity type
+// @access  Public
 router.get('/topic/:type',
     async (req, res) => {
-      await topicFilter(req)
+      await getFilter('', req.params.type, 'tags.topics', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -122,9 +211,12 @@ router.get('/topic/:type',
     }
 );
 
+// @route   GET api/v1/search/filter/feature/:type
+// @desc    GET Get list of features by entity type
+// @access  Public
 router.get('/feature/:type',
     async (req, res) => {
-      await featureFilter(req)
+      await getFilter('', req.params.type, 'tags.features', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -134,9 +226,12 @@ router.get('/feature/:type',
     }
 );
 
+// @route   GET api/v1/search/filter/language/:type
+// @desc    GET Get list of languages by entity type
+// @access  Public
 router.get('/language/:type',
     async (req, res) => {
-      await languageFilter(req)
+      await getFilter('', req.params.type, 'categories.programmingLanguage', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -146,9 +241,12 @@ router.get('/language/:type',
     }
 );
 
+// @route   GET api/v1/search/filter/category/:type
+// @desc    GET Get list of categories by entity type
+// @access  Public
 router.get('/category/:type',
     async (req, res) => {
-      await categoryFilter(req)
+      await getFilter('', req.params.type, 'categories.category', false, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -158,9 +256,12 @@ router.get('/category/:type',
     }
 );
 
+// @route   GET api/v1/search/filter/license/:type
+// @desc    GET Get list of licenses by entity type
+// @access  Public
 router.get('/license/:type',
     async (req, res) => {
-      await licenseFilter(req)
+      await getFilter('', req.params.type, 'license', false, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })
@@ -169,289 +270,5 @@ router.get('/license/:type',
         });
     }
 );
-
-
-  
-
-
-
-const sampleFilter = async (req, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            
-            var tempSample = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.datasetfields.physicalSampleAvailability !== null) {
-                        dat.datasetfields ? dat.datasetfields.physicalSampleAvailability.map((sample) => {
-                            sample.length <= 0 ? tempSample = tempSample : tempSample.push(sample.trim());
-                        }) : ''
-                    }
-                });
-            }
-
-            const combinedSample = [];
-            tempSample.map(temp => {
-                if (combinedSample.indexOf(temp) === -1) {
-                    combinedSample.push(temp)
-                }
-            });
-            
-            resolve(combinedSample);
-        });
-    })
-}
-
-const publisherFilter = async (req, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            
-            var tempPublisher = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.datasetfields.publisher !== null) {
-                        tempPublisher.push(dat.datasetfields.publisher.trim());
-                    }
-                });
-            }
-
-            const combinedPublisher = [];
-            tempPublisher.map(temp => {
-                if (combinedPublisher.indexOf(temp) === -1) {
-                    combinedPublisher.push(temp)
-                }
-            });
-            
-            resolve(combinedPublisher);
-        });
-    })
-}
-
-const ageBandFilter = async (req, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            
-            var tempAgeBand = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.datasetfields.ageBand && dat.datasetfields.ageBand !== null) {
-                        tempAgeBand.push(dat.datasetfields.ageBand.trim());
-                    }
-                });
-            }
-
-            const combinedAgeBand = [];
-            tempAgeBand.map(temp => {
-                if (combinedAgeBand.indexOf(temp) === -1) {
-                    combinedAgeBand.push(temp)
-                }
-            });
-            
-            resolve(combinedAgeBand);
-        });
-    })
-}
-
-const geographicCoverageFilter = async (req, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: 'dataset' }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: 'dataset' }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            
-            var tempGeographicCoverage = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.datasetfields.geographicCoverage && dat.datasetfields.geographicCoverage !== null) {
-                        tempGeographicCoverage.push(dat.datasetfields.geographicCoverage.trim());
-                    }
-                });
-            }
-
-            const combinedGeographicCoverage = [];
-            tempGeographicCoverage.map(temp => {
-                if (combinedGeographicCoverage.indexOf(temp) === -1) {
-                    combinedGeographicCoverage.push(temp)
-                }
-            });
-            
-            resolve(combinedGeographicCoverage);
-        });
-    })
-}
-
-const topicFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempTopics = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (dat.tags.topics !== null) {
-                        dat.tags ? dat.tags.topics.map((topic) => {
-                            topic.length <= 0 ? tempTopics = tempTopics : tempTopics.push(topic.trim());
-                        }) : ''
-                    }
-                });
-            }
-
-            const combinedTopics = [];
-            tempTopics.map(temp => {
-                if (combinedTopics.indexOf(temp) === -1) {
-                    combinedTopics.push(temp)
-                }
-            });
-            
-            resolve(combinedTopics);
-        });
-    })
-};
-
-const featureFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempFeatures = [];
-            if (data.length) {
-                data.map((dat) => {
-                    if (typeof dat.tags.features !== 'undefined' && dat.tags.features !== null && dat.tags.features.length > 0) {
-                        dat.tags.features.map((feature) => {
-                            feature.length <= 0 ? tempFeatures = tempFeatures : tempFeatures.push(feature.trim());
-                        });
-                    }
-                });
-            }
-
-            const combinedFeatures = [];
-            if (tempFeatures.length) {
-                tempFeatures.map(temp => {
-                    if (combinedFeatures.indexOf(temp) === -1) {
-                        combinedFeatures.push(temp)
-                    }
-                });
-            }
-
-            resolve(combinedFeatures);
-        });
-    })
-};
-
-const languageFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempLanguages = [];
-            data.map((dat) => {
-                dat.categories.programmingLanguage ? dat.categories.programmingLanguage.map((language) => {
-                    language.length <= 0 ? tempLanguages = tempLanguages : tempLanguages.push(language.trim());
-                }) : ''
-            });
-
-            const combinedLanguages = [];
-            tempLanguages.map(temp => {
-                if (combinedLanguages.indexOf(temp) === -1) {
-                    combinedLanguages.push(temp)
-                }
-            });
-
-            resolve(combinedLanguages);
-        });
-    })
-};
-
-const categoryFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempCategories = [];
-            data.map((dat) => {
-                !dat.categories.category || dat.categories.category.length <= 0 ? tempCategories = tempCategories : tempCategories.push(dat.categories.category.trim());
-            });
-
-            const combinedCategories = [];
-            tempCategories.map(temp => {
-                if (combinedCategories.indexOf(temp) === -1) {
-                    combinedCategories.push(temp)
-                }
-            });
-
-            resolve(combinedCategories);
-        });
-    })
-};
-
-const licenseFilter = async (req, type, searchString) => {
-    return new Promise(async (resolve, reject) => {
-        var typeIs = req.params.type
-        if (type) typeIs = type
-
-        var q = '';
-        if (searchString) q = Data.aggregate([{ $match: { $and: [{ $text: { $search: searchString } }, { type: typeIs }, { activeflag: 'active' }] } }])
-        else q = Data.aggregate([{ $match: { $and: [{ type: typeIs }, { activeflag: 'active' }] } }])
-
-        q.exec((err, data) => {
-            if (err) return resolve({})
-            var tempLicenses = [];
-            data.map((dat) => {
-                if (dat.license)
-                    dat.license.length <= 0 ? tempLicenses = tempLicenses : tempLicenses.push(dat.license.trim());
-            });
-
-            const combinedLicenses = [];
-            tempLicenses.map(temp => {
-                if (combinedLicenses.indexOf(temp) === -1) {
-                    combinedLicenses.push(temp)
-                }
-            });
-
-            resolve(combinedLicenses);
-        });
-    })
-};
 
 module.exports = router;

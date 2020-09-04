@@ -1,11 +1,53 @@
-import express from 'express'
-import { utils } from "../auth";
+import express from 'express';
 import passport from "passport";
+import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
-import { MessagesModel } from '../message/message.model'
+import { MessagesModel } from './message.model'
+import mongoose from 'mongoose';
+import { TopicModel } from '../topic/topic.model';
 
+const messageController = require('../message/message.controller');
 
-const router = express.Router()
+// by default route has access to its own, allows access to parent param
+const router = express.Router({ mergeParams: true});
+
+router.get('/test',
+  passport.authenticate('jwt'), 
+  utils.checkIsInRole(ROLES.Admin),
+    async (req, res) => {
+      const topic = new TopicModel({
+        _id: new mongoose.Types.ObjectId(),
+        topicName : "This the topic name",
+        topicCreated: "01/01/2020"
+      });
+
+      await topic.save( async function (err) {
+        if (err) return handleError(err);
+      
+        const message = new MessagesModel({
+          messageID: 123,
+          messageTo: 12345,
+          messageObjectID: 123456,
+          messageType: 'Test',
+          messageSent: '10/01/2020',
+          isRead: "false",
+          messageDescription: "test message",
+          topic: topic._id
+        });
+
+        await message.save(async function (err) {
+          if (err) return handleError(err);
+
+          await MessagesModel.
+            findOne({ messageID: 123 }).
+            populate('topic').
+            exec(function (err, message) {
+              if (err) return handleError(err);
+              return res.json(message);
+            });
+        });
+      });
+  });
 
 router.get('/numberofunread/admin/:personID',
   passport.authenticate('jwt'), 
@@ -115,12 +157,10 @@ router.get(
     });
   });
 
-
 router.post(
   '/markasread',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-
   async (req, res) => {
     console.log('in markAsRead');
     const messageIds = req.body;
@@ -134,30 +174,24 @@ router.post(
     )
   });
 
-router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-  async (req, res) => {
-    let data = new Data();
+  // @route   POST api/messages
+  // @desc    POST A message
+  // @access  Private
+  router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.createMessage);
 
-    const { type, name, link, description, categories, license, authors, tags, toolids, datasetids } = req.body;
-    data.id = parseInt(Math.random().toString().replace('0.', ''));
-    data.type = type;
+  // @route   DELETE api/messages/:id
+  // @desc    DELETE Delete a message
+  // @access  Private
+  router.delete('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.deleteMessage);
 
+  // @route   PUT api/messages
+  // @desc    PUT Update a message
+  // @access  Private
+  router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), messageController.updateMessage);
 
-    data.save((err) => {
-      let message = new MessagesModel();
-      message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-      message.messageTo = 0;
-      message.messageObjectID = data.id;
-      message.messageType = 'add';
-      message.messageSent = Date.now();
-      message.isRead = false;
-      message.save((err) => {
-        if (err) return res.json({ success: false, error: err });
-        return res.json({ success: true, id: data.id });
-      });
-    });
-  });
+  // @route   GET api/messages/unread/count
+  // @desc    GET the number of unread messages for a user
+  // @access  Private
+  router.get('/unread/count', passport.authenticate('jwt'), messageController.getUnreadMessageCount);
 
-
-
-module.exports = router
+  module.exports = router; 

@@ -1,7 +1,10 @@
-import { model, Schema } from 'mongoose'
+import { model, Schema } from 'mongoose';
+//DO NOT DELETE publisher and team model below
+import { PublisherModel } from '../publisher/publisher.model';
+import { TeamModel } from '../team/team.model';
 
 // this will be our data base's data structure 
-const DataSchema = new Schema(
+const DataSchema = new Schema( 
   {
     id: Number,
     type: String,
@@ -14,7 +17,7 @@ const DataSchema = new Schema(
       programmingLanguage: {type: [String]},
       programmingLanguageVersion: {type: String},
     },
-    license: String,
+    license: String, 
     authors: [Number],
     tags: {
       features: [String],
@@ -36,6 +39,7 @@ const DataSchema = new Schema(
     //paper related fields
     journal: String,
     journalYear: Number,
+    isPreprint: Boolean,
 
     //person related fields
     firstname: String,
@@ -49,7 +53,7 @@ const DataSchema = new Schema(
     datasetid: String,
     datasetfields: {
         publisher: String,
-        geographicCoverage: String,
+        geographicCoverage: [String],
         physicalSampleAvailability: [String],
         abstract: String,
         releaseDate: String,
@@ -65,7 +69,8 @@ const DataSchema = new Schema(
         metadataquality : {},
         metadataschema : {},
         technicaldetails : [],
-        versionLinks: []
+        versionLinks: [],
+        phenotypes: []
     },
 
     //not used
@@ -75,8 +80,17 @@ const DataSchema = new Schema(
   },
   { 
     collection: 'tools',
-    timestamps: true 
+    timestamps: true ,
+    toJSON:     { virtuals: true },
+    toObject:   { virtuals: true }
   }
 );
+
+DataSchema.virtual('publisher', {
+  ref: 'Publisher',
+  foreignField: 'name',
+  localField: 'datasetfields.publisher',
+  justOne: true
+});
 
 export const Data = model('Data', DataSchema)

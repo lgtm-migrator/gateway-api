@@ -15,7 +15,7 @@ const addTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
       let data = new Data(); 
       const toolCreator = req.body.toolCreator; 
-      const { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
+      const { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
       data.id = parseInt(Math.random().toString().replace('0.', ''));
       data.type = type;
       data.name = name;
@@ -34,6 +34,7 @@ const addTool = async (req, res) => {
       data.activeflag = 'review';
       data.updatedon = Date.now();
       data.relatedObjects = relatedObjects;
+      data.isPreprint = isPreprint;
       data.uploader = req.user.id;
       let newDataObj = await data.save();
       if(!newDataObj)
@@ -93,7 +94,7 @@ const editTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
 
     const toolCreator = req.body.toolCreator;
-    let { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects } = req.body;
+    let { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
     let id = req.params.id;
 
     if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
@@ -123,7 +124,8 @@ const editTool = async (req, res) => {
           features: tags.features,
           topics: tags.topics
         },
-        relatedObjects: relatedObjects
+        relatedObjects: relatedObjects,
+        isPreprint: isPreprint
       }, (err) => {
         if (err) {
           reject(new Error(`Failed to update.`));

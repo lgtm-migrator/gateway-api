@@ -1,10 +1,10 @@
 import express from 'express';
 import passport from 'passport';
-import axios from 'axios';
 import { DataRequestModel } from './datarequest.model';
 import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import emailGenerator from '../utilities/emailGenerator.util';
+import _ from 'lodash';
 
 const sgMail = require('@sendgrid/mail');
 const notificationBuilder = require('../utilities/notificationBuilder');
@@ -15,16 +15,84 @@ const router = express.Router();
 // @desc    GET Access requests for user
 // @access  Private
 router.get('/', passport.authenticate('jwt'), async (req, res) => {
-    let idString = req.user.id;
-    
-    let query = DataRequestModel.aggregate([
-        { $match: { $and: [{ userId: parseInt(idString) }, { "dataSetId":{$ne:null} }] } },
-        { $lookup: { from: "tools", localField: "dataSetId", foreignField: "datasetid", as: "dataset" } }
-      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
-      query.exec((err, data) => {
-        if (err) return res.json({ success: false, error: err });
-        return res.json({ success: true, data: data });
-      });
+    try {
+    // 1. Deconstruct the 
+    let { id: userId } = req.user;
+    // 2. Find all data access request applications created with single dataset version
+    let singleDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { "dataSetId":{$ne:null} }] } ).populate('dataset');
+    let formattedApplications = singleDatasetApplications.map(app => {
+      return { ...app.toObject(), datasetIds: [app.dataset.datasetid], datasets: [app.dataset.toObject()]};
+    });
+    // 3. Find all data access request applications created with multi dataset version
+    let multiDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { "datasetIds":{$ne:[]} }] } ).populate('datasets');
+    // 4. Return all users applications combined
+    let applications = [...formattedApplications, ...multiDatasetApplications];
+    return res.status(200).json({ success: true, data: applications });
+    } catch {
+      return res.status(500).json({ success: false, message: 'An error occurred searching for user applications' });
+    }
+});
+
+// @route   GET api/v1/data-access-request/:requestId
+// @desc    GET a single data access request by Id
+// @access  Private
+router.get('/:requestId', passport.authenticate('jwt'), async (req, res) => {
+   try {
+      // 1. Get dataSetId from params
+      let {params: {requestId}} = req;
+      // 2. Get the userId
+      let {id: userId, _id} = req.user;
+      // 3. Find the matching record and include attached datasets records with publisher details
+      let accessRecord = await DataRequestModel.findOne({_id: requestId}).populate({ path: 'datasets dataset', populate: { path: 'publisher', populate: { path: 'team'}}});
+      //TODO check user is owner of DAR or is a member of the publisher team (return 401 if not)
+      // 4. If no matching application found, return 404
+      if (!accessRecord) {
+            return res
+            .status(404)
+            .json({status: 'error', message: 'Application not found.' });
+      }
+      // 5. Ensure single datasets are mapped correctly into array
+      if (_.isEmpty(accessRecord.datasets)) {
+        accessRecord.datasets = [...accessRecord.dataset];
+      }
+      // 6. Check if requesting user is custodian member or applicant/collaborator
+      let found = false, userType = '', readOnly = true;
+      if(_.has(accessRecord.datasets[0].toObject(), 'publisher.team.members')) {
+        let { members } = accessRecord.datasets[0].publisher.team.toObject();
+        found = members.some(el => el.memberid.toString() === _id.toString());
+      }
+
+      if(!found && accessRecord.userId !== userId) {
+        return res.status(401).json({status: 'failure', message: 'Unauthorised'});
+      }
+
+      if(found) {
+        userType = 'Custodian'
+      } else {
+        userType = 'Applicant'
+      }
+
+      if(userType === 'Applicant' && (accessRecord.applicationStatus === 'inProgress' || accessRecord.applicationStatus === 'submitted' )) {
+        readOnly = false;
+      }
+
+      // 7. Return application form
+      return res.status(200).json({
+        status: 'success', 
+        data: {
+          ...accessRecord._doc, 
+          jsonSchema: JSON.parse(accessRecord.jsonSchema), 
+          questionAnswers: JSON.parse(accessRecord.questionAnswers), 
+          aboutApplication: JSON.parse(accessRecord.aboutApplication), 
+          datasets: accessRecord.datasets,
+          readOnly,
+          userType 
+        }});
+   }
+   catch (err) {
+      console.error(err.message);
+      res.status(500).json({status: 'error', message: err});
+   };
 });
 
 // @route   GET api/v1/data-access-request/dataset/:datasetId
@@ -40,12 +108,11 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
       // 2. Get the userId
       let {id: userId} = req.user;
       // 3. Find the matching record 
-      accessRecord = await DataRequestModel.findOne({dataSetId, userId});
-      // 4. get dataset
-      dataset = await ToolModel.findOne({ datasetid: dataSetId });  
-      // 5. if no record create it and pass back
+      accessRecord = await DataRequestModel.findOne({dataSetId, userId, applicationStatus: 'inProgress'});
+      // 4. Get dataset
+      dataset = await ToolModel.findOne({ datasetid: dataSetId }).populate('publisher');  
+      // 5. If no record create it and pass back
       if (!accessRecord) {
-        //  Remove publisher from URL once PMc completes cache
           if(!dataset) {
             return res
             .status(500)
@@ -71,6 +138,7 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
             jsonSchema,
             publisher,
             questionAnswers: "{}",
+            aboutApplication: "{}",
             applicationStatus: "inProgress"
          });
          // 3. save record
@@ -81,7 +149,86 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
          data = {...accessRecord._doc};
        }
 
-       return res.status(200).json({status: 'success', data: {...data, jsonSchema: JSON.parse(data.jsonSchema), questionAnswers: JSON.parse(data.questionAnswers)}, dataset});
+       return res.status(200).json({
+         status: 'success', 
+         data: {
+           ...data, 
+           jsonSchema: JSON.parse(data.jsonSchema), 
+           questionAnswers: JSON.parse(data.questionAnswers), 
+           aboutApplication: JSON.parse(data.aboutApplication),
+           dataset
+        }});
+   }
+   catch (err) {
+      console.log(err.message);
+      res.status(500).json({status: 'error', message: err});
+   };
+});
+
+// @route   GET api/v1/data-access-request/datasets/:datasetIds
+// @desc    GET Access request with multiple datasets for user
+// @access  Private
+router.get('/datasets/:datasetIds', passport.authenticate('jwt'), async (req, res) => {
+  let accessRecord;
+  let data = {};
+  let datasets = [];
+   try {
+      // 1. Get datasetIds from params
+      let {params: {datasetIds}} = req;
+      let arrDatasetIds = datasetIds.split(',');
+      // 2. Get the userId
+      let {id: userId} = req.user;
+      // 3. Find the matching record 
+      accessRecord = await DataRequestModel.findOne({datasetIds: { $all: arrDatasetIds }, userId, applicationStatus: 'inProgress'}).sort({createdAt: 1});
+      // 4. Get datasets
+      datasets = await ToolModel.find({ datasetid: { $in: arrDatasetIds } }).populate('publisher');  
+      // 5. If no record create it and pass back
+      if (!accessRecord) {
+          if(_.isEmpty(datasets)) {
+            return res
+            .status(500)
+            .json({status: 'error', message: 'No datasets available.' });
+         }
+        let {datasetfields: {publisher = ''}} = datasets[0];
+
+         // 1. GET the template from the custodian or take the default (Cannot have dataset specific question sets for multiple datasets)
+         const accessRequestTemplate = await DataRequestSchemaModel.findOne({ $or: [{publisher}, {dataSetId: 'default'}] , status: 'active' }).sort({createdAt: -1});
+         // 2. Ensure a question set was found
+         if(!accessRequestTemplate) {
+            return res
+            .status(400)
+            .json({status: 'error', message: 'No Data Access request schema.' });
+         }
+         // 3. Build up the accessModel for the user
+         let {jsonSchema, version} = accessRequestTemplate;
+         // 4. Create new DataRequestModel
+         let record = new DataRequestModel({
+            version,
+            userId,
+            datasetIds: arrDatasetIds,
+            jsonSchema,
+            publisher,
+            questionAnswers: "{}",
+            aboutApplication: "{}",
+            applicationStatus: "inProgress"
+         });
+         // 3. save record
+         await record.save();
+         // 4. return record
+         data = {...record._doc};
+       } else {
+         data = {...accessRecord._doc};
+       }
+
+       return res.status(200).json({
+         status: 'success', 
+         data: {
+           ...data, 
+           jsonSchema: JSON.parse(data.jsonSchema), 
+           questionAnswers: JSON.parse(data.questionAnswers), 
+           aboutApplication: JSON.parse(data.aboutApplication), 
+           datasets
+        }});
    }
    catch (err) {
       console.log(err.message);
@@ -94,19 +241,28 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), async (req, res)
 // @access  Private
 router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
   try {
-    // 1. id is the _id object in mongoo.db not the generated id or dataset Id
+    // 1. Id is the _id object in mongoo.db not the generated id or dataset Id
     const {
       params: { id },
     } = req;
-    console.log(req.body);
-    // 2. find data request by _id and update via body
-    let accessRequestRecord = await DataRequestModel.findByIdAndUpdate(id, req.body, { new: true });
-    // 3. check access record
+    // 2. Destructure body and update only specific fields by building a segregated non-user specified update object
+    let updateObj;
+    let { aboutApplication, questionAnswers } = req.body;
+    if(aboutApplication) {
+      let parsedObj = JSON.parse(aboutApplication);
+      let updatedDatasetIds = parsedObj.selectedDatasets.map(dataset => dataset.datasetId);
+      updateObj = { aboutApplication,  datasetIds: updatedDatasetIds };
+    }
+    if(questionAnswers) {
+      updateObj = { ...updateObj, questionAnswers };
+    }
+    // 3. Find data request by _id and update via body
+    let accessRequestRecord = await DataRequestModel.findByIdAndUpdate(id, updateObj, { new: true });
+    // 4. Check access record
     if (!accessRequestRecord) {
       return res.status(400).json({ status: 'error', message: 'Data Access Request not found.' });
     }
-
-    // 4. return new data object
+    // 5. Return new data object
     return res.status(200).json({
       status: 'success',
       data: { ...accessRequestRecord._doc, questionAnswers: JSON.parse(accessRequestRecord.questionAnswers) },
@@ -121,46 +277,52 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 // @desc    Update request record
 // @access  Private
 router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
-  let metadataCatalogue = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
+  // declare recipientTypes, static until otherwise
+  const emailRecipientTypes = ['requester', 'dataCustodian'];
   // 1. id is the _id object in mongoo.db not the generated id or dataset Id
   let { params: { id }} = req;
   try {
+    // 2. Find application in MongoDb
     const application = await DataRequestModel.findOne({ _id: id });
     if (application) {
-      // destructure
-      let {questionAnswers, jsonSchema, dataSetId} = application;
-      // parse schema
+      // 3. Destructure the application
+      let {questionAnswers, jsonSchema, dataSetId, datasetIds} = application;
+      // 4. Parse the schema
       let {pages, questionPanels, questionSets: questions} = JSON.parse(jsonSchema);
-      // parse questionAnswers
+      // 5. Parse the questionAnswers
       let answers = JSON.parse(questionAnswers);
-      // GET dataset from metadatacatalogue we need the contactPoint, author and 
-      const response = await axios.get(`${metadataCatalogue}/api/facets/${dataSetId}/profile/uk.ac.hdrukgateway/HdrUkProfilePluginService`);
-      if(!response) {
-        return res.status(400).json({ status: 'error', message: 'No dataset from meta data catalogue.' });
-      }
+      // 6. Destructure the submitting user's details
       let { firstname, lastname, email } = req.user
-      // DataSet details - if no descsription use abstract
-      let { data: { contactPoint, publisher, description, abstract, title } } = response;
-      // declare recipientTypes, static until otherwise
-      const emailRecipientTypes = ['requester', 'dataCustodian'];
-      // set options
-      let options = {userType: '', userEmail: email, userName: `${firstname} ${lastname}`, custodianEmail: contactPoint, dataSetTitle: title, publisher, description, abstract };
-      console.log(options);
-
+      // 7. Define query to fetch single or multiple datasets depending on context
+      let query = {};
+      if(dataSetId) {
+        query = { datasetid: dataSetId };
+      } else if(datasetIds) {
+        query = { datasetid: { $in: datasetIds } };
+      } else {
+        return res.status(500).json({ success: false, message: 'No datasets were found attached to this submission' });
+      }
+      // 8. Find single or multiple datasets
+      let datasets = await ToolModel.find(query); 
+      // 9. Extract the properties we need to construct email
+      let { datasetfields: { contactPoint, publisher } } = datasets[0];
+      let datasetTitles = datasets.map(dataset => dataset.name).join(', ');
+      // 10. Set options object to pass to email generator
+      let options = { userType: '', userEmail: email, userName: `${firstname} ${lastname}`, custodianEmail: contactPoint, publisher, datasetTitles };
+      // 11. Send email to each recipient type
       for (let emailRecipientType of emailRecipientTypes) {
         let msg = {};
-
         options = {...options, userType: emailRecipientType};
-        // build email template
+        // Build email template
         msg = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
-        // if unsubscribe is allowed, pass single user object recipient to generate and append unsub link
+        // If unsubscribe is allowed, pass single user object recipient to generate and append unsub link
         if(msg.allowUnsubscribe) {
           msg.to = [ req.user ];
         } else {
-          // if unsubscribe not allowed, pass email in mock user object
+          // If unsubscribe not allowed, pass email in mock user object
           msg.to = [{ email: msg.to }];
         }
-        // send email
+        // Send email
         await emailGenerator.sendEmail(
           msg.to, 
           msg.from, 
@@ -168,13 +330,12 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
           msg.html, 
           msg.allowUnsubscribe);
       }
-     
+      // 12. Update application to submitted status
       application.applicationStatus = 'submitted';
-      // save the application to db
       await application.save();
-
-      await notificationBuilder.triggerNotificationMessage(application.userId, `You have successfully submitted a Data Access Request for ${title}`,'data access request', application.dataSetId);
-
+      // 13. Create new notification for submitting user
+      await notificationBuilder.triggerNotificationMessage(application.userId, `You have successfully submitted a Data Access Request for ${datasetTitles}`,'data access request', application.dataSetId);
+      // 14. Return aplication and successful response
       return res.status(200).json({ status: 'success', data: application });
     }
   } catch (err) {

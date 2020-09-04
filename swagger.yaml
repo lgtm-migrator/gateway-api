@@ -20,7 +20,7 @@ servers:
 paths:
   /v1/datasets/{datasetID}:
     get:
-      summary: Returns details for a Dataset.
+      summary: Returns Dataset object.
       tags:
         - Datasets
       parameters:
@@ -29,117 +29,39 @@ paths:
           required: true
           description: The ID of the datset
           schema:
-            type : integer
-            format: int64
-            minimum: 1
-            example: 89522470
+            type : string
+            example: '756daeaa-6e47-4269-9df5-477c01cdd271'
       responses: 
         '200':
           description: OK    
 
-  /v1/datasets/detail/{datasetID}:
+  /v1/datasets/:
     get:
-      summary: Returns additional details for a dataset from the Metadata catalogue.
+      summary: Returns List of Dataset objects.
       tags:
         - Datasets
       parameters:
-        - in: path
-          name: datasetID
-          required: true
-          description: The ID of the datset
-          schema:
-           type : string
-            example: d3a3935f-b28e-4e74-9b15-9432d611f26c
-      responses: 
-        '200':
-          description: OK 
-
-  /v1/datasets/?search={searchTerm}:
-    get:
-      summary: Returns dataset search results by searchTerm
-      tags:
-        - Datasets
-      parameters:
-        - name: searchTerm
-          in: path
-          required: true
-          description: A search term.
-          schema:
-            type : string
-            example: epilepsy
-      responses: 
-        '200':
-          description: OK
-
-  /v1/datasets/filters?search={searchTerm}:
-    get:
-      summary: Returns filters options for datasets
-      tags:
-        - Datasets
-      parameters:
-        - name: search
-          in: query
-          required: false
-          description: Type of datasearch.
-          schema:
-            type : string
-            example: epilepsy
-      responses: 
-        '200':
-          description: OK
-                
-  /v1/datasets/access/request:
-    post:
-      summary: Access request for dataset
-      security:
-        - cookieAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              properties:
-                title:
-                  type: string
-                  example: 'Epilepsy 12 - National organisation audit'
-                userId:
-                  type: integer
-                  example: 12345654323456
-                dataSetId:
-                  type: string,
-                  example: '2345654323456'
-                researchAim:
-                  type: string
-                  example: 'The aim of your research, description needed.'
-                linkedDataSets:
-                  type: boolean
-                  example: true
-                namesOfDataSets:
-                  type: string
-                  example: 'The name of the datasets that are linked.'
-                dataRequirements:
-                  type: boolean
-                  example: true
-                dataSetParts:
-                  type: string
-                  example: 'The dataset parts that you would like.'
-                startDate:
-                  type: string
-                  example: '19/12/2022'     
-                icoRegistration:
-                  type: string
-                  example: '66252AAA'
-                researchBenefits:
-                  type: string,
-                  example: 'Would benefit would this research provide.'
-                ethicalProcessingEvidence:
-                  type: string
-                  example: 'Ethical processing evidence'
-                contactNumber:
-                  type: string
-                  example: '07656788909'
-      tags:
-        - Datasets
+      - in: query
+        name: limit
+        required: false
+        description: Limit the number of results
+        schema:
+          type : integer
+          example: 3
+      - in: query
+        name: offset
+        required: false
+        description: Index to offset the search results
+        schema:
+          type : integer
+          example: 1
+      - in: query
+        name: q
+        required: false
+        description: Filter using search query
+        schema:
+          type : string
+          example: epilepsy
       responses: 
         '200':
           description: OK
@@ -207,6 +129,7 @@ paths:
       responses:
         '200':
           description: OK
+          
   /v1/person/:
     get:
       summary: Returns an array of person objects.
@@ -297,11 +220,8 @@ paths:
                 orcid: 'https://orcid.org/123456789'
                 emailNotifications: false
                 terms: true
-      responses:
-        '200':
-          description: OK
           
-  /v1/search:
+  /v1/search/:
     get:
       tags:
         - Search
@@ -344,15 +264,6 @@ paths:
         '200':
           description: OK
 
-  /v1/stats:
-    get:
-      summary: This will return a JSON document to show high level stats.
-      tags:
-        - Stats
-      responses: 
-        '200':
-          description: OK
-
   /v1/datasets/?search={searchTerm}:
     get:
       summary: Returns dataset search results by searchTerm
@@ -370,7 +281,16 @@ paths:
         '200':
           description: OK
 
-  /v1/stats/type?rank={rank}:
+  /v1/stats/:
+    get:
+      summary: This will return a JSON document to show high level stats.
+      tags:
+        - Stats
+      responses: 
+        '200':
+          description: OK
+
+  /v1/stats?rank={rank}:
     get:
       summary: Returns the details on recent searches, popular objects or recently updated objects based on the rank query parameter.
       tags:
@@ -386,12 +306,74 @@ paths:
       responses: 
         '200':
           description: OK
+  
+  /v1/stats/topSearches?month={month}&year={year}:
+    get:
+      summary: Returns top searches for a given month and year.
+      tags:
+        - Stats
+      parameters:
+        - name: month
+          in: path
+          required: true
+          description: Month number.
+          schema:
+            type : string
+            example: 7
+        - name: year
+          in: path
+          required: true
+          description: Year.
+          schema:
+            type : string
+            example: 2020
+      responses: 
+        '200':
+          description: OK
 
-  /v1/stats/kpis?kpi={type}:
+  /v1/stats?rank={rank}&type={type}&month={month}&year={year}:
+    get:
+      summary: Returns unmet demand information for the resource type specified, based on the month and year query params.
+      tags:
+        - Stats
+      parameters:
+        - name: rank
+          in: path
+          required: true
+          description: The type of stat.
+          schema:
+            type : string
+            example: unmet
+        - name: type
+          in: path
+          required: true
+          description: Resource type.
+          schema:
+            type : string
+            example: Tools
+        - name: month
+          in: path
+          required: true
+          description: Month number.
+          schema:
+            type : string
+            example: 7
+        - name: year
+          in: path
+          required: true
+          description: Year.
+          schema:
+            type : string
+            example: 2020
+      responses: 
+        '200':
+          description: OK
+
+  /v1/kpis?kpi={type}:
     get:
       summary: Returns information for KPIs, based on the KPI type parameter.
       tags:
-        - Stats
+        - KPIs
       parameters:
         - name: type
           in: path
@@ -404,11 +386,11 @@ paths:
         '200':
           description: OK
 
-  /v1/stats/kpis?kpi={type}&selectedDate={selectedDate}:
+  /v1/kpis?kpi={type}&selectedDate={selectedDate}:
     get:
-      summary: Returns information for KPIs, based on the KPI type parameter.
+      summary: Returns information for KPIs, based on the KPI type and selectedDate parameters.
       tags:
-        - Stats
+        - KPIs
       parameters:
         - name: type
           in: path
@@ -420,199 +402,200 @@ paths:
         - name: selectedDate
           in: path
           required: true
-          description: The type of KPI.
+          description: Full date time string.
           schema:
             type : string
             example: Wed Jul 01 2020 01:00:00 GMT 0100 (British Summer Time)
       responses: 
         '200':
           description: OK
-
-  /v1/stats/unmetDatasets?month={month}&year={year}:
-    get:
-      summary: Returns unmet demand information for datasets, based on the month and year query params.
-      tags:
-        - Stats
-      parameters:
-        - name: month
-          in: path
-          required: true
-          description: Month number.
-          schema:
-            type : string
-            example: 7
-        - name: year
-          in: path
-          required: true
-          description: Year.
-          schema:
-            type : string
-            example: 2020
-      responses: 
-        '200':
-          description: OK
-
-  /v1/stats/unmetTools?month={month}&year={year}:
-    get:
-      summary: Returns unmet demand information for tools, based on the month and year query params.
-      tags:
-        - Stats
-      parameters:
-        - name: month
-          in: path
-          required: true
-          description: Month number.
-          schema:
-            type : string
-            example: 7
-        - name: year
-          in: path
-          required: true
-          description: Year.
-          schema:
-            type : string
-            example: 2020
-      responses: 
-        '200':
-          description: OK
-
-  /v1/stats/unmetProjects?month={month}&year={year}:
-    get:
-      summary: Returns unmet demand information for projects, based on the month and year query params.
-      tags:
-        - Stats
-      parameters:
-        - name: month
-          in: path
-          required: true
-          description: Month number.
-          schema:
-            type : string
-            example: 7
-        - name: year
-          in: path
-          required: true
-          description: Year.
-          schema:
-            type : string
-            example: 2020
-      responses: 
-        '200':
-          description: OK
-
-  /v1/stats/unmetPapers?month={month}&year={year}:
-    get:
-      summary: Returns unmet demand information for papers, based on the month and year query params.
-      tags:
-        - Stats
-      parameters:
-        - name: month
-          in: path
-          required: true
-          description: Month number.
-          schema:
-            type : string
-            example: 7
-        - name: year
-          in: path
-          required: true
-          description: Year.
-          schema:
-            type : string
-            example: 2020
-      responses: 
-        '200':
-          description: OK
-
-  /v1/stats/unmetPeople?month={month}&year={year}:
-    get:
-      summary: Returns unmet demand information for people, based on the month and year query params.
-      tags:
-        - Stats
-      parameters:
-        - name: month
-          in: path
-          required: true
-          description: Month number.
-          schema:
-            type : string
-            example: 7
-        - name: year
-          in: path
-          required: true
-          description: Year.
-          schema:
-            type : string
-            example: 2020
-      responses: 
-        '200':
-          description: OK
-
-  /v1/tools:
-    post:
-      summary: Returns new Tool object with ID.
+          
+  /v1/messages/{id}:
+  
+    delete:
+      summary: Delete a Message
       security:
         - cookieAuth: []
       tags:
-        - Tools
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - name
-              properties:
-                type:
-                  type: string
-                name:
-                  type: string
-                link:
-                  type: string
-                description:
-                  type: string
-                categories:
-                  type: object
-                  properties:
-                    category:
-                      type: string
-                    programmingLanguage:
-                      type: array
-                      items:
-                        type: string
-                    programmingLanguageVersion:
-                      type: string
-                licence:
-                  type: string
-                authors:
-                  type: array
-                  items:
-                    type: number
-                tags:
-                  type: object
-                  properties:
-                    features:
-                      type: array
-                      items:
-                        type: string
-                    topics:
-                      type: array
-                      items:
-                        type: string      
-              example:   # Sample object
-                type: 'tool'
-                name: 'Epilepsy data research'
-                link: 'http://epilepsy.org'
-                description: 'Epilespy data research description'
-                categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '0.0.0'}
-                licence: 'MIT licence'
-                authors: [4495285946631793]
-                tags: {features: ['Arbitrage'], topics: ['Epilepsy']}
+        - Messages
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the Message
+          schema:
+            type: string
+            example: "5ee249426136805fbf094eef"
+      responses:
+        '204':
+          description: Ok
+        
+    put:
+      summary: Update a single Message
+      security:
+        - cookieAuth: []
+      tags:
+        - Messages
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the Message
+          schema:
+            type: string
+            example: "5ee249426136805fbf094eef"
+        - in: body 
+          name: payload
+          description: Payload for updating existing Message
+          schema: 
+            type: object
+            properties:
+              isRead:
+                type: boolean
+              messageDescription:
+                type: string
+              messageType:
+                type: string
+      responses: 
+        '204':
+          description: OK 
+    
+    
+  /v1/messages/unread/count:
+  
+    get:
+      summary: Returns the number of unread messages for the authenticated user
+      security:
+        - cookieAuth: []
+      tags:
+        - Messages
       responses: 
         '200':
+          description: OK 
+            
+  /v1/messages/:
+  
+    post:
+      summary: Returns a new Message object and creates an associated parent Topic if a Topic is not specified in request body
+      security:
+        - cookieAuth: []
+      tags:
+        - Messages
+      parameters:
+        - in: body 
+          name: payload
+          description: Payload for updating existing Message
+          schema: 
+            type: object
+            properties:
+              isRead:
+                type: boolean
+              messageDescription:
+                type: string
+              messageType:
+                type: string
+      responses: 
+        '201':
           description: OK
-
-  /v1/projects:
+          
+  /v1/topics/:
+    post:
+      summary: Returns a new Topic object with ID (Does not create any associated messages)
+      security:
+        - cookieAuth: []
+      tags:
+        - Topics
+      parameters:
+        - in: body 
+          name: payload
+          description: Payload for posting new message Topic
+          schema: 
+            type: object
+            properties:
+              relatedObjectIds:
+                type: array
+                example: "['1','2','3']"
+      responses:
+        '201':
+          description: A new Topic
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _id:
+                    type: object
+                    description: Generated ID
+                  title:
+                    type: string
+                    description: Title of message
+                  subtitle:
+                    type: string
+                    description: Subtitle of message
+                  relatedObjectIds:
+                    type: array
+                    description: Object ID this Topic is related to
+                  createdBy:
+                    type: object
+                    description: User that created the topic
+                  createdDate:
+                    type: date
+                    description: Date the topic was created
+                  recipients:
+                    type: array
+                    description: Collection of user IDs
+                  tags:
+                    type: array
+                    description: Collection of tags to describe topic
+    get:
+      summary: Returns a list of all topics that the authenticated user is a recipient or member of
+      security:
+        - cookieAuth: []
+      tags:
+        - Topics
+      responses:
+        '200':
+          description: Ok                
+    
+                    
+  /v1/topics/{id}:
+    get:
+      summary: Returns Topic object by ID
+      security:
+        - cookieAuth: []
+      tags:
+        - Topics
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the topic
+          schema:
+            type: string
+            example: "5ee249426136805fbf094eef"
+      responses:
+        '200':
+          description: Ok
+          
+    delete:
+      summary: Soft deletes a message Topic but does not affect associated messages
+      security:
+        - cookieAuth: []
+      tags:
+        - Topics
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the Topic
+          schema:
+            type: string
+            example: "5ee249426136805fbf094eef"
+      responses:
+        '204':
+          description: Ok
+            
+  /v1/projects/:
     post:
       summary: Returns a Project object with ID.
       security:
@@ -675,6 +658,7 @@ paths:
       responses: 
         '200':
           description: OK
+          
     get:
       summary: Returns List of Project objects.
       tags:
@@ -704,6 +688,7 @@ paths:
       responses: 
         '200':
           description: OK
+          
   /v1/projects/{id}:
     get:
       summary: Returns Project object.
@@ -757,7 +742,7 @@ paths:
       - in: path
         name: id
         required: true
-        description: The ID of the tool
+        description: The ID of the project
         schema:
           type : integer
           format: int64
@@ -827,13 +812,13 @@ paths:
         '200':
           description: OK
 
-  /v1/paper/add:
+  /v1/papers/:
     post:
-      summary: Add a paper.
+      summary: Returns a Paper object with ID.
       security:
         - cookieAuth: []
       tags:
-        - Paper
+        - Papers
       requestBody:
         content:
           application/json:
@@ -890,14 +875,99 @@ paths:
       responses: 
         '200':
           description: OK
-        
-  /v1/paper/edit:
-    put:
-      summary: Edit a paper.
+    get:
+      summary: Return List of Paper objects.
+      tags:
+        - Papers
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        description: Limit the number of results
+        schema:
+          type : integer
+          example: 3
+      - in: query
+        name: offset
+        required: false
+        description: Index to offset the search results
+        schema:
+          type : integer
+          example: 1
+      - in: query
+        name: q
+        required: false
+        description: Filter using search query
+        schema:
+          type : string
+          example: epilepsy
+      responses: 
+        '200':
+          description: OK
+  
+  /v1/papers/{id}:
+    get:
+      summary: Returns Paper object.
+      tags:
+        - Papers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the user
+          schema:
+            type : integer
+            format: int64
+            minimum: 1
+            example: 8370396016757367
+      responses: 
+        '200':
+          description: OK
+    patch:
+      summary: Change status of the Paper object.
       security:
         - cookieAuth: []
       tags:
-        - Paper
+        - Papers
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          example: 7485531672584456
+      requestBody:
+        content:
+          application/json:
+            schema:      # Request body contents
+              type: object
+              required:
+                - name
+              properties:
+                id:
+                  type: number
+                activeflag:
+                  type: string
+              example:   # Sample object
+                activeflag: 'active'
+      responses: 
+        '200':
+          description: OK
+    put:
+      summary: Returns edited Paper object.
+      security:
+        - cookieAuth: []
+      tags:
+        - Papers
+      parameters:
+      - in: path
+        name: id
+        required: true
+        description: The ID of the paper
+        schema:
+          type : integer
+          format: int64
+          example: 7485531672584456
       requestBody:
         content:
           application/json:
@@ -949,11 +1019,11 @@ paths:
                   items:
                     type: string
               example:   # Sample object
-                id: 26542005388306332
+                id: 7485531672584456
                 type: 'paper'
-                name: 'Research Data TEST EPILEPSY'
+                name: 'Test Paper Title 2'
                 link: 'http://localhost:8080/epilepsy'
-                description: 'Epilespy data research description'
+                description: 'Test abstract 2'
                 categories: { category: 'API', programmingLanguage: ['Javascript'], programmingLanguageVersion: '1.0.0'}
                 licence: 'MIT licence'
                 authors: [4495285946631793]
@@ -963,24 +1033,86 @@ paths:
         '200':
           description: OK
 
-  /v1/paper/delete:
-    delete:
-      summary: Delete a paper.
+  /v1/tools/:
+    get:
+      summary: Return List of Tool objects.
+      tags:
+        - Tools
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        description: Limit the number of results
+        schema:
+          type : integer
+          example: 3
+      - in: query
+        name: offset
+        required: false
+        description: Index to offset the search results
+        schema:
+          type : integer
+          example: 1
+      - in: query
+        name: q
+        required: false
+        description: Filter using search query
+        schema:
+          type : string
+          example: epilepsy
+      responses: 
+        '200':
+          description: OK
+    post:
+      summary: Returns new Tool object with ID.
       security:
         - cookieAuth: []
       tags:
-        - Paper
+        - Tools
       requestBody:
         content:
           application/json:
             schema:      # Request body contents
               type: object
               required:
-                - id
+                - name
               properties:
-                id:
-                  type: number
-                id: 26542005388306332
+                type:
+                  type: string
+                name:
+                  type: string
+                link:
+                  type: string
+                description:
+                  type: string
+                categories:
+                  type: object
+                  properties:
+                    category:
+                      type: string
+                    programmingLanguage:
+                      type: array
+                      items:
+                        type: string
+                    programmingLanguageVersion:
+                      type: string
+                licence:
+                  type: string
+                authors:
+                  type: array
+                  items:
+                    type: number
+                tags:
+                  type: object
+                  properties:
+                    features:
+                      type: array
+                      items:
+                        type: string
+                    topics:
+                      type: array
+                      items:
+                        type: string      
               example:   # Sample object
                 id: 26542005388306332
       responses: 
@@ -1017,7 +1149,7 @@ paths:
       responses: 
         '200':
           description: OK
-    
+          
   /v1/tools/{id}:
     get:
       summary: Returns Tool object.
@@ -1178,64 +1310,12 @@ paths:
     #       description: OK
     #     '204':
     #       description: No Content
+    
+
   
-  /v1/paper/get/admin:
-    get:
-      summary: Get paper for admin.
-      security:
-        - cookieAuth: []
-      tags:
-        - Paper
-      responses: 
-        '200':
-          description: OK
+
   
-  /v1/paper/get/:
-    get:
-      summary: Get paper for normal user.
-      security:
-        - cookieAuth: []
-      tags:
-        - Paper
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the user
-          schema:
-            type : integer
-            format: int64
-            minimum: 1
-            example: 8370396016757367
-      responses: 
-        '200':
-          description: OK
   
-  /v1/paper/status/:
-    put:
-      summary: Change status for a paper.
-      security:
-        - cookieAuth: []
-      tags:
-        - Paper
-      requestBody:
-        content:
-          application/json:
-            schema:      # Request body contents
-              type: object
-              required:
-                - name
-              properties:
-                id:
-                  type: number
-                activeflag:
-                  type: string
-              example:   # Sample object
-                id: 662346984100503
-                activeflag: 'active'
-      responses: 
-        '200':
-          description: OK
 
   # /v1/tools/get:
   #   get:
