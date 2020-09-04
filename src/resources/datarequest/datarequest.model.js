@@ -8,8 +8,9 @@ const DataRequestSchema = new Schema({
   applicationStatus: {
     type: String,
     default: 'inProgress',
-    enum: ['inProgress' , 'submitted', 'accepted']
+    enum: ['inProgress' , 'submitted', 'accepted', 'rejected']
   },
+  applicationStatusDesc : String,
   jsonSchema: {
     type: String,
     default: "{}"
@@ -39,6 +40,13 @@ DataRequestSchema.virtual('dataset', {
   ref: 'Data',
   foreignField: 'datasetid',
   localField: 'dataSetId',
+  justOne: true
+});
+
+DataRequestSchema.virtual('mainApplicant', {
+  ref: 'User',
+  foreignField: 'id',
+  localField: 'userId',
   justOne: true
 });
 

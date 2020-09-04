@@ -2,17 +2,24 @@ import { model, Schema } from 'mongoose'
 
 const MessageSchema = new Schema({
   messageID: Number,
+  messageTo: Number,
   messageObjectID: Number,
+  messageDataRequestID: {
+    type: Schema.Types.ObjectId, 
+    ref: 'data_request'
+  },
   messageDescription: String,
   messageType: {
     type: String,
     enum: ['message', 
-           'notification', 
            'add', 
            'approved', 
-           'author'
-          ],
-    default: 'notification'
+           'author',
+           'rejected',
+           'added collection',
+           'review',
+           'data access request'
+          ]
   },
   createdBy:{
     type: Schema.Types.ObjectId, 
