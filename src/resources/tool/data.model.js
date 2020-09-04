@@ -53,7 +53,7 @@ const DataSchema = new Schema(
     datasetid: String,
     datasetfields: {
         publisher: String,
-        geographicCoverage: String,
+        geographicCoverage: [String],
         physicalSampleAvailability: [String],
         abstract: String,
         releaseDate: String,

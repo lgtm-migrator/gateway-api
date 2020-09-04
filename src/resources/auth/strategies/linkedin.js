@@ -28,6 +28,8 @@ const strategy = app => {
         profile,
         done
     ) => {
+        if (!profile.id || profile.id === '') return done("loginError");
+
         let [err, user] = await to(getUserByProviderId(profile.id))
         if (err || user) {
             return done(err, user)
@@ -68,6 +70,9 @@ const strategy = app => {
     app.get('/auth/linkedin/callback', (req, res, next) => {
         passport.authenticate('linkedin', (err, user, info) => {
             if (err || !user) {
+                //loginError
+                if (err === 'loginError') return res.status(200).redirect(process.env.homeURL+'/loginerror')
+                
                 // failureRedirect
                 var redirect = '/';
                 let returnPage = null;

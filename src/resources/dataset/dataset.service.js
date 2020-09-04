@@ -63,6 +63,7 @@ export async function loadDataset(datasetID) {
     
     var keywordArray = splitString(dataset.data.keywords)
     var physicalSampleAvailabilityArray = splitString(dataset.data.physicalSampleAvailability)
+    var geographicCoverageArray = splitString(dataset.data.geographicCoverage)
     
     const metadataQuality = metadataQualityList.data.find(x => x.id === datasetID);
     const phenotypes = phenotypesList.data[datasetMDC.id] || [];
@@ -78,7 +79,7 @@ export async function loadDataset(datasetID) {
     data.license = dataset.data.license;
     data.tags.features = keywordArray;
     data.datasetfields.publisher = dataset.data.publisher;
-    data.datasetfields.geographicCoverage = dataset.data.geographicCoverage;
+    data.datasetfields.geographicCoverage = geographicCoverageArray;
     data.datasetfields.physicalSampleAvailability = physicalSampleAvailabilityArray;
     data.datasetfields.abstract = dataset.data.abstract;
     data.datasetfields.releaseDate = dataset.data.releaseDate;
@@ -222,6 +223,7 @@ export async function loadDatasets(override) {
                         //Edit
                         var keywordArray = splitString(datasetMDC.keywords)
                         var physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability)
+                        var geographicCoverageArray = splitString(datasetMDC.geographicCoverage)
                         
                         await Data.findOneAndUpdate({ datasetid: datasetMDC.id },
                             {
@@ -234,7 +236,7 @@ export async function loadDatasets(override) {
                                 },
                                 datasetfields: {
                                     publisher: datasetMDC.publisher,
-                                    geographicCoverage: datasetMDC.geographicCoverage,
+                                    geographicCoverage: geographicCoverageArray,
                                     physicalSampleAvailability: physicalSampleAvailabilityArray,
                                     abstract: datasetMDC.abstract,
                                     releaseDate: datasetMDC.releaseDate,
@@ -269,6 +271,7 @@ export async function loadDatasets(override) {
                         
                         var keywordArray = splitString(datasetMDC.keywords)
                         var physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability)
+                        var geographicCoverageArray = splitString(datasetMDC.geographicCoverage)
                         
                         var data = new Data(); 
                         data.id = uniqueID;
@@ -281,7 +284,7 @@ export async function loadDatasets(override) {
                         data.license = datasetMDC.license;
                         data.tags.features = keywordArray;
                         data.datasetfields.publisher = datasetMDC.publisher;
-                        data.datasetfields.geographicCoverage = datasetMDC.geographicCoverage;
+                        data.datasetfields.geographicCoverage = geographicCoverageArray;
                         data.datasetfields.physicalSampleAvailability = physicalSampleAvailabilityArray;
                         data.datasetfields.abstract = datasetMDC.abstract;
                         data.datasetfields.releaseDate = datasetMDC.releaseDate;

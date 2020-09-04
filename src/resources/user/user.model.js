@@ -11,15 +11,16 @@ const UserSchema = new Schema({
   firstname: String,
   lastname: String,
   displayname: String,
-  providerId: String,
+  providerId: { type: String, required: true },
   provider: String,
   role: String,
   redirectURL: String,
   discourseUsername: String,
   discourseKey: String
 }, {
-  toJSON:     { virtuals: true },
-  toObject:   { virtuals: true }
+    timestamps: true,
+    toJSON:     { virtuals: true },
+    toObject:   { virtuals: true }
 });
 
 UserSchema.virtual('additionalInfo', {
