@@ -140,7 +140,7 @@ router.post(
         }
         else if(collectionId){
           // 3. Get the collection details from MongoDb to create the new topic
-          await Collections.findOne({ id: collectionId }).then( async (collection) => {
+          await Collections.findOne({ id: parseInt(collectionId) }).then( async (collection) => {
             // 4. If no collection was found, return 404
             if (!collection) {
               return res.status(404).json({ success: false, error: 'Collection not found.' });

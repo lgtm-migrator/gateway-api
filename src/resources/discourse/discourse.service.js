@@ -5,7 +5,6 @@ import axios from 'axios';
 import { HmacSHA256 } from 'crypto-js';
 import base64url from "base64url";
 import _ from 'lodash';
-import { Collection } from 'mongoose';
 import { Collections } from '../collections/collections.model';
 
 /**
