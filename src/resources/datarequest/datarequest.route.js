@@ -24,7 +24,7 @@ router.get('/', passport.authenticate('jwt'), async (req, res) => {
       return { ...app.toObject(), datasetIds: [app.dataset.datasetid], datasets: [app.dataset.toObject()]};
     });
     // 3. Find all data access request applications created with multi dataset version
-    let multiDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { "datasetIds":{$ne:[]} }] } ).populate('datasets');
+    let multiDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { $and: [{"datasetIds":{$ne:[]}}, {"datasetIds":{$ne:null}}]}] } ).populate('datasets');
     // 4. Return all users applications combined
     let applications = [...formattedApplications, ...multiDatasetApplications];
     return res.status(200).json({ success: true, data: applications });
@@ -53,7 +53,7 @@ router.get('/:requestId', passport.authenticate('jwt'), async (req, res) => {
       }
       // 5. Ensure single datasets are mapped correctly into array
       if (_.isEmpty(accessRecord.datasets)) {
-        accessRecord.datasets = [...accessRecord.dataset];
+        accessRecord.datasets = [accessRecord.dataset];
       }
       // 6. Check if requesting user is custodian member or applicant/collaborator
       let found = false, userType = '', readOnly = true;
