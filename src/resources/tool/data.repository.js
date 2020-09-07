@@ -15,7 +15,7 @@ const addTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
       let data = new Data(); 
       const toolCreator = req.body.toolCreator; 
-      const { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
+      const { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
       data.id = parseInt(Math.random().toString().replace('0.', ''));
       data.type = type;
       data.name = name;
@@ -23,6 +23,7 @@ const addTool = async (req, res) => {
       data.journal = journal;
       data.journalYear = journalYear; 
       data.description = description;
+      data.resultsInsights = resultsInsights;
       console.log(req.body)
       if (categories && typeof categories !== undefined) data.categories.category = categories.category;
       if (categories && typeof categories !== undefined) data.categories.programmingLanguage = categories.programmingLanguage;
@@ -94,7 +95,7 @@ const editTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
 
     const toolCreator = req.body.toolCreator;
-    let { type, name, link, description, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
+    let { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
     let id = req.params.id;
 
     if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
@@ -111,6 +112,7 @@ const editTool = async (req, res) => {
         name: name,
         link: urlValidator.validateURL(link),
         description: description,
+        resultsInsights: resultsInsights,
         journal: journal,
         journalYear: journalYear,
         categories: {

@@ -5,6 +5,7 @@ info:
   version: 0.0.1
 
 servers:
+  - url: https://api.www.healthdatagateway.org/api
   - url: http://localhost:3001/api
 
   - url: https://api.{environment}.healthdatagateway.org:{port}/api
