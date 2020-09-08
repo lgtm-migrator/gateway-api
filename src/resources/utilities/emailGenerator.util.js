@@ -156,7 +156,7 @@ const _getAllQuestionsFlattened = (allQuestions) => {
 };
 
 const _formatSectionTitle = (value) => {
-  let [questionId, uniqueId] = value.split('_');
+  let [questionId] = value.split('_');
   return _.capitalize(questionId);
 }
 
@@ -371,7 +371,7 @@ const _extractApplicantNames = (questionAnswers) => {
     // get value of key
     let value = qa[key];
     // split the key up for unique purposes
-    let [qId, uniqueId] = key.split('_');
+    let [qId] = key.split('_');
     // check if key in lookup
     let lookup = autoCompleteLookups[`${qId}`];
     // if key exists and it has an object do relevant data setting
@@ -472,7 +472,7 @@ const _displayDARLink = (accessId) => {
 }
 
 const _generateDARStatusChangedEmail = (questionAnswers, options) => {
-  let { id, applicationStatus, applicationStatusDesc, publisher, project, datasetTitles, dateSubmitted } = options;
+  let { id, applicationStatus, applicationStatusDesc, publisher, datasetTitles, dateSubmitted } = options;
   let answers = { ...questionAnswers };
   let applicants = _extractApplicantNames(answers).join(', ');
 

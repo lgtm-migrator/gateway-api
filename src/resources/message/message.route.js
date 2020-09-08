@@ -3,8 +3,6 @@ import passport from "passport";
 import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
 import { MessagesModel } from './message.model'
-import mongoose from 'mongoose';
-import { TopicModel } from '../topic/topic.model';
 
 const messageController = require('../message/message.controller');
 
