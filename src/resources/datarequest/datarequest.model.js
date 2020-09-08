@@ -22,7 +22,10 @@ const DataRequestSchema = new Schema({
   aboutApplication: {
     type: String,
     default: "{}"
-  }
+  },
+  dateSubmitted: {
+    type: Date
+},
 }, {
     timestamps: true,
     toJSON:     { virtuals: true },

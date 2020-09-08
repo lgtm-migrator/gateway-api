@@ -8,6 +8,7 @@ import _ from 'lodash';
 
 const sgMail = require('@sendgrid/mail');
 const notificationBuilder = require('../utilities/notificationBuilder');
+const datarequestController = require('./datarequest.controller');
 
 const router = express.Router();
 
@@ -24,7 +25,8 @@ router.get('/', passport.authenticate('jwt'), async (req, res) => {
       return { ...app.toObject(), datasetIds: [app.dataset.datasetid], datasets: [app.dataset.toObject()]};
     });
     // 3. Find all data access request applications created with multi dataset version
-    let multiDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { "datasetIds":{$ne:[]} }] } ).populate('datasets');
+    //let multiDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { "datasetIds":{$ne:[]} }] } ).populate('datasets');
+    let multiDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { $and: [{datasetIds:{$ne:[]}}, {datasetIds:{$ne:null}}]}] } ).populate('datasets');
     // 4. Return all users applications combined
     let applications = [...formattedApplications, ...multiDatasetApplications];
     return res.status(200).json({ success: true, data: applications });
@@ -44,7 +46,6 @@ router.get('/:requestId', passport.authenticate('jwt'), async (req, res) => {
       let {id: userId, _id} = req.user;
       // 3. Find the matching record and include attached datasets records with publisher details
       let accessRecord = await DataRequestModel.findOne({_id: requestId}).populate({ path: 'datasets dataset', populate: { path: 'publisher', populate: { path: 'team'}}});
-      //TODO check user is owner of DAR or is a member of the publisher team (return 401 if not)
       // 4. If no matching application found, return 404
       if (!accessRecord) {
             return res
@@ -53,7 +54,7 @@ router.get('/:requestId', passport.authenticate('jwt'), async (req, res) => {
       }
       // 5. Ensure single datasets are mapped correctly into array
       if (_.isEmpty(accessRecord.datasets)) {
-        accessRecord.datasets = [...accessRecord.dataset];
+        accessRecord.datasets = [accessRecord.dataset];
       }
       // 6. Check if requesting user is custodian member or applicant/collaborator
       let found = false, userType = '', readOnly = true;
@@ -283,18 +284,21 @@ router.put('/:id', passport.authenticate('jwt'), async (req, res) => {
       params: { id },
     } = req;
     // 2. Get the userId
-    let { _id, firstname, lastname } = req.user;
+    let { _id } = req.user;
     // 3. Find the relevant data request application
     let accessRecord = await DataRequestModel
     .findOne({_id: id})
     .populate({ 
         path: 'datasets dataset mainApplicant', 
           populate: { 
-            path: 'publisher', 
+            path: 'publisher additionalInfo', 
             populate: { 
               path: 'team', 
               populate: { 
-                path: 'users' 
+                path: 'users', 
+                populate: {
+                  path: 'additionalInfo'
+                }
               }
             }
           }
@@ -307,7 +311,7 @@ router.put('/:id', passport.authenticate('jwt'), async (req, res) => {
     }
     // 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
     if (_.isEmpty(accessRecord.datasets)) {
-      accessRecord.datasets = [...accessRecord.dataset];
+      accessRecord.datasets = [accessRecord.dataset];
     }
 
     // 5. Check if the user is permitted to perform update to application (should be custodian)
@@ -323,40 +327,30 @@ router.put('/:id', passport.authenticate('jwt'), async (req, res) => {
 
     // 6. Extract new application status and desc to save updates
     const { applicationStatus, applicationStatusDesc } = req.body;
-    if(applicationStatus) {
+    let isDirty = false;
+    if(applicationStatus && applicationStatus !== accessRecord.applicationStatus) {
       accessRecord.applicationStatus = applicationStatus;
+      isDirty = true;
     }
-    if(applicationStatusDesc) {
+    if(applicationStatusDesc && applicationStatusDesc !== accessRecord.applicationStatusDesc) {
       accessRecord.applicationStatusDesc = applicationStatusDesc;
-    }
-    accessRecord.save();
-
-    // 7. Create notifications
-    // Custodian team notifications
-    let datasetTitles = accessRecord.datasets.map(dataset => dataset.name).join(', ');
-    if(!_.isEmpty(members)) {
-      // Retrieve all custodian user Ids to generate notifications
-      let custodianUsers = [...accessRecord.datasets[0].publisher.team.users];
-      let custodianUserIds = custodianUsers.map(user => user.id);
-      // Extract personal data from main applicant to personalise notification
-      let { firstname: appFirstName, lastname: appLastName } = accessRecord.mainApplicant;
-      await notificationBuilder.triggerNotificationMessage(custodianUserIds, `${appFirstName} ${appLastName}'s Data Access Request for ${datasetTitles} was ${applicationStatus} by ${firstname} ${lastname}`,'data access request', accessRecord._id);
+      isDirty = true;
     }
 
-    // Applicant notification
-    let { datasetfields : { publisher }} = accessRecord.datasets[0]
-    await notificationBuilder.triggerNotificationMessage([accessRecord.userId], `Your Data Access Request for ${datasetTitles} was ${applicationStatus} by ${publisher}`,'data access request', accessRecord._id);
+    // 7. If a change has been made, notify custodian and main applicant
+    if(isDirty) {
+      accessRecord.save();
+      await datarequestController.createNotifications('StatusChange', { applicationStatus, applicationStatusDesc }, accessRecord, req.user);
+    }
 
-    // 8. Send emails to relevant users
-
-    // 9. Return updated application
+    // 8. Return application
     return res.status(200).json({
       status: 'success',
-      data: accessRecord,
+      data: accessRecord._doc,
     });
   } catch (err) {
-    console.log(err.message);
-    res.status(500).json({ status: 'error', message: err });
+    console.error(err.message);
+    res.status(500).json({ status: 'error', message: 'An error occurred updating the application status' });
   }
 });
 
@@ -400,7 +394,7 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
       for (let emailRecipientType of emailRecipientTypes) {
         let msg = {};
         options = {...options, userType: emailRecipientType};
-        // Build email template
+        // Build email template 
         msg = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
         // If unsubscribe is allowed, pass single user object recipient to generate and append unsub link
         if(msg.allowUnsubscribe) {
@@ -419,6 +413,7 @@ router.post('/:id', passport.authenticate('jwt'), async (req, res) => {
       }
       // 12. Update application to submitted status
       application.applicationStatus = 'submitted';
+      application.submittedDate = Date.now();
       await application.save();
       // 13. Create new notification for submitting user
       await notificationBuilder.triggerNotificationMessage([application.userId], `You have successfully submitted a Data Access Request for ${datasetTitles}`,'data access request', application._id);
