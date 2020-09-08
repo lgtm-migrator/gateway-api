@@ -1,7 +1,16 @@
 import { UserModel } from './user.model';
 
 export async function getUserById(id) {
-    return await UserModel.findById(id).exec()
+    const user = await UserModel.findById(id).populate({ 
+        path: 'teams',
+        select: 'publisher type -_id', 
+          populate: { 
+            path: 'publisher',
+            select: 'name'
+          }
+        }
+    );
+    return user;
 }
 
 export async function getUserByEmail(email) {
