@@ -64,7 +64,7 @@ router.get('/status', function (req, res, next) {
             return res.json({ success: true, data: [{ role: "Reader", id: null, name: null, loggedIn: false }] });
         }
         else {
-            return res.json({ success: true, data: [{ role: req.user.role, id: req.user.id, name: req.user.firstname + " " + req.user.lastname, loggedIn: true }] });
+            return res.json({ success: true, data: [{ role: req.user.role, id: req.user.id, name: req.user.firstname + " " + req.user.lastname, loggedIn: true, teams: req.user.teams }] });
         }
     })(req, res, next);
 });
