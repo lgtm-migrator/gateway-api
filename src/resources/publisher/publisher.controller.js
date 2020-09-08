@@ -74,7 +74,7 @@ module.exports = {
         return res.status(200).json({ success: true, data: applications });
         } catch(err) {
             console.error(err);
-            return res.status(500).json({ success: false, message: 'An error occurred searching for user applications' });
+            return res.status(500).json({ success: false, message: 'An error occurred searching for custodian applications' });
         }
     }
 }
