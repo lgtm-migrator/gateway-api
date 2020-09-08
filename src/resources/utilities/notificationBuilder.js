@@ -1,26 +1,23 @@
 import { MessagesModel } from '../message/message.model';
-const asyncModule = require('async');
 
-const triggerNotificationMessage = (userId, messageDescription, messageType, messageObjectID) => {
-  let messageRecipients = [0, userId];
-
-  asyncModule.eachSeries(messageRecipients, async (recipient) => {
-    let message = new MessagesModel();
-    message.messageType = messageType;
-    message.messageSent = Date.now();
-    message.messageDescription = messageDescription;
-    message.isRead = false;
-    message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-    message.messageObjectID = (typeof messageObjectID == 'number' ? messageObjectID : message.messageID);  
-    message.messageTo = recipient;
-
+const triggerNotificationMessage = (messageRecipients, messageDescription, messageType, messageObjectID) => {
+  messageRecipients.forEach(async (recipient) => {
+    let messageID = parseInt(Math.random().toString().replace('0.', ''));
+    let message = new MessagesModel({
+      messageType,
+      messageSent: Date.now(),
+      messageDescription,
+      isRead: false,
+      messageID,
+      messageObjectID : (typeof messageObjectID == 'number' ? messageObjectID : messageID),
+      messageTo: recipient,
+      messageDataRequestID: messageType === 'data access request' ? messageObjectID : null
+    });
     await message.save(async (err) => {
       if (err) {
-        return new Error({ success: false, error: err });
-      }
-      return { success: true, id: message.messageID };
+          console.error(`Failed to save ${messageType} message with error : ${err}`);
+        }
     });
   });
-};
-
+}
 module.exports.triggerNotificationMessage = triggerNotificationMessage;

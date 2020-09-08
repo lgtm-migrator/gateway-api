@@ -3,51 +3,11 @@ import passport from "passport";
 import { utils } from "../auth";
 import { ROLES } from '../user/user.roles'
 import { MessagesModel } from './message.model'
-import mongoose from 'mongoose';
-import { TopicModel } from '../topic/topic.model';
 
 const messageController = require('../message/message.controller');
 
 // by default route has access to its own, allows access to parent param
 const router = express.Router({ mergeParams: true});
-
-router.get('/test',
-  passport.authenticate('jwt'), 
-  utils.checkIsInRole(ROLES.Admin),
-    async (req, res) => {
-      const topic = new TopicModel({
-        _id: new mongoose.Types.ObjectId(),
-        topicName : "This the topic name",
-        topicCreated: "01/01/2020"
-      });
-
-      await topic.save( async function (err) {
-        if (err) return handleError(err);
-      
-        const message = new MessagesModel({
-          messageID: 123,
-          messageTo: 12345,
-          messageObjectID: 123456,
-          messageType: 'Test',
-          messageSent: '10/01/2020',
-          isRead: "false",
-          messageDescription: "test message",
-          topic: topic._id
-        });
-
-        await message.save(async function (err) {
-          if (err) return handleError(err);
-
-          await MessagesModel.
-            findOne({ messageID: 123 }).
-            populate('topic').
-            exec(function (err, message) {
-              if (err) return handleError(err);
-              return res.json(message);
-            });
-        });
-      });
-  });
 
 router.get('/numberofunread/admin/:personID',
   passport.authenticate('jwt'), 
@@ -62,7 +22,7 @@ router.get('/numberofunread/admin/:personID',
 
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ $or: [{ messageTo: idString }, { messageTo: 0 }] }] } },
-      { $sort: { messageSent: -1 } },
+      { $sort: { createdDate: -1 } },
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
     ]).limit(50);
     m.exec((err, data) => {
@@ -95,6 +55,7 @@ router.get('/numberofunread/:personID',
     }
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ messageTo: idString }] } },
+      { $sort: { createdDate: -1 } },
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
     ]).limit(50);
     m.exec((err, data) => {
@@ -122,6 +83,7 @@ router.get('/:personID',
     }
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ messageTo: idString }] } },
+      { $sort: { createdDate: -1 } },
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
     ]).limit(50);
     m.exec((err, data) => {
@@ -148,7 +110,7 @@ router.get(
 
     var m = MessagesModel.aggregate([
       { $match: { $and: [{ $or: [{ messageTo: idString }, { messageTo: 0 }] }] } },
-      { $sort: { messageSent: -1 } },
+      { $sort: { createdDate: -1 } },
       { $lookup: { from: "tools", localField: "messageObjectID", foreignField: "id", as: "tool" } }
     ]).limit(50);
     m.exec((err, data) => {
