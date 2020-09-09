@@ -179,9 +179,7 @@ const _buildSubjectTitle = (user, title) => {
  */
 const _buildEmail = (fullQuestions, questionAnswers, options) => {
   let parent;
-  let { userType, userName, userEmail, custodianEmail, datasetTitles } = options;
-  const hdrukEmail = `enquiry@healthdatagateway.org`;
-  const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || custodianEmail;
+  let { userType, userName, userEmail, datasetTitles } = options;
   let subject = _buildSubjectTitle(userType, datasetTitles);
   let questionTree = { ...fullQuestions };
   let answers = { ...questionAnswers };
@@ -280,14 +278,8 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
     table += `</table></td></tr>`;
   }
   table += ` </tbody></table></div>`;
-  let msg = {
-    from: hdrukEmail,
-    to: userType.toUpperCase() === 'DATACUSTODIAN' ? dataCustodianEmail : userEmail,
-    subject: `Enquires for ${datasetTitles} dataset healthdatagateway.org`,
-    html: table,
-    allowUnsubscribe: userType.toUpperCase() === 'DATACUSTODIAN' ? false : true,
-  };
-  return msg;
+
+  return table;
 };
 
 /**
