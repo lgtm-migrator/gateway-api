@@ -17,7 +17,7 @@ const router = express.Router();
 // @access  Private
 router.get('/', passport.authenticate('jwt'), async (req, res) => {
     try {
-    // 1. Deconstruct the 
+    // 1. Deconstruct the request
     let { id: userId } = req.user;
     // 2. Find all data access request applications created with single dataset version
     let singleDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { "dataSetId":{$ne:null} }] } ).populate('dataset');
