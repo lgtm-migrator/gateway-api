@@ -20,4 +20,4 @@ router.get('/:id/datasets', passport.authenticate('jwt'), publisherController.ge
 // @access  Private
 router.get('/:id/dataaccessrequests', passport.authenticate('jwt'), publisherController.getPublisherDataAccessRequests);
 
-module.exports = router
+module.exports = router 

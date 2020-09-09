@@ -1,4 +1,7 @@
 import emailGenerator from '../utilities/emailGenerator.util';
+import { DataRequestModel } from './datarequest.model';
+import { Data as ToolModel } from '../tool/data.model';
+import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import _ from 'lodash';
 
 const notificationBuilder = require('../utilities/notificationBuilder');
@@ -8,7 +11,7 @@ module.exports = {
     getAccessRequestsByUser: async (req, res) => {
         try {
         // 1. Deconstruct the 
-        let { id: userId } = req.user;
+        let { id: userId } = req.user; 
         // 2. Find all data access request applications created with single dataset version
         let singleDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { "dataSetId":{$ne:null} }] } ).populate('dataset');
         let formattedApplications = singleDatasetApplications.map(app => {
@@ -17,8 +20,11 @@ module.exports = {
         // 3. Find all data access request applications created with multi dataset version
         //let multiDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { "datasetIds":{$ne:[]} }] } ).populate('datasets');
         let multiDatasetApplications = await DataRequestModel.find( { $and: [{ userId: parseInt(userId) }, { $and: [{datasetIds:{$ne:[]}}, {datasetIds:{$ne:null}}]}] } ).populate('datasets');
+        multiDatasetApplications = multiDatasetApplications.map(app => {
+            return { ...app.toObject()};
+        });
         // 4. Return all users applications combined
-        let applications = [...formattedApplications, ...multiDatasetApplications];
+        let applications = [...formattedApplications, ...multiDatasetApplications].sort((a, b) => b.updatedAt - a.updatedAt);
         return res.status(200).json({ success: true, data: applications });
         } catch {
           return res.status(500).json({ success: false, message: 'An error occurred searching for user applications' });
@@ -320,7 +326,7 @@ module.exports = {
           // 7. If a change has been made, notify custodian and main applicant
           if(isDirty) {
             accessRecord.save();
-            await datarequestController.createNotifications('StatusChange', { applicationStatus, applicationStatusDesc }, accessRecord, req.user);
+            await module.exports.createNotifications('StatusChange', { applicationStatus, applicationStatusDesc }, accessRecord, req.user);
           }
       
           // 8. Return application
@@ -339,9 +345,7 @@ module.exports = {
         try {
             // 1. id is the _id object in mongoo.db not the generated id or dataset Id
             let { params: { id }} = req;
-            // 2. Get the userId
-            let { _id } = req.user;
-            // 3. Find the relevant data request application
+            // 2. Find the relevant data request application
             let accessRecord = await DataRequestModel
             .findOne({_id: id})
             .populate({ 
@@ -365,21 +369,21 @@ module.exports = {
                 .status(404)
                 .json({status: 'error', message: 'Application not found.' });
             }
-            // 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
+            // 3. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
             if (_.isEmpty(accessRecord.datasets)) {
                 accessRecord.datasets = [accessRecord.dataset];
             }
 
-            // 5. Update application to submitted status
-            application.applicationStatus = 'submitted';
-            application.submittedDate = Date.now();
-            await application.save();
+            // 4. Update application to submitted status
+            accessRecord.applicationStatus = 'submitted';
+            accessRecord.submittedDate = Date.now();
+            await accessRecord.save();
 
-            // 6. Send notifications and emails to custodian team and main applicant
-            await datarequestController.createNotifications('Submitted', { }, accessRecord, req.user);
+            // 5. Send notifications and emails to custodian team and main applicant
+            await module.exports.createNotifications('Submitted', { }, accessRecord, req.user);
 
-            // 7. Return aplication and successful response
-            return res.status(200).json({ status: 'success', data: application });
+            // 6. Return aplication and successful response
+            return res.status(200).json({ status: 'success', data: accessRecord._doc });
         } catch (err) {
           console.log(err.message);
           res.status(500).json({ status: 'error', message: err });
@@ -388,42 +392,42 @@ module.exports = {
 
     createNotifications: async (type, context, accessRecord, user) => {
         const hdrukEmail = `enquiry@healthdatagateway.org`;
+        let answers = JSON.parse(accessRecord.questionAnswers);
+        let { datasetfields : { contactPoint, publisher }} = accessRecord.datasets[0];
+        let datasetTitles = accessRecord.datasets.map(dataset => dataset.name).join(', ');
+        let { firstname: appFirstName, lastname: appLastName, email: appEmail } = accessRecord.mainApplicant;
+        let { firstname, lastname } = user;
+        let custodianUsers = [], emailRecipients = [];
+        let options = {};
+        let html = '';
+
         switch(type) {
             // DAR application status has been updated
             case 'StatusChange':
                 // 1. Create notifications
                 // Custodian team notifications
-                let { firstname, lastname } = user;
-                let custodianUsers = [];
-                let datasetTitles = accessRecord.datasets.map(dataset => dataset.name).join(', ');
                 if(_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
                 // Retrieve all custodian user Ids to generate notifications
                 custodianUsers = [...accessRecord.datasets[0].publisher.team.users];
                 let custodianUserIds = custodianUsers.map(user => user.id);
-                // Extract personal data from main applicant to personalise notification
-                let { firstname: appFirstName, lastname: appLastName } = accessRecord.mainApplicant;
                 await notificationBuilder.triggerNotificationMessage(custodianUserIds, `${appFirstName} ${appLastName}'s Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,'data access request', accessRecord._id);
                 }
                 // Create applicant notification
-                let { datasetfields : { publisher }} = accessRecord.datasets[0]
                 await notificationBuilder.triggerNotificationMessage([accessRecord.userId], `Your Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,'data access request', accessRecord._id);
 
                 // 2. Send emails to relevant users
                 // Aggregate objects for custodian and applicant
-                let emailRecipients = [accessRecord.mainApplicant, ...custodianUsers].filter(function(user) {
-                let { additionalInfo: { emailNotifications }} = user;
-                return emailNotifications === true;
+                emailRecipients = [accessRecord.mainApplicant, ...custodianUsers].filter(function(user) {
+                    let { additionalInfo: { emailNotifications }} = user;
+                    return emailNotifications === true;
                 });
-                // Parse answers to pass through to email generator
-                let answers = JSON.parse(accessRecord.questionAnswers);
                 let { dateSubmitted } = accessRecord;
                 if(!dateSubmitted)
                 ({ updatedAt: dateSubmitted } = accessRecord);
-
                 // Create object to pass through email data
-                let options = { id: accessRecord._id, applicationStatus: context.applicationStatus, applicationStatusDesc: context.applicationStatusDesc, publisher, project: '', datasetTitles, dateSubmitted };
+                options = { id: accessRecord._id, applicationStatus: context.applicationStatus, applicationStatusDesc: context.applicationStatusDesc, publisher, project: '', datasetTitles, dateSubmitted };
                 // Create email body content
-                let html = emailGenerator.generateDARStatusChangedEmail(answers, options);
+                html = emailGenerator.generateDARStatusChangedEmail(answers, options);
                 // Send email
                 await emailGenerator.sendEmail(emailRecipients, hdrukEmail, `Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`, html, true);
                 break;
@@ -431,18 +435,9 @@ module.exports = {
                 // 1. Prepare data for notifications
                 const emailRecipientTypes = ['requester', 'dataCustodian'];
                 // Destructure the application
-                let {questionAnswers, jsonSchema} = accessRecord;
+                let { jsonSchema } = accessRecord;
                 // Parse the schema
-                let {pages, questionPanels, questionSets: questions} = JSON.parse(jsonSchema);
-                // Parse the questionAnswers
-                let answers = JSON.parse(questionAnswers);
-                // Destructure the main applicant's details
-                let { firstname, lastname, email } = accessRecord.mainApplicant;
-                // Get contact point and publisher from first dataset
-                let { datasetfields : { contactPoint, publisher }} = accessRecord.datasets[0];
-                // Create title for multiple datasets
-                let datasetTitles = accessRecord.datasets.map(dataset => dataset.name).join(', ');
-                let custodianUsers = [];
+                let { pages, questionPanels, questionSets: questions } = JSON.parse(jsonSchema);
 
                 // 2. Create notifications
                 // Custodian notification
@@ -450,23 +445,18 @@ module.exports = {
                     // Retrieve all custodian user Ids to generate notifications
                     custodianUsers = [...accessRecord.datasets[0].publisher.team.users];
                     let custodianUserIds = custodianUsers.map(user => user.id);
-                    // Extract personal data from main applicant to personalise notification
-                    let { firstname: appFirstName, lastname: appLastName } = accessRecord.mainApplicant;
-
-                    await notificationBuilder.triggerNotificationMessage(custodianUserIds, `A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}'s`,'data access request', accessRecord._id);
+                    await notificationBuilder.triggerNotificationMessage(custodianUserIds, `A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,'data access request', accessRecord._id);
                 }
-
                 // Applicant notification
                 await notificationBuilder.triggerNotificationMessage([accessRecord.userId], `Your Data Access Request for ${datasetTitles} was successfully submitted to ${publisher}`,'data access request', accessRecord._id);
 
                 // 3. Send emails to custodian and applicant
                 // Create object to pass to email generator
-                let options = { userType: '', userEmail: email, userName: `${firstname} ${lastname}`, custodianEmail: contactPoint, publisher, datasetTitles };
+                options = { userType: '', userEmail: appEmail, userName: `${appFirstName} ${appLastName}`, custodianEmail: contactPoint, publisher, datasetTitles };
                 // Iterate through the recipient types
                 for (let emailRecipientType of emailRecipientTypes) {
-                    let emailRecipients = [];
                     // Send emails to custodian team members who have opted in to email notifications
-                    if(emailRecipientType === 'dataCustodian') {
+                    if(emailRecipientType === 'dataCustodian') { 
                         emailRecipients = [...custodianUsers].filter(function(user) {
                             let { additionalInfo: { emailNotifications }} = user;
                             return emailNotifications === true;
@@ -481,7 +471,7 @@ module.exports = {
                     // Establish email context object
                     options = {...options, userType: emailRecipientType};
                     // Build email template 
-                    let html = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
+                    html = await emailGenerator.generateEmail(questions, pages, questionPanels, answers, options);
                     // Send email
                     if(!_.isEmpty(emailRecipients)) {
                         await emailGenerator.sendEmail(emailRecipients, hdrukEmail, `Data Access Request has been submitted to ${publisher} for ${datasetTitles}`, html, true);

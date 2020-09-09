@@ -1,9 +1,5 @@
 import express from 'express';
 import passport from 'passport';
-import { DataRequestModel } from './datarequest.model';
-import { Data as ToolModel } from '../tool/data.model';
-import { DataRequestSchemaModel } from './datarequest.schemas.model';
-import emailGenerator from '../utilities/emailGenerator.util';
 import _ from 'lodash';
 
 const sgMail = require('@sendgrid/mail');
