@@ -2,8 +2,6 @@ import express from 'express';
 import passport from 'passport';
 import _ from 'lodash';
 
-const sgMail = require('@sendgrid/mail');
-const notificationBuilder = require('../utilities/notificationBuilder');
 const datarequestController = require('./datarequest.controller');
 
 const router = express.Router();
