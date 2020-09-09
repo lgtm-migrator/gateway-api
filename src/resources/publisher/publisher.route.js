@@ -15,4 +15,9 @@ router.get('/:id', passport.authenticate('jwt'), publisherController.getPublishe
 // @access  Private
 router.get('/:id/datasets', passport.authenticate('jwt'), publisherController.getPublisherDatasets);
 
+// @route   GET api/publishers/:id/dataaccessrequests
+// @desc    GET all data access requests to a publisher
+// @access  Private
+router.get('/:id/dataaccessrequests', passport.authenticate('jwt'), publisherController.getPublisherDataAccessRequests);
+
 module.exports = router
