@@ -14,7 +14,7 @@ router.post('/',
     passport.authenticate('jwt'),
     utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
-      const { firstname, lastname, bio, emailNotifications, terms } = req.body;
+      const { firstname, lastname, bio, emailNotifications, terms, sector, organisation, showOrganisation, tags} = req.body;
       let link = urlValidator.validateURL(req.body.link);
       let orcid = urlValidator.validateOrcidURL(req.body.orcid);
       let data = Data();
@@ -27,7 +27,11 @@ router.post('/',
       data.link = link;
       data.orcid = orcid;
       data.emailNotifications = emailNotifications;
-      data.terms = terms;    
+      data.terms = terms;
+      data.sector = sector;
+      data.organisation = organisation;
+      data.showOrganisation = showOrganisation;
+      data.tags = tags;
       let newPersonObj = await data.save();
       if(!newPersonObj)
         return res.json({ success: false, error: "Can't persist data to DB" });
@@ -39,7 +43,7 @@ router.put('/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-  const { id, firstname, lastname, email, bio, emailNotifications, terms } = req.body;
+  const { id, firstname, lastname, email, bio, emailNotifications, terms, sector, organisation, showOrganisation, tags } = req.body;
   const type = 'person';
   let link = urlValidator.validateURL(req.body.link);
   let orcid = urlValidator.validateOrcidURL(req.body.orcid);
@@ -53,7 +57,11 @@ router.put('/',
       link,
       orcid,
       emailNotifications,
-      terms
+      terms,
+      sector,
+      organisation,
+      showOrganisation,
+      tags,
     },
     {new:true});
     await UserModel.findOneAndUpdate({ id: id }, 
@@ -135,7 +143,10 @@ router.get('/',
                 "__v":personObj.__v,
                 "emailNotifications":personObj.emailNotifications,
                 "terms":personObj.terms,
-                "counter":personObj.counter
+                "counter":personObj.counter,
+                "sector":personObj.sector,
+                "organisation":personObj.organisation,
+                "showOrganisation":personObj.showOrganisation
               }
             );
           })
