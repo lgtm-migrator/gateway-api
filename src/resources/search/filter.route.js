@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 
             getFilter(searchString, 'tool', 'tags.topic', true, getObjectFilters(searchQuery, req, 'tool')),
             getFilter(searchString, 'tool', 'tags.features', true, getObjectFilters(searchQuery, req, 'tool')),
-            getFilter(searchString, 'tool', 'categories.programmingLanguage', true, getObjectFilters(searchQuery, req, 'tool')),
+            getFilter(searchString, 'tool', 'programmingLanguage.programmingLanguage', true, getObjectFilters(searchQuery, req, 'tool')),
             getFilter(searchString, 'tool', 'categories.category', false, getObjectFilters(searchQuery, req, 'tool')),
 
             getFilter(searchString, 'project', 'tags.topics', true, getObjectFilters(searchQuery, req, 'project')),
@@ -127,7 +127,7 @@ router.get('/', async (req, res) => {
         await Promise.all([
             getFilter(searchString, 'tool', 'tags.topics', true, activeFiltersQuery),
             getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
-            getFilter(searchString, 'tool', 'categories.programmingLanguage', true, activeFiltersQuery),
+            getFilter(searchString, 'tool', 'programmingLanguage.programmingLanguage', true, activeFiltersQuery),
             getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery)      
         ]).then((values) => {
             return res.json({
@@ -231,7 +231,7 @@ router.get('/feature/:type',
 // @access  Public
 router.get('/language/:type',
     async (req, res) => {
-      await getFilter('', req.params.type, 'categories.programmingLanguage', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
+      await getFilter('', req.params.type, 'programmingLanguage.programmingLanguage', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
         .then(data => {
           return res.json({success: true, data});
         })

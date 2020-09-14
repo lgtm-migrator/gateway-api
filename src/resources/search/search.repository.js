@@ -191,7 +191,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
         if (programmingLanguage.length > 0) {
             var filterTermArray = [];
             programmingLanguage.split('::').forEach((filterTerm) => {
-                filterTermArray.push({ "categories.programmingLanguage": filterTerm })
+                filterTermArray.push({ "programmingLanguage.programmingLanguage": filterTerm })
             });
             searchQuery["$and"].push({ "$or": filterTermArray });
         }
