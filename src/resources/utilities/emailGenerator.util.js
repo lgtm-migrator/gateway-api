@@ -464,9 +464,13 @@ const _displayDARLink = (accessId) => {
 }
 
 const _generateDARStatusChangedEmail = (questionAnswers, options) => {
-  let { id, applicationStatus, applicationStatusDesc, publisher, datasetTitles, dateSubmitted } = options;
+  let { id, applicationStatus, applicationStatusDesc, publisher, datasetTitles, dateSubmitted, userName } = options;
   let answers = { ...questionAnswers };
   let applicants = _extractApplicantNames(answers).join(', ');
+  // Fall back for single applicant on short application form
+  if(_.isEmpty(applicants)) {
+    applicants = userName;
+  }
 
   // Populate project/name in next version (add below HTML and project param above)
   // <tr>

@@ -425,7 +425,7 @@ module.exports = {
                 if(!dateSubmitted)
                 ({ updatedAt: dateSubmitted } = accessRecord);
                 // Create object to pass through email data
-                options = { id: accessRecord._id, applicationStatus: context.applicationStatus, applicationStatusDesc: context.applicationStatusDesc, publisher, project: '', datasetTitles, dateSubmitted };
+                options = { id: accessRecord._id, applicationStatus: context.applicationStatus, applicationStatusDesc: context.applicationStatusDesc, publisher, project: '', datasetTitles, dateSubmitted, userName: `${firstname} ${lastname}` };
                 // Create email body content
                 html = emailGenerator.generateDARStatusChangedEmail(answers, options);
                 // Send email
