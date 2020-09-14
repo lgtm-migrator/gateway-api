@@ -53,6 +53,9 @@ const DataSchema = new Schema(
     orcid: String,
     emailNotifications: Boolean,
     terms: Boolean,
+    sector: String,
+    organisation: String,
+    showOrganisation: {type: Boolean, default: false },
 
     //dataset related fields
     datasetid: String,

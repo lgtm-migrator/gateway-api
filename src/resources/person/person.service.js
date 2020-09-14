@@ -8,7 +8,13 @@ export async function createPerson({
     link,
     orcid,
     emailNotifications,
-    terms
+    terms,
+    sector,
+    organisation,
+    showMyOrganisation,
+    tags: {
+        topics: [String],
+    },
 }) {
     var type = "person";
     var activeflag = "active";
@@ -24,7 +30,13 @@ export async function createPerson({
                 orcid,
                 activeflag,
                 emailNotifications,
-                terms
+                terms,
+                sector,
+                organisation,
+                showMyOrganisation,
+                tags: {
+                    features: [String],
+                },
             })
         )
     })
