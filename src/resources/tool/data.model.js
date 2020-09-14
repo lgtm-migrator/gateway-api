@@ -36,7 +36,11 @@ const DataSchema = new Schema(
         updated: String
     }],
     uploader: Number,
-
+    //tools related fields
+    programmingLanguage: [{
+        programmingLanguage: String, 
+        version: String
+    }],
     //paper related fields
     journal: String,
     journalYear: Number,

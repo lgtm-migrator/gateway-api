@@ -15,7 +15,7 @@ const addTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
       let data = new Data(); 
       const toolCreator = req.body.toolCreator; 
-      const { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
+      const { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, programmingLanguage, isPreprint } = req.body;
       data.id = parseInt(Math.random().toString().replace('0.', ''));
       data.type = type;
       data.name = name;
@@ -35,6 +35,7 @@ const addTool = async (req, res) => {
       data.activeflag = 'review';
       data.updatedon = Date.now();
       data.relatedObjects = relatedObjects;
+      data.programmingLanguage = programmingLanguage;
       data.isPreprint = isPreprint;
       data.uploader = req.user.id;
       let newDataObj = await data.save();
@@ -95,7 +96,7 @@ const editTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
 
     const toolCreator = req.body.toolCreator;
-    let { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
+    let { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint, programmingLanguage } = req.body;
     let id = req.params.id;
 
     if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
@@ -122,6 +123,7 @@ const editTool = async (req, res) => {
         },
         license: license,
         authors: authors,
+        programmingLanguage: programmingLanguage,
         tags: {
           features: tags.features,
           topics: tags.topics
