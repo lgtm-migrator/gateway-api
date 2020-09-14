@@ -18,6 +18,8 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                 "bio": 1,
                 "categories.category": 1,
                 "categories.programmingLanguage": 1,
+                "programmingLanguage.programmingLanguage": 1,
+                "programmingLanguage.version": 1,
                 "license": 1,
                 "tags.features": 1,
                 "tags.topics": 1,
