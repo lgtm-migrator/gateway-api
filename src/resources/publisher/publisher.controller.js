@@ -68,7 +68,7 @@ module.exports = {
         let datasetIds = await Data.find({ type: 'dataset', 'datasetfields.publisher': req.params.id }).distinct('datasetid');
 
         // 5. Find all applications where any datasetId exists
-        let applications = await DataRequestModel.find( { $or: [{dataSetId:{ $in:datasetIds }}, {datasetIds:{$elemMatch:{ $in:datasetIds }}}]}).sort({"updatedAt": -1}).populate('datasets dataset');
+        let applications = await DataRequestModel.find( { $or: [{dataSetId:{ $in:datasetIds }}, {datasetIds:{$elemMatch:{ $in:datasetIds }}}]}).sort({"updatedAt": -1}).populate('datasets dataset mainApplicant');
 
         // 6. Return all applications
         return res.status(200).json({ success: true, data: applications });
