@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     var authorID = parseInt(req.query.userID);
     var searchString = req.query.search || ""; //If blank then return all
     //If searchString is applied, format any hyphenated words to enclose them as a phrase
-    if(searchString.includes('-')) {
+    if(searchString.includes('-') && !searchString.includes('\"')) {
         // Matches on any whole word containing a hyphen
         const regex = /(?=\S*[-])([a-zA-Z'-]+)/g;  
         // Surround matching words in quotation marks
