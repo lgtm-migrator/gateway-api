@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
         // Matches on any whole word containing a hyphen
         const regex = /(?=\S*[-])([a-zA-Z'-]+)/g;  
         // Surround matching words in quotation marks
-        searchString = searchString.replace(regex, "\"$1\"");
+        searchString = searchString.replace(regex, "\"$1\""); 
     }
     var tab = req.query.tab || "";
     let searchQuery = { $and: [{ activeflag: 'active' }] };
