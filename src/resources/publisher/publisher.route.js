@@ -7,7 +7,7 @@ const router = express.Router();
 
 // @route   GET api/publishers/:id
 // @desc    GET A publishers by :id
-// @access  Private
+// @access  Public
 router.get('/:id', publisherController.getPublisherById);
 
 // @route   GET api/publishers/:id/datasets
