@@ -7,8 +7,8 @@ const router = express.Router();
 
 // @route   GET api/publishers/:id
 // @desc    GET A publishers by :id
-// @access  Private
-router.get('/:id', passport.authenticate('jwt'), publisherController.getPublisherById);
+// @access  Public
+router.get('/:id', publisherController.getPublisherById);
 
 // @route   GET api/publishers/:id/datasets
 // @desc    GET all datasets owned by publisher
