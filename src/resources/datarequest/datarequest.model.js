@@ -2,7 +2,8 @@ import { model, Schema } from 'mongoose';
 
 const DataRequestSchema = new Schema({
   version: Number,
-  userId: Number,
+  userId: Number, // Main applicant
+  authors: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   dataSetId: String,
   datasetIds: [{ type: String}],
   applicationStatus: {

@@ -2,9 +2,13 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import { DataRequestModel } from './datarequest.model';
 import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
-import _ from 'lodash';
+import _, { forEach } from 'lodash';
 
 const notificationBuilder = require('../utilities/notificationBuilder');
+const userTypes = {
+  CUSTODIAN: 'custodian',
+  APPLICANT: 'applicant'
+};
 
 module.exports = {
     //GET api/v1/data-access-request
@@ -275,11 +279,11 @@ module.exports = {
           let accessRecord = await DataRequestModel
           .findOne({_id: id})
           .populate({ 
-              path: 'datasets dataset mainApplicant', 
+              path: 'datasets dataset mainApplicant authors',
                 populate: { 
-                  path: 'publisher additionalInfo', 
+                  path: 'publisher additionalInfo',
                   populate: { 
-                    path: 'team', 
+                    path: 'team',
                     populate: { 
                       path: 'users', 
                       populate: {
@@ -299,34 +303,55 @@ module.exports = {
           if (_.isEmpty(accessRecord.datasets)) {
             accessRecord.datasets = [accessRecord.dataset];
           }
-      
-          // 5. Check if the user is permitted to perform update to application (should be custodian)
-          let permitted = false, members = [];
+
+          // 5. Check if the user is permitted to perform update to application
+          let userType = '', members = [], authorised = false, isDirty = false;
+          // Check if the user is a custodian team member and assign permissions if so
           if(_.has(accessRecord.datasets[0].toObject(), 'publisher.team.members')) {
             ({ members } = accessRecord.datasets[0].publisher.team.toObject());
-            permitted = members.some(el => el.memberid.toString() === _id.toString());
+            if(members.some(el => el.memberid.toString() === _id.toString())) {
+              userType = userType.CUSTODIAN;
+              authorised = true;
+            }
+          }
+          // If user is not authenticated as a custodian, check if they are an author or the main applicant
+          if(_.isEmpty(userType)) {
+            if(accessRecord.authors.some(el => el.toString() === _id.toString()) || accessRecord.mainApplicant._id.toString === _id.toString()) {
+              userType = userType.APPLICANT;
+              authorised = true;
+            }
           }
       
-          if(!permitted) {
-            return res.status(401).json({status: 'failure', message: 'Unauthorised to perform this update'});
+          if(!authorised) {
+            return res.status(401).json({status: 'error', message: 'Unauthorised to perform this update.'});
           }
       
           // 6. Extract new application status and desc to save updates
-          const { applicationStatus, applicationStatusDesc } = req.body;
-          let isDirty = false;
-          if(applicationStatus && applicationStatus !== accessRecord.applicationStatus) {
-            accessRecord.applicationStatus = applicationStatus;
-            isDirty = true;
-          }
-          if(applicationStatusDesc && applicationStatusDesc !== accessRecord.applicationStatusDesc) {
-            accessRecord.applicationStatusDesc = applicationStatusDesc;
-            isDirty = true;
+          // If custodian, allow updated to application status and description
+          if(userType === userType.CUSTODIAN) {
+            const { applicationStatus, applicationStatusDesc } = req.body;
+            if(applicationStatus && applicationStatus !== accessRecord.applicationStatus) {
+              accessRecord.applicationStatus = applicationStatus;
+              isDirty = true;
+              await module.exports.createNotifications('StatusChange', { applicationStatus, applicationStatusDesc }, accessRecord, req.user);
+            }
+            if(applicationStatusDesc && applicationStatusDesc !== accessRecord.applicationStatusDesc) {
+              accessRecord.applicationStatusDesc = applicationStatusDesc;
+              isDirty = true;
+            }
+            // If applicant, allow update to collaborators/authors
+          } else if (userType === userType.APPLICANT) {
+            const { authors } = req.body;
+            if(authors && authors !== accessRecord.authors) {
+              accessRecord.authors = authors;
+              isDirty = true;
+              await module.exports.createNotifications('CollaboratorChange', { authors }, accessRecord, req.user);
+            }
           }
       
           // 7. If a change has been made, notify custodian and main applicant
           if(isDirty) {
             accessRecord.save();
-            await module.exports.createNotifications('StatusChange', { applicationStatus, applicationStatusDesc }, accessRecord, req.user);
           }
       
           // 8. Return application
@@ -349,7 +374,7 @@ module.exports = {
             let accessRecord = await DataRequestModel
             .findOne({_id: id})
             .populate({ 
-                path: 'datasets dataset mainApplicant', 
+                path: 'datasets dataset mainApplicant authors', 
                     populate: { 
                     path: 'publisher additionalInfo', 
                     populate: { 
@@ -400,6 +425,14 @@ module.exports = {
         let custodianUsers = [], emailRecipients = [];
         let options = {};
         let html = '';
+        let authors = [];
+
+        if(!_.isEmpty(accessRecord.authors)) {
+          authors = accessRecord.authors.map(author => {
+            let { firstname, lastname, email } = author
+            return { firstname, lastname, email };
+          });
+        }
 
         switch(type) {
             // DAR application status has been updated
@@ -407,17 +440,22 @@ module.exports = {
                 // 1. Create notifications
                 // Custodian team notifications
                 if(_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
-                // Retrieve all custodian user Ids to generate notifications
-                custodianUsers = [...accessRecord.datasets[0].publisher.team.users];
-                let custodianUserIds = custodianUsers.map(user => user.id);
-                await notificationBuilder.triggerNotificationMessage(custodianUserIds, `${appFirstName} ${appLastName}'s Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,'data access request', accessRecord._id);
+                  // Retrieve all custodian user Ids to generate notifications
+                  custodianUsers = [...accessRecord.datasets[0].publisher.team.users];
+                  let custodianUserIds = custodianUsers.map(user => user.id);
+                  await notificationBuilder.triggerNotificationMessage(custodianUserIds, `${appFirstName} ${appLastName}'s Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,'data access request', accessRecord._id);
                 }
                 // Create applicant notification
                 await notificationBuilder.triggerNotificationMessage([accessRecord.userId], `Your Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,'data access request', accessRecord._id);
 
+                // Create authors notification
+                if(!_.isEmpty(authors)) {
+                  await notificationBuilder.triggerNotificationMessage([authors.map(author => author.id)], `A Data Access Request you are collaborating on for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,'data access request', accessRecord._id);
+                }
+
                 // 2. Send emails to relevant users
                 // Aggregate objects for custodian and applicant
-                emailRecipients = [accessRecord.mainApplicant, ...custodianUsers].filter(function(user) {
+                emailRecipients = [accessRecord.mainApplicant, ...custodianUsers, ...accessRecord.authors].filter(function(user) {
                     let { additionalInfo: { emailNotifications }} = user;
                     return emailNotifications === true;
                 });
@@ -433,7 +471,7 @@ module.exports = {
                 break;
             case 'Submitted':
                 // 1. Prepare data for notifications
-                const emailRecipientTypes = ['requester', 'dataCustodian'];
+                const emailRecipientTypes = ['applicant', 'dataCustodian'];
                 // Destructure the application
                 let { jsonSchema } = accessRecord;
                 // Parse the schema
@@ -449,7 +487,10 @@ module.exports = {
                 }
                 // Applicant notification
                 await notificationBuilder.triggerNotificationMessage([accessRecord.userId], `Your Data Access Request for ${datasetTitles} was successfully submitted to ${publisher}`,'data access request', accessRecord._id);
-
+                // Collaborators/authors notification
+                if(!_.isEmpty(authors)) {
+                    await notificationBuilder.triggerNotificationMessage([accessRecord.authors], `A Data Access Request you are collaborating on for ${datasetTitles} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,'data access request', accessRecord._id);
+                }
                 // 3. Send emails to custodian and applicant
                 // Create object to pass to email generator
                 options = { userType: '', userEmail: appEmail, userName: `${appFirstName} ${appLastName}`, custodianEmail: contactPoint, publisher, datasetTitles };
@@ -462,8 +503,8 @@ module.exports = {
                             return emailNotifications === true;
                         });
                     } else {
-                        // Send email to main applicant if they have opted in to email notifications
-                        emailRecipients = [accessRecord.mainApplicant].filter(function(user) {
+                        // Send email to main applicant and collaborators if they have opted in to email notifications
+                        emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors].filter(function(user) {
                             let { additionalInfo: { emailNotifications }} = user;
                             return emailNotifications === true;
                         });;
@@ -477,6 +518,13 @@ module.exports = {
                         await emailGenerator.sendEmail(emailRecipients, hdrukEmail, `Data Access Request has been submitted to ${publisher} for ${datasetTitles}`, html, true);
                     }
                 }
+                break;
+            case 'CollaboratorChange':
+                // 1. Deconstruct authors array from context to compare with existing Mongo authors
+                let { authors } = context, removedAuthors = [], addedAuthors = [];
+                // 2. Determine authors who have been removed
+                
+                // 3. Determine authors who have been added
                 break;
         }
     }
