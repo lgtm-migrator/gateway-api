@@ -1,3 +1,4 @@
+//takes either a String or an array of Strings and removes non-breaking spaces
 const removeNonBreakingSpaces = (str) => {
     let sanitizedValues = [];
 
