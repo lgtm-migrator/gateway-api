@@ -29,8 +29,8 @@ const addTool = async (req, res) => {
       if (categories && typeof categories !== undefined) data.categories.category = inputSanitizer.removeNonBreakingSpaces(categories.category);
       data.license = inputSanitizer.removeNonBreakingSpaces(license);
       data.authors = authors;
-      data.tags.features = inputSanitizer.removeNonBreakingSpaces(data.tags.features),
-      data.tags.topics = inputSanitizer.removeNonBreakingSpaces(data.tags.topics);
+      data.tags.features = inputSanitizer.removeNonBreakingSpaces(tags.features),
+      data.tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
       data.activeflag = 'review';
       data.updatedon = Date.now();
       data.relatedObjects = relatedObjects;
