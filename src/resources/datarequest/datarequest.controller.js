@@ -6,6 +6,7 @@ import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
+import inputSanitizer from '../utilities/inputSanitizer';
 
 const notificationBuilder = require('../utilities/notificationBuilder');
 const userTypes = {
