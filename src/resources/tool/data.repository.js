@@ -6,6 +6,7 @@ import emailGenerator from '../utilities/emailGenerator.util';
 const asyncModule = require('async');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const urlValidator = require('../utilities/urlValidator');
+const inputSanitizer = require('../utilities/inputSanitizer');
 
 export async function getObjectById(id) {
     return await Data.findOne({ id }).exec()
@@ -17,25 +18,32 @@ const addTool = async (req, res) => {
       const toolCreator = req.body.toolCreator; 
       const { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, programmingLanguage, isPreprint } = req.body;
       data.id = parseInt(Math.random().toString().replace('0.', ''));
-      data.type = type;
-      data.name = name;
-      data.link = urlValidator.validateURL(link);  
-      data.journal = journal;
-      data.journalYear = journalYear; 
-      data.description = description;
-      data.resultsInsights = resultsInsights;
+      data.type = inputSanitizer.removeNonBreakingSpaces(type);
+      data.name = inputSanitizer.removeNonBreakingSpaces(name);
+      data.link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link));  
+      data.journal = inputSanitizer.removeNonBreakingSpaces(journal);
+      data.journalYear = inputSanitizer.removeNonBreakingSpaces(journalYear); 
+      data.description = inputSanitizer.removeNonBreakingSpaces(description);
+      data.resultsInsights = inputSanitizer.removeNonBreakingSpaces(resultsInsights);
       console.log(req.body)
-      if (categories && typeof categories !== undefined) data.categories.category = categories.category;
-      if (categories && typeof categories !== undefined) data.categories.programmingLanguage = categories.programmingLanguage;
-      if (categories && typeof categories !== undefined) data.categories.programmingLanguageVersion = categories.programmingLanguageVersion;
-      data.license = license;
+      if (categories && typeof categories !== undefined) data.categories.category = inputSanitizer.removeNonBreakingSpaces(categories.category);
+      data.license = inputSanitizer.removeNonBreakingSpaces(license);
       data.authors = authors;
-      data.tags.features = tags.features;
-      data.tags.topics = tags.topics;
+      data.tags.features = inputSanitizer.removeNonBreakingSpaces(data.tags.features),
+      data.tags.topics = inputSanitizer.removeNonBreakingSpaces(data.tags.topics);
       data.activeflag = 'review';
       data.updatedon = Date.now();
       data.relatedObjects = relatedObjects;
+
+      if(programmingLanguage){
+        programmingLanguage.forEach((p) => 
+        {   
+            p.programmingLanguage = inputSanitizer.removeNonBreakingSpaces(p.programmingLanguage);
+            p.version = (inputSanitizer.removeNonBreakingSpaces(p.version));
+        });
+      }
       data.programmingLanguage = programmingLanguage;
+
       data.isPreprint = isPreprint;
       data.uploader = req.user.id;
       let newDataObj = await data.save();
@@ -96,10 +104,19 @@ const editTool = async (req, res) => {
   return new Promise(async(resolve, reject) => {
 
     const toolCreator = req.body.toolCreator;
-    let { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint, programmingLanguage } = req.body;
+    let { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
     let id = req.params.id;
+    let programmingLanguage = req.body.programmingLanguage;
 
     if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
+
+    if(programmingLanguage){
+      programmingLanguage.forEach((p) => 
+      {   
+          p.programmingLanguage = inputSanitizer.removeNonBreakingSpaces(p.programmingLanguage);
+          p.version = (inputSanitizer.removeNonBreakingSpaces(p.version));
+      });
+    }
     
     let data = {
       id: id,
@@ -109,24 +126,24 @@ const editTool = async (req, res) => {
 
     Data.findOneAndUpdate({ id: id },
       {
-        type: type,
-        name: name,
-        link: urlValidator.validateURL(link),
-        description: description,
-        resultsInsights: resultsInsights,
-        journal: journal,
-        journalYear: journalYear,
+        type: inputSanitizer.removeNonBreakingSpaces(type),
+        name: inputSanitizer.removeNonBreakingSpaces(name),
+        link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link)),
+        description: inputSanitizer.removeNonBreakingSpaces(description),
+        resultsInsights: inputSanitizer.removeNonBreakingSpaces(resultsInsights),
+        journal: inputSanitizer.removeNonBreakingSpaces(journal),
+        journalYear: inputSanitizer.removeNonBreakingSpaces(journalYear),
         categories: {
-          category: categories.category,
+          category: inputSanitizer.removeNonBreakingSpaces(categories.category),
           programmingLanguage: categories.programmingLanguage,
           programmingLanguageVersion: categories.programmingLanguageVersion
         },
-        license: license,
+        license: inputSanitizer.removeNonBreakingSpaces(license),
         authors: authors,
         programmingLanguage: programmingLanguage,
         tags: {
-          features: tags.features,
-          topics: tags.topics
+          features: inputSanitizer.removeNonBreakingSpaces(tags.features),
+          topics: inputSanitizer.removeNonBreakingSpaces(tags.topics)
         },
         relatedObjects: relatedObjects,
         isPreprint: isPreprint

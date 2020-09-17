@@ -3,6 +3,7 @@ import { DataRequestModel } from './datarequest.model';
 import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import _ from 'lodash';
+import inputSanitizer from '../utilities/inputSanitizer';
 
 const notificationBuilder = require('../utilities/notificationBuilder');
 
@@ -319,7 +320,7 @@ module.exports = {
             isDirty = true;
           }
           if(applicationStatusDesc && applicationStatusDesc !== accessRecord.applicationStatusDesc) {
-            accessRecord.applicationStatusDesc = applicationStatusDesc;
+            accessRecord.applicationStatusDesc = inputSanitizer.removeNonBreakingSpaces(applicationStatusDesc);
             isDirty = true;
           }
       

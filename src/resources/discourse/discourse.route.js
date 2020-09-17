@@ -7,6 +7,7 @@ import passport from "passport";
 import { utils } from "../auth";
 import _ from 'lodash';
 
+const inputSanitizer = require('../utilities/inputSanitizer');
 const router = express.Router();
 
 /**
@@ -116,6 +117,7 @@ router.post(
   async (req, res) => {
     try {
       let { toolId, collectionId, topicId, comment } = req.body;
+      comment = inputSanitizer.removeNonBreakingSpaces(comment);
       // 1. Check if the topicId has been passed, if it is 0, the topic needs to be created
       if(!topicId) {
       // 2. Check if comment is on a tool or collection
@@ -193,7 +195,7 @@ router.put(
       // 2. Pull the new content from the request body
       const { comment } = req.body;
       // 3. Perform update of post in Discourse
-      const post = await updateDiscoursePost(postId, comment, req.user);
+      const post = await updateDiscoursePost(postId, inputSanitizer.removeNonBreakingSpaces(comment), req.user);
       // 4. Get the updated topic data
       const topic = await getDiscourseTopic(post.topic_id, req.user);
       // 5. Return the topic data
