@@ -25,7 +25,7 @@ module.exports = {
 					{
 						$or: [
 							{ userId: parseInt(userId) },
-							{ authors: { $elemMatch: { _id } } },
+							{ authors: _id },
 						],
 					},
 					{ dataSetId: { $ne: null } },
@@ -44,7 +44,7 @@ module.exports = {
 					{
 						$or: [
 							{ userId: parseInt(userId) },
-							{ authors: { $elemMatch: { _id } } },
+							{ authors: { _id } },
 						],
 					},
 					{
