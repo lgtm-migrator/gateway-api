@@ -167,8 +167,9 @@ module.exports = {
 						});
 				}
 				// 2. Build up the accessModel for the user
-				let { jsonSchema, version } = accessRequestTemplate;
-				// 4. create new DataRequestModel
+        let { jsonSchema, version } = accessRequestTemplate;
+        
+				// 3. create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
 					userId,
@@ -179,10 +180,13 @@ module.exports = {
 					aboutApplication: '{}',
 					applicationStatus: 'inProgress',
 				});
-				// 3. save record
-				await record.save();
-				// 4. return record
-				data = { ...record._doc };
+				// 4. save record
+        const newApplication = await record.save();
+        newApplication.projectId = helper.generateFriendlyId(newApplication._id);
+        await newApplication.save();
+
+				// 5. return record
+				data = { ...newApplication._doc };
 			} else {
 				data = { ...accessRecord._doc };
 			}
@@ -264,10 +268,12 @@ module.exports = {
 					aboutApplication: '{}',
 					applicationStatus: 'inProgress',
 				});
-				// 3. save record
-				await record.save();
-				// 4. return record
-				data = { ...record._doc };
+        // 4. save record
+        const newApplication = await record.save();
+        newApplication.projectId = helper.generateFriendlyId(newApplication._id);
+        await newApplication.save();
+				// 5. return record
+				data = { ...newApplication._doc };
 			} else {
 				data = { ...accessRecord._doc };
 			}
@@ -384,15 +390,8 @@ module.exports = {
 						message: 'Unauthorised to perform this update.',
 					});
       }
-      
-      // 6. Give project a friendly Id based on MongoDb _id if it does not exist already
-      if(!accessRecord.projectId) {
-        let projectId = helper.generateFriendlyId(_id);
-        accessRecord.projectId = projectId;
-        isDirty = true;
-      }
 
-			// 7. Extract new application status and desc to save updates
+			// 6. Extract new application status and desc to save updates
 			// If custodian, allow updated to application status and description
 			if (userType === userTypes.CUSTODIAN) {
         const { applicationStatus, applicationStatusDesc } = req.body;
@@ -449,12 +448,12 @@ module.exports = {
 				}
 			}
 
-			// 8. If a change has been made, notify custodian and main applicant
+			// 7. If a change has been made, notify custodian and main applicant
 			if (isDirty) {
 				accessRecord.save();
 			}
 
-			// 9. Return application
+			// 8. Return application
 			return res.status(200).json({
 				status: 'success',
 				data: accessRecord._doc,
