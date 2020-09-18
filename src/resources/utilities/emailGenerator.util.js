@@ -352,32 +352,6 @@ const _actualQuestionAnswers = async (questionAnswers, options) => {
   return {...qa, ...obj};
 }
 
-const _extractApplicantNames = (questionAnswers) => {
-  let fullnames = [];
-  // spread questionAnswers to new var
-  let qa = {...questionAnswers};
-  // get object keys of questionAnswers
-  let keys = Object.keys(qa);
-  // loop questionAnswer keys
-  for (const key of keys) {
-    // get value of key
-    let value = qa[key];
-    // split the key up for unique purposes
-    let [qId] = key.split('_');
-    // check if key in lookup
-    let lookup = autoCompleteLookups[`${qId}`];
-    // if key exists and it has an object do relevant data setting
-    if(typeof lookup !== 'undefined' && typeof value === 'object') { 
-      switch(qId) {
-        case 'fullname':
-          fullnames.push(value.name);
-          break;
-      }
-    }
-  }
-  return fullnames;
-}
-
 /**
  * [_displayCorrectEmailAddress]
  * 
@@ -463,21 +437,8 @@ const _displayDARLink = (accessId) => {
   return `<a style="color: #475da7;" href="${darLink}">View application</a>`;
 }
 
-const _generateDARStatusChangedEmail = (questionAnswers, options) => {
-  let { id, applicationStatus, applicationStatusDesc, publisher, datasetTitles, dateSubmitted, userName } = options;
-  let answers = { ...questionAnswers };
-  let applicants = _extractApplicantNames(answers).join(', ');
-  // Fall back for single applicant on short application form
-  if(_.isEmpty(applicants)) {
-    applicants = userName;
-  }
-
-  // Populate project/name in next version (add below HTML and project param above)
-  // <tr>
-  //   <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
-  //   <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${project}</td>
-  // </tr>
-
+const _generateDARStatusChangedEmail = (options) => {
+  let { id, applicationStatus, applicationStatusDesc, projectId, projectName, publisher, datasetTitles, dateSubmitted, applicants } = options;
   let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -503,8 +464,12 @@ const _generateDARStatusChangedEmail = (questionAnswers, options) => {
                   <td bgcolor="#fff" style="padding: 0; border: 0;">
                     <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+                      </tr>
+                      <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${id}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
@@ -531,6 +496,65 @@ const _generateDARStatusChangedEmail = (questionAnswers, options) => {
 
   return body;
 };
+
+const _generateContributorEmail = (options) => {
+  let { id, datasetTitles, projectName, projectId, change, actioner, applicants } = options;
+  let header = `You've been ${change === 'added' ? 'added to' : 'removed from'} a data access request application`;
+  let subheader = `${actioner} ${change} you as a contributor ${change === 'added' ? 'to' : 'from'} a data access request application. ${change == 'added' ? 'Contributors can exchange private notes, make edits, invite others and submit the application.' : ''}`;
+
+  let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${header}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${subheader}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            ${change === 'added' ? ` 
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayDARLink(id)}
+            </div>` : ''}
+          </div>`;
+
+  return body;
+}
 
 /**
  * [_sendEmail]
@@ -607,5 +631,6 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 export default {
   generateEmail: _generateEmail,
   generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
+  generateContributorEmail: _generateContributorEmail,
   sendEmail: _sendEmail,
 };

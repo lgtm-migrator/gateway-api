@@ -11,7 +11,7 @@ module.exports = {
             // 1. Get the publisher from the database
             const publisher = await PublisherModel.findOne({name: req.params.id});
             if(!publisher) {
-                return res.status(404).json({ success: false });
+                return res.status(200).json({ success: true, publisher: { dataRequestModalContent: {}, allowsMessaging: false } });
             }
             // 2. Return publisher
             return res.status(200).json({ success: true, publisher });

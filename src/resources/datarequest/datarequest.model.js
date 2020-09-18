@@ -6,10 +6,15 @@ const DataRequestSchema = new Schema({
   authors: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   dataSetId: String,
   datasetIds: [{ type: String}],
+  projectId: String,
   applicationStatus: {
     type: String,
     default: 'inProgress',
-    enum: ['inProgress' , 'submitted', 'approved', 'rejected', 'approved with conditions']
+    enum: ['inProgress' , 'submitted', 'inReview', 'approved', 'rejected', 'approved with conditions', 'withdrawn']
+  },
+  archived: { 
+    Boolean, 
+    default: false 
   },
   applicationStatusDesc : String,
   jsonSchema: {
@@ -26,7 +31,10 @@ const DataRequestSchema = new Schema({
   },
   dateSubmitted: {
     type: Date
-},
+  },
+  dateFinalStatus: {
+    type: Date
+  }
 }, {
     timestamps: true,
     toJSON:     { virtuals: true },

@@ -6,7 +6,7 @@ const MessageSchema = new Schema({
   messageObjectID: Number,
   messageDataRequestID: {
     type: Schema.Types.ObjectId, 
-    ref: 'data_request'
+    ref: 'data_request' 
   },
   messageDescription: String,
   messageType: {
@@ -18,7 +18,8 @@ const MessageSchema = new Schema({
            'rejected',
            'added collection',
            'review',
-           'data access request'
+           'data access request',
+           'data access request unlinked'
           ]
   },
   createdBy:{
