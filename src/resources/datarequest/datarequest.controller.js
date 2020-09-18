@@ -44,7 +44,7 @@ module.exports = {
 					{
 						$or: [
 							{ userId: parseInt(userId) },
-							{ authors: { _id } },
+							{ authors: _id },
 						],
 					},
 					{
