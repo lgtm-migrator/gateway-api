@@ -64,12 +64,13 @@ module.exports = {
       
       // 5. Append project name and applicants
       let modifiedApplications = [...applications].map((app) => {
-        modules.exports.createApplicationDTO(app)
+        return module.exports.createApplicationDTO(app);
       }).sort((a, b) => b.updatedAt - a.updatedAt);
 
       // 6. Return payload
 			return res.status(200).json({ success: true, data: modifiedApplications });
-		} catch {
+		} catch(error) {
+      console.error(error);
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred searching for user applications',
@@ -889,7 +890,7 @@ module.exports = {
 	},
 
 	extractApplicantNames: (questionAnswers) => {
-		let fullnames = [];
+		let fullnames = [], autoCompleteLookups = {"fullname": ['email']};
 		// spread questionAnswers to new var
 		let qa = { ...questionAnswers };
 		// get object keys of questionAnswers
@@ -917,6 +918,7 @@ module.exports = {
   createApplicationDTO: (app) => {
       let projectName = '';
       let applicants = '';
+      let { datasetfields : { publisher }, name} = app.datasets[0];
 
       let { aboutApplication, questionAnswers } = app;
       if (aboutApplication) {
@@ -935,6 +937,6 @@ module.exports = {
         let { firstname, lastname } = app.mainApplicant;
         applicants = `${firstname} ${lastname}`;
       }
-      return { projectName, applicants, ...app }
+      return { projectName, applicants, publisher, ...app }
     }
 };
