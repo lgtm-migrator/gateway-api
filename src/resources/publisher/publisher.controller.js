@@ -116,7 +116,7 @@ module.exports = {
                 
             // 6. Append projectName and applicants
             let modifiedApplications = [...applications].map((app) => {
-                return datarequestController.createApplicationDTO(app);
+                return datarequestController.createApplicationDTO(app.toObject());
             }).sort((a, b) => b.updatedAt - a.updatedAt);
 
 			// 7. Return all applications

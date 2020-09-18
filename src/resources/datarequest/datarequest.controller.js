@@ -32,13 +32,6 @@ module.exports = {
 					{ dataSetId: { $ne: null } },
 				],
 			}).populate('dataset mainApplicant');
-			let formattedApplications = singleDatasetApplications.map((app) => {
-				return {
-					...app.toObject(),
-					datasetIds: [app.dataset.datasetid],
-					datasets: [app.dataset.toObject()],
-				};
-			});
 			// 3. Find all data access request applications created with multi dataset version
 			let multiDatasetApplications = await DataRequestModel.find({
 				$and: [
@@ -53,18 +46,15 @@ module.exports = {
 					},
 				],
 			}).populate('datasets mainApplicant');
-			multiDatasetApplications = multiDatasetApplications.map((app) => {
-				return { ...app.toObject() };
-			});
 			// 4. Return all users applications combined
 			const applications = [
-				...formattedApplications,
+				...singleDatasetApplications,
 				...multiDatasetApplications,
       ];
       
       // 5. Append project name and applicants
       let modifiedApplications = [...applications].map((app) => {
-        return module.exports.createApplicationDTO(app);
+        return module.exports.createApplicationDTO(app.toObject());
       }).sort((a, b) => b.updatedAt - a.updatedAt);
 
       // 6. Return payload
@@ -918,20 +908,25 @@ module.exports = {
   createApplicationDTO: (app) => {
       let projectName = '';
       let applicants = '';
-      let { datasetfields : { publisher }, name} = app.datasets[0];
 
+      // Ensure backward compatibility with old single dataset DARs
+      if(_.isEmpty(app.datasets)) {
+        app.datasets = [app.dataset];
+        app.datasetIds = [app.datasetid];
+      }
+      let { datasetfields : { publisher }, name} = app.datasets[0];
       let { aboutApplication, questionAnswers } = app;
+
       if (aboutApplication) {
         let aboutObj = JSON.parse(aboutApplication);
         ({ projectName } = aboutObj);
       }
       if(_.isEmpty(projectName)) {
-        let { datasetfields : { publisher }, name} = app.datasets[0];
         projectName = `${publisher} - ${name}`
       }
       if (questionAnswers) {
         let questionAnswersObj = JSON.parse(questionAnswers);
-        applicants = module.exports.extractApplicantNames(questionAnswersObj).join(',');
+        applicants = module.exports.extractApplicantNames(questionAnswersObj).join(', ');
       }
       if(_.isEmpty(applicants)) {
         let { firstname, lastname } = app.mainApplicant;
