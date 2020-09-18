@@ -6,6 +6,7 @@ import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
+import { application } from 'express';
 
 const notificationBuilder = require('../utilities/notificationBuilder');
 const userTypes = {
@@ -30,7 +31,7 @@ module.exports = {
 					},
 					{ dataSetId: { $ne: null } },
 				],
-			}).populate('dataset');
+			}).populate('dataset mainApplicant');
 			let formattedApplications = singleDatasetApplications.map((app) => {
 				return {
 					...app.toObject(),
@@ -51,16 +52,23 @@ module.exports = {
 						$and: [{ datasetIds: { $ne: [] } }, { datasetIds: { $ne: null } }],
 					},
 				],
-			}).populate('datasets');
+			}).populate('datasets mainApplicant');
 			multiDatasetApplications = multiDatasetApplications.map((app) => {
 				return { ...app.toObject() };
 			});
 			// 4. Return all users applications combined
-			let applications = [
+			const applications = [
 				...formattedApplications,
 				...multiDatasetApplications,
-			].sort((a, b) => b.updatedAt - a.updatedAt);
-			return res.status(200).json({ success: true, data: applications });
+      ];
+      
+      // 5. Append project name and applicants
+      let modifiedApplications = [...applications].map((app) => {
+        modules.exports.createApplicationDTO(app)
+      }).sort((a, b) => b.updatedAt - a.updatedAt);
+
+      // 6. Return payload
+			return res.status(200).json({ success: true, data: modifiedApplications });
 		} catch {
 			return res.status(500).json({
 				success: false,
@@ -904,5 +912,29 @@ module.exports = {
 			}
 		}
 		return fullnames;
-	},
+  },
+  
+  createApplicationDTO: (app) => {
+      let projectName = '';
+      let applicants = '';
+
+      let { aboutApplication, questionAnswers } = app;
+      if (aboutApplication) {
+        let aboutObj = JSON.parse(aboutApplication);
+        ({ projectName } = aboutObj);
+      }
+      if(_.isEmpty(projectName)) {
+        let { datasetfields : { publisher }, name} = app.datasets[0];
+        projectName = `${publisher} - ${name}`
+      }
+      if (questionAnswers) {
+        let questionAnswersObj = JSON.parse(questionAnswers);
+        applicants = module.exports.extractApplicantNames(questionAnswersObj).join(',');
+      }
+      if(_.isEmpty(applicants)) {
+        let { firstname, lastname } = app.mainApplicant;
+        applicants = `${firstname} ${lastname}`;
+      }
+      return { projectName, applicants, ...app }
+    }
 };
