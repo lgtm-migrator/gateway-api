@@ -18,10 +18,18 @@ module.exports = {
 	getAccessRequestsByUser: async (req, res) => {
 		try {
 			// 1. Deconstruct the
-			let { id: userId } = req.user;
+			let { id: userId, _id } = req.user;
 			// 2. Find all data access request applications created with single dataset version
 			let singleDatasetApplications = await DataRequestModel.find({
-				$and: [{ userId: parseInt(userId) }, { dataSetId: { $ne: null } }],
+				$and: [
+					{
+						$or: [
+							{ userId: parseInt(userId) },
+							{ authors: { $elemMatch: { _id } } },
+						],
+					},
+					{ dataSetId: { $ne: null } },
+				],
 			}).populate('dataset');
 			let formattedApplications = singleDatasetApplications.map((app) => {
 				return {
@@ -33,7 +41,12 @@ module.exports = {
 			// 3. Find all data access request applications created with multi dataset version
 			let multiDatasetApplications = await DataRequestModel.find({
 				$and: [
-					{ userId: parseInt(userId) },
+					{
+						$or: [
+							{ userId: parseInt(userId) },
+							{ authors: { $elemMatch: { _id } } },
+						],
+					},
 					{
 						$and: [{ datasetIds: { $ne: [] } }, { datasetIds: { $ne: null } }],
 					},
@@ -49,12 +62,10 @@ module.exports = {
 			].sort((a, b) => b.updatedAt - a.updatedAt);
 			return res.status(200).json({ success: true, data: applications });
 		} catch {
-			return res
-				.status(500)
-				.json({
-					success: false,
-					message: 'An error occurred searching for user applications',
-				});
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred searching for user applications',
+			});
 		}
 	},
 
@@ -86,7 +97,10 @@ module.exports = {
 			let {
 				authorised,
 				userType,
-			} = module.exports.getUserPermissionsForApplication(accessRecord, req.user._id);
+			} = module.exports.getUserPermissionsForApplication(
+				accessRecord,
+				req.user._id
+			);
 			let readOnly = true;
 			if (!authorised) {
 				return res
@@ -159,16 +173,14 @@ module.exports = {
 				}).sort({ createdAt: -1 });
 
 				if (!accessRequestTemplate) {
-					return res
-						.status(400)
-						.json({
-							status: 'error',
-							message: 'No Data Access request schema.',
-						});
+					return res.status(400).json({
+						status: 'error',
+						message: 'No Data Access request schema.',
+					});
 				}
 				// 2. Build up the accessModel for the user
-        let { jsonSchema, version } = accessRequestTemplate;
-        
+				let { jsonSchema, version } = accessRequestTemplate;
+
 				// 3. create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
@@ -181,9 +193,11 @@ module.exports = {
 					applicationStatus: 'inProgress',
 				});
 				// 4. save record
-        const newApplication = await record.save();
-        newApplication.projectId = helper.generateFriendlyId(newApplication._id);
-        await newApplication.save();
+				const newApplication = await record.save();
+				newApplication.projectId = helper.generateFriendlyId(
+					newApplication._id
+				);
+				await newApplication.save();
 
 				// 5. return record
 				data = { ...newApplication._doc };
@@ -248,12 +262,10 @@ module.exports = {
 				}).sort({ createdAt: -1 });
 				// 2. Ensure a question set was found
 				if (!accessRequestTemplate) {
-					return res
-						.status(400)
-						.json({
-							status: 'error',
-							message: 'No Data Access request schema.',
-						});
+					return res.status(400).json({
+						status: 'error',
+						message: 'No Data Access request schema.',
+					});
 				}
 				// 3. Build up the accessModel for the user
 				let { jsonSchema, version } = accessRequestTemplate;
@@ -268,10 +280,12 @@ module.exports = {
 					aboutApplication: '{}',
 					applicationStatus: 'inProgress',
 				});
-        // 4. save record
-        const newApplication = await record.save();
-        newApplication.projectId = helper.generateFriendlyId(newApplication._id);
-        await newApplication.save();
+				// 4. save record
+				const newApplication = await record.save();
+				newApplication.projectId = helper.generateFriendlyId(
+					newApplication._id
+				);
+				await newApplication.save();
 				// 5. return record
 				data = { ...newApplication._doc };
 			} else {
@@ -383,28 +397,32 @@ module.exports = {
 			} = module.exports.getUserPermissionsForApplication(accessRecord, _id);
 
 			if (!authorised) {
-				return res
-					.status(401)
-					.json({
-						status: 'error',
-						message: 'Unauthorised to perform this update.',
-					});
-      }
+				return res.status(401).json({
+					status: 'error',
+					message: 'Unauthorised to perform this update.',
+				});
+			}
 
 			// 6. Extract new application status and desc to save updates
 			// If custodian, allow updated to application status and description
 			if (userType === userTypes.CUSTODIAN) {
-        const { applicationStatus, applicationStatusDesc } = req.body;
-        const finalStatuses = ['submitted', 'approved', 'rejected', 'approved with conditions', 'withdrawn'];
+				const { applicationStatus, applicationStatusDesc } = req.body;
+				const finalStatuses = [
+					'submitted',
+					'approved',
+					'rejected',
+					'approved with conditions',
+					'withdrawn',
+				];
 				if (
 					applicationStatus &&
 					applicationStatus !== accessRecord.applicationStatus
 				) {
-          accessRecord.applicationStatus = applicationStatus;
+					accessRecord.applicationStatus = applicationStatus;
 
-          if(finalStatuses.includes(applicationStatus)) {
-            accessRecord.dateFinalStatus = Date.now();
-          }
+					if (finalStatuses.includes(applicationStatus)) {
+						accessRecord.dateFinalStatus = Date.now();
+					}
 					isDirty = true;
 					await module.exports.createNotifications(
 						'StatusChange',
@@ -422,19 +440,18 @@ module.exports = {
 				}
 				// If applicant, allow update to contributors/authors
 			} else if (userType === userTypes.APPLICANT) {
-        let newAuthors = [], currentAuthors = [];
-        // Extract existing contributor/author IDs
-        if(accessRecord.authors) {
-          currentAuthors = accessRecord.authors.map((author) =>
-            author._id.toString()
-          );
-        }
-        // Extract new contributor/author IDs
-        if(req.body.authors) {
-          newAuthors = req.body.authors.map((author) =>
-            author._id.toString()
-          );
-        }
+				let newAuthors = [],
+					currentAuthors = [];
+				// Extract existing contributor/author IDs
+				if (accessRecord.authors) {
+					currentAuthors = accessRecord.authors.map((author) =>
+						author._id.toString()
+					);
+				}
+				// Extract new contributor/author IDs
+				if (req.body.authors) {
+					newAuthors = req.body.authors.map((author) => author._id.toString());
+				}
 				// Perform comparison between new and existing authors to determine if an update is required
 				if (newAuthors && !helper.arraysEqual(newAuthors, currentAuthors)) {
 					accessRecord.authors = newAuthors;
@@ -460,12 +477,10 @@ module.exports = {
 			});
 		} catch (err) {
 			console.error(err.message);
-			res
-				.status(500)
-				.json({
-					status: 'error',
-					message: 'An error occurred updating the application status',
-				});
+			res.status(500).json({
+				status: 'error',
+				message: 'An error occurred updating the application status',
+			});
 		}
 	},
 
@@ -502,14 +517,14 @@ module.exports = {
 				accessRecord.datasets = [accessRecord.dataset];
 			}
 
-      // 4. Update application to submitted status
-      // Check if workflow/5 Safes based application
-      if(accessRecord.datasets[0].publisher.workflowEnabled) {
-        accessRecord.applicationStatus = 'inReview';
-      } else {
-        accessRecord.applicationStatus = 'submitted';
-        accessRecord.dateFinalStatus = Date.now();
-      }
+			// 4. Update application to submitted status
+			// Check if workflow/5 Safes based application
+			if (accessRecord.datasets[0].publisher.workflowEnabled) {
+				accessRecord.applicationStatus = 'inReview';
+			} else {
+				accessRecord.applicationStatus = 'submitted';
+				accessRecord.dateFinalStatus = Date.now();
+			}
 
 			accessRecord.dateSubmitted = Date.now();
 			await accessRecord.save();
@@ -829,7 +844,9 @@ module.exports = {
 
 	getUserPermissionsForApplication: (application, userId) => {
 		try {
-			let authorised = false, userType = '', members = [];
+			let authorised = false,
+				userType = '',
+				members = [];
 			// Return default unauthorised with no user type if incorrect params passed
 			if (!application || !userId) {
 				return { authorised, userType };
@@ -855,11 +872,11 @@ module.exports = {
 					userType = userTypes.APPLICANT;
 					authorised = true;
 				}
-      }
-      return { authorised, userType };
+			}
+			return { authorised, userType };
 		} catch (error) {
-      console.error(error);
-      return { authorised: false, userType: '' };
+			console.error(error);
+			return { authorised: false, userType: '' };
 		}
 	},
 
@@ -887,5 +904,5 @@ module.exports = {
 			}
 		}
 		return fullnames;
-  }
+	},
 };
