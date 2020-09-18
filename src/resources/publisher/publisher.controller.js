@@ -119,8 +119,10 @@ module.exports = {
                 return datarequestController.createApplicationDTO(app.toObject());
             }).sort((a, b) => b.updatedAt - a.updatedAt);
 
+            let avgDecisionTime = datarequestController.calculateAvgDecisionTime(applications);
+
 			// 7. Return all applications
-			return res.status(200).json({ success: true, data: modifiedApplications });
+			return res.status(200).json({ success: true, data: modifiedApplications, avgDecisionTime });
 		} catch (err) {
 			console.error(err);
 			return res

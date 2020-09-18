@@ -57,8 +57,10 @@ module.exports = {
         return module.exports.createApplicationDTO(app.toObject());
       }).sort((a, b) => b.updatedAt - a.updatedAt);
 
+      let avgDecisionTime = module.exports.calculateAvgDecisionTime(applications);
+
       // 6. Return payload
-			return res.status(200).json({ success: true, data: modifiedApplications });
+			return res.status(200).json({ success: true, data: modifiedApplications, avgDecisionTime });
 		} catch(error) {
       console.error(error);
 			return res.status(500).json({
@@ -933,5 +935,25 @@ module.exports = {
         applicants = `${firstname} ${lastname}`;
       }
       return { projectName, applicants, publisher, ...app }
-    }
+  },
+
+  calculateAvgDecisionTime: (applications) => {
+    // Extract dateSubmitted dateFinalStatus
+    let decidedApplications = applications.filter((app) => {
+      let { dateSubmitted = '', dateFinalStatus = '' } = app;
+      return (!_.isEmpty(dateSubmitted) && !_.isEmpty(dateFinalStatus));
+    });
+    // Find difference between dates in milliseconds
+    let totalDecisionTime = decidedApplications.reduce((count, current) => {
+      let { dateSubmitted, dateFinalStatus } = current;
+      let start = moment(dateSubmitted);
+      let end = moment(dateFinalStatus);
+      let diff = end.diff(start, 'seconds');
+      count += diff;
+      return count;
+    }, 0);
+
+    // Divide by number of items
+    return totalDecisionTime/decidedApplications.length/86400;
+  }
 };
