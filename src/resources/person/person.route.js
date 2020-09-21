@@ -7,6 +7,7 @@ import {addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin} from 
 import emailGenerator from '../utilities/emailGenerator.util';
 import { UserModel } from '../user/user.model'
 const urlValidator = require('../utilities/urlValidator');
+const inputSanitizer = require('../utilities/inputSanitizer');
 
 const router = express.Router()
 
@@ -15,23 +16,23 @@ router.post('/',
     utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
     async (req, res) => {
       const { firstname, lastname, bio, emailNotifications, terms, sector, organisation, showOrganisation, tags} = req.body;
-      let link = urlValidator.validateURL(req.body.link);
-      let orcid = urlValidator.validateOrcidURL(req.body.orcid);
+      let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
+      let orcid = urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid));
       let data = Data();
       console.log(req.body)
       data.id = parseInt(Math.random().toString().replace('0.', ''));
-      data.firstname = firstname,
-      data.lastname = lastname,
+      data.firstname = inputSanitizer.removeNonBreakingSpaces(firstname),
+      data.lastname = inputSanitizer.removeNonBreakingSpaces(lastname),
       data.type = "person";
-      data.bio = bio;
+      data.bio = inputSanitizer.removeNonBreakingSpaces(bio);
       data.link = link;
       data.orcid = orcid;
       data.emailNotifications = emailNotifications;
       data.terms = terms;
-      data.sector = sector;
-      data.organisation = organisation;
+      data.sector = inputSanitizer.removeNonBreakingSpaces(sector);
+      data.organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
       data.showOrganisation = showOrganisation;
-      data.tags = tags;
+      data.tags = inputSanitizer.removeNonBreakingSpaces(tags);
       let newPersonObj = await data.save();
       if(!newPersonObj)
         return res.json({ success: false, error: "Can't persist data to DB" });
@@ -43,10 +44,16 @@ router.put('/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-  const { id, firstname, lastname, email, bio, emailNotifications, terms, sector, organisation, showOrganisation, tags } = req.body;
+  let { id, firstname, lastname, email, bio, emailNotifications, terms, sector, organisation, showOrganisation, tags } = req.body;
   const type = 'person';
-  let link = urlValidator.validateURL(req.body.link);
-  let orcid = urlValidator.validateOrcidURL(req.body.orcid);
+  let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
+  let orcid = urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid));
+  firstname = inputSanitizer.removeNonBreakingSpaces(firstname),
+  lastname = inputSanitizer.removeNonBreakingSpaces(lastname),
+  bio = inputSanitizer.removeNonBreakingSpaces(bio);
+  sector = inputSanitizer.removeNonBreakingSpaces(sector);
+  organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
+  tags = inputSanitizer.removeNonBreakingSpaces(tags);
   console.log(req.body)
   await Data.findOneAndUpdate({ id: id },
     {

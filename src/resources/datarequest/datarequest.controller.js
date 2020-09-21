@@ -6,6 +6,7 @@ import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
+import inputSanitizer from '../utilities/inputSanitizer';
 
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
@@ -434,7 +435,7 @@ module.exports = {
 					applicationStatusDesc &&
 					applicationStatusDesc !== accessRecord.applicationStatusDesc
 				) {
-					accessRecord.applicationStatusDesc = applicationStatusDesc;
+					accessRecord.applicationStatusDesc = inputSanitizer.removeNonBreakingSpaces(applicationStatusDesc);
 					isDirty = true;
 				}
 				// If applicant, allow update to contributors/authors
