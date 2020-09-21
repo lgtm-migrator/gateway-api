@@ -33,7 +33,9 @@ const getOptions = {
 
 
 module.exports = {
-    postCreateProcess: async (req, res) => {
+    postCreateProcess: async (bmpContext) => {
+        // Create Axios requet to start Camunda process
+        axios.post()
         try {
             const req = http.request(postOptions, (res) => {
 
