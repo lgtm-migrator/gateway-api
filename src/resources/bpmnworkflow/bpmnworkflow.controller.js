@@ -29,9 +29,9 @@ module.exports = {
                     "type": "String"
                 }
             },
-            "businessKey": businessKey
+            "businessKey": businessKey.toString()
         }
-        axios.post(`${process.env.BPMNBASEURL}/process-definition/key/GatewayWorkflowSimple/start`, data)
+        await axios.post(`${process.env.BPMNBASEURL}/engine-rest/process-definition/key/GatewayWorkflowSimple/start`, data)
             .catch((err) => { 
                 console.error(err);
             });
@@ -63,23 +63,12 @@ module.exports = {
                 }
             }
         }
-        axios.post(`${process.env.BPMNBASEURL}/task/${taskId}/complete`, data)
+        await axios.post(`${process.env.BPMNBASEURL}/engine-rest/task/${taskId}/complete`, data)
             .catch((err) => { 
                 console.error(err);
             });
     },
     getProcess: async (businessKey) => {
-        axios.get(`${process.env.BPMNBASEURL}/task?processInstanceBusinessKey=${businessKey}`)
-            .then((response) => {
-                let { id = '' } = response.data[0];
-                if(_.isEmpty(id)) {
-                    console.error('Camunda Workflow - Process not found by Data Access Request ID');
-                }
-                return id;
-            })
-            .catch((err) => { 
-                console.error(err);
-            });
+        return await axios.get(`${process.env.BPMNBASEURL}/engine-rest/task?processInstanceBusinessKey=${businessKey.toString()}`);
     }
-
 }

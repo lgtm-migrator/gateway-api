@@ -488,9 +488,12 @@ module.exports = {
 						// Update workflow process if publisher requires it
 						if (accessRecord.datasets[0].publisher.workflowEnabled) {
 							// Call Camunda controller to get current workflow process for application
-							let taskId = await bpmController.getProcess(id);
+							let response = await bpmController.getProcess(id);
+							let { data = {} } = response;
+							if(!_.isEmpty(data)) {
+								let [obj] = data;
+								let { id:taskId } = obj;
 
-							if(taskId) {
 								// Call Camunda to update workflow process for application
 								let { name: publisher } = accessRecord.datasets[0].publisher;
 								let bmpContext = { taskId, dateSubmitted: new Date(), applicationStatus, publisher, actioner: _id, archived: false };
