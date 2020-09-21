@@ -19,6 +19,10 @@ const PublisherSchema = new Schema({
     header: String,
     body: String,
     footer: String
+  },
+  workflowEnabled: {
+    type: Boolean,
+    default: false
   }
 }, {
   toJSON:     { virtuals: true },
