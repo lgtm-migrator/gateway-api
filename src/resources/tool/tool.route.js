@@ -15,6 +15,7 @@ import {
   getToolsAdmin,
 } from '../tool/data.repository';
 import emailGenerator from '../utilities/emailGenerator.util';
+import inputSanitizer from '../utilities/inputSanitizer';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const router = express.Router();
 
@@ -265,8 +266,8 @@ router.post(
     reviews.toolID = toolID;
     reviews.reviewerID = reviewerID;
     reviews.rating = rating;
-    reviews.projectName = projectName;
-    reviews.review = review;
+    reviews.projectName = inputSanitizer.removeNonBreakingSpaces(projectName);
+    reviews.review = inputSanitizer.removeNonBreakingSpaces(review);
     reviews.activeflag = 'review';
     reviews.date = Date.now();
 
@@ -297,7 +298,7 @@ router.post(
       { reviewID: reviewID },
       {
         replierID: replierID,
-        reply: reply,
+        reply: inputSanitizer.removeNonBreakingSpaces(reply),
         replydate: Date.now(),
       },
       (err) => {
