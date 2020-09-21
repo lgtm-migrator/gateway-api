@@ -34,6 +34,10 @@ const DataRequestSchema = new Schema({
   },
   dateFinalStatus: {
     type: Date
+  },
+  publisher: {
+    type: String,
+    default: ""
   }
 }, {
     timestamps: true,
@@ -59,6 +63,13 @@ DataRequestSchema.virtual('mainApplicant', {
   ref: 'User',
   foreignField: 'id',
   localField: 'userId',
+  justOne: true
+});
+
+DataRequestSchema.virtual('publisherObj', {
+  ref: 'Publisher',
+  foreignField: 'name',
+  localField: 'publisher',
   justOne: true
 });
 

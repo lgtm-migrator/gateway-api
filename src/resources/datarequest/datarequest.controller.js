@@ -7,6 +7,8 @@ import _ from 'lodash';
 import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
 
+const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
+
 const notificationBuilder = require('../utilities/notificationBuilder');
 const userTypes = {
 	CUSTODIAN: 'custodian',
@@ -363,6 +365,8 @@ module.exports = {
 			} = req;
 			// 2. Get the userId
 			let { _id } = req.user;
+			let applicationStatus = '', applicationStatusDesc = '';
+
 			// 3. Find the relevant data request application
 			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
 				path: 'datasets dataset mainApplicant authors',
@@ -390,7 +394,7 @@ module.exports = {
 			}
 
 			// 5. Check if the user is permitted to perform update to application
-			let isDirty = false;
+			let isDirty = false, statusChange = false, contributorChange = false;
 			let {
 				authorised,
 				userType,
@@ -406,7 +410,7 @@ module.exports = {
 			// 6. Extract new application status and desc to save updates
 			// If custodian, allow updated to application status and description
 			if (userType === userTypes.CUSTODIAN) {
-				const { applicationStatus, applicationStatusDesc } = req.body;
+				({ applicationStatus, applicationStatusDesc } = req.body);
 				const finalStatuses = [
 					'submitted',
 					'approved',
@@ -421,15 +425,10 @@ module.exports = {
 					accessRecord.applicationStatus = applicationStatus;
 
 					if (finalStatuses.includes(applicationStatus)) {
-						accessRecord.dateFinalStatus = Date.now();
+						accessRecord.dateFinalStatus = new Date()
 					}
 					isDirty = true;
-					await module.exports.createNotifications(
-						'StatusChange',
-						{ applicationStatus, applicationStatusDesc },
-						accessRecord,
-						req.user
-					);
+					statusChange = true;
 				}
 				if (
 					applicationStatusDesc &&
@@ -456,18 +455,50 @@ module.exports = {
 				if (newAuthors && !helper.arraysEqual(newAuthors, currentAuthors)) {
 					accessRecord.authors = newAuthors;
 					isDirty = true;
-					await module.exports.createNotifications(
-						'ContributorChange',
-						{ newAuthors, currentAuthors },
-						accessRecord,
-						req.user
-					);
+					contributorChange = true;
 				}
 			}
 
 			// 7. If a change has been made, notify custodian and main applicant
 			if (isDirty) {
-				accessRecord.save();
+				await accessRecord.save(async (err) => {
+					if(err) {
+						console.error(err);
+						res.status(500).json({ status: 'error', message: err });
+					} else {
+						// If save has succeeded - send notifications
+						// Send notifications to added/removed contributors
+						if(contributorChange) {
+							await module.exports.createNotifications(
+								'ContributorChange',
+								{ newAuthors, currentAuthors },
+								accessRecord,
+								req.user
+							);
+						}
+						// Send notifications to custodian team, main applicant and contributors regarding status change
+						if(statusChange) {
+							await module.exports.createNotifications(
+								'StatusChange',
+								{ applicationStatus, applicationStatusDesc },
+								accessRecord,
+								req.user
+							);
+						}
+						// Update workflow process if publisher requires it
+						if (accessRecord.datasets[0].publisher.workflowEnabled) {
+							// Call Camunda controller to get current workflow process for application
+							let taskId = await bpmController.getProcess(id);
+
+							if(taskId) {
+								// Call Camunda to update workflow process for application
+								let { name: publisher } = accessRecord.datasets[0].publisher;
+								let bmpContext = { taskId, dateSubmitted: new Date(), applicationStatus, publisher, actioner: _id, archived: false };
+								await bpmController.postUpdateProcess(bmpContext);
+							}
+						}
+					}
+				});
 			}
 
 			// 8. Return application
@@ -518,25 +549,31 @@ module.exports = {
 			}
 
 			// 4. Update application to submitted status
-			// Check if workflow/5 Safes based application
-			if (accessRecord.datasets[0].publisher.workflowEnabled) {
-				accessRecord.applicationStatus = 'inReview';
-			} else {
-				accessRecord.applicationStatus = 'submitted';
-				accessRecord.dateFinalStatus = Date.now();
+			accessRecord.applicationStatus = 'submitted';
+			// Check if workflow/5 Safes based application, set final status date if status will never change again
+			if (!accessRecord.datasets[0].publisher.workflowEnabled) {
+				accessRecord.dateFinalStatus = new Date();
 			}
-
-			accessRecord.dateSubmitted = Date.now();
-			await accessRecord.save();
-
-			// 5. Send notifications and emails to custodian team and main applicant
-			await module.exports.createNotifications(
-				'Submitted',
-				{},
-				accessRecord,
-				req.user
-			);
-
+			let dateSubmitted = new Date();
+			accessRecord.dateSubmitted = dateSubmitted;
+			await accessRecord.save(async(err) => {
+				if(err) {
+					console.error(err);
+					res.status(500).json({ status: 'error', message: err });
+				} else {
+					// If save has succeeded - send notifications
+					// Send notifications and emails to custodian team and main applicant
+					await module.exports.createNotifications('Submitted', {}, accessRecord, req.user);
+					// Start workflow process if publisher requires it
+					if (accessRecord.datasets[0].publisher.workflowEnabled) {
+						// Call Camunda controller to start workflow for submitted application
+						let { name: publisher } = accessRecord.datasets[0].publisher;
+						let { _id: userId } = req.user;
+						let bmpContext = { dateSubmitted, applicationStatus: 'submitted', publisher, businessKey:id, actioner: userId };
+						bpmController.postCreateProcess(bmpContext);
+					}
+				}
+			});
 			// 6. Return aplication and successful response
 			return res
 				.status(200)

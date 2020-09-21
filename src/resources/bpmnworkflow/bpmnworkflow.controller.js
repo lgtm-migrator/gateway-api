@@ -1,64 +1,85 @@
-import bpmnworkflow from '../utilities/bpmnworkflow.util';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
+import _ from 'lodash';
 
-const postOptions = {
-    hostname: '',
-    port: 80,
-    path: '/',
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    }
-};
-
-const updateOptions = {
-    hostname: '',
-    port: 80,
-    path: '/',
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    }
-};
-
-const getOptions = {
-    hostname: '',
-    port: 80,
-    path: '/',
-    method: 'GET',
-    headers: {
-        'Content-Type': 'application/json'
-    }
-};
-
+axiosRetry(axios, { retries: 3, retryDelay: () => {
+    return 3000;
+  }});
 
 module.exports = {
     postCreateProcess: async (bmpContext) => {
         // Create Axios requet to start Camunda process
-        axios.post()
-        try {
-            const req = http.request(postOptions, (res) => {
-
+        let { applicationStatus, dateSubmitted, publisher, actioner, businessKey } = bmpContext;
+        let data = {
+            "variables": {
+                "applicationStatus": {
+                    "value": applicationStatus,
+                    "type": "String"
+                },
+                "dateSubmitted": {
+                    "value": dateSubmitted,
+                    "type": "String"
+                },
+                "publisher": {
+                    "value": publisher,
+                    "type": "String"
+                },
+                "actioner" : {
+                    "value": actioner,
+                    "type": "String"
+                }
+            },
+            "businessKey": businessKey
+        }
+        axios.post(`${process.env.BPMNBASEURL}/process-definition/key/GatewayWorkflowSimple/start`, data)
+            .catch((err) => { 
+                console.error(err);
             });
-        } catch {
-            return res.status(500).json({ success: false, message: 'An error occurred creating workflow process'});
-        }
     },
-    postUpdateProcess: async (req, res) => {
-        try {
-            const req = http.request(updateOptions, (res) => {
-
+    postUpdateProcess: async (bmpContext) => {
+        // Create Axios requet to start Camunda process
+        let { taskId, applicationStatus, dateSubmitted, publisher, actioner, archived } = bmpContext;
+        let data = {
+            "variables": {
+                "applicationStatus": {
+                    "value": applicationStatus,
+                    "type": "String"
+                },
+                "dateSubmitted": {
+                    "value": dateSubmitted,
+                    "type": "String"
+                },
+                "publisher": {
+                    "value": publisher,
+                    "type": "String"
+                },
+                "actioner" : {
+                    "value": actioner,
+                    "type": "String"
+                },
+                "archived" :{
+                    "value": archived,
+                    "type": "Boolean"
+                }
+            }
+        }
+        axios.post(`${process.env.BPMNBASEURL}/task/${taskId}/complete`, data)
+            .catch((err) => { 
+                console.error(err);
             });
-        } catch {
-            return res.status(500).json({success: false, message: 'An error occurred updating the workflow process'});
-        }
     },
-    getProcess: async (req, res) => {
-        try {
-            const req = http.request
-        } catch {
-            return res.status(500).json({success: false, message: 'Failed to fetch workflow process'});
-        }
+    getProcess: async (businessKey) => {
+        axios.get(`${process.env.BPMNBASEURL}/task?processInstanceBusinessKey=${businessKey}`)
+            .then((response) => {
+                let { id = '' } = response.data[0];
+                if(_.isEmpty(id)) {
+                    console.error('Camunda Workflow - Process not found by Data Access Request ID');
+                }
+                return id;
+            })
+            .catch((err) => { 
+                console.error(err);
+            });
     }
 
 }
