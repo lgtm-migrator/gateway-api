@@ -592,7 +592,11 @@ module.exports = {
 		const hdrukEmail = `enquiry@healthdatagateway.org`;
 		// Project details from about application if 5 Safes
 		let aboutApplication = JSON.parse(accessRecord.aboutApplication);
-		let { projectId, projectName } = aboutApplication;
+		let { projectName } = aboutApplication;
+		let { projectId, _id } = accessRecord.projectId;
+		if(_.isEmpty(projectId)) {
+			projectId = _id;
+		} 
 		// Publisher details from single dataset
 		let {
 			datasetfields: { contactPoint, publisher },
@@ -752,7 +756,7 @@ module.exports = {
 					custodianEmail: contactPoint,
 					publisher,
 					datasetTitles,
-					applicants,
+					userName: `${appFirstName} ${appLastName}`,
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of emailRecipientTypes) {
