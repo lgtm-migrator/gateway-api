@@ -6,7 +6,6 @@ import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
-import { application } from 'express';
 
 const notificationBuilder = require('../utilities/notificationBuilder');
 const userTypes = {
@@ -952,8 +951,9 @@ module.exports = {
       count += diff;
       return count;
     }, 0);
-
     // Divide by number of items
-    return totalDecisionTime/decidedApplications.length/86400;
+    if(totalDecisionTime > 0) 
+			return totalDecisionTime/decidedApplications.length/86400
+    return totalDecisionTime;
   }
 };
