@@ -418,7 +418,7 @@ module.exports = {
 					applicationStatusDesc &&
 					applicationStatusDesc !== accessRecord.applicationStatusDesc
 				) {
-					accessRecord.applicationStatusDesc = applicationStatusDesc;
+					accessRecord.applicationStatusDesc = inputSanitizer.removeNonBreakingSpaces(applicationStatusDesc);
 					isDirty = true;
 				}
 				// If applicant, allow update to contributors/authors
