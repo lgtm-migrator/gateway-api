@@ -3,7 +3,7 @@ import { model, Schema } from 'mongoose';
 const DataRequestSchema = new Schema({
   version: Number,
   userId: Number, // Main applicant
-  authors: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  authorIds: [Number],
   dataSetId: String,
   datasetIds: [{ type: String}],
   projectId: String,
@@ -71,6 +71,12 @@ DataRequestSchema.virtual('publisherObj', {
   foreignField: 'name',
   localField: 'publisher',
   justOne: true
+});
+
+DataRequestSchema.virtual('authors', {
+  ref: 'User',
+  foreignField: 'id',
+  localField: 'authors'
 });
 
 export const DataRequestModel = model('data_request', DataRequestSchema)
