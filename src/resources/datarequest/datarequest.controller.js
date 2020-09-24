@@ -52,12 +52,12 @@ module.exports = {
 			const applications = [
 				...singleDatasetApplications,
 				...multiDatasetApplications,
-      ];
-      
+	  ];
+	  
       // 5. Append project name and applicants
       let modifiedApplications = [...applications].map((app) => {
         return module.exports.createApplicationDTO(app.toObject());
-      }).sort((a, b) => b.updatedAt - a.updatedAt);
+	  }).sort((a, b) => b.updatedAt - a.updatedAt);
 
       let avgDecisionTime = module.exports.calculateAvgDecisionTime(applications);
 
@@ -219,7 +219,8 @@ module.exports = {
 					questionAnswers: JSON.parse(data.questionAnswers),
 					aboutApplication: JSON.parse(data.aboutApplication),
 					dataset,
-					projectId: data.projectId || helper.generateFriendlyId(data._id)
+					projectId: data.projectId || helper.generateFriendlyId(data._id),
+					userType: 'applicant'
 				},
 			});
 		} catch (err) {
@@ -307,7 +308,8 @@ module.exports = {
 					questionAnswers: JSON.parse(data.questionAnswers),
 					aboutApplication: JSON.parse(data.aboutApplication),
 					datasets,
-					projectId: data.projectId || helper.generateFriendlyId(data._id)
+					projectId: data.projectId || helper.generateFriendlyId(data._id),
+					userType: 'applicant'
 				},
 			});
 		} catch (err) {
@@ -950,7 +952,7 @@ module.exports = {
       let applicants = '';
 
       // Ensure backward compatibility with old single dataset DARs
-      if(_.isEmpty(app.datasets)) {
+      if(_.isEmpty(app.datasets) || _.isUndefined(app.datasets)) {
         app.datasets = [app.dataset];
         app.datasetIds = [app.datasetid];
       }
@@ -971,8 +973,8 @@ module.exports = {
       if(_.isEmpty(applicants)) {
         let { firstname, lastname } = app.mainApplicant;
         applicants = `${firstname} ${lastname}`;
-      }
-      return { projectName, applicants, publisher, ...app }
+	  }
+      return { ...app, projectName, applicants, publisher }
   },
 
   calculateAvgDecisionTime: (applications) => {
@@ -981,18 +983,20 @@ module.exports = {
       let { dateSubmitted = '', dateFinalStatus = '' } = app;
       return (!_.isEmpty(dateSubmitted) && !_.isEmpty(dateFinalStatus));
     });
-    // Find difference between dates in milliseconds
-    let totalDecisionTime = decidedApplications.reduce((count, current) => {
-      let { dateSubmitted, dateFinalStatus } = current;
-      let start = moment(dateSubmitted);
-      let end = moment(dateFinalStatus);
-      let diff = end.diff(start, 'seconds');
-      count += diff;
-      return count;
-    }, 0);
-    // Divide by number of items
-    if(totalDecisionTime > 0) 
-			return totalDecisionTime/decidedApplications.length/86400
-    return totalDecisionTime;
+	// Find difference between dates in milliseconds
+	if(!_.isEmpty(decidedApplications)) {
+		let totalDecisionTime = decidedApplications.reduce((count, current) => {
+		let { dateSubmitted, dateFinalStatus } = current;
+		let start = moment(dateSubmitted);
+		let end = moment(dateFinalStatus);
+		let diff = end.diff(start, 'seconds');
+		count += diff;
+		return count;
+		}, 0);
+		// Divide by number of items
+		if(totalDecisionTime > 0) 
+				return totalDecisionTime/decidedApplications.length/86400
+	}	
+    return 0;
   }
 };
