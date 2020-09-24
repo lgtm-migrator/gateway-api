@@ -103,6 +103,7 @@ module.exports = {
 				userType,
 			} = module.exports.getUserPermissionsForApplication(
 				accessRecord,
+				req.user.id,
 				req.user._id
 			);
 			let readOnly = true;
@@ -205,7 +206,7 @@ module.exports = {
 				await newApplication.save();
 
 				// 5. return record
-				data = { ...newApplication._doc(), mainApplicant: { firstname, lastname } };
+				data = { ...newApplication._doc, mainApplicant: { firstname, lastname } };
 			} else {
 				data = { ...accessRecord.toObject() };
 			}
@@ -369,7 +370,7 @@ module.exports = {
 				params: { id },
 			} = req;
 			// 2. Get the userId
-			let { _id } = req.user;
+			let { _id, id: userId } = req.user;
 			let applicationStatus = '', applicationStatusDesc = '';
 
 			// 3. Find the relevant data request application
@@ -403,7 +404,7 @@ module.exports = {
 			let {
 				authorised,
 				userType,
-			} = module.exports.getUserPermissionsForApplication(accessRecord, _id);
+			} = module.exports.getUserPermissionsForApplication(accessRecord, userId, _id);
 
 			if (!authorised) {
 				return res.status(401).json({
@@ -885,20 +886,20 @@ module.exports = {
 		}
 	},
 
-	getUserPermissionsForApplication: (application, userId) => {
+	getUserPermissionsForApplication: (application, userId, _id) => {
 		try {
 			let authorised = false,
 				userType = '',
 				members = [];
 			// Return default unauthorised with no user type if incorrect params passed
-			if (!application || !userId) {
+			if (!application || !userId || !_id) {
 				return { authorised, userType };
 			}
 			// Check if the user is a custodian team member and assign permissions if so
 			if (_.has(application.datasets[0].toObject(), 'publisher.team.members')) {
 				({ members } = application.datasets[0].publisher.team.toObject());
 				if (
-					members.some((el) => el.memberid.toString() === userId.toString())
+					members.some((el) => el.memberid.toString() === _id.toString())
 				) {
 					userType = userTypes.CUSTODIAN;
 					authorised = true;
