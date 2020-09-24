@@ -82,7 +82,8 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 
         if (err || !user) {
             //login in user - go to login screen
-            return res.status(200).redirect(process.env.homeURL+'/search?search=&showLogin=true')
+            var apiURL = process.env.api_url || 'http://localhost:3001';
+            return res.status(200).redirect(process.env.homeURL+'/search?search=&showLogin=true&loginReferrer='+apiURL+req.url)
         }
         else {
             try {
