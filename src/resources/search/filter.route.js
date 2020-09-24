@@ -271,4 +271,18 @@ router.get('/license/:type',
     }
 );
 
+// @route   GET api/v1/search/filter/organisation/:type
+// @desc    GET Get list of organisations by entity type
+// @access  Public
+router.get('/organisation/:type',
+    async (req, res) => {
+      await getFilter('', req.params.type, 'organisation', false, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
 module.exports = router;
