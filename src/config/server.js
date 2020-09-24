@@ -82,8 +82,7 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 
         if (err || !user) {
             //login in user - go to login screen
-
-            return res.json({ success: true, data: [{ role: "Reader", id: null, name: null, loggedIn: false }] });
+            return res.status(200).redirect(process.env.homeURL+'/search?search=&showLogin=true')
         }
         else {
             try {
