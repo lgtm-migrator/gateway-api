@@ -7,6 +7,7 @@ import _ from 'lodash';
 import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
+import moment from 'moment';
 
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
@@ -981,7 +982,7 @@ module.exports = {
     // Extract dateSubmitted dateFinalStatus
     let decidedApplications = applications.filter((app) => {
       let { dateSubmitted = '', dateFinalStatus = '' } = app;
-      return (!_.isEmpty(dateSubmitted) && !_.isEmpty(dateFinalStatus));
+      return (!_.isEmpty(dateSubmitted.toString()) && !_.isEmpty(dateFinalStatus.toString()));
     });
 	// Find difference between dates in milliseconds
 	if(!_.isEmpty(decidedApplications)) {
@@ -995,7 +996,7 @@ module.exports = {
 		}, 0);
 		// Divide by number of items
 		if(totalDecisionTime > 0) 
-				return totalDecisionTime/decidedApplications.length/86400
+				return parseInt(totalDecisionTime/decidedApplications.length/86400);
 	}	
     return 0;
   }
