@@ -76,7 +76,7 @@ DataRequestSchema.virtual('publisherObj', {
 DataRequestSchema.virtual('authors', {
   ref: 'User',
   foreignField: 'id',
-  localField: 'authors'
+  localField: 'authorIds'
 });
 
 export const DataRequestModel = model('data_request', DataRequestSchema)
