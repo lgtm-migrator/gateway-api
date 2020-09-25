@@ -746,7 +746,7 @@ module.exports = {
 				// Contributors/authors notification
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
-						[accessRecord.authors.map((author) => author.id)],
+						accessRecord.authors.map((author) => author.id),
 						`A Data Access Request you are contributing to for ${datasetTitles} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
