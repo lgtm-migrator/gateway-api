@@ -93,6 +93,8 @@ export async function loadDataset(datasetID) {
     data.datasetfields.statisticalPopulation = dataset.data.statisticalPopulation;
     data.datasetfields.ageBand = dataset.data.ageBand;
     data.datasetfields.contactPoint = dataset.data.contactPoint;
+    data.datasetfields.periodicity = datasetMDC.periodicity;
+    data.datasetfields.populationSize = datasetMDC.populationSize;
     
     data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
     data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
@@ -250,6 +252,8 @@ export async function loadDatasets(override) {
                                     statisticalPopulation: datasetMDC.statisticalPopulation,
                                     ageBand: datasetMDC.ageBand,
                                     contactPoint: datasetMDC.contactPoint,
+                                    periodicity: datasetMDC.periodicity,
+                                    populationSize: datasetMDC.populationSize,
                                     
                                     metadataquality: metadataQuality ? metadataQuality : {},
                                     metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
@@ -298,6 +302,8 @@ export async function loadDatasets(override) {
                         data.datasetfields.statisticalPopulation = datasetMDC.statisticalPopulation;
                         data.datasetfields.ageBand = datasetMDC.ageBand;
                         data.datasetfields.contactPoint = datasetMDC.contactPoint;
+                        data.datasetfields.periodicity = datasetMDC.periodicity;
+                        data.datasetfields.populationSize = datasetMDC.populationSize;
                         
                         data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
                         data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
