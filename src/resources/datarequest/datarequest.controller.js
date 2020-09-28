@@ -668,7 +668,7 @@ module.exports = {
 				// Create authors notification
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
-						[authors.map((author) => author.id)],
+						authors.map((author) => author.id),
 						`A Data Access Request you are contributing to for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
 						'data access request',
 						accessRecord._id
