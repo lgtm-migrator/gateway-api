@@ -1,213 +1,150 @@
 import express from 'express'
-import request from 'request'
 import { getObjectResult } from './linkchecker.repository';
 import { getUserByUserId } from '../user/user.repository';
-import { UserModel } from '../user/user.model';
-import emailGenerator from '../utilities/emailGenerator.util';
+import { Data } from '../tool/data.model'
+import _ from 'lodash';
+const sgMail = require('@sendgrid/mail');
+
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 var async = require("async");
 const axios = require('axios');
-
-
 const router = express.Router(); 
-
-// let links = [];
-let links;
-let errorLinks;
-let responses; 
-let users = [];
 
 router.get('/', async (req, res) => {
 
-//GET URLS FROM TEXT FIELDS
-    let result = [];
+    let results = [];
 
-    result = await getObjectResult(true, {"$and":[{"activeflag":"active"}]});
+    const allowedKeys = ['link', 'description', 'resultsInsights'];
 
-    result.forEach((item) => {
+    results = await getObjectResult(true, {"$and":[{"activeflag":"active"}]});
 
-            if(item.link && item.link.match(/\bhttps?:\/\/\S+/gi) != null){ 
-                item.link = item.link.match(/\bhttps?:\/\/\S+/gi);
-            } else {
-                item.link = '';
-            }
+    const getAllUsers = (persons) => new Promise(async(resolve, reject) => {
 
-            if(item.description && item.description.match(/\bhttps?:\/\/\S+/gi) != null){ 
-                item.description = item.description.match(/\bhttps?:\/\/\S+/gi);
-            } else {
-                item.description = '';
-            }
-
-            if(item.resultsInsights && item.resultsInsights.match(/\bhttps?:\/\/\S+/gi) != null){
-                item.resultsInsights = item.resultsInsights.match(/\bhttps?:\/\/\S+/gi);
-            } else {
-                item.resultsInsights = '';
-            }
-    });
-
-    getErrorLinks(result);
-    
- 
-//CHECK URLS FOR RESPONSE
-
-async function getErrorLinks(result) {
-    console.log('in function')
-   errorLinks =  [];
-    links = [];
-
-
-    //TRY THIS ASYNC FOR EACH OF -- still doing everything before requests
-            async.forEachOf(result, async function (item, index, callback) {
-
-                if (item.description) {
-                 
-
-//START ONE
-
-                    item.description.forEach((link) => {
-
-                      main(link).then(console.log('THEN'))
-
-                    async function main(link) {
-                        try {
-                            const response = await axios.get(link)
-                            console.log('response: ' + link + ' - ' + response);
-                          } catch (error) {
-                            links.push(link)
-
-                            item.persons.map((person) => {
-                                // console.log('person: ' + JSON.stringify(person))
-                                errorLinks.push(
-                                    {
-                                        'personId' : person.id,
-                                        'link': link,
-                                        'type': item.type,
-                                        'id': item.id,
-                                        'name': item.name  
-                                    }
-                                )
-                            })
-
-                            console.log('error: ' + link + ' - ' + error);
-                            console.log('links are: ' + links)
-                            console.log('error links are: ' + JSON.stringify(errorLinks))
-                          }
-                    }
-
-
+            let users = []
+            for (let p of persons) {
+                let user = await getUserByUserId(p.id);
+                if(!_.isEmpty(user)){
+                    users.push({
+                        id: user.id,
+                        firstname: user.firstname,
+                        lastname: user.lastname,
+                        email: user.email
                     });
-
                 }
-              
-                return callback(links); 
+            }
+            // at end resolve the request
+            resolve(users);
 
-               }, function (err) {
-                if (err) console.error(err.message);
-               });
+    })
 
+    const getErrorLink = (link) => new Promise(async(resolve, reject) => {
+        try {
+            const response = await axios.get(link);
+            resolve('');
+        }
+        catch (error) {
+            resolve('error');
+        }
+    })
 
-    console.log('links at end of function: ' + links)
+    const checkLinks = (item, key) => new Promise(async (resolve, reject) => {
+        let errors = {};
+        let linkErrors = [];
+        if(allowedKeys.includes(key)) { 
+            // return [url, url];
+            let links = item[key].match(/\bhttps?:\/\/\S+/gi);
+            // test links for errors
+            if(!_.isEmpty(links)) {
+                for(let link of links) {
+                    // test our link is valid or not
+                    let result = await getErrorLink(link) || '';
+                    // check to see if it contains a string with a value
+                    if(!_.isEmpty(result)){
+                        
+                        linkErrors.push(link);
+                    }
+                }
 
-}
+                if (!_.isEmpty(linkErrors)) {
+                   // we return errros: { link: [url, url, url]}
+                   errors[key] = linkErrors; 
+                }
+            }
+        }
+        //returns after processing our await via new promise
+        resolve(errors);
+      });
 
+      const sendEmailToUsers = async (users, errors, item) => {
 
+          sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+          let resourceLink = process.env.homeURL + '/' + item.type + '/' + item.id;
 
+          for(let user of users) {
+            let checkUser = await Data.find({
+                id: user.id
+            })
 
+            if(checkUser[0].emailNotifications === true){
+                let msg = {
+                    to: user.email,
+                    from: `${hdrukEmail}`,
+                    subject: `Updates required for links in ${item.name}.` ,
+                    html: `Dear ${user.firstname} ${user.lastname}, 
+                           Please review your ${item.type} "${item.name}"  here: ${resourceLink}. This ${item.type} contains stale links which require updating.`
+                  };
+    
+                  await sgMail.send(msg);
+            } 
 
-//GET EMAILS FROM USERS COLLECTION 
+          }
 
-    //REDO
-    // users = await getEmails();
-
-    async function getEmails (){
-
-        // let tempUsers = [{"personId":947228017269611,"link":"https://en.wikipedia.org/wiki/Bob_Rossbhdu","type":"tool","name":"787"}, {"personId":46035149615760184,"link":"https://en.wikipedia.org/wiki/Bob_Rossbhdu","type":"tool","name":"787"}]
-        let tempUsers = [{"personId":947228017269611,"link":"http://latest.healthdatagateway.org/","type":"tool","id":701594274314441,"name":"787"},{"personId":46035149615760184,"link":"https://en.wikipedia.org/wiki/Bob_Rossbhdu","type":"tool","id":701594274314441,"name":"787"}]
-        await Promise.all( tempUsers.map( async (user) => {
-            let tempUser = await getUserByUserId(user.personId);
-            users.push(tempUser)
-        }))
-
-        return users;
     }
 
 
-//SEND EMAILS ABOUT LINKS
-    // sendEmailNotifications(errorLinks, users);
-    let resources = [{"personId":947228017269611,"link":"http://latest.healthdatagateway.org/","type":"tool","id":701594274314441,"name":"787"},{"personId":46035149615760184,"link":"https://en.wikipedia.org/wiki/Bob_Rossbhdu","type":"tool","id":701594274314441,"name":"787"}];
-    // sendEmailNotifications(resources, users);
+    let newResults = results.map(async (item) => {
 
-    resources.map(async (resource) => {
-        users.map(async (user) => {
-            console.log('user id: ' +  user.id)
-            console.log('person id: ' +  resource.personId)
-            if (user.id === resource.personId){
-                //REDO
-                // sendEmailNotifications(resource, user);
+        let errors = {};
+        // 1. deconstruct the item and select persons [1,2,4,5,6]
+        let { persons } = {...item}
+
+        let users = [];
+        // 1. users = [{id, firstname, lastname, email}, {}, {}];
+        if(!_.isEmpty(persons)) {
+            users = await getAllUsers(persons);
+        } else {
+            users = [{email: 'support@healthdatagateway.org', firstname: 'HDRUK', lastname: 'Support'}]
+        }
+    
+        // loop over the item object and check each key meets link checking
+        for (let key in item) { 
+            // error: {link: [url, url]}
+            let result = await checkLinks(item, key) || {};
+            // link doing result.link
+            if(!_.isEmpty(result)) {
+                errors = {
+                    ...errors, 
+                    [key]: result[key] 
+                };
+                
             }
-
-        })
-        // sendEmailNotifications(resource, users);
-    })
-
-    async function sendEmailNotifications(resource, user) {
-        console.log('resource:  ' + JSON.stringify(resource))
-        console.log('user:  ' + user)
-
-        let subject;
-        let html;
-        let emailRecipients;
-
-        // let emailRecipients = [{'email':user.email}]
-        // 1. Generate URL for linking collection in email
-        const resourceLink = process.env.homeURL + '/' + resource.type + '/' + resource.id;
-        
-        // emailRecipients = user;
-        emailRecipients = [{"_id":"5e6f984a0a7300dc8f6fb195","firstname":"Ciara","lastname":"Ward","email":"ciara.ward@paconsulting.com","role":"Admin","tool":[{"emailNotifications":true}]}];
-        console.log('WHAT?! ' + JSON.stringify(emailRecipients))
+        }
     
-        // 2. Build email body
-            subject = 'Links in ${NAME} require updating.' 
-            html = `${user.firstname} ${user.lastname}, your ${resource.type} ${resource.name} contains stale links, please update these here: ${resourceLink}`
+        // send email to all users
+        // loop over the users async await and send email here
+        if(!_.isEmpty(errors)) {
+            await sendEmailToUsers(users, errors, item);   
+        }
     
-        // // 3. Query Db for all admins or authors of the collection who have opted in to email updates
-        var q = UserModel.aggregate([
-          // Find all users who are admins or authors of this collection
-        //   { $match: { $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] } },
-        { $match: { 'tool.id': user.id } },
-          // Perform lookup to check opt in/out flag in tools schema
-        //   { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
-          // Filter out any user who has opted out of email notifications
-        //   { $match: { 'tool.emailNotifications': true } },
-          // Reduce response payload size to required fields
-        //   { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
-        ]); 
-    
-        // // 4. Use the returned array of email recipients to generate and send emails with SendGrid
-        q.exec((err, emailRecipients) => {
-            console.log('emailRecipients in link checker: ' + emailRecipients)
-          if (err) {
-            return new Error({ success: false, error: err });
-          }
-          emailGenerator.sendEmail( 
-            emailRecipients,
-            `${hdrukEmail}`,
-            subject,
-            html
-          );
-        });
-      }
-
-     
-
-    return res.json({
-        success: true,
-        links: links, 
-        users: users,
-        result: result
+        return {
+            users: users,
+            id: item.id,
+            name: item.name,
+            errors: errors  
+        }
     });
+
 });
 
-
-module.exports = router;
+ module.exports = router;

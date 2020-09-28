@@ -10,11 +10,6 @@ import _ from 'lodash';
         {"type":"tool"}
     ]})
 
-
-    console.log('searchQuery: ' + JSON.stringify(searchQuery))
-
-    console.log('newSearchQuery: ' + JSON.stringify(newSearchQuery))
-
     var queryObject = [ 
         { $match: newSearchQuery },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
@@ -27,7 +22,7 @@ import _ from 'lodash';
                 "description": 1,
                 "resultsInsights": 1, 
                 "link": 1,
-                "persons.id": 1,
+                "persons.id": 1
             }
         }
     ];
