@@ -168,6 +168,7 @@ app.use('/api/v1/auth/register', require('../resources/user/user.register.route'
 app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/topics', require('../resources/topic/topic.route'));
 app.use('/api/v1/publishers', require('../resources/publisher/publisher.route'));
+app.use('/api/v1/teams', require('../resources/team/team.route'));
 app.use('/api/v1/messages', require('../resources/message/message.route'));
 app.use('/api/v1/reviews', require('../resources/tool/review.route'));
 app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
