@@ -91,13 +91,13 @@ router.get('/', async (req, res) => {
                     to: user.email,
                     from: `${hdrukEmail}`,
                     subject: `Updates required for links in ${item.name}.` ,
-                    html: `Dear ${user.firstname} ${user.lastname}, 
+                    html: `${user.firstname} ${user.lastname}, <br /><br />
                            Please review your ${item.type} "${item.name}"  here: ${resourceLink}. This ${item.type} contains stale links which require updating.`
                   };
     
-                  await sgMail.send(msg);
+                  await sgMail.send(msg); 
             } 
-
+ 
           }
 
     }
@@ -134,15 +134,12 @@ router.get('/', async (req, res) => {
         // send email to all users
         // loop over the users async await and send email here
         if(!_.isEmpty(errors)) {
-            await sendEmailToUsers(users, errors, item);   
+            await sendEmailToUsers(users, errors, item)
+            .then(() =>{
+                return res.json({ success: true });
+              })
         }
     
-        return {
-            users: users,
-            id: item.id,
-            name: item.name,
-            errors: errors  
-        }
     });
 
 });
