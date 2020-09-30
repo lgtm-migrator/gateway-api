@@ -8,8 +8,9 @@ const TeamSchema = new Schema({
   members: [{
       memberid: {type: Schema.Types.ObjectId,
         ref: 'User'},
-      roles: [String]
+      roles: { type: [String], enum: ['reviewer','manager'] }
     }],
+  type: String,
   active: { 
       type: Boolean, 
       default: true 
