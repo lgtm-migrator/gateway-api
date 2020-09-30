@@ -74,7 +74,7 @@ router.get('/status', function (req, res, next) {
                         return member.memberid.toString() === req.user._id.toString();
                     });
                     let { roles } = member;
-                    return { publisher, type, roles };
+                    return { ...publisher.toObject(), type, roles };
                 });
             }
             // 2. Return user info
