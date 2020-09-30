@@ -7,6 +7,7 @@ import _ from 'lodash';
 import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
+import moment from 'moment';
 
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
@@ -21,14 +22,14 @@ module.exports = {
 	getAccessRequestsByUser: async (req, res) => {
 		try {
 			// 1. Deconstruct the
-			let { id: userId, _id } = req.user;
+			let { id: userId } = req.user;
 			// 2. Find all data access request applications created with single dataset version
 			let singleDatasetApplications = await DataRequestModel.find({
 				$and: [
 					{
 						$or: [
 							{ userId: parseInt(userId) },
-							{ authors: _id },
+							{ authorIds: userId },
 						],
 					},
 					{ dataSetId: { $ne: null } },
@@ -40,7 +41,7 @@ module.exports = {
 					{
 						$or: [
 							{ userId: parseInt(userId) },
-							{ authors: _id },
+							{ authorIds: userId },
 						],
 					},
 					{
@@ -52,12 +53,12 @@ module.exports = {
 			const applications = [
 				...singleDatasetApplications,
 				...multiDatasetApplications,
-      ];
-      
+	  ];
+	  
       // 5. Append project name and applicants
       let modifiedApplications = [...applications].map((app) => {
         return module.exports.createApplicationDTO(app.toObject());
-      }).sort((a, b) => b.updatedAt - a.updatedAt);
+	  }).sort((a, b) => b.updatedAt - a.updatedAt);
 
       let avgDecisionTime = module.exports.calculateAvgDecisionTime(applications);
 
@@ -82,8 +83,9 @@ module.exports = {
 			// 2. Find the matching record and include attached datasets records with publisher details
 			let accessRecord = await DataRequestModel.findOne({
 				_id: requestId,
-			}).populate({
-				path: 'datasets dataset mainApplicant authors',
+			}).populate({ path: 'mainApplicant', select: 'firstname lastname -id'})
+			.populate({
+				path: 'datasets dataset authors',
 				populate: { path: 'publisher', populate: { path: 'team' } },
 			});
 			// 3. If no matching application found, return 404
@@ -102,6 +104,7 @@ module.exports = {
 				userType,
 			} = module.exports.getUserPermissionsForApplication(
 				accessRecord,
+				req.user.id,
 				req.user._id
 			);
 			let readOnly = true;
@@ -121,13 +124,14 @@ module.exports = {
 			return res.status(200).json({
 				status: 'success',
 				data: {
-					...accessRecord._doc,
+					...accessRecord.toObject(),
 					jsonSchema: JSON.parse(accessRecord.jsonSchema),
 					questionAnswers: JSON.parse(accessRecord.questionAnswers),
 					aboutApplication: JSON.parse(accessRecord.aboutApplication),
 					datasets: accessRecord.datasets,
 					readOnly,
 					userType,
+					projectId: accessRecord.projectId || helper.generateFriendlyId(accessRecord._id)
 				},
 			});
 		} catch (err) {
@@ -147,13 +151,13 @@ module.exports = {
 				params: { dataSetId },
 			} = req;
 			// 2. Get the userId
-			let { id: userId } = req.user;
+			let { id: userId, firstname, lastname } = req.user;
 			// 3. Find the matching record
 			accessRecord = await DataRequestModel.findOne({
 				dataSetId,
 				userId,
 				applicationStatus: 'inProgress',
-			});
+			}).populate({ path: 'mainApplicant', select: 'firstname lastname -id -_id'})
 			// 4. Get dataset
 			dataset = await ToolModel.findOne({ datasetid: dataSetId }).populate(
 				'publisher'
@@ -203,9 +207,9 @@ module.exports = {
 				await newApplication.save();
 
 				// 5. return record
-				data = { ...newApplication._doc };
+				data = { ...newApplication._doc, mainApplicant: { firstname, lastname } };
 			} else {
-				data = { ...accessRecord._doc };
+				data = { ...accessRecord.toObject() };
 			}
 
 			return res.status(200).json({
@@ -216,6 +220,8 @@ module.exports = {
 					questionAnswers: JSON.parse(data.questionAnswers),
 					aboutApplication: JSON.parse(data.aboutApplication),
 					dataset,
+					projectId: data.projectId || helper.generateFriendlyId(data._id),
+					userType: 'applicant'
 				},
 			});
 		} catch (err) {
@@ -236,13 +242,13 @@ module.exports = {
 			} = req;
 			let arrDatasetIds = datasetIds.split(',');
 			// 2. Get the userId
-			let { id: userId } = req.user;
+			let { id: userId, firstname, lastname } = req.user;
 			// 3. Find the matching record
 			accessRecord = await DataRequestModel.findOne({
 				datasetIds: { $all: arrDatasetIds },
 				userId,
 				applicationStatus: 'inProgress',
-			}).sort({ createdAt: 1 });
+			}).populate({ path: 'mainApplicant', select: 'firstname lastname -id -_id'}).sort({ createdAt: 1 });
 			// 4. Get datasets
 			datasets = await ToolModel.find({
 				datasetid: { $in: arrDatasetIds },
@@ -290,9 +296,9 @@ module.exports = {
 				);
 				await newApplication.save();
 				// 5. return record
-				data = { ...newApplication._doc };
+				data = { ...newApplication._doc, mainApplicant: { firstname, lastname } };
 			} else {
-				data = { ...accessRecord._doc };
+				data = { ...accessRecord.toObject() };
 			}
 
 			return res.status(200).json({
@@ -303,6 +309,8 @@ module.exports = {
 					questionAnswers: JSON.parse(data.questionAnswers),
 					aboutApplication: JSON.parse(data.aboutApplication),
 					datasets,
+					projectId: data.projectId || helper.generateFriendlyId(data._id),
+					userType: 'applicant'
 				},
 			});
 		} catch (err) {
@@ -365,7 +373,7 @@ module.exports = {
 				params: { id },
 			} = req;
 			// 2. Get the userId
-			let { _id } = req.user;
+			let { _id, id: userId } = req.user;
 			let applicationStatus = '', applicationStatusDesc = '';
 
 			// 3. Find the relevant data request application
@@ -399,7 +407,7 @@ module.exports = {
 			let {
 				authorised,
 				userType,
-			} = module.exports.getUserPermissionsForApplication(accessRecord, _id);
+			} = module.exports.getUserPermissionsForApplication(accessRecord, userId, _id);
 
 			if (!authorised) {
 				return res.status(401).json({
@@ -407,6 +415,9 @@ module.exports = {
 					message: 'Unauthorised to perform this update.',
 				});
 			}
+
+			let { authorIds: currentAuthors } = accessRecord;
+			let newAuthors = [];
 
 			// 6. Extract new application status and desc to save updates
 			// If custodian, allow updated to application status and description
@@ -440,23 +451,16 @@ module.exports = {
 				}
 				// If applicant, allow update to contributors/authors
 			} else if (userType === userTypes.APPLICANT) {
-				let newAuthors = [],
-					currentAuthors = [];
-				// Extract existing contributor/author IDs
-				if (accessRecord.authors) {
-					currentAuthors = accessRecord.authors.map((author) =>
-						author._id.toString()
-					);
-				}
 				// Extract new contributor/author IDs
-				if (req.body.authors) {
-					newAuthors = req.body.authors.map((author) => author._id.toString());
-				}
-				// Perform comparison between new and existing authors to determine if an update is required
-				if (newAuthors && !helper.arraysEqual(newAuthors, currentAuthors)) {
-					accessRecord.authors = newAuthors;
-					isDirty = true;
-					contributorChange = true;
+				if (req.body.authorIds) {
+					({ authorIds:newAuthors } = req.body);
+
+					// Perform comparison between new and existing authors to determine if an update is required
+					if (newAuthors && !helper.arraysEqual(newAuthors, currentAuthors)) {
+						accessRecord.authorIds = newAuthors;
+						isDirty = true;
+						contributorChange = true;
+					}
 				}
 			}
 
@@ -594,7 +598,7 @@ module.exports = {
 		// Project details from about application if 5 Safes
 		let aboutApplication = JSON.parse(accessRecord.aboutApplication);
 		let { projectName } = aboutApplication;
-		let { projectId, _id } = accessRecord.projectId;
+		let { projectId, _id } = accessRecord;
 		if(_.isEmpty(projectId)) {
 			projectId = _id;
 		} 
@@ -664,7 +668,7 @@ module.exports = {
 				// Create authors notification
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
-						[authors.map((author) => author.id)],
+						authors.map((author) => author.id),
 						`A Data Access Request you are contributing to for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
 						'data access request',
 						accessRecord._id
@@ -743,7 +747,7 @@ module.exports = {
 				// Contributors/authors notification
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
-						[accessRecord.authors.map((author) => author.id)],
+						accessRecord.authors.map((author) => author.id),
 						`A Data Access Request you are contributing to for ${datasetTitles} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
@@ -808,12 +812,10 @@ module.exports = {
 				const { newAuthors, currentAuthors } = context;
 				// 2. Determine authors who have been removed
 				let addedAuthors = [...newAuthors]
-					.filter((author) => !currentAuthors.includes(author))
-					.map((author) => mongoose.Types.ObjectId(author));
+					.filter((author) => !currentAuthors.includes(author));
 				// 3. Determine authors who have been added
 				let removedAuthors = [...currentAuthors]
-					.filter((author) => !newAuthors.includes(author))
-					.map((author) => mongoose.Types.ObjectId(author));
+					.filter((author) => !newAuthors.includes(author));
 				// 4. Create emails and notifications for added/removed contributors
 				// Set required data for email generation
 				options = {
@@ -831,7 +833,7 @@ module.exports = {
 					html = await emailGenerator.generateContributorEmail(options);
 					// Find related user objects and filter out users who have not opted in to email communications
 					let addedUsers = await UserModel.find({
-						_id: { $in: addedAuthors },
+						id: { $in: addedAuthors },
 					}).populate('additionalInfo');
 					emailRecipients = addedUsers.filter(function (user) {
 						let {
@@ -860,7 +862,7 @@ module.exports = {
 					html = await emailGenerator.generateContributorEmail(options);
 					// Find related user objects and filter out users who have not opted in to email communications
 					let removedUsers = await UserModel.find({
-						_id: { $in: removedAuthors },
+						id: { $in: removedAuthors },
 					}).populate('additionalInfo');
 					emailRecipients = removedUsers.filter(function (user) {
 						let {
@@ -887,20 +889,20 @@ module.exports = {
 		}
 	},
 
-	getUserPermissionsForApplication: (application, userId) => {
+	getUserPermissionsForApplication: (application, userId, _id) => {
 		try {
 			let authorised = false,
 				userType = '',
 				members = [];
 			// Return default unauthorised with no user type if incorrect params passed
-			if (!application || !userId) {
+			if (!application || !userId || !_id) {
 				return { authorised, userType };
 			}
 			// Check if the user is a custodian team member and assign permissions if so
 			if (_.has(application.datasets[0].toObject(), 'publisher.team.members')) {
 				({ members } = application.datasets[0].publisher.team.toObject());
 				if (
-					members.some((el) => el.memberid.toString() === userId.toString())
+					members.some((el) => el.memberid.toString() === _id.toString())
 				) {
 					userType = userTypes.CUSTODIAN;
 					authorised = true;
@@ -908,12 +910,7 @@ module.exports = {
 			}
 			// If user is not authenticated as a custodian, check if they are an author or the main applicant
 			if (_.isEmpty(userType)) {
-				if (
-					application.authors.some(
-						(el) => el._id.toString() === userId.toString()
-					) ||
-					application.mainApplicant._id.toString() === userId.toString()
-				) {
+				if (application.authorIds.includes(userId) || application.userId === userId) {
 					userType = userTypes.APPLICANT;
 					authorised = true;
 				}
@@ -956,7 +953,7 @@ module.exports = {
       let applicants = '';
 
       // Ensure backward compatibility with old single dataset DARs
-      if(_.isEmpty(app.datasets)) {
+      if(_.isEmpty(app.datasets) || _.isUndefined(app.datasets)) {
         app.datasets = [app.dataset];
         app.datasetIds = [app.datasetid];
       }
@@ -977,28 +974,30 @@ module.exports = {
       if(_.isEmpty(applicants)) {
         let { firstname, lastname } = app.mainApplicant;
         applicants = `${firstname} ${lastname}`;
-      }
-      return { projectName, applicants, publisher, ...app }
+	  }
+      return { ...app, projectName, applicants, publisher }
   },
 
   calculateAvgDecisionTime: (applications) => {
     // Extract dateSubmitted dateFinalStatus
     let decidedApplications = applications.filter((app) => {
       let { dateSubmitted = '', dateFinalStatus = '' } = app;
-      return (!_.isEmpty(dateSubmitted) && !_.isEmpty(dateFinalStatus));
+      return (!_.isEmpty(dateSubmitted.toString()) && !_.isEmpty(dateFinalStatus.toString()));
     });
-    // Find difference between dates in milliseconds
-    let totalDecisionTime = decidedApplications.reduce((count, current) => {
-      let { dateSubmitted, dateFinalStatus } = current;
-      let start = moment(dateSubmitted);
-      let end = moment(dateFinalStatus);
-      let diff = end.diff(start, 'seconds');
-      count += diff;
-      return count;
-    }, 0);
-    // Divide by number of items
-    if(totalDecisionTime > 0) 
-			return totalDecisionTime/decidedApplications.length/86400
-    return totalDecisionTime;
+	// Find difference between dates in milliseconds
+	if(!_.isEmpty(decidedApplications)) {
+		let totalDecisionTime = decidedApplications.reduce((count, current) => {
+		let { dateSubmitted, dateFinalStatus } = current;
+		let start = moment(dateSubmitted);
+		let end = moment(dateFinalStatus);
+		let diff = end.diff(start, 'seconds');
+		count += diff;
+		return count;
+		}, 0);
+		// Divide by number of items
+		if(totalDecisionTime > 0) 
+				return parseInt(totalDecisionTime/decidedApplications.length/86400);
+	}	
+    return 0;
   }
 };

@@ -74,6 +74,8 @@ const DataSchema = new Schema(
         statisticalPopulation: String,
         ageBand: String,
         contactPoint: String,
+        periodicity: String,
+        populationSize: String,
         metadataquality : {},
         metadataschema : {},
         technicaldetails : [],

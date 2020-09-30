@@ -12,9 +12,7 @@ export async function createPerson({
     sector,
     organisation,
     showMyOrganisation,
-    tags: {
-        topics: [String],
-    },
+    tags,
 }) {
     var type = "person";
     var activeflag = "active";
