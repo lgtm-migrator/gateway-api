@@ -584,8 +584,9 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true) => {
   }
 };
 
-const _generateEmailFooter = (recipient, allowUnsubscribe) => {
+const _generateEmailFooter = (recipient, allowUnsubscribe) => { 
   // 1. Generate HTML for unsubscribe link if allowed depending on context
+
   let unsubscribeHTML = '';
 
   if (allowUnsubscribe) {
@@ -633,4 +634,5 @@ export default {
   generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
   generateContributorEmail: _generateContributorEmail,
   sendEmail: _sendEmail,
+  generateEmailFooter: _generateEmailFooter
 };

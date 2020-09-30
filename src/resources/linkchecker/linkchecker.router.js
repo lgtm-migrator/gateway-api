@@ -2,16 +2,28 @@ import express from 'express'
 import { getObjectResult } from './linkchecker.repository';
 import { getUserByUserId } from '../user/user.repository';
 import { Data } from '../tool/data.model'
+import emailGenerator from '../utilities/emailGenerator.util';
 import _ from 'lodash';
 const sgMail = require('@sendgrid/mail');
 
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
-var async = require("async");
 const axios = require('axios');
 const router = express.Router(); 
 
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
+
+    let parsedBody = {}
+    if (req.header('content-type') === 'application/json') {
+        parsedBody = req.body;
+    } else {
+        parsedBody = JSON.parse(req.body);
+    }
+
+    //Check for key
+    if (parsedBody.key !== process.env.linkcheckerkey) {  
+        return res.json({ success: false, error: "Link checker failed" });
+    }
 
     let results = [];
 
@@ -26,6 +38,7 @@ router.get('/', async (req, res) => {
                 let user = await getUserByUserId(p.id);
                 if(!_.isEmpty(user)){
                     users.push({
+                        _id: user._id,
                         id: user.id,
                         firstname: user.firstname,
                         lastname: user.lastname,
@@ -74,25 +87,31 @@ router.get('/', async (req, res) => {
         }
         //returns after processing our await via new promise
         resolve(errors);
-      });
+      }); 
 
       const sendEmailToUsers = async (users, errors, item) => {
 
+          let footer;
           sgMail.setApiKey(process.env.SENDGRID_API_KEY);
           let resourceLink = process.env.homeURL + '/' + item.type + '/' + item.id;
 
           for(let user of users) {
+
+            footer = emailGenerator.generateEmailFooter(user, "true" ) 
+
             let checkUser = await Data.find({
                 id: user.id
             })
 
             if(checkUser[0].emailNotifications === true){
+ 
                 let msg = {
                     to: user.email,
                     from: `${hdrukEmail}`,
                     subject: `Updates required for links in ${item.name}.` ,
                     html: `${user.firstname} ${user.lastname}, <br /><br />
-                           Please review your ${item.type} "${item.name}"  here: ${resourceLink}. This ${item.type} contains stale links which require updating.`
+                           Please review your ${item.type} "${item.name}"  here: ${resourceLink}. This ${item.type} contains stale links which require updating.
+                           <br /> <br /> ${footer}`
                   };
     
                   await sgMail.send(msg); 
@@ -101,7 +120,6 @@ router.get('/', async (req, res) => {
           }
 
     }
-
 
     let newResults = results.map(async (item) => {
 
