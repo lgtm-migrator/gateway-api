@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { PublisherModel } from './publisher.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
+import { WorkflowModel } from '../workflow/workflow.model';
 import { Data } from '../tool/data.model';
 import _ from 'lodash';
 
@@ -13,12 +14,10 @@ module.exports = {
 			// 1. Get the publisher from the database
 			const publisher = await PublisherModel.findOne({ name: req.params.id });
 			if (!publisher) {
-				return res
-					.status(200)
-					.json({
-						success: true,
-						publisher: { dataRequestModalContent: {}, allowsMessaging: false },
-					});
+				return res.status(200).json({
+					success: true,
+					publisher: { dataRequestModalContent: {}, allowsMessaging: false },
+				});
 			}
 			// 2. Return publisher
 			return res.status(200).json({ success: true, publisher });
@@ -68,7 +67,10 @@ module.exports = {
 			return res.status(200).json({ success: true, datasets });
 		} catch (err) {
 			console.error(err.message);
-			return res.status(500).json(err);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred searching for custodian datasets',
+			});
 		}
 	},
 
@@ -112,25 +114,93 @@ module.exports = {
 				],
 			})
 				.sort({ updatedAt: -1 })
-                .populate('datasets dataset mainApplicant');
-                
-            // 6. Append projectName and applicants
-            let modifiedApplications = [...applications].map((app) => {
-                return datarequestController.createApplicationDTO(app.toObject());
-            }).sort((a, b) => b.updatedAt - a.updatedAt);
+				.populate('datasets dataset mainApplicant');
 
-            let avgDecisionTime = datarequestController.calculateAvgDecisionTime(applications);
+			// 6. Append projectName and applicants
+			let modifiedApplications = [...applications]
+				.map((app) => {
+					return datarequestController.createApplicationDTO(app.toObject());
+				})
+				.sort((a, b) => b.updatedAt - a.updatedAt);
+
+			let avgDecisionTime = datarequestController.calculateAvgDecisionTime(
+				applications
+			);
 
 			// 7. Return all applications
-			return res.status(200).json({ success: true, data: modifiedApplications, avgDecisionTime });
+			return res
+				.status(200)
+				.json({ success: true, data: modifiedApplications, avgDecisionTime });
 		} catch (err) {
 			console.error(err);
-			return res
-				.status(500)
-				.json({
-					success: false,
-					message: 'An error occurred searching for custodian applications',
-				});
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred searching for custodian applications',
+			});
+		}
+	},
+
+	// GET api/v1/publishers/:id/workflows
+	getPublisherWorkflows: async (req, res) => {
+		try {
+			// 1. Get the workflow from the database including the team members to check authorisation
+			let workflows = await WorkflowModel.find({
+				publisher: req.params.id
+			}).populate([{
+				path: 'publisher',
+				select: 'team',
+				populate: {
+					path: 'team',
+					select: 'members -_id',
+				},
+			},
+			{
+				path: 'steps.reviewers',
+				model: 'User',
+				select: '_id id firstname lastname'
+			}]);
+			if (_.isEmpty(workflows)) {
+				return res.status(200).json({ success: true, workflows: [] });
+			}
+			// 2. Check the requesting user is a member of the team
+			let { _id: userId } = req.user;
+			let members = [],
+				authorised = false;
+			if (_.has(workflows[0].toObject(), 'publisher.team')) {
+				({
+					publisher: {
+						team: { members },
+					},
+				} = workflows[0]);
+			}
+			if (!_.isEmpty(members)) {
+				authorised = members.some(
+					(el) => el.memberid.toString() === userId.toString()
+				);
+			}
+			// 3. If not return unauthorised
+			if (!authorised) {
+				return res.status(401).json({ success: false });
+			}
+			// 4. Return workflows
+			workflows = workflows.map((workflow) => {
+				let {
+					active,
+					_id,
+					id,
+					workflowName,
+					version,
+					steps,
+				} = workflow.toObject();
+				return { active, _id, id, workflowName, version, steps };
+			});
+			return res.status(200).json({ success: true, workflows });
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred searching for custodian workflows',
+			});
 		}
 	},
 };

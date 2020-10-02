@@ -21,7 +21,7 @@ router.get('/userspermonth', async (req, res) => {
 });
 
 //returns the total number of unique users
-router.get('/totalusers', async (req, res) => {
+router.get('/totalusers', async (req, res) => { 
 
     var getTotalUsersGAPromise = WidgetAuth.getTotalUsersGA();
 
