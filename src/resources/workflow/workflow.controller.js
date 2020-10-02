@@ -1,56 +1,55 @@
 import { PublisherModel } from '../publisher/publisher.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from './workflow.model';
-
 import helper from '../utilities/helper.util';
 
 import _ from 'lodash';
 import mongoose from 'mongoose';
 
-const teamRoles = {
-	MANAGER: 'manager',
-	REVIEWER: 'reviewer',
-};
+const teamController = require('../team/team.controller');
 
 module.exports = {
 	// GET api/v1/workflows/:id
 	getWorkflowById: async (req, res) => {
 		try {
-			// 1. Get the workflow from the database including the team members to check authorisation
+			// 1. Get the workflow from the database including the team members to check authorisation and the number of in-flight applications
 			const workflow = await WorkflowModel.findOne({
 				_id: req.params.id,
-			}).populate({
-				path: 'publisher steps.reviewers',
-				select: 'team',
-				populate: {
-					path: 'team',
-					select: 'members -_id',
+			}).populate([
+				{
+					path: 'publisher',
+					select: 'team',
+					populate: {
+						path: 'team',
+						select: 'members -_id',
+					},
 				},
-			});
+				{
+					path: 'steps.reviewers',
+					model: 'User',
+					select: '_id id firstname lastname',
+				},
+				{
+					path: 'applications',
+					select: 'aboutApplication',
+					match: { applicationStatus: 'inReview' },
+				},
+			]);
 			if (!workflow) {
 				return res.status(404).json({ success: false });
 			}
-			// 2. Check the requesting user is a member of the team
+			// 2. Check the requesting user is a manager of the custodian team
 			let { _id: userId } = req.user;
-			let members = [],
-				authorised = false;
-			if (_.has(workflow.toObject(), 'publisher.team')) {
-				({
-					publisher: {
-						team: { members },
-					},
-				} = workflow);
-			}
-			if (!_.isEmpty(members)) {
-				authorised = members.some(
-					(el) => el.memberid.toString() === userId.toString()
-				);
-			}
+			let authorised = module.exports.checkWorkflowPermissions(
+				teamController.roles.MANAGER,
+				workflow.publisher.toObject(),
+				userId
+			);
 			// 3. If not return unauthorised
 			if (!authorised) {
 				return res.status(401).json({ success: false });
 			}
-			// 4. Return workflow
+			// 4. Build workflow response
 			let {
 				active,
 				_id,
@@ -58,10 +57,32 @@ module.exports = {
 				workflowName,
 				version,
 				steps,
+				applications = [],
 			} = workflow.toObject();
+			applications = applications.map((app) => {
+				const { aboutApplication, _id } = app;
+				const aboutApplicationObj = JSON.parse(aboutApplication) || {};
+				let { projectName = 'No project name' } = aboutApplicationObj;
+				return { projectName, _id };
+			});
+			// Set operation permissions
+			let canDelete = applications.length === 0,
+				canEdit = applications.length === 0;
+			// 5. Return payload
 			return res.status(200).json({
 				success: true,
-				workflow: { active, _id, id, workflowName, version, steps },
+				workflow: {
+					active,
+					_id,
+					id,
+					workflowName,
+					version,
+					steps,
+					applications,
+					appCount: applications.length,
+					canDelete,
+					canEdit,
+				},
 			});
 		} catch (err) {
 			console.error(err.message);
@@ -102,7 +123,7 @@ module.exports = {
 			}
 			// 3. Check the requesting user is a manager of the custodian team
 			let authorised = module.exports.checkWorkflowPermissions(
-				teamRoles.MANAGER,
+				teamController.roles.MANAGER,
 				publisherObj.toObject(),
 				userId
 			);
@@ -168,7 +189,7 @@ module.exports = {
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let authorised = module.exports.checkWorkflowPermissions(
-				teamRoles.MANAGER,
+				teamController.roles.MANAGER,
 				workflow.publisher.toObject(),
 				userId
 			);
@@ -179,44 +200,48 @@ module.exports = {
 					.json({ status: 'failure', message: 'Unauthorised' });
 			}
 			// 4. Ensure there are no in-review DARs with this workflow
-			const applications = await DataRequestModel.countDocuments({ workflowId, 'applicationStatus':'inReview' });
-			if(applications > 0) {
+			const applications = await DataRequestModel.countDocuments({
+				workflowId,
+				applicationStatus: 'inReview',
+			});
+			if (applications > 0) {
 				return res.status(400).json({
 					success: false,
-					message: 'A workflow which is attached to applications currently in review cannot be edited',
+					message:
+						'A workflow which is attached to applications currently in review cannot be edited',
 				});
 			}
 			// 5. Edit workflow
 			const { workflowName = '', steps = [] } = req.body;
 			let isDirty = false;
 			// Check if workflow name updated
-			if(!_.isEmpty(workflowName)) {
+			if (!_.isEmpty(workflowName)) {
 				workflow.workflowName = workflowName;
 				isDirty = true;
 			} // Check if steps updated
-			if(!_.isEmpty(steps)) {
+			if (!_.isEmpty(steps)) {
 				workflow.steps = steps;
 				isDirty = true;
-			} // Perform save if 
-			if(isDirty) {
-				WorkflowModel.deleteOne({ _id: workflowId }, function (err) {
+			} // Perform save if changes have been made
+			if (isDirty) {
+				workflow.save(async (err) => {
 					if (err) {
 						console.error(err);
 						return res.status(400).json({
 							success: false,
-							message: 'An error occurred editing the workflow',
+							message: err.message,
 						});
 					} else {
 						// 7. Return workflow payload
 						return res.status(204).json({
-							success: true
+							success: true,
 						});
 					}
 				});
 			} else {
 				return res.status(200).json({
 					success: true,
-					workflow
+					workflow,
 				});
 			}
 		} catch (err) {
@@ -249,7 +274,7 @@ module.exports = {
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let authorised = module.exports.checkWorkflowPermissions(
-				teamRoles.MANAGER,
+				teamController.roles.MANAGER,
 				workflow.publisher.toObject(),
 				userId
 			);
@@ -260,11 +285,15 @@ module.exports = {
 					.json({ status: 'failure', message: 'Unauthorised' });
 			}
 			// 4. Ensure there are no in-review DARs with this workflow
-			const applications = await DataRequestModel.countDocuments({ workflowId, 'applicationStatus':'inReview' });
-			if(applications > 0) {
+			const applications = await DataRequestModel.countDocuments({
+				workflowId,
+				applicationStatus: 'inReview',
+			});
+			if (applications > 0) {
 				return res.status(400).json({
 					success: false,
-					message: 'A workflow which is attached to applications currently in review cannot be deleted',
+					message:
+						'A workflow which is attached to applications currently in review cannot be deleted',
 				});
 			}
 			// 5. Delete workflow
@@ -278,7 +307,7 @@ module.exports = {
 				} else {
 					// 7. Return workflow payload
 					return res.status(204).json({
-						success: true
+						success: true,
 					});
 				}
 			});
@@ -299,22 +328,15 @@ module.exports = {
 	 * @param {objectId} userId The userId to check the permissions for
 	 */
 	checkWorkflowPermissions: (role, publisher, userId) => {
-		// 1. Ensure the publisher has a team and associated members defined
+		let authorised = false;
+		// 1. Pass the publisher team to check the users permissions
 		if (_.has(publisher, 'team.members')) {
-			// 2. Extract team members
-			let { members } = publisher.team;
-			// 3. Find the current user
-			let userMember = members.find(
-				(el) => el.memberid.toString() === userId.toString()
+			authorised = teamController.checkTeamPermissions(
+				role,
+				publisher.team,
+				userId
 			);
-			// 4. If the user was found check they hold the minimum required role
-			if (userMember) {
-				let { roles } = userMember;
-				if (roles.includes(role) || roles.includes(roleTypes.MANAGER)) {
-					return true;
-				}
-			}
 		}
-		return false;
+		return authorised;
 	},
 };

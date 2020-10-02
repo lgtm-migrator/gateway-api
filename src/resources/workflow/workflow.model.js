@@ -37,4 +37,10 @@ export const WorkflowSchema = new Schema({
   toObject:   { virtuals: true }
 });
 
+WorkflowSchema.virtual('applications', {
+  ref: 'data_request',
+  foreignField: 'workflowId',
+  localField: '_id'
+});
+
 export const WorkflowModel = model('Workflow', WorkflowSchema);

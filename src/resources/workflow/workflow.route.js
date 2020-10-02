@@ -18,7 +18,7 @@ router.post('/', passport.authenticate('jwt'), workflowController.createWorkflow
 // @route   PUT api/v1/workflows/:id
 // @desc    Edit a workflow by id
 // @access  Private
-router.put('/', passport.authenticate('jwt'), workflowController.updateWorkflow);
+router.put('/:id', passport.authenticate('jwt'), workflowController.updateWorkflow);
 
 // @route   DELETE api/v1/workflows/
 // @desc    Delete a workflow by id
