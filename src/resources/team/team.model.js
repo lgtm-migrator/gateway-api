@@ -26,4 +26,10 @@ TeamSchema.virtual('publisher', {
   justOne: true
 });
 
+TeamSchema.virtual('users', {
+  ref: 'User',
+  foreignField: '_id',
+  localField: 'members.memberid'
+});
+
 export const TeamModel = model('Team', TeamSchema)

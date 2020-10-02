@@ -8,6 +8,7 @@ import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model'
 import { getObjectById } from '../tool/data.repository';
 import emailGenerator from '../utilities/emailGenerator.util';
+const inputSanitizer = require('../utilities/inputSanitizer');
 
 const urlValidator = require('../utilities/urlValidator');
 
@@ -39,8 +40,8 @@ router.put('/edit',
 
     Collections.findOneAndUpdate({ id: id }, 
       {
-        name: name,
-        description: description,
+        name: inputSanitizer.removeNonBreakingSpaces(name),
+        description: inputSanitizer.removeNonBreakingSpaces(description),
         imageLink: imageLink,
         authors: authors, 
         relatedObjects: relatedObjects
@@ -64,8 +65,8 @@ router.post('/add',
     const {name, description, imageLink, authors, relatedObjects } = req.body;
 
     collections.id = parseInt(Math.random().toString().replace('0.', ''));
-    collections.name = name;
-    collections.description = description;
+    collections.name = inputSanitizer.removeNonBreakingSpaces(name);
+    collections.description = inputSanitizer.removeNonBreakingSpaces(description);
     collections.imageLink = imageLink;
     collections.authors = authors;
     collections.relatedObjects = relatedObjects;

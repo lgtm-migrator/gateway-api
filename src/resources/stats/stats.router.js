@@ -89,7 +89,15 @@ router.get('', async (req, res) => {
       var q = RecordSearchData.aggregate(aggregateQuerySearches);
 
       var aggregateAccessRequests = [
-				{ $match: { applicationStatus: "submitted" } },
+        {
+					$match: {
+						$or: [
+							{ applicationStatus: "submitted" },
+							{ applicationStatus: "approved" },
+							{ applicationStatus: "rejected" }
+						],
+					},
+				},
 				{
 					$lookup: {
 						from: "tools",
@@ -321,10 +329,10 @@ router.get('', async (req, res) => {
               getObjectResult('paper', searchQuery)
 
             ]).then((resources) => { 
-              topSearch.datasets = resources[0].length;
-              topSearch.tools = resources[1].length;
-              topSearch.projects = resources[2].length;
-              topSearch.papers = resources[3].length;
+              topSearch.datasets = resources[0][0] !== undefined ? resources[0][0].count : 0;
+              topSearch.tools = resources[1][0] !== undefined ? resources[0][0].count : 0;
+              topSearch.projects = resources[2][0] !== undefined ? resources[0][0].count : 0;
+              topSearch.papers = resources[3][0] !== undefined ? resources[0][0].count : 0;
             })
             return topSearch;
           }))
@@ -339,37 +347,22 @@ router.get('', async (req, res) => {
     var q = '';
     
     q = Data.aggregate([
-        { $match: newSearchQuery },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },            
-        {
-            $project: {
-                        "_id": 0, 
-                        "id": 1,
-                        "name": 1,
-                        "type": 1,
-                        "description": 1,
-                        "bio": 1,
-                        "categories.category": 1,
-                        "categories.programmingLanguage": 1,
-                        "license": 1,
-                        "tags.features": 1,
-                        "tags.topics": 1,   
-                        "firstname": 1,
-                        "lastname": 1,
-                        "datasetid": 1,
-
-                        "datasetfields.publisher": 1,
-                        "datasetfields.geographicCoverage": 1,
-                        "datasetfields.physicalSampleAvailability": 1,
-                        "datasetfields.abstract": 1,
-                        "datasetfields.ageBand": 1,
-
-                        "persons.id": 1,
-                        "persons.firstname": 1,
-                        "persons.lastname": 1,
-                      }
-          }
-    ]).sort({ name : 1 });
+        { $match: newSearchQuery }, 
+            {
+                "$group": {
+                    "_id": {},
+                    "count": {
+                        "$sum": 1
+                    }
+                }
+            }, 
+            {
+                "$project": {
+                    "count": "$count",
+                    "_id": 0
+                }
+            }
+    ]);
     
     return new Promise((resolve, reject) => {
         q.exec((err, data) => {

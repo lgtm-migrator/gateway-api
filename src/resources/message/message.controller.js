@@ -13,7 +13,7 @@ module.exports = {
     createMessage: async (req, res) => {
         try {
             const { _id: createdBy, firstname, lastname } = req.user
-            let { messageType = 'notification', topic = '', messageDescription, relatedObjectIds } = req.body;
+            let { messageType = 'message', topic = '', messageDescription, relatedObjectIds } = req.body;
             let topicObj = {};
             // 1. If the message type is 'message' and topic id is empty
             if(messageType === 'message') {

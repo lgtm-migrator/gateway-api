@@ -31,4 +31,10 @@ UserSchema.virtual('additionalInfo', {
   options: { select: 'bio link orcid activeflag emailNotifications terms -id -_id' }
 });
 
+UserSchema.virtual('teams', {
+  ref: 'Team',
+  foreignField: 'members.memberid',
+  localField: '_id'
+});
+
 export const UserModel = model('User', UserSchema)

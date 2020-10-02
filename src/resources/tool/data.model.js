@@ -10,6 +10,7 @@ const DataSchema = new Schema(
     type: String,
     name: String,
     description: String,
+    resultsInsights: String,
     link: String,
     categories: {
       category: {type: String},
@@ -35,7 +36,11 @@ const DataSchema = new Schema(
         updated: String
     }],
     uploader: Number,
-
+    //tools related fields
+    programmingLanguage: [{
+        programmingLanguage: String, 
+        version: String
+    }],
     //paper related fields
     journal: String,
     journalYear: Number,
@@ -48,6 +53,9 @@ const DataSchema = new Schema(
     orcid: String,
     emailNotifications: Boolean,
     terms: Boolean,
+    sector: String,
+    organisation: String,
+    showOrganisation: {type: Boolean, default: false },
 
     //dataset related fields
     datasetid: String,
@@ -66,6 +74,8 @@ const DataSchema = new Schema(
         statisticalPopulation: String,
         ageBand: String,
         contactPoint: String,
+        periodicity: String,
+        populationSize: String,
         metadataquality : {},
         metadataschema : {},
         technicaldetails : [],

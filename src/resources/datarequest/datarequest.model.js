@@ -2,14 +2,21 @@ import { model, Schema } from 'mongoose';
 
 const DataRequestSchema = new Schema({
   version: Number,
-  userId: Number,
+  userId: Number, // Main applicant
+  authorIds: [Number],
   dataSetId: String,
   datasetIds: [{ type: String}],
+  projectId: String,
   applicationStatus: {
     type: String,
     default: 'inProgress',
-    enum: ['inProgress' , 'submitted', 'accepted']
+    enum: ['inProgress' , 'submitted', 'inReview', 'approved', 'rejected', 'approved with conditions', 'withdrawn']
   },
+  archived: { 
+    Boolean, 
+    default: false 
+  },
+  applicationStatusDesc : String,
   jsonSchema: {
     type: String,
     default: "{}"
@@ -21,6 +28,16 @@ const DataRequestSchema = new Schema({
   aboutApplication: {
     type: String,
     default: "{}"
+  },
+  dateSubmitted: {
+    type: Date
+  },
+  dateFinalStatus: {
+    type: Date
+  },
+  publisher: {
+    type: String,
+    default: ""
   }
 }, {
     timestamps: true,
@@ -40,6 +57,26 @@ DataRequestSchema.virtual('dataset', {
   foreignField: 'datasetid',
   localField: 'dataSetId',
   justOne: true
+});
+
+DataRequestSchema.virtual('mainApplicant', {
+  ref: 'User',
+  foreignField: 'id',
+  localField: 'userId',
+  justOne: true
+});
+
+DataRequestSchema.virtual('publisherObj', {
+  ref: 'Publisher',
+  foreignField: 'name',
+  localField: 'publisher',
+  justOne: true
+});
+
+DataRequestSchema.virtual('authors', {
+  ref: 'User',
+  foreignField: 'id',
+  localField: 'authorIds'
 });
 
 export const DataRequestModel = model('data_request', DataRequestSchema)

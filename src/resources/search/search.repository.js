@@ -18,6 +18,8 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                 "bio": 1,
                 "categories.category": 1,
                 "categories.programmingLanguage": 1,
+                "programmingLanguage.programmingLanguage": 1,
+                "programmingLanguage.version": 1,
                 "license": 1,
                 "tags.features": 1,
                 "tags.topics": 1,
@@ -189,7 +191,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
         if (programmingLanguage.length > 0) {
             var filterTermArray = [];
             programmingLanguage.split('::').forEach((filterTerm) => {
-                filterTermArray.push({ "categories.programmingLanguage": filterTerm })
+                filterTermArray.push({ "programmingLanguage.programmingLanguage": filterTerm })
             });
             searchQuery["$and"].push({ "$or": filterTermArray });
         }

@@ -1,4 +1,5 @@
 import { Data } from '../tool/data.model'
+import { MetricsData } from '../stats/metrics.model'
 import axios from 'axios';
 import emailGenerator from '../utilities/emailGenerator.util';
 
@@ -92,6 +93,7 @@ export async function loadDataset(datasetID) {
     data.datasetfields.statisticalPopulation = dataset.data.statisticalPopulation;
     data.datasetfields.ageBand = dataset.data.ageBand;
     data.datasetfields.contactPoint = dataset.data.contactPoint;
+    data.datasetfields.periodicity = datasetMDC.periodicity;
     
     data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
     data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
@@ -249,6 +251,7 @@ export async function loadDatasets(override) {
                                     statisticalPopulation: datasetMDC.statisticalPopulation,
                                     ageBand: datasetMDC.ageBand,
                                     contactPoint: datasetMDC.contactPoint,
+                                    periodicity: datasetMDC.periodicity,
                                     
                                     metadataquality: metadataQuality ? metadataQuality : {},
                                     metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
@@ -297,6 +300,7 @@ export async function loadDatasets(override) {
                         data.datasetfields.statisticalPopulation = datasetMDC.statisticalPopulation;
                         data.datasetfields.ageBand = datasetMDC.ageBand;
                         data.datasetfields.contactPoint = datasetMDC.contactPoint;
+                        data.datasetfields.periodicity = datasetMDC.periodicity;
                         
                         data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
                         data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
@@ -325,6 +329,9 @@ export async function loadDatasets(override) {
             }
         );
     }))
+    
+    saveUptime();
+
     console.log("Update Completed at "+Date())
     return "Update completed";
 };
@@ -342,4 +349,62 @@ function splitString (array) {
         }
     }
     return returnArray;
+}
+
+async function saveUptime() {
+    const monitoring = require('@google-cloud/monitoring');
+    const projectId = 'hdruk-gateway';
+    const client = new monitoring.MetricServiceClient();
+
+    var selectedMonthStart = new Date();
+    selectedMonthStart.setMonth(selectedMonthStart.getMonth()-1);
+    selectedMonthStart.setDate(1);
+    selectedMonthStart.setHours(0,0,0,0);
+
+    var selectedMonthEnd = new Date();
+    selectedMonthEnd.setDate(0);
+    selectedMonthEnd.setHours(23,59,59,999);
+
+    const request = {
+        name: client.projectPath(projectId),
+        filter: 'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-production-web-app-qsxe8fXRrBo" AND metric.label."checker_location"="eur-belgium"',
+
+        interval: {
+            startTime: {
+                seconds: selectedMonthStart.getTime() / 1000,
+            },
+            endTime: {
+                seconds: selectedMonthEnd.getTime() / 1000,
+            },
+        },
+        aggregation: {
+            alignmentPeriod: {
+                seconds: '86400s',
+            },
+            crossSeriesReducer: 'REDUCE_NONE',
+            groupByFields: [
+                'metric.label."checker_location"',
+                'resource.label."instance_id"'
+            ],
+            perSeriesAligner: 'ALIGN_FRACTION_TRUE',
+        },
+    };
+
+    // Writes time series data
+    const [timeSeries] = await client.listTimeSeries(request);
+    var dailyUptime = [];
+    var averageUptime;
+
+    timeSeries.forEach(data => {
+
+        data.points.forEach(data => {
+            dailyUptime.push(data.value.doubleValue)
+        })
+
+        averageUptime = (dailyUptime.reduce((a, b) => a + b, 0) / dailyUptime.length) * 100;
+    });
+
+    var metricsData = new MetricsData(); 
+    metricsData.uptime = averageUptime;
+    await metricsData.save();
 }

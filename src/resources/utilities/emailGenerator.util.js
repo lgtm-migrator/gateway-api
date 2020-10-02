@@ -156,7 +156,7 @@ const _getAllQuestionsFlattened = (allQuestions) => {
 };
 
 const _formatSectionTitle = (value) => {
-  let [questionId, uniqueId] = value.split('_');
+  let [questionId] = value.split('_');
   return _.capitalize(questionId);
 }
 
@@ -179,9 +179,7 @@ const _buildSubjectTitle = (user, title) => {
  */
 const _buildEmail = (fullQuestions, questionAnswers, options) => {
   let parent;
-  let { userType, userName, userEmail, custodianEmail, datasetTitles } = options;
-  const hdrukEmail = `enquiry@healthdatagateway.org`;
-  const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || custodianEmail;
+  let { userType, userName, userEmail, datasetTitles } = options;
   let subject = _buildSubjectTitle(userType, datasetTitles);
   let questionTree = { ...fullQuestions };
   let answers = { ...questionAnswers };
@@ -280,14 +278,8 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
     table += `</table></td></tr>`;
   }
   table += ` </tbody></table></div>`;
-  let msg = {
-    from: hdrukEmail,
-    to: userType.toUpperCase() === 'DATACUSTODIAN' ? dataCustodianEmail : userEmail,
-    subject: `Enquires for ${datasetTitles} dataset healthdatagateway.org`,
-    html: table,
-    allowUnsubscribe: userType.toUpperCase() === 'DATACUSTODIAN' ? false : true,
-  };
-  return msg;
+
+  return table;
 };
 
 /**
@@ -320,12 +312,12 @@ const _groupByPageSection = (allQuestions) => {
  * @param   {Object} options {userType, ...} 
  * @return  {Object} {fullname: 'James Swallow', email: 'james@gmail.com'}
  */
-const _actualQuestionAnswers = async (quesitonAnswers, options) => {
+const _actualQuestionAnswers = async (questionAnswers, options) => {
   let obj =  {};
   // test for user type custodian || user
   let { userType } = options;
   // spread questionAnswers to new var
-  let qa = {...quesitonAnswers};
+  let qa = {...questionAnswers};
   // get object keys of questionAnswers
   let keys = Object.keys(qa);
   // loop questionAnswer keys
@@ -418,6 +410,152 @@ const _generateEmail = async (
   return email;
 };
 
+const _displayConditionalStatusDesc = (applicationStatus, applicationStatusDesc) => {
+  if(applicationStatusDesc && applicationStatus === 'approved with conditions' || applicationStatus === 'rejected') {
+    let conditionalTitle = '';
+    switch(applicationStatus) {
+      case 'approved with conditions':
+        conditionalTitle = 'Approved with conditions:';
+        break;
+      case 'rejected':
+        conditionalTitle = 'Reason for rejection:';
+        break;
+    }
+    return `
+      <p style="color: #29235c; font-size: 18px; font-weight:500; padding-bottom:5px">${conditionalTitle}</p>
+      <p style="font-size: 14px; color: #3c3c3b; width: 100%;">${applicationStatusDesc}</p>
+    `
+  }
+  return '';
+}
+
+const _displayDARLink = (accessId) => {
+  if(!accessId)
+    return '';
+
+  let darLink = `${process.env.homeURL}/data-access-request/${accessId}`;
+  return `<a style="color: #475da7;" href="${darLink}">View application</a>`;
+}
+
+const _generateDARStatusChangedEmail = (options) => {
+  let { id, applicationStatus, applicationStatusDesc, projectId, projectName, publisher, datasetTitles, dateSubmitted, applicants } = options;
+  let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Data access request application ${applicationStatus} 
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${publisher} has ${applicationStatus} your data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayConditionalStatusDesc(applicationStatus, applicationStatusDesc)}
+            ${_displayDARLink(id)}
+            </div>
+          </div>`;
+
+  return body;
+};
+
+const _generateContributorEmail = (options) => {
+  let { id, datasetTitles, projectName, projectId, change, actioner, applicants } = options;
+  let header = `You've been ${change === 'added' ? 'added to' : 'removed from'} a data access request application`;
+  let subheader = `${actioner} ${change} you as a contributor ${change === 'added' ? 'to' : 'from'} a data access request application. ${change == 'added' ? 'Contributors can exchange private notes, make edits, invite others and submit the application.' : ''}`;
+
+  let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${header}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${subheader}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            ${change === 'added' ? ` 
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayDARLink(id)}
+            </div>` : ''}
+          </div>`;
+
+  return body;
+}
+
 /**
  * [_sendEmail]
  *
@@ -446,8 +584,9 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true) => {
   }
 };
 
-const _generateEmailFooter = (recipient, allowUnsubscribe) => {
+const _generateEmailFooter = (recipient, allowUnsubscribe) => { 
   // 1. Generate HTML for unsubscribe link if allowed depending on context
+
   let unsubscribeHTML = '';
 
   if (allowUnsubscribe) {
@@ -492,5 +631,8 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 
 export default {
   generateEmail: _generateEmail,
+  generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
+  generateContributorEmail: _generateContributorEmail,
   sendEmail: _sendEmail,
+  generateEmailFooter: _generateEmailFooter
 };
