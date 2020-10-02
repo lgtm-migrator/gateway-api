@@ -4,7 +4,9 @@ import { Data } from '../tool/data.model';
 import _ from 'lodash';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
+
 const datarequestController = require('../datarequest/datarequest.controller');
+const teamController = require('../team/team.controller');
 
 module.exports = {
 	// GET api/v1/publishers/:id
@@ -164,20 +166,11 @@ module.exports = {
 			}
 			// 2. Check the requesting user is a member of the team
 			let { _id: userId } = req.user;
-			let members = [],
-				authorised = false;
-			if (_.has(workflows[0].toObject(), 'publisher.team')) {
-				({
-					publisher: {
-						team: { members },
-					},
-				} = workflows[0]);
-			}
-			if (!_.isEmpty(members)) {
-				authorised = members.some(
-					(el) => el.memberid.toString() === userId.toString()
-				);
-			}
+			let authorised = teamController.checkTeamPermissions(
+				teamController.roles.MANAGER,
+				workflow.publisher.team.toObject(),
+				userId
+			);
 			// 3. If not return unauthorised
 			if (!authorised) {
 				return res.status(401).json({ success: false });

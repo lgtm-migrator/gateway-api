@@ -40,9 +40,9 @@ module.exports = {
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let { _id: userId } = req.user;
-			let authorised = module.exports.checkWorkflowPermissions(
+			let authorised = teamController.checkTeamPermissions(
 				teamController.roles.MANAGER,
-				workflow.publisher.toObject(),
+				workflow.publisher.team.toObject(),
 				userId
 			);
 			// 3. If not return unauthorised
@@ -122,9 +122,9 @@ module.exports = {
 				});
 			}
 			// 3. Check the requesting user is a manager of the custodian team
-			let authorised = module.exports.checkWorkflowPermissions(
+			let authorised = teamController.checkTeamPermissions(
 				teamController.roles.MANAGER,
-				publisherObj.toObject(),
+				publisherObj.team.toObject(),
 				userId
 			);
 
@@ -188,9 +188,9 @@ module.exports = {
 				return res.status(404).json({ success: false });
 			}
 			// 2. Check the requesting user is a manager of the custodian team
-			let authorised = module.exports.checkWorkflowPermissions(
+			let authorised = teamController.checkTeamPermissions(
 				teamController.roles.MANAGER,
-				workflow.publisher.toObject(),
+				workflow.publisher.team.toObject(),
 				userId
 			);
 			// 3. Refuse access if not authorised
@@ -235,13 +235,13 @@ module.exports = {
 						// 7. Return workflow payload
 						return res.status(204).json({
 							success: true,
+							workflow
 						});
 					}
 				});
 			} else {
 				return res.status(200).json({
-					success: true,
-					workflow,
+					success: true
 				});
 			}
 		} catch (err) {
@@ -273,9 +273,9 @@ module.exports = {
 				return res.status(404).json({ success: false });
 			}
 			// 2. Check the requesting user is a manager of the custodian team
-			let authorised = module.exports.checkWorkflowPermissions(
+			let authorised = teamController.checkTeamPermissions(
 				teamController.roles.MANAGER,
-				workflow.publisher.toObject(),
+				workflow.publisher.team.toObject(),
 				userId
 			);
 			// 3. Refuse access if not authorised
@@ -318,25 +318,5 @@ module.exports = {
 				message: 'An error occurred deleting the workflow',
 			});
 		}
-	},
-
-	/**
-	 * Check a users CRUD permissions for workflows
-	 *
-	 * @param {enum} role The role required for the action
-	 * @param {object} publisher The publisher object containing the team and its members
-	 * @param {objectId} userId The userId to check the permissions for
-	 */
-	checkWorkflowPermissions: (role, publisher, userId) => {
-		let authorised = false;
-		// 1. Pass the publisher team to check the users permissions
-		if (_.has(publisher, 'team.members')) {
-			authorised = teamController.checkTeamPermissions(
-				role,
-				publisher.team,
-				userId
-			);
-		}
-		return authorised;
-	},
+	}
 };
