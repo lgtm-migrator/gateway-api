@@ -1,7 +1,6 @@
 import { PublisherModel } from '../publisher/publisher.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
-
-const { WorkflowModel } = require('./workflow.model');
+import { WorkflowModel } from './workflow.model';
 
 import helper from '../utilities/helper.util';
 

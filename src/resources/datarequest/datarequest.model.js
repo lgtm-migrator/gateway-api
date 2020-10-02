@@ -1,6 +1,5 @@
 import { model, Schema } from 'mongoose';
-
-const { WorkflowSchema } = require('../workflow/workflow.model'); 
+import { WorkflowSchema } from '../workflow/workflow.model'; 
 
 const DataRequestSchema = new Schema({
   version: Number,

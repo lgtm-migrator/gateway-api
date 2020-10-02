@@ -2,9 +2,8 @@ import mongoose from 'mongoose';
 import { PublisherModel } from './publisher.model';
 import { Data } from '../tool/data.model';
 import _ from 'lodash';
-
-const DataRequestModel = require('../datarequest/datarequest.model');
-const WorkflowModel = require('../workflow/workflow.model');
+import { DataRequestModel } from '../datarequest/datarequest.model';
+import { WorkflowModel } from '../workflow/workflow.model';
 const datarequestController = require('../datarequest/datarequest.controller');
 
 module.exports = {

@@ -19,7 +19,7 @@ const StepSchema = new Schema({
   deadline: { type: Number, required: true }
 });
 
-const WorkflowSchema = new Schema({
+export const WorkflowSchema = new Schema({
   id: { type: Number, required: true },
   workflowName: { type: String, required: true },
   version: Number,
@@ -37,9 +37,4 @@ const WorkflowSchema = new Schema({
   toObject:   { virtuals: true }
 });
 
-const WorkflowModel = model('Workflow', WorkflowSchema)
-
-module.exports = {
-  WorkflowSchema: WorkflowSchema,
-  WorkflowModel: WorkflowModel
-}
+export const WorkflowModel = model('Workflow', WorkflowSchema);
