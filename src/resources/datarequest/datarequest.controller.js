@@ -523,6 +523,11 @@ module.exports = {
 		}
 	},
 
+	//PUT api/v1/data-access-request/:id/assignworkflow
+	updateAccessRequestWorkflow: async (req, res) => {
+		
+	},
+
 	//POST api/v1/data-access-request/:id
 	submitAccessRequestById: async (req, res) => {
 		try {
@@ -923,81 +928,81 @@ module.exports = {
 	},
 
 	extractApplicantNames: (questionAnswers) => {
-		let fullnames = [], autoCompleteLookups = {"fullname": ['email']};
-		// spread questionAnswers to new var
-		let qa = { ...questionAnswers };
-		// get object keys of questionAnswers
-		let keys = Object.keys(qa);
-		// loop questionAnswer keys
-		for (const key of keys) {
-			// get value of key
-			let value = qa[key];
-			// split the key up for unique purposes
-			let [qId] = key.split('_');
-			// check if key in lookup
-			let lookup = autoCompleteLookups[`${qId}`];
-			// if key exists and it has an object do relevant data setting
-			if (typeof lookup !== 'undefined' && typeof value === 'object') {
-				switch (qId) {
-					case 'fullname':
-						fullnames.push(value.name);
-						break;
+			let fullnames = [], autoCompleteLookups = {"fullname": ['email']};
+			// spread questionAnswers to new var
+			let qa = { ...questionAnswers };
+			// get object keys of questionAnswers
+			let keys = Object.keys(qa);
+			// loop questionAnswer keys
+			for (const key of keys) {
+				// get value of key
+				let value = qa[key];
+				// split the key up for unique purposes
+				let [qId] = key.split('_');
+				// check if key in lookup
+				let lookup = autoCompleteLookups[`${qId}`];
+				// if key exists and it has an object do relevant data setting
+				if (typeof lookup !== 'undefined' && typeof value === 'object') {
+					switch (qId) {
+						case 'fullname':
+							fullnames.push(value.name);
+							break;
+					}
 				}
 			}
+			return fullnames;
+	},
+	
+	createApplicationDTO: (app) => {
+		let projectName = '';
+		let applicants = '';
+
+		// Ensure backward compatibility with old single dataset DARs
+		if(_.isEmpty(app.datasets) || _.isUndefined(app.datasets)) {
+			app.datasets = [app.dataset];
+			app.datasetIds = [app.datasetid];
 		}
-		return fullnames;
-  },
-  
-  createApplicationDTO: (app) => {
-      let projectName = '';
-      let applicants = '';
+		let { datasetfields : { publisher }, name} = app.datasets[0];
+		let { aboutApplication, questionAnswers } = app;
 
-      // Ensure backward compatibility with old single dataset DARs
-      if(_.isEmpty(app.datasets) || _.isUndefined(app.datasets)) {
-        app.datasets = [app.dataset];
-        app.datasetIds = [app.datasetid];
-      }
-      let { datasetfields : { publisher }, name} = app.datasets[0];
-      let { aboutApplication, questionAnswers } = app;
+		if (aboutApplication) {
+			let aboutObj = JSON.parse(aboutApplication);
+			({ projectName } = aboutObj);
+		}
+		if(_.isEmpty(projectName)) {
+			projectName = `${publisher} - ${name}`
+		}
+		if (questionAnswers) {
+			let questionAnswersObj = JSON.parse(questionAnswers);
+			applicants = module.exports.extractApplicantNames(questionAnswersObj).join(', ');
+		}
+		if(_.isEmpty(applicants)) {
+			let { firstname, lastname } = app.mainApplicant;
+			applicants = `${firstname} ${lastname}`;
+		}
+		return { ...app, projectName, applicants, publisher }
+	},
 
-      if (aboutApplication) {
-        let aboutObj = JSON.parse(aboutApplication);
-        ({ projectName } = aboutObj);
-      }
-      if(_.isEmpty(projectName)) {
-        projectName = `${publisher} - ${name}`
-      }
-      if (questionAnswers) {
-        let questionAnswersObj = JSON.parse(questionAnswers);
-        applicants = module.exports.extractApplicantNames(questionAnswersObj).join(', ');
-      }
-      if(_.isEmpty(applicants)) {
-        let { firstname, lastname } = app.mainApplicant;
-        applicants = `${firstname} ${lastname}`;
-	  }
-      return { ...app, projectName, applicants, publisher }
-  },
-
-  calculateAvgDecisionTime: (applications) => {
-    // Extract dateSubmitted dateFinalStatus
-    let decidedApplications = applications.filter((app) => {
-      let { dateSubmitted = '', dateFinalStatus = '' } = app;
-      return (!_.isEmpty(dateSubmitted.toString()) && !_.isEmpty(dateFinalStatus.toString()));
-    });
-	// Find difference between dates in milliseconds
-	if(!_.isEmpty(decidedApplications)) {
-		let totalDecisionTime = decidedApplications.reduce((count, current) => {
-		let { dateSubmitted, dateFinalStatus } = current;
-		let start = moment(dateSubmitted);
-		let end = moment(dateFinalStatus);
-		let diff = end.diff(start, 'seconds');
-		count += diff;
-		return count;
-		}, 0);
-		// Divide by number of items
-		if(totalDecisionTime > 0) 
-				return parseInt(totalDecisionTime/decidedApplications.length/86400);
-	}	
-    return 0;
-  }
+	calculateAvgDecisionTime: (applications) => {
+		// Extract dateSubmitted dateFinalStatus
+		let decidedApplications = applications.filter((app) => {
+		let { dateSubmitted = '', dateFinalStatus = '' } = app;
+		return (!_.isEmpty(dateSubmitted.toString()) && !_.isEmpty(dateFinalStatus.toString()));
+		});
+		// Find difference between dates in milliseconds
+		if(!_.isEmpty(decidedApplications)) {
+			let totalDecisionTime = decidedApplications.reduce((count, current) => {
+			let { dateSubmitted, dateFinalStatus } = current;
+			let start = moment(dateSubmitted);
+			let end = moment(dateFinalStatus);
+			let diff = end.diff(start, 'seconds');
+			count += diff;
+			return count;
+			}, 0);
+			// Divide by number of items
+			if(totalDecisionTime > 0) 
+					return parseInt(totalDecisionTime/decidedApplications.length/86400);
+		}	
+		return 0;
+	}
 };
