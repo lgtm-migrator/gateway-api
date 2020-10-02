@@ -1,5 +1,7 @@
 import { model, Schema } from 'mongoose';
 
+const { WorkflowSchema } = require('../workflow/workflow.model'); 
+
 const DataRequestSchema = new Schema({
   version: Number,
   userId: Number, // Main applicant
@@ -7,6 +9,8 @@ const DataRequestSchema = new Schema({
   dataSetId: String,
   datasetIds: [{ type: String}],
   projectId: String,
+  workflowId: { type : Schema.Types.ObjectId, ref: 'Workflow' },
+  workflow: { type: [ WorkflowSchema ] },
   applicationStatus: {
     type: String,
     default: 'inProgress',
