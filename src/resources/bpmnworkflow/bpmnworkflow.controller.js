@@ -13,6 +13,7 @@ module.exports = {
     getProcess: async (businessKey) => {
         return await axios.get(`${bpmnBaseUrl}/engine-rest/task?processInstanceBusinessKey=${businessKey.toString()}`);
     },
+
     //Simple Workflow Endpoints
     postCreateProcess: async (bpmContext) => {
         // Create Axios requet to start Camunda process
@@ -75,6 +76,7 @@ module.exports = {
                 console.error(err);
             });
     },
+
     //Complex Workflow Endpoints
     postStartPreReview: async (bpmContext) => {
         //Start pre-review process
@@ -138,23 +140,23 @@ module.exports = {
             "dataRequestPublisher": publisher,
             "managerApproved": true
         }
-        await axios.post(`${bpmnBaseUrl}/manager/completed/${businessKey}`)
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`)
         .catch((err) => {
             console.error(err);
         })
     },
     postStartStepReview: async (bpmContext) => {
         //Start Step-Review process
-        let { applicationStatus, userId, publisher, stepName, notifyReviewerSLA, reviewerList, businessKey } = bpmContext;
+        let { applicationStatus, actioner, publisher, stepName, reminderDateTime, reviewers, businessKey } = bpmContext;
         let data = {
             "dataRequestStatus": applicationStatus,
-            "dataRequestUserId": userId,
+            "dataRequestUserId": actioner,
             "dataRequestPublisher": publisher,
             "dataRequestStepName": stepName,
-            "notifyReviewerSLA": notifyReviewerSLA,
-            "reviewerList": reviewerList
+            "notifyReviewerSLA": reminderDateTime,
+            "reviewerList": reviewers
         }
-        await axios.post(`${bpmnBaseUrl}/complete/review/${businessKey}`, data)
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/complete/review/${businessKey}`, data)
             .catch((err) => {
                 console.error(err);
             });
@@ -170,7 +172,7 @@ module.exports = {
             "phaseApproved": phaseApproved,
             "reviewerList": reviewerList
         }
-        await axios.post(`${bpmnBaseUrl}/reviewer/complete/${businessKey}`, data)
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/reviewer/complete/${businessKey}`, data)
         .catch((err) => {
             console.error(err);
         });

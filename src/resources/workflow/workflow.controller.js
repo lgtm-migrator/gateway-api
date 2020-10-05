@@ -322,12 +322,10 @@ module.exports = {
 	},
 
 	calculateStepDeadlineReminderDate: (step) => {
-		// Extract deadline in days from step definition
+		// Extract deadline and reminder offset in days from step definition
 		let { deadline, reminderOffset } = step;
-		// Add step duration to current date
-		let deadlineDate = moment().add(deadline, 'days');
 		// Subtract SLA reminder offset
-		let reminderDate = moment(deadlineDate).subtract(reminderOffset, 'days');
-		return reminderDate.format("YYYY-MM-DDTHH:mm:ss");
+		let reminderPeriod = deadline - reminderOffset;
+		return `P${reminderPeriod}D`;
 	}
 };

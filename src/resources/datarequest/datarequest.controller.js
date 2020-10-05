@@ -677,18 +677,19 @@ module.exports = {
 				} else {
 					// 13. Contact Camunda to start workflow process
 					let { name: publisher } = accessRecord.datasets[0].publisher;
+					let reviewers = workflowObj.steps[0].reviewers.map((reviewer) => reviewer._id.toString());
 					let bpmContext = {
 						businessKey: id,
 						applicationStatus: 'inReview',
 						actioner: userId,
 						publisher,
 						stepName: workflowObj.steps[0].stepName,
-						deadlineDateTime: workflowController.calculateStepDeadlineReminderDate(
+						reminderDateTime: workflowController.calculateStepDeadlineReminderDate(
 							workflowObj.steps[0]
 						),
-						reviewers: [...workflowObj.steps[0].reviewers],
+						reviewers
 					};
-					bpmController.postCreateProcess(bpmContext);
+					bpmController.postStartStepReview(bpmContext);
 					// 14. TODO Create notifications for workflow assigned (step 1 reviewers and other managers)
 					// 15. Return workflow payload
 					return res.status(200).json({
