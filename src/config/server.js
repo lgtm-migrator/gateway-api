@@ -176,10 +176,12 @@ app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedob
 app.use('/api/v1/tools', require('../resources/tool/tool.route'));
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
-app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
+app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people 
 
-app.use('/api/v1/stats', require('../resources/stats/stats.router'));
-app.use('/api/v1/kpis', require('../resources/stats/kpis.router'));
+app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router')); 
+ 
+app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
+app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
 
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
