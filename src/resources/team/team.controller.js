@@ -2,11 +2,12 @@ import { TeamModel } from './team.model';
 import _ from 'lodash';
 
 export const roleTypes = {
-    MANAGER: 'manager',
-    REVIEWER: 'reviewer',
+	MANAGER: 'manager',
+	REVIEWER: 'reviewer',
 }
 
 module.exports = {
+	
 	// GET api/v1/teams/:id
 	getTeamById: async (req, res) => {
 		try {
@@ -80,11 +81,11 @@ module.exports = {
 	 * Check a users CRUD permissions for workflows
 	 *
 	 * @param {enum} role The role required for the action
-	 * @param {object} team The publisher object containing its members
+	 * @param {object} team The team object containing its members
 	 * @param {objectId} userId The userId to check the permissions for
 	 */
 	checkTeamPermissions: (role, team, userId) => {
-		// 1. Ensure the publisher has a team and associated members defined
+		// 1. Ensure the team has associated members defined
 		if (_.has(team, 'members')) {
 			// 2. Extract team members
 			let { members } = team;

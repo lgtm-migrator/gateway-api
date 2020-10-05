@@ -2,6 +2,7 @@ import { PublisherModel } from '../publisher/publisher.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from './workflow.model';
 import helper from '../utilities/helper.util';
+import moment from 'moment';
 
 import _ from 'lodash';
 import mongoose from 'mongoose';
@@ -41,7 +42,7 @@ module.exports = {
 			// 2. Check the requesting user is a manager of the custodian team
 			let { _id: userId } = req.user;
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roles.MANAGER,
+				teamController.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -123,7 +124,7 @@ module.exports = {
 			}
 			// 3. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roles.MANAGER,
+				teamController.roleTypes.MANAGER,
 				publisherObj.team.toObject(),
 				userId
 			);
@@ -189,7 +190,7 @@ module.exports = {
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roles.MANAGER,
+				teamController.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -274,7 +275,7 @@ module.exports = {
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roles.MANAGER,
+				teamController.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -318,5 +319,13 @@ module.exports = {
 				message: 'An error occurred deleting the workflow',
 			});
 		}
+	},
+
+	calculateStepDeadlineReminderDate: (step) => {
+		// Extract deadline and reminder offset in days from step definition
+		let { deadline, reminderOffset } = step;
+		// Subtract SLA reminder offset
+		let reminderPeriod = deadline - reminderOffset;
+		return `P${reminderPeriod}D`;
 	}
 };

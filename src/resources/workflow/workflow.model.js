@@ -16,7 +16,16 @@ const StepSchema = new Schema({
   stepName: { type: String, required: true },
   reviewers: { type: [{ type : Schema.Types.ObjectId, ref: 'User' }], validate:[minReviewers, 'There must be at least one reviewer per phase'] },
   sections: { type: [String], validate:[minSections, 'There must be at least one section assigned to a phase'] },
-  deadline: { type: Number, required: true }
+  deadline: { type: Number, required: true }, // Number of days from step starting that a deadline is reached
+  reminderOffset: { type: Number, required: true, default: 3 }, // Number of days before deadline that SLAs are triggered by Camunda
+  // Items below not required for step definition
+  active: { type: Boolean, default: false },
+  startDateTime: { type: Date },
+  endDateTime: { type: Date },
+  recommendations: [{
+    reviewer: { type : Schema.Types.ObjectId, ref: 'User' },
+    approved: { type: Boolean }
+  }]
 });
 
 export const WorkflowSchema = new Schema({

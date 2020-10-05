@@ -36,6 +36,11 @@ router.patch('/:id', passport.authenticate('jwt'), datarequestController.updateA
 // @access  Private
 router.put('/:id', passport.authenticate('jwt'), datarequestController.updateAccessRequestById);
 
+// @route   PUT api/v1/data-access-request/:id/assignworkflow
+// @desc    Update access request workflow
+// @access  Private
+router.put('/:id/assignworkflow', passport.authenticate('jwt'), datarequestController.assignWorkflow);
+
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record
 // @access  Private

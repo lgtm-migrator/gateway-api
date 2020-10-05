@@ -212,7 +212,7 @@ module.exports = {
 			let { _id: userId } = req.user;
 			let authorised = teamController.checkTeamPermissions(
 				teamController.roleTypes.MANAGER,
-				workflow.publisher.team.toObject(),
+				workflows[0].publisher.team.toObject(),
 				userId
 			);
 			// 3. If not return unauthorised
