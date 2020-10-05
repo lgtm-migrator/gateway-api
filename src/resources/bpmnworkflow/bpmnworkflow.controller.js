@@ -140,7 +140,7 @@ module.exports = {
             "dataRequestPublisher": publisher,
             "managerApproved": true
         }
-        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`)
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`, data)
         .catch((err) => {
             console.error(err);
         })

@@ -5,11 +5,9 @@ import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
-import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
 import moment from 'moment';
-import { application } from 'express';
 
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 const teamController = require('../team/team.controller');
