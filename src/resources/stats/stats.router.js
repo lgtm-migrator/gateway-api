@@ -89,7 +89,15 @@ router.get('', async (req, res) => {
       var q = RecordSearchData.aggregate(aggregateQuerySearches);
 
       var aggregateAccessRequests = [
-				{ $match: { applicationStatus: "submitted" } },
+        {
+					$match: {
+						$or: [
+							{ applicationStatus: "submitted" },
+							{ applicationStatus: "approved" },
+							{ applicationStatus: "rejected" }
+						],
+					},
+				},
 				{
 					$lookup: {
 						from: "tools",
