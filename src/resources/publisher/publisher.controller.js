@@ -105,9 +105,14 @@ module.exports = {
 			}).distinct('datasetid');
 			// 5. Find all applications where any datasetId exists
 			let applications = await DataRequestModel.find({
-				$or: [
-					{ dataSetId: { $in: datasetIds } },
-					{ datasetIds: { $elemMatch: { $in: datasetIds } } },
+				$and: [
+					{
+						$or: [
+							{ dataSetId: { $in: datasetIds } },
+							{ datasetIds: { $elemMatch: { $in: datasetIds } } },
+						],
+					},
+					{ applicationStatus: { $ne: 'inProgress' } },
 				],
 			})
 				.sort({ updatedAt: -1 })
@@ -167,8 +172,8 @@ module.exports = {
 			// 2. Check the requesting user is a member of the team
 			let { _id: userId } = req.user;
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roles.MANAGER,
-				workflow.publisher.team.toObject(),
+				teamController.roleTypes.MANAGER,
+				workflows[0].publisher.team.toObject(),
 				userId
 			);
 			// 3. If not return unauthorised

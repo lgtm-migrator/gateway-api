@@ -94,8 +94,8 @@ module.exports = {
     findTopic: async (topicId, userId) => {
         try {
             const topic = await TopicModel.findOne({ 
-                    _id: new mongoose.Types.ObjectId(topicId), 
-                    recipients: { $elemMatch : { $eq: userId }}
+                _id: new mongoose.Types.ObjectId(topicId), 
+                recipients: { $elemMatch : { $eq: userId }}
             });
             if (!topic) 
                 return undefined

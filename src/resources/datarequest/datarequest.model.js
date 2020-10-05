@@ -9,7 +9,7 @@ const DataRequestSchema = new Schema({
   datasetIds: [{ type: String}],
   projectId: String,
   workflowId: { type : Schema.Types.ObjectId, ref: 'Workflow' },
-  workflow: { type: [ WorkflowSchema ] },
+  workflow: { type: WorkflowSchema },
   applicationStatus: {
     type: String,
     default: 'inProgress',
