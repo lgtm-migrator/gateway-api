@@ -1,12 +1,12 @@
 import { TeamModel } from './team.model';
 import _ from 'lodash';
 
-module.exports = {
-	roles: {
-		MANAGER: 'manager',
-		REVIEWER: 'reviewer',
-	},
+export const roleTypes = {
+    MANAGER: 'manager',
+    REVIEWER: 'reviewer',
+}
 
+module.exports = {
 	// GET api/v1/teams/:id
 	getTeamById: async (req, res) => {
 		try {

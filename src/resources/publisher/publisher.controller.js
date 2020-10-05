@@ -98,6 +98,19 @@ module.exports = {
 				return res
 					.status(401)
 					.json({ status: 'failure', message: 'Unauthorised' });
+
+			//Check if current use is a manager
+			let isManager = teamController.checkTeamPermissions(
+				teamController.roleTypes.MANAGER,
+				publisher.team.toObject(),
+				_id
+			);
+
+			let applicationStatus = ["inProgress"];
+			//If the current user is not a manager then push 'Submitted' into the applicationStatus array
+			if(!isManager) {
+				applicationStatus.push("submitted");
+			}
 			// 4. Find all datasets owned by the publisher (no linkage between DAR and publisher in historic data)
 			let datasetIds = await Data.find({
 				type: 'dataset',
@@ -105,13 +118,44 @@ module.exports = {
 			}).distinct('datasetid');
 			// 5. Find all applications where any datasetId exists
 			let applications = await DataRequestModel.find({
-				$or: [
-					{ dataSetId: { $in: datasetIds } },
-					{ datasetIds: { $elemMatch: { $in: datasetIds } } },
+				$and: [
+					{
+						$or: [
+							{ dataSetId: { $in: datasetIds } },
+							{ datasetIds: { $elemMatch: { $in: datasetIds } } },
+						],
+					},
+					{ applicationStatus: { $nin: applicationStatus } },
 				],
 			})
 				.sort({ updatedAt: -1 })
-				.populate('datasets dataset mainApplicant');
+				.populate("datasets dataset mainApplicant");
+
+			if (!isManager) {
+				applications = applications.filter((app) => {
+					let { workflow = {} } = app.toObject();
+					if (_.isEmpty(workflow)) {
+						return app;
+					}
+
+					let { steps = [] } = workflow;
+					if (_.isEmpty(steps)) {
+						return app;
+					}
+
+					let activeStepIndex = _.findIndex(steps, function (step) {
+						return step.active === true;
+					});
+
+					let elapsedSteps = [...steps].slice(0, activeStepIndex+1);
+					let found = elapsedSteps.some((step) => step.reviewers.some((reviewer) => reviewer.equals(_id)));
+
+					if (found) {
+						return app;
+					}
+				});
+			}
+
 			// 6. Append projectName and applicants
 			let modifiedApplications = [...applications]
 				.map((app) => {
@@ -167,7 +211,7 @@ module.exports = {
 			// 2. Check the requesting user is a member of the team
 			let { _id: userId } = req.user;
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roles.MANAGER,
+				teamController.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
