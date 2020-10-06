@@ -811,8 +811,7 @@ module.exports = {
 			// 12. Workflow management - construct Camunda payloads
 			let bmpContext = {
 				businessKey: id,
-				//dataRequestUserId: userId.toString(),
-				dataRequestUserId: "5ede1713384b64b655b9dd13"
+				dataRequestUserId: userId.toString()
 			};
 			if(stepComplete) {
 				accessRecord.workflow.steps[activeStepIndex].active = false;
