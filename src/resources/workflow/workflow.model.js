@@ -24,7 +24,8 @@ const StepSchema = new Schema({
   endDateTime: { type: Date },
   recommendations: [{
     reviewer: { type : Schema.Types.ObjectId, ref: 'User' },
-    approved: { type: Boolean }
+    approved: { type: Boolean },
+    comments: { type: String }
   }]
 });
 

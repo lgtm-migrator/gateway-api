@@ -2,7 +2,6 @@ import { PublisherModel } from '../publisher/publisher.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from './workflow.model';
 import helper from '../utilities/helper.util';
-import moment from 'moment';
 
 import _ from 'lodash';
 import mongoose from 'mongoose';
@@ -327,5 +326,26 @@ module.exports = {
 		// Subtract SLA reminder offset
 		let reminderPeriod = deadline - reminderOffset;
 		return `P${reminderPeriod}D`;
+	},
+
+	workflowStepContainsManager: (reviewers, team) => {
+		let managerExists = false;
+		// 1. Extract team members
+		let { members } = team;
+		// 2. Iterate through each reviewer to check if they are a manager of the team
+		reviewers.forEach(reviewer => {
+			// 3. Find the current user
+			let userMember = members.find(
+				(member) => member.memberid.toString() === reviewer.toString()
+			);
+			// 3. If the user was found check if they are a manager
+			if (userMember) {
+				let { roles } = userMember;
+				if (roles.includes(roleTypes.MANAGER)) {
+					managerExists = true;
+				}
+			}
+		})
+		return managerExists;
 	}
 };

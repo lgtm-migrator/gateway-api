@@ -5,11 +5,10 @@ import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
-import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
 import moment from 'moment';
-import { application } from 'express';
+import mongoose from 'mongoose';
 
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 const teamController = require('../team/team.controller');
@@ -677,17 +676,17 @@ module.exports = {
 				} else {
 					// 13. Contact Camunda to start workflow process
 					let { name: publisher } = accessRecord.datasets[0].publisher;
-					let reviewers = workflowObj.steps[0].reviewers.map((reviewer) => reviewer._id.toString());
+					let reviewerList = workflowObj.steps[0].reviewers.map((reviewer) => reviewer._id.toString());
 					let bpmContext = {
 						businessKey: id,
-						applicationStatus: 'inReview',
-						actioner: userId,
-						publisher,
-						stepName: workflowObj.steps[0].stepName,
-						reminderDateTime: workflowController.calculateStepDeadlineReminderDate(
+						dataRequestStatus: 'inReview',
+						dataRequestUserId: userId,
+						dataRequestPublisher,
+						dataRequestStepName: workflowObj.steps[0].stepName,
+						notifyReviewerSLA: workflowController.calculateStepDeadlineReminderDate(
 							workflowObj.steps[0]
 						),
-						reviewers
+						reviewerList
 					};
 					bpmController.postStartStepReview(bpmContext);
 					// 14. TODO Create notifications for workflow assigned (step 1 reviewers and other managers)
@@ -703,6 +702,166 @@ module.exports = {
 				success: false,
 				message: 'An error occurred assigning the workflow',
 			});
+		}
+	},
+
+	//PUT api/v1/data-access-request/:id/vote
+	updateAccessRequestReviewVote: async (req, res) => {
+		try {
+			// 1. Get the required request params
+			const {
+				params: { id },
+			} = req;
+			let { _id: userId } = req.user;
+			let { approved, comments = '' } = req.body;
+			if (_.isUndefined(approved) || _.isEmpty(comments)) {
+				return res.status(400).json({
+					success: false,
+					message:
+						'You must supply the approved status with a reason',
+				});
+			}
+			// 2. Retrieve DAR from database
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
+				path: 'publisherObj',
+				populate: {
+					path: 'team'
+				},
+			});
+			if (!accessRecord) {
+				return res
+					.status(404)
+					.json({ status: 'error', message: 'Application not found.' });
+			}
+			// 3. Check permissions of user is reviewer of associated team
+			let authorised = false;
+			if (_.has(accessRecord.toObject(), 'publisherObj.team')) {
+				let {
+					team
+				} = accessRecord.publisherObj;
+				authorised = teamController.checkTeamPermissions(
+					teamController.roleTypes.REVIEWER,
+					team.toObject(),
+					userId
+				);
+			}
+			// 4. Refuse access if not authorised
+			if (!authorised) {
+				return res
+					.status(401)
+					.json({ status: 'failure', message: 'Unauthorised' });
+			}
+			// 5. Check application is in-review
+			let { applicationStatus } = accessRecord;
+			if (applicationStatus !== 'inReview') {
+				return res.status(400).json({
+					success: false,
+					message:
+						'The application status must be set to in review to cast a vote',
+				});
+			}
+			// 6. Ensure a workflow has been attached to this application
+			let { workflow } = accessRecord;
+			if(!workflow) {
+				return res.status(400).json({
+					success: false,
+					message:
+						'There is no workflow attached to this application in order to cast a vote',
+				});
+			}
+			// 7. Ensure the requesting user is expected to cast a vote
+			let { steps } = workflow;
+			let activeStepIndex = steps.findIndex((step) => {
+			 	return step.active === true;
+			})
+			if(!steps[activeStepIndex].reviewers.includes(userId)) {
+				return res.status(400).json({
+					success: false,
+					message:
+						'You have not been assigned to vote on this review phase',
+				});
+			}
+			//8. Ensure the requesting user has not already voted
+			let { recommendations = [] } = steps[activeStepIndex];
+			if(recommendations) {
+				let found = recommendations.some((rec) => {
+					return rec.reviewer.equals(userId);
+				});
+				if(found) {
+					return res.status(400).json({
+						success: false,
+						message:
+							'You have already voted on this review phase',
+					});
+				}
+			}
+			// 9. Create new recommendation
+			let newRecommendation = {
+				approved,
+				comments,
+				reviewer: new mongoose.Types.ObjectId(userId)
+			}
+			// 10. Update access record with recommendation
+			accessRecord.workflow.steps[activeStepIndex].recommendations = [...accessRecord.workflow.steps[activeStepIndex].recommendations, newRecommendation];
+			// 11. Check if access record now has the required number of reviewers and set completed state for phase
+			const requiredReviews = accessRecord.workflow.steps[activeStepIndex].reviewers.length;
+			const completedReviews = accessRecord.workflow.steps[activeStepIndex].recommendations.length;
+			const stepComplete = completedReviews === requiredReviews;
+			const finalStep = activeStepIndex === accessRecord.workflow.steps.length -1;
+			// 12. Workflow management - construct Camunda payloads
+			let bmpContext = {
+				businessKey: id,
+				//dataRequestUserId: userId.toString(),
+				dataRequestUserId: "5ede1713384b64b655b9dd13"
+			};
+			if(stepComplete) {
+				accessRecord.workflow.steps[activeStepIndex].active = false;
+				accessRecord.workflow.steps[activeStepIndex].endDateTime = new Date();
+				if(finalStep) {
+					// Move into final review phase (Camunda) set up payload 
+					bmpContext = { 
+						...bmpContext, 
+						finalPhaseApproved: true 
+					};
+				} else {
+					// Move to next step
+					accessRecord.workflow.steps[activeStepIndex+1].active = true;
+					accessRecord.workflow.steps[activeStepIndex+1].startDateTime = new Date();
+					// Get details for next step
+					let { name: dataRequestPublisher } = accessRecord.publisherObj;
+					let nextStep = accessRecord.workflow.steps[activeStepIndex+1];
+					let reviewerList = nextStep.reviewers.map((reviewer) => reviewer._id.toString());
+					let { stepName: dataRequestStepName } = nextStep;
+					// Create payload for Camunda
+					bmpContext = { 
+						...bmpContext,
+						dataRequestPublisher,
+						dataRequestStepName,
+						notifyReviewerSLA: workflowController.calculateStepDeadlineReminderDate(
+							nextStep
+						),
+						phaseApproved: true,
+						reviewerList
+					};
+				}
+			}
+			// 13. Update MongoDb record for DAR
+			await accessRecord.save(async (err) => {
+				if (err) {
+					console.error(err);
+					res.status(500).json({ status: 'error', message: err });
+				} else {
+					// Call Camunda controller to update workflow process
+					bpmController.postCompleteReview(bmpContext);
+				}
+			});
+			// 14. Return aplication and successful response
+			return res
+				.status(200)
+				.json({ status: 'success', data: accessRecord._doc });
+		} catch (err) {
+			console.log(err.message);
+			res.status(500).json({ status: 'error', message: err });
 		}
 	},
 
