@@ -675,12 +675,12 @@ module.exports = {
 					});
 				} else {
 					// 13. Contact Camunda to start workflow process
-					let { name: publisher } = accessRecord.datasets[0].publisher;
+					let { name: dataRequestPublisher } = accessRecord.datasets[0].publisher;
 					let reviewerList = workflowObj.steps[0].reviewers.map((reviewer) => reviewer._id.toString());
 					let bpmContext = {
 						businessKey: id,
 						dataRequestStatus: 'inReview',
-						dataRequestUserId: userId,
+						dataRequestUserId: userId.toString(),
 						dataRequestPublisher,
 						dataRequestStepName: workflowObj.steps[0].stepName,
 						notifyReviewerSLA: workflowController.calculateStepDeadlineReminderDate(
