@@ -140,39 +140,23 @@ module.exports = {
             "dataRequestPublisher": publisher,
             "managerApproved": true
         }
-        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`)
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`, data)
         .catch((err) => {
             console.error(err);
         })
     },
     postStartStepReview: async (bpmContext) => {
         //Start Step-Review process
-        let { applicationStatus, actioner, publisher, stepName, reminderDateTime, reviewers, businessKey } = bpmContext;
-        let data = {
-            "dataRequestStatus": applicationStatus,
-            "dataRequestUserId": actioner,
-            "dataRequestPublisher": publisher,
-            "dataRequestStepName": stepName,
-            "notifyReviewerSLA": reminderDateTime,
-            "reviewerList": reviewers
-        }
-        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/complete/review/${businessKey}`, data)
+        let { businessKey } = bpmContext;
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/complete/review/${businessKey}`, bpmContext)
             .catch((err) => {
                 console.error(err);
             });
     },
-    postStartNextStep: async (bpmContext) => {
+    postCompleteReview: async (bpmContext) => {
         //Start Next-Step process
-        let { userId, publisher = "", stepName = "", notifyReviewerSLA = "", phaseApproved = false, reviewerList = [], businessKey } = bpmContext;
-        let data = {
-            "dataRequestUserId": userId,
-            "dataRequestPublisher": publisher,
-            "dataRequestStepName": stepName,
-            "notifyReviewerSLA": notifyReviewerSLA,
-            "phaseApproved": phaseApproved,
-            "reviewerList": reviewerList
-        }
-        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/reviewer/complete/${businessKey}`, data)
+        let { businessKey } = bpmContext;
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/reviewer/complete/${businessKey}`, bpmContext)
         .catch((err) => {
             console.error(err);
         });
