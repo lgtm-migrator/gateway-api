@@ -26,8 +26,13 @@ const _generateFriendlyId = (id) => {
 		.join('-');
 };
 
+const _generatedNumericId = () => {
+	return parseInt(Math.random().toString().replace('0.', ''));
+}
+
 export default {
 	censorEmail: _censorEmail,
-  arraysEqual: _arraysEqual,
-  generateFriendlyId: _generateFriendlyId
+  	arraysEqual: _arraysEqual,
+	generateFriendlyId: _generateFriendlyId,
+	generatedNumericId: _generatedNumericId
 };

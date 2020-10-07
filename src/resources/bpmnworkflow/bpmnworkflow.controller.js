@@ -6,10 +6,18 @@ axiosRetry(axios, { retries: 3, retryDelay: () => {
     return 3000;
   }});
 
+const bpmnBaseUrl = process.env.BPMNBASEURL;
+
 module.exports = {
-    postCreateProcess: async (bmpContext) => {
+    //Generic Get Task Process Endpoints
+    getProcess: async (businessKey) => {
+        return await axios.get(`${bpmnBaseUrl}/engine-rest/task?processInstanceBusinessKey=${businessKey.toString()}`);
+    },
+
+    //Simple Workflow Endpoints
+    postCreateProcess: async (bpmContext) => {
         // Create Axios requet to start Camunda process
-        let { applicationStatus, dateSubmitted, publisher, actioner, businessKey } = bmpContext;
+        let { applicationStatus, dateSubmitted, publisher, actioner, businessKey } = bpmContext;
         let data = {
             "variables": {
                 "applicationStatus": {
@@ -31,14 +39,14 @@ module.exports = {
             },
             "businessKey": businessKey.toString()
         }
-        await axios.post(`${process.env.BPMNBASEURL}/engine-rest/process-definition/key/GatewayWorkflowSimple/start`, data)
+        await axios.post(`${bpmnBaseUrl}/engine-rest/process-definition/key/GatewayWorkflowSimple/start`, data)
             .catch((err) => { 
                 console.error(err);
             });
     },
-    postUpdateProcess: async (bmpContext) => {
+    postUpdateProcess: async (bpmContext) => {
         // Create Axios requet to start Camunda process
-        let { taskId, applicationStatus, dateSubmitted, publisher, actioner, archived } = bmpContext;
+        let { taskId, applicationStatus, dateSubmitted, publisher, actioner, archived } = bpmContext;
         let data = {
             "variables": {
                 "applicationStatus": {
@@ -63,12 +71,88 @@ module.exports = {
                 }
             }
         }
-        await axios.post(`${process.env.BPMNBASEURL}/engine-rest/task/${taskId}/complete`, data)
+        await axios.post(`${bpmnBaseUrl}/engine-rest/task/${taskId}/complete`, data)
             .catch((err) => { 
                 console.error(err);
             });
     },
-    getProcess: async (businessKey) => {
-        return await axios.get(`${process.env.BPMNBASEURL}/engine-rest/task?processInstanceBusinessKey=${businessKey.toString()}`);
+
+    //Complex Workflow Endpoints
+    postStartPreReview: async (bpmContext) => {
+        //Start pre-review process
+        let { applicationStatus, dateSubmitted, publisher, businessKey } = bpmContext;
+        let data = {
+            "variables": {
+                "applicationStatus": {
+                    "value": applicationStatus,
+                    "type": "String"
+                },
+                "dateSubmitted": {
+                    "value": dateSubmitted,
+                    "type": "String"
+                },
+                "publisher": {
+                    "value": publisher,
+                    "type": "String"
+                }
+            },
+            "businessKey": businessKey.toString()
+        }
+        await axios.post(`${bpmnBaseUrl}/engine-rest/process-definition/key/GatewayReviewWorkflowComplex/start`, data)
+            .catch((err) => {
+                console.error(err);
+            });
+    },
+    postStartManagerReview: async (bpmContext) => {
+        // Start manager-review process
+        let { applicationStatus, managerId, publisher, notifyManager, taskId } = bpmContext;
+        let data = {
+            "variables": {
+                "applicationStatus": {
+                    "value": applicationStatus,
+                    "type": "String"
+                },
+                "userId": {
+                    "value": managerId,
+                    "type": "String"
+                },
+                "publisher": {
+                    "value": publisher,
+                    "type": "String"
+                },
+                "notifyManager": {
+                    "value": notifyManager,
+                    "type": "String"
+                }
+            }
+        }
+        await axios.post(`${bpmnBaseUrl}/engine-rest/task/${taskId}/complete`, data)
+            .catch((err) => { 
+                console.error(err);
+            });
+    },
+    postManagerApproval: async (bpmContext) => {
+        // Manager has approved sectoin
+        let { businessKey } = bpmContext;
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`, bpmContext)
+        .catch((err) => {
+            console.error(err);
+        })
+    },
+    postStartStepReview: async (bpmContext) => {
+        //Start Step-Review process
+        let { businessKey } = bpmContext;
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/complete/review/${businessKey}`, bpmContext)
+            .catch((err) => {
+                console.error(err);
+            });
+    },
+    postCompleteReview: async (bpmContext) => {
+        //Start Next-Step process
+        let { businessKey } = bpmContext;
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/reviewer/complete/${businessKey}`, bpmContext)
+        .catch((err) => {
+            console.error(err);
+        });
     }
 }
