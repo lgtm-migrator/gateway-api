@@ -105,7 +105,7 @@ module.exports = {
     },
     postStartManagerReview: async (bpmContext) => {
         // Start manager-review process
-        let { applicationStatus, managerId, publisher, notifyManager } = bpmContext;
+        let { applicationStatus, managerId, publisher, notifyManager, taskId } = bpmContext;
         let data = {
             "variables": {
                 "applicationStatus": {
@@ -133,14 +133,8 @@ module.exports = {
     },
     postManagerApproval: async (bpmContext) => {
         // Manager has approved sectoin
-        let { applicationStatus, managerId, publisher } = bpmContext;
-        let data = {
-            "dataRequestStatus": applicationStatus,
-            "dataRequestManagerId": managerId,
-            "dataRequestPublisher": publisher,
-            "managerApproved": true
-        }
-        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`, data)
+        let { businessKey } = bpmContext;
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`, bpmContext)
         .catch((err) => {
             console.error(err);
         })

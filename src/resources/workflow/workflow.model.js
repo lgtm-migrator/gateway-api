@@ -20,6 +20,7 @@ const StepSchema = new Schema({
   reminderOffset: { type: Number, required: true, default: 3 }, // Number of days before deadline that SLAs are triggered by Camunda
   // Items below not required for step definition
   active: { type: Boolean, default: false },
+  completed: { type: Boolean, default: false },
   startDateTime: { type: Date },
   endDateTime: { type: Date },
   recommendations: [{

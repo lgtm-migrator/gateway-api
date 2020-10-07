@@ -347,5 +347,47 @@ module.exports = {
 			}
 		})
 		return managerExists;
+	},
+
+	buildNextStep: (userId, application, activeStepIndex, override) => {
+		// Check the current position of the application within its assigned workflow
+		const finalStep = activeStepIndex === application.workflow.steps.length -1;
+		const requiredReviews = application.workflow.steps[activeStepIndex].reviewers.length;
+		const completedReviews = application.workflow.steps[activeStepIndex].recommendations.length;
+		const stepComplete = completedReviews === requiredReviews;
+		// Establish base payload for Camunda
+		// (1) phaseApproved is passed as true when the manager is overriding the current step/phase
+		//		this short circuits the review process in the workflow and closes any remaining user tasks 
+		//		i.e. reviewers within the active step
+		// (2) managerApproved is passed as true when the manager is approving the entire application 
+		//		from any point within the review process
+		// (3) finalPhaseApproved is passed as true when the final step is completed naturally through all
+		//		reviewers casting their votes
+		let bpmContext = { 
+			businessKey: application._id,
+			dataRequestUserId: userId.toString(),
+			managerApproved: override,
+			phaseApproved: (override && !finalStep) || stepComplete,
+			finalPhaseApproved: finalStep,
+			stepComplete
+		}
+		if(!finalStep) {
+			// Extract the information for the next step defintion
+			let { name: dataRequestPublisher } = application.publisherObj;
+			let nextStep = application.workflow.steps[activeStepIndex+1];
+			let reviewerList = nextStep.reviewers.map((reviewer) => reviewer._id.toString());
+			let { stepName: dataRequestStepName } = nextStep;
+			// Update Camunda payload with the next step information
+			bpmContext = { 
+				...bpmContext,
+				dataRequestPublisher,
+				dataRequestStepName,
+				notifyReviewerSLA: module.exports.calculateStepDeadlineReminderDate(
+					nextStep
+				),
+				reviewerList
+			};
+		}
+		return bpmContext;
 	}
 };

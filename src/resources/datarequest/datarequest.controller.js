@@ -398,21 +398,29 @@ module.exports = {
 				applicationStatusDesc = '';
 
 			// 3. Find the relevant data request application
-			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
-				path: 'datasets dataset mainApplicant authors',
-				populate: {
-					path: 'publisher additionalInfo',
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+				{
+					path: 'datasets dataset mainApplicant authors',
 					populate: {
-						path: 'team',
+						path: 'publisher additionalInfo',
 						populate: {
-							path: 'users',
+							path: 'team',
 							populate: {
-								path: 'additionalInfo',
+								path: 'users',
+								populate: {
+									path: 'additionalInfo',
+								},
 							},
 						},
 					},
 				},
-			});
+				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
+					},
+				},
+			]);
 			if (!accessRecord) {
 				return res
 					.status(404)
@@ -447,8 +455,25 @@ module.exports = {
 			let newAuthors = [];
 
 			// 6. Extract new application status and desc to save updates
-			// If custodian, allow updated to application status and description
 			if (userType === userTypes.CUSTODIAN) {
+				// Only a custodian manager can set the final status of an application
+				authorised = false;
+				if (_.has(accessRecord.publisherObj.toObject(), 'team')) {
+					let {
+						publisherObj: { team },
+					} = accessRecord;
+					authorised = teamController.checkTeamPermissions(
+						teamController.roleTypes.MANAGER,
+						team.toObject(),
+						_id
+					);
+				}
+				if (!authorised) {
+					return res
+						.status(401)
+						.json({ status: 'failure', message: 'Unauthorised' });
+				}
+				// Extract params from body
 				({ applicationStatus, applicationStatusDesc } = req.body);
 				const finalStatuses = [
 					'submitted',
@@ -457,10 +482,7 @@ module.exports = {
 					'approved with conditions',
 					'withdrawn',
 				];
-				if (
-					applicationStatus &&
-					applicationStatus !== accessRecord.applicationStatus
-				) {
+				if (applicationStatus) {
 					accessRecord.applicationStatus = applicationStatus;
 
 					if (finalStatuses.includes(applicationStatus)) {
@@ -468,11 +490,29 @@ module.exports = {
 					}
 					isDirty = true;
 					statusChange = true;
+
+					// Update any attached workflow in Mongo to show workflow is finished
+					let { workflow = {} } = accessRecord;
+					if (!_.isEmpty(workflow)) {
+						accessRecord.workflow.steps = accessRecord.workflow.steps.map(
+							(step) => {
+								let updatedStep = {
+									...step.toObject(),
+									active: false,
+								};
+								if (step.active) {
+									updatedStep = {
+										...updatedStep,
+										endDateTime: new Date(),
+										completed: true,
+									};
+								}
+								return updatedStep;
+							}
+						);
+					}
 				}
-				if (
-					applicationStatusDesc &&
-					applicationStatusDesc !== accessRecord.applicationStatusDesc
-				) {
+				if (applicationStatusDesc) {
 					accessRecord.applicationStatusDesc = inputSanitizer.removeNonBreakingSpaces(
 						applicationStatusDesc
 					);
@@ -492,7 +532,6 @@ module.exports = {
 					}
 				}
 			}
-
 			// 7. If a change has been made, notify custodian and main applicant
 			if (isDirty) {
 				await accessRecord.save(async (err) => {
@@ -510,41 +549,30 @@ module.exports = {
 								req.user
 							);
 						}
-						// Send notifications to custodian team, main applicant and contributors regarding status change
 						if (statusChange) {
+							// Send notifications to custodian team, main applicant and contributors regarding status change
 							await module.exports.createNotifications(
 								'StatusChange',
 								{ applicationStatus, applicationStatusDesc },
 								accessRecord,
 								req.user
 							);
-						}
-						// Update workflow process if publisher requires it
-						if (accessRecord.datasets[0].publisher.workflowEnabled) {
-							// Call Camunda controller to get current workflow process for application
-							let response = await bpmController.getProcess(id);
-							let { data = {} } = response;
-							if (!_.isEmpty(data)) {
-								let [obj] = data;
-								let { id: taskId } = obj;
-
-								// Call Camunda to update workflow process for application
-								let { name: publisher } = accessRecord.datasets[0].publisher;
-								let bmpContext = {
-									taskId,
-									dateSubmitted: new Date(),
-									applicationStatus,
-									publisher,
-									actioner: _id,
-									archived: false,
-								};
-								await bpmController.postUpdateProcess(bmpContext);
-							}
+							// Ensure Camunda ends workflow processes given that manager has made final decision
+							let {
+								name: dataRequestPublisher,
+							} = accessRecord.datasets[0].publisher;
+							let bpmContext = {
+								dataRequestStatus: applicationStatus,
+								dataRequestManagerId: _id.toString(),
+								dataRequestPublisher,
+								managerApproved: true,
+								businessKey: id,
+							};
+							bpmController.postManagerApproval(bpmContext);
 						}
 					}
 				});
 			}
-
 			// 8. Return application
 			return res.status(200).json({
 				status: 'success',
@@ -581,7 +609,7 @@ module.exports = {
 				populate: {
 					path: 'publisher additionalInfo',
 					populate: {
-						path: 'team'
+						path: 'team',
 					},
 				},
 			});
@@ -614,7 +642,9 @@ module.exports = {
 			}
 			// 6. Check publisher allows workflows
 			let workflowEnabled = false;
-			if (_.has(accessRecord.datasets[0].toObject(), 'publisher.workflowEnabled')) {
+			if (
+				_.has(accessRecord.datasets[0].toObject(), 'publisher.workflowEnabled')
+			) {
 				({
 					publisher: { workflowEnabled },
 				} = accessRecord.datasets[0]);
@@ -675,8 +705,12 @@ module.exports = {
 					});
 				} else {
 					// 13. Contact Camunda to start workflow process
-					let { name: dataRequestPublisher } = accessRecord.datasets[0].publisher;
-					let reviewerList = workflowObj.steps[0].reviewers.map((reviewer) => reviewer._id.toString());
+					let {
+						name: dataRequestPublisher,
+					} = accessRecord.datasets[0].publisher;
+					let reviewerList = workflowObj.steps[0].reviewers.map((reviewer) =>
+						reviewer._id.toString()
+					);
 					let bpmContext = {
 						businessKey: id,
 						dataRequestStatus: 'inReview',
@@ -686,7 +720,7 @@ module.exports = {
 						notifyReviewerSLA: workflowController.calculateStepDeadlineReminderDate(
 							workflowObj.steps[0]
 						),
-						reviewerList
+						reviewerList,
 					};
 					bpmController.postStartStepReview(bpmContext);
 					// 14. TODO Create notifications for workflow assigned (step 1 reviewers and other managers)
@@ -705,6 +739,89 @@ module.exports = {
 		}
 	},
 
+	//PUT api/v1/data-access-request/:id/startreview
+	updateAccessRequestStartReview: async (req, res) => {
+		try {
+			// 1. Get the required request params
+			const {
+				params: { id },
+			} = req;
+			let { _id: userId } = req.user;
+			// 2. Retrieve DAR from database
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
+				},
+			});
+			if (!accessRecord) {
+				return res
+					.status(404)
+					.json({ status: 'error', message: 'Application not found.' });
+			}
+			// 3. Check permissions of user is reviewer of associated team
+			let authorised = false;
+			if (_.has(accessRecord.toObject(), 'publisherObj.team')) {
+				let { team } = accessRecord.publisherObj;
+				authorised = teamController.checkTeamPermissions(
+					teamController.roleTypes.MANAGER,
+					team.toObject(),
+					userId
+				);
+			}
+			// 4. Refuse access if not authorised
+			if (!authorised) {
+				return res
+					.status(401)
+					.json({ status: 'failure', message: 'Unauthorised' });
+			}
+			// 5. Check application is in submitted state
+			let { applicationStatus } = accessRecord;
+			if (applicationStatus !== 'submitted') {
+				return res.status(400).json({
+					success: false,
+					message:
+						'The application status must be set to submitted to start a review',
+				});
+			}
+			// 6. Update application to 'in review'
+			accessRecord.applicationStatus = 'inReview';
+			accessRecord.dateReviewStart = new Date();
+			// 7. Save update to access record
+			await accessRecord.save(async (err) => {
+				if (err) {
+					console.error(err);
+					res.status(500).json({ status: 'error', message: err });
+				} else {
+					// 8. Call Camunda controller to get pre-review process
+					let response = await bpmController.getProcess(id);
+					let { data = {} } = response;
+					if (!_.isEmpty(data)) {
+						let [obj] = data;
+						let { id: taskId } = obj;
+						let {
+							publisherObj: { name },
+						} = accessRecord;
+						let bpmContext = {
+							taskId,
+							applicationStatus,
+							managerId: userId.toString(),
+							publisher: name,
+							notifyManager: 'P999D',
+						};
+						// 9. Call Camunda controller to start manager review process
+						bpmController.postStartManagerReview(bpmContext);
+					}
+				}
+			});
+			// 14. Return aplication and successful response
+			return res.status(200).json({ status: 'success' });
+		} catch (err) {
+			console.log(err.message);
+			res.status(500).json({ status: 'error', message: err });
+		}
+	},
+
 	//PUT api/v1/data-access-request/:id/vote
 	updateAccessRequestReviewVote: async (req, res) => {
 		try {
@@ -717,15 +834,14 @@ module.exports = {
 			if (_.isUndefined(approved) || _.isEmpty(comments)) {
 				return res.status(400).json({
 					success: false,
-					message:
-						'You must supply the approved status with a reason',
+					message: 'You must supply the approved status with a reason',
 				});
 			}
 			// 2. Retrieve DAR from database
 			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
 				path: 'publisherObj',
 				populate: {
-					path: 'team'
+					path: 'team',
 				},
 			});
 			if (!accessRecord) {
@@ -736,9 +852,7 @@ module.exports = {
 			// 3. Check permissions of user is reviewer of associated team
 			let authorised = false;
 			if (_.has(accessRecord.toObject(), 'publisherObj.team')) {
-				let {
-					team
-				} = accessRecord.publisherObj;
+				let { team } = accessRecord.publisherObj;
 				authorised = teamController.checkTeamPermissions(
 					teamController.roleTypes.REVIEWER,
 					team.toObject(),
@@ -762,7 +876,7 @@ module.exports = {
 			}
 			// 6. Ensure a workflow has been attached to this application
 			let { workflow } = accessRecord;
-			if(!workflow) {
+			if (!workflow) {
 				return res.status(400).json({
 					success: false,
 					message:
@@ -772,26 +886,24 @@ module.exports = {
 			// 7. Ensure the requesting user is expected to cast a vote
 			let { steps } = workflow;
 			let activeStepIndex = steps.findIndex((step) => {
-			 	return step.active === true;
-			})
-			if(!steps[activeStepIndex].reviewers.includes(userId)) {
+				return step.active === true;
+			});
+			if (!steps[activeStepIndex].reviewers.includes(userId)) {
 				return res.status(400).json({
 					success: false,
-					message:
-						'You have not been assigned to vote on this review phase',
+					message: 'You have not been assigned to vote on this review phase',
 				});
 			}
 			//8. Ensure the requesting user has not already voted
 			let { recommendations = [] } = steps[activeStepIndex];
-			if(recommendations) {
+			if (recommendations) {
 				let found = recommendations.some((rec) => {
 					return rec.reviewer.equals(userId);
 				});
-				if(found) {
+				if (found) {
 					return res.status(400).json({
 						success: false,
-						message:
-							'You have already voted on this review phase',
+						message: 'You have already voted on this review phase',
 					});
 				}
 			}
@@ -799,65 +911,146 @@ module.exports = {
 			let newRecommendation = {
 				approved,
 				comments,
-				reviewer: new mongoose.Types.ObjectId(userId)
-			}
-			// 10. Update access record with recommendation
-			accessRecord.workflow.steps[activeStepIndex].recommendations = [...accessRecord.workflow.steps[activeStepIndex].recommendations, newRecommendation];
-			// 11. Check if access record now has the required number of reviewers and set completed state for phase
-			const requiredReviews = accessRecord.workflow.steps[activeStepIndex].reviewers.length;
-			const completedReviews = accessRecord.workflow.steps[activeStepIndex].recommendations.length;
-			const stepComplete = completedReviews === requiredReviews;
-			const finalStep = activeStepIndex === accessRecord.workflow.steps.length -1;
-			// 12. Workflow management - construct Camunda payloads
-			let bmpContext = {
-				businessKey: id,
-				dataRequestUserId: userId.toString()
+				reviewer: new mongoose.Types.ObjectId(userId),
 			};
-			if(stepComplete) {
+			// 10. Update access record with recommendation
+			accessRecord.workflow.steps[activeStepIndex].recommendations = [
+				...accessRecord.workflow.steps[activeStepIndex].recommendations,
+				newRecommendation,
+			];
+			// 11. Workflow management - construct Camunda payloads
+			let bpmContext = workflowController.buildNextStep(
+				userId,
+				accessRecord,
+				activeStepIndex,
+				false
+			);
+			// 12. If step is now complete, update database record
+			if (bpmContext.stepComplete) {
 				accessRecord.workflow.steps[activeStepIndex].active = false;
+				accessRecord.workflow.steps[activeStepIndex].completed = true;
 				accessRecord.workflow.steps[activeStepIndex].endDateTime = new Date();
-				if(finalStep) {
-					// Move into final review phase (Camunda) set up payload 
-					bmpContext = { 
-						...bmpContext, 
-						finalPhaseApproved: true 
-					};
-				} else {
-					// Move to next step
-					accessRecord.workflow.steps[activeStepIndex+1].active = true;
-					accessRecord.workflow.steps[activeStepIndex+1].startDateTime = new Date();
-					// Get details for next step
-					let { name: dataRequestPublisher } = accessRecord.publisherObj;
-					let nextStep = accessRecord.workflow.steps[activeStepIndex+1];
-					let reviewerList = nextStep.reviewers.map((reviewer) => reviewer._id.toString());
-					let { stepName: dataRequestStepName } = nextStep;
-					// Create payload for Camunda
-					bmpContext = { 
-						...bmpContext,
-						dataRequestPublisher,
-						dataRequestStepName,
-						notifyReviewerSLA: workflowController.calculateStepDeadlineReminderDate(
-							nextStep
-						),
-						phaseApproved: true,
-						reviewerList
-					};
-				}
 			}
-			// 13. Update MongoDb record for DAR
+			// 13. If it was not the final phase that was completed, move to next step in database
+			if (!bpmContext.finalPhaseApproved) {
+				accessRecord.workflow.steps[activeStepIndex + 1].active = true;
+				accessRecord.workflow.steps[
+					activeStepIndex + 1
+				].startDateTime = new Date();
+			}
+			// 14. Update MongoDb record for DAR
 			await accessRecord.save(async (err) => {
 				if (err) {
 					console.error(err);
 					res.status(500).json({ status: 'error', message: err });
 				} else {
 					// Call Camunda controller to update workflow process
-					bpmController.postCompleteReview(bmpContext);
+					bpmController.postCompleteReview(bpmContext);
 				}
 			});
-			// 14. Return aplication and successful response
+			// 15. Return aplication and successful response
 			return res
 				.status(200)
 				.json({ status: 'success', data: accessRecord._doc });
+		} catch (err) {
+			console.log(err.message);
+			res.status(500).json({ status: 'error', message: err });
+		}
+	},
+
+	//PUT api/v1/data-access-request/:id/stepoverride
+	updateAccessRequestStepOverride: async (req, res) => {
+		try {
+			// 1. Get the required request params
+			const {
+				params: { id },
+			} = req;
+			let { _id: userId } = req.user;
+			// 2. Retrieve DAR from database
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
+				},
+			});
+			if (!accessRecord) {
+				return res
+					.status(404)
+					.json({ status: 'error', message: 'Application not found.' });
+			}
+			// 3. Check permissions of user is reviewer of associated team
+			let authorised = false;
+			if (_.has(accessRecord.toObject(), 'publisherObj.team')) {
+				let { team } = accessRecord.publisherObj;
+				authorised = teamController.checkTeamPermissions(
+					teamController.roleTypes.MANAGER,
+					team.toObject(),
+					userId
+				);
+			}
+			// 4. Refuse access if not authorised
+			if (!authorised) {
+				return res
+					.status(401)
+					.json({ status: 'failure', message: 'Unauthorised' });
+			}
+			// 5. Check application is in review state
+			let { applicationStatus } = accessRecord;
+			if (applicationStatus !== 'inReview') {
+				return res.status(400).json({
+					success: false,
+					message: 'The application status must be set to in review',
+				});
+			}
+			// 6. Check a workflow is assigned with valid steps
+			let { workflow = {} } = accessRecord;
+			let { steps = [] } = workflow;
+			if (_.isEmpty(workflow) || _.isEmpty(steps)) {
+				return res.status(400).json({
+					success: false,
+					message: 'A valid workflow has not been attached to this application',
+				});
+			}
+			// 7. Get the attached active workflow step
+			let activeStepIndex = steps.findIndex((step) => {
+				return step.active === true;
+			});
+			if (activeStepIndex === -1) {
+				return res.status(400).json({
+					success: false,
+					message: 'There is no active step to override for this workflow',
+				});
+			}
+			// 8. Update the step to be completed closing off end date/time
+			accessRecord.workflow.steps[activeStepIndex].active = false;
+			accessRecord.workflow.steps[activeStepIndex].completed = true;
+			accessRecord.workflow.steps[activeStepIndex].endDateTime = new Date();
+			// 9. Set up Camunda payload
+			let bpmContext = workflowController.buildNextStep(
+				userId,
+				accessRecord,
+				activeStepIndex,
+				true
+			);
+			// 10. If it was not the final phase that was completed, move to next step
+			if (!bpmContext.finalPhaseApproved) {
+				accessRecord.workflow.steps[activeStepIndex + 1].active = true;
+				accessRecord.workflow.steps[
+					activeStepIndex + 1
+				].startDateTime = new Date();
+			}
+			// 11. Save changes to the DAR
+			await accessRecord.save(async (err) => {
+				if (err) {
+					console.error(err);
+					res.status(500).json({ status: 'error', message: err });
+				} else {
+					// 12. Call Camunda controller to start manager review process
+					bpmController.postCompleteReview(bpmContext);
+				}
+			});
+			// 13. Return aplication and successful response
+			return res.status(200).json({ status: 'success' });
 		} catch (err) {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err });
@@ -873,7 +1066,7 @@ module.exports = {
 			} = req;
 			// 2. Find the relevant data request application
 			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
-				path: 'datasets dataset mainApplicant authors',
+				path: 'datasets dataset mainApplicant authors publisherObj',
 				populate: {
 					path: 'publisher additionalInfo',
 					populate: {
@@ -921,16 +1114,16 @@ module.exports = {
 					// Start workflow process if publisher requires it
 					if (accessRecord.datasets[0].publisher.workflowEnabled) {
 						// Call Camunda controller to start workflow for submitted application
-						let { name: publisher } = accessRecord.datasets[0].publisher;
-						let { _id: userId } = req.user;
-						let bmpContext = {
+						let {
+							publisherObj: { name: publisher },
+						} = accessRecord;
+						let bpmContext = {
 							dateSubmitted,
 							applicationStatus: 'submitted',
 							publisher,
 							businessKey: id,
-							actioner: userId,
 						};
-						bpmController.postCreateProcess(bmpContext);
+						bpmController.postStartPreReview(bpmContext);
 					}
 				}
 			});
