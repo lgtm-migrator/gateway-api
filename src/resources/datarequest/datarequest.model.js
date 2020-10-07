@@ -38,6 +38,9 @@ const DataRequestSchema = new Schema({
   dateFinalStatus: {
     type: Date
   },
+  dateReviewStart: {
+    type: Date
+  },
   publisher: {
     type: String,
     default: ""
