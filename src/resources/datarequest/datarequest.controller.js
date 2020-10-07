@@ -124,7 +124,12 @@ module.exports = {
 			) {
 				readOnly = false;
 			}
-			// 7. Return application form
+			// 7. Set the review mode if user is a custodian reviewing the current step
+			let { inReviewMode, reviewSections } = module.exports.getReviewStatus(
+				accessRecord,
+				req.user._id
+			);
+			// 8. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -138,6 +143,8 @@ module.exports = {
 					projectId:
 						accessRecord.projectId ||
 						helper.generateFriendlyId(accessRecord._id),
+					inReviewMode,
+					reviewSections,
 				},
 			});
 		} catch (err) {
@@ -234,6 +241,8 @@ module.exports = {
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: 'applicant',
+					inReviewMode: false,
+					reviewSections: [],
 				},
 			});
 		} catch (err) {
@@ -331,6 +340,8 @@ module.exports = {
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: 'applicant',
+					inReviewMode: false,
+					reviewSections: [],
 				},
 			});
 		} catch (err) {
@@ -1556,5 +1567,34 @@ module.exports = {
 				return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
+	},
+
+	getReviewStatus: (application, userId) => {
+		let inReviewMode = false,
+			reviewSections = [],
+			isActiveStepReviewer = false;
+		// Get current application status
+		let { applicationStatus } = application;
+		// Check if the current user is a reviewer on the current step of an attached workflow
+		let { workflow = {} } = application;
+		if (!_.isEmpty(workflow)) {
+			let { steps } = workflow;
+			let activeStep = steps.find((step) => {
+				return step.active === true;
+			});
+			if (activeStep) {
+				isActiveStepReviewer = activeStep.reviewers.some(
+					(reviewer) => reviewer.toString() === userId.toString()
+				);
+				reviewSections = [...activeStep.sections];
+			}
+		}
+		// Return active review mode if conditions apply
+		if (applicationStatus === 'inReview' && isActiveStepReviewer) {
+			inReviewMode = true;
+			reviewSections;
+		}
+
+		return { inReviewMode, reviewSections };
 	},
 };
