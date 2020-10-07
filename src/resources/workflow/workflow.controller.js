@@ -358,7 +358,7 @@ module.exports = {
 		// Establish base payload for Camunda
 		// (1) phaseApproved is passed as true when the manager is overriding the current step/phase
 		//		this short circuits the review process in the workflow and closes any remaining user tasks 
-		//		i.e. reviewers within the active step
+		//		i.e. reviewers within the active step OR when the last reviewer in the step submits a vote
 		// (2) managerApproved is passed as true when the manager is approving the entire application 
 		//		from any point within the review process
 		// (3) finalPhaseApproved is passed as true when the final step is completed naturally through all
