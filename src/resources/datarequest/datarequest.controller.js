@@ -1498,8 +1498,74 @@ module.exports = {
 	},
 
 	createApplicationDTO: (app) => {
-		let projectName = '';
-		let applicants = '';
+		let projectName = "",
+			applicants = "",
+			workflowName = "",
+			workflowCompleted = false,
+			reviewStatus = "",
+			deadlinePassed = false,
+			activeStepName = "",
+			remainingActioners = [],
+			decisionDuration = "",
+			managerUsers = [];
+
+		// Check if the application has a workflow assigned
+		let { workflow = {}, applicationStatus } = app;
+		if(_.has(app, 'publisherObj.team.members')) {
+			let { publisherObj: { team: { members, users }}} = app;
+			let managers = members.filter(mem => {
+				return mem.roles.includes('manager');
+			});
+			managerUsers = users.filter(
+				(user) =>
+					managers.some(
+						(manager) => manager.memberid.toString() === user._id.toString()
+					)
+			);
+			if(applicationStatus === 'submitted') {
+				remainingActioners = managerUsers;
+			}
+		};
+		if(!_.isEmpty(workflow)) {
+			({ workflowName } = workflow);
+			let { steps } = workflow;
+			workflowCompleted = steps.every((step) => { return step.completed });			
+			let activeStep = steps.find((step) => {
+				return step.active;
+			});
+			// Calculate active step status
+			if(activeStep) {
+				({ stepName: activeStepName } = activeStep);
+				//Get deadline status
+				let { deadline, startDateTime } = activeStep;
+				let deadlineDate = moment(startDateTime).add(deadline, "days");
+				let diff = parseInt(deadlineDate.diff(new Date(), "days"));
+				if (diff > 0) {
+					reviewStatus = `Deadline in ${diff} days`;
+				} else if (diff < 0) {
+					reviewStatus = `Deadline was ${Math.abs(diff)} days ago`;
+					deadlinePassed = true;
+				} else {
+					reviewStatus = `Deadline is today`;
+				}
+				//Remaining Actioners
+				let { reviewers = [], recommendations = [] } = activeStep;
+				remainingActioners = reviewers.filter(
+					(reviewer) =>
+						!recommendations.some(
+							(rec) => rec.reviewer.toString() === reviewer.toString()
+						)
+				);
+			} else if(_.isUndefined(activeStep) && applicationStatus === 'inReview') {
+				reviewStatus = 'Final decision required';
+				remainingActioners = managerUsers;
+			}
+			// Get decision duration if completed
+			let { dateFinalStatus, dateSubmitted } = app;
+			if(dateFinalStatus) {
+				decisionDuration = parseInt(moment(dateFinalStatus).diff(dateSubmitted, 'days'));
+			}
+		}
 
 		// Ensure backward compatibility with old single dataset DARs
 		if (_.isEmpty(app.datasets) || _.isUndefined(app.datasets)) {
@@ -1529,7 +1595,7 @@ module.exports = {
 			let { firstname, lastname } = app.mainApplicant;
 			applicants = `${firstname} ${lastname}`;
 		}
-		return { ...app, projectName, applicants, publisher };
+		return { ...app, projectName, applicants, publisher, workflowName, workflowCompleted, reviewStatus, activeStepName, remainingActioners, decisionDuration, deadlinePassed };
 	},
 
 	calculateAvgDecisionTime: (applications) => {
