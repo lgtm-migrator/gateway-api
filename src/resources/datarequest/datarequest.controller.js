@@ -129,7 +129,12 @@ module.exports = {
 				accessRecord,
 				req.user._id
 			);
-			// 8. Return application form
+			// 8. Get the workflow/voting status
+			let workflow = module.exports.getWorkflowStatus(
+				accessRecord
+			);
+
+			// 9. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -145,6 +150,7 @@ module.exports = {
 						helper.generateFriendlyId(accessRecord._id),
 					inReviewMode,
 					reviewSections,
+					workflow
 				},
 			});
 		} catch (err) {
@@ -1597,4 +1603,18 @@ module.exports = {
 
 		return { inReviewMode, reviewSections };
 	},
+
+	getWorkflowStatus: (application) => {
+		let { workflow = {} } = application;
+		if(!_.isEmpty(workflow)) {
+			let { workflowName, steps } = workflow;
+			workflow = {
+				workflowName,
+				steps,
+				completed
+			};
+		}
+
+		return workflow;
+	}
 };
