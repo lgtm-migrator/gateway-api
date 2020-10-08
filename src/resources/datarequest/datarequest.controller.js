@@ -130,9 +130,7 @@ module.exports = {
 				req.user._id
 			);
 			// 8. Get the workflow/voting status
-			let workflow = module.exports.getWorkflowStatus(
-				accessRecord
-			);
+			let workflow = module.exports.getWorkflowStatus(accessRecord.toObject());
 
 			// 9. Return application form
 			return res.status(200).json({
@@ -150,7 +148,7 @@ module.exports = {
 						helper.generateFriendlyId(accessRecord._id),
 					inReviewMode,
 					reviewSections,
-					workflow
+					workflow,
 				},
 			});
 		} catch (err) {
@@ -1515,72 +1513,56 @@ module.exports = {
 	},
 
 	createApplicationDTO: (app) => {
-		let projectName = "",
-			applicants = "",
-			workflowName = "",
+		let projectName = '',
+			applicants = '',
+			workflowName = '',
 			workflowCompleted = false,
-			reviewStatus = "",
-			deadlinePassed = false,
-			activeStepName = "",
+			reviewStatus = '',
 			remainingActioners = [],
-			decisionDuration = "",
-			managerUsers = [];
+			decisionDuration = '',
+			managerUsers = [],
+			activeStepStatus = {};
 
 		// Check if the application has a workflow assigned
 		let { workflow = {}, applicationStatus } = app;
-		if(_.has(app, 'publisherObj.team.members')) {
-			let { publisherObj: { team: { members, users }}} = app;
-			let managers = members.filter(mem => {
+		if (_.has(app, 'publisherObj.team.members')) {
+			let {
+				publisherObj: {
+					team: { members, users },
+				},
+			} = app;
+			let managers = members.filter((mem) => {
 				return mem.roles.includes('manager');
 			});
-			managerUsers = users.filter(
-				(user) =>
-					managers.some(
-						(manager) => manager.memberid.toString() === user._id.toString()
-					)
+			managerUsers = users.filter((user) =>
+				managers.some(
+					(manager) => manager.memberid.toString() === user._id.toString()
+				)
 			);
-			if(applicationStatus === 'submitted') {
+			if (applicationStatus === 'submitted') {
 				remainingActioners = managerUsers;
 			}
-		};
-		if(!_.isEmpty(workflow)) {
-			({ workflowName } = workflow);
-			let { steps } = workflow;
-			workflowCompleted = steps.every((step) => { return step.completed });			
-			let activeStep = steps.find((step) => {
-				return step.active;
-			});
-			// Calculate active step status
-			if(activeStep) {
-				({ stepName: activeStepName } = activeStep);
-				//Get deadline status
-				let { deadline, startDateTime } = activeStep;
-				let deadlineDate = moment(startDateTime).add(deadline, "days");
-				let diff = parseInt(deadlineDate.diff(new Date(), "days"));
-				if (diff > 0) {
-					reviewStatus = `Deadline in ${diff} days`;
-				} else if (diff < 0) {
-					reviewStatus = `Deadline was ${Math.abs(diff)} days ago`;
-					deadlinePassed = true;
-				} else {
-					reviewStatus = `Deadline is today`;
+			if (!_.isEmpty(workflow)) {
+				({ workflowName } = workflow);
+				workflowCompleted = module.exports.getWorkflowCompleted(workflow);
+				let activeStep = module.exports.getActiveWorkflowStep(workflow);
+				// Calculate active step status
+				if (activeStep) {
+					activeStepStatus = module.exports.getActiveStepStatus(activeStep, users);
+				} else if (
+					_.isUndefined(activeStep) &&
+					applicationStatus === 'inReview'
+				) {
+					activeStepStatus.reviewStatus = 'Final decision required';
+					remainingActioners = [...managerUsers];
 				}
-				//Remaining Actioners
-				let { reviewers = [], recommendations = [] } = activeStep;
-				remainingActioners = reviewers.filter(
-					(reviewer) =>
-						!recommendations.some(
-							(rec) => rec.reviewer.toString() === reviewer.toString()
-						)
-				);
-			} else if(_.isUndefined(activeStep) && applicationStatus === 'inReview') {
-				reviewStatus = 'Final decision required';
-				remainingActioners = managerUsers;
-			}
-			// Get decision duration if completed
-			let { dateFinalStatus, dateSubmitted } = app;
-			if(dateFinalStatus) {
-				decisionDuration = parseInt(moment(dateFinalStatus).diff(dateSubmitted, 'days'));
+				// Get decision duration if completed
+				let { dateFinalStatus, dateSubmitted } = app;
+				if (dateFinalStatus) {
+					decisionDuration = parseInt(
+						moment(dateFinalStatus).diff(dateSubmitted, 'days')
+					);
+				}
 			}
 		}
 
@@ -1612,7 +1594,17 @@ module.exports = {
 			let { firstname, lastname } = app.mainApplicant;
 			applicants = `${firstname} ${lastname}`;
 		}
-		return { ...app, projectName, applicants, publisher, workflowName, workflowCompleted, reviewStatus, activeStepName, remainingActioners, decisionDuration, deadlinePassed };
+		return {
+			...app,
+			projectName,
+			applicants,
+			publisher,
+			workflowName,
+			workflowCompleted,
+			decisionDuration,
+			remainingActioners,
+			...activeStepStatus,
+		};
 	},
 
 	calculateAvgDecisionTime: (applications) => {
@@ -1671,16 +1663,68 @@ module.exports = {
 	},
 
 	getWorkflowStatus: (application) => {
+		let workflowStatus = {};
 		let { workflow = {} } = application;
-		if(!_.isEmpty(workflow)) {
+		if (!_.isEmpty(workflow)) {
 			let { workflowName, steps } = workflow;
-			workflow = {
+			// Find the active step in steps
+			let activeStep = module.exports.getActiveWorkflowStep(workflow);
+			let activeStepIndex = steps.findIndex((step) => {
+				return step.active === true;
+			});
+			if(activeStep) {
+				let { reviewStatus } = module.exports.getActiveStepStatus(activeStep);
+				//Update active step with review status
+				steps[activeStepIndex] = {
+					...steps[activeStepIndex],
+					reviewStatus
+				}
+			}
+			workflowStatus = {
 				workflowName,
 				steps,
-				completed
+				isCompleted: module.exports.getWorkflowCompleted(workflow),
 			};
 		}
+		return workflowStatus;
+	},
 
-		return workflow;
+	getWorkflowCompleted: (workflow) => {
+		let { steps } = workflow;
+		return steps.every((step) => step.completed);
+	},
+
+	getActiveStepStatus: (activeStep, users = []) => {
+		let reviewStatus = '', deadlinePassed = false, remainingActioners = [];
+		let { stepName, deadline, startDateTime, reviewers = [], recommendations = [] } = activeStep;
+		let deadlineDate = moment(startDateTime).add(deadline, 'days');
+		let diff = parseInt(deadlineDate.diff(new Date(), 'days'));
+		if (diff > 0) {
+			reviewStatus = `Deadline in ${diff} days`;
+		} else if (diff < 0) {
+			reviewStatus = `Deadline was ${Math.abs(diff)} days ago`;
+			deadlinePassed = true;
+		} else {
+			reviewStatus = `Deadline is today`;
+		}
+		remainingActioners = reviewers.filter(
+			(reviewer) =>
+				!recommendations.some(
+					(rec) => rec.reviewer.toString() === reviewer.toString()
+				)
+		);
+		remainingActioners = users.filter((user) =>
+			remainingActioners.some(
+					(actioner) => actioner.toString() === user._id.toString()
+				)
+		);
+		return { stepName, remainingActioners, deadlinePassed, reviewStatus };
+	},
+
+	getActiveWorkflowStep: (workflow) => {
+		let { steps } = workflow;
+		return steps.find((step) => {
+			return step.active;
+		});
 	}
 };
