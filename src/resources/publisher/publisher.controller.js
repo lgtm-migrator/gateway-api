@@ -129,7 +129,18 @@ module.exports = {
 				],
 			})
 				.sort({ updatedAt: -1 })
-				.populate("datasets dataset mainApplicant");
+				.populate([{
+					path: 'datasets dataset mainApplicant'
+				}, { 
+					path: 'publisherObj', 
+					populate: { 
+						path: 'team', 
+						populate: {
+							path: 'users',
+							select: 'firstname lastname'
+						}
+					}
+				}]);
 
 			if (!isManager) {
 				applications = applications.filter((app) => {

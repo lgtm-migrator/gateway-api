@@ -103,4 +103,8 @@ module.exports = {
 		}
 		return false;
 	},
+
+	findTeamManagers: () => {
+
+	}
 };
