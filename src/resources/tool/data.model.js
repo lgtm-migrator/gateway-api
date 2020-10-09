@@ -57,7 +57,7 @@ const DataSchema = new Schema(
     organisation: String,
     showOrganisation: {type: Boolean, default: false },
 
-    //dataset related fields
+    //dataset related fields 
     datasetid: String,
     datasetfields: {
         publisher: String,
@@ -77,6 +77,7 @@ const DataSchema = new Schema(
         periodicity: String,
         populationSize: String,
         metadataquality : {},
+        datautility : {},
         metadataschema : {},
         technicaldetails : [],
         versionLinks: [],
