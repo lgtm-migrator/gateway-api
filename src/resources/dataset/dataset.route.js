@@ -3,7 +3,13 @@ import { Data } from '../tool/data.model'
 import { loadDataset, loadDatasets } from './dataset.service';
 import { getToolsAdmin } from '../tool/data.repository';
 const router = express.Router();
+const rateLimit = require("express-rate-limit");
 
+const datasetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour window
+    max: 10, // start blocking after 10 requests
+    message: "Too many calls have been made to this api from this IP, please try again after an hour"
+});
 
 router.post('/', async (req, res) => {
     //Check to see if header is in json format
@@ -27,6 +33,7 @@ router.post('/', async (req, res) => {
 // @access   Public
 router.get(
     '/pidList/',
+    datasetLimiter,
     async (req, res) => {
         var q = Data.find(
             { "type" : "dataset", "pid" : { "$exists" : true } }, 
