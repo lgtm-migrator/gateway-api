@@ -1517,11 +1517,12 @@ module.exports = {
 			applicants = '',
 			workflowName = '',
 			workflowCompleted = false,
-			reviewStatus = '',
 			remainingActioners = [],
 			decisionDuration = '',
 			managerUsers = [],
-			activeStepStatus = {};
+			stepName = '', 
+			deadlinePassed = '', 
+			reviewStatus = ''
 
 		// Check if the application has a workflow assigned
 		let { workflow = {}, applicationStatus } = app;
@@ -1538,9 +1539,11 @@ module.exports = {
 				managers.some(
 					(manager) => manager.memberid.toString() === user._id.toString()
 				)
-			);
+			).map((user) => { 
+				return `${user.firstname} ${user.lastname}`;
+			});
 			if (applicationStatus === 'submitted') {
-				remainingActioners = managerUsers;
+				remainingActioners = managerUsers.join(', ');
 			}
 			if (!_.isEmpty(workflow)) {
 				({ workflowName } = workflow);
@@ -1548,13 +1551,16 @@ module.exports = {
 				let activeStep = module.exports.getActiveWorkflowStep(workflow);
 				// Calculate active step status
 				if (activeStep) {
-					activeStepStatus = module.exports.getActiveStepStatus(activeStep, users);
+					({stepName = '', remainingActioners = [], deadlinePassed = '', reviewStatus = ''} = module.exports.getActiveStepStatus(
+						activeStep,
+						users
+					));
 				} else if (
 					_.isUndefined(activeStep) &&
 					applicationStatus === 'inReview'
 				) {
-					activeStepStatus.reviewStatus = 'Final decision required';
-					remainingActioners = [...managerUsers];
+					reviewStatus = 'Final decision required';
+					remainingActioners = managerUsers.join(', ');
 				}
 				// Get decision duration if completed
 				let { dateFinalStatus, dateSubmitted } = app;
@@ -1603,7 +1609,9 @@ module.exports = {
 			workflowCompleted,
 			decisionDuration,
 			remainingActioners,
-			...activeStepStatus,
+			stepName, 
+			deadlinePassed, 
+			reviewStatus
 		};
 	},
 
@@ -1672,13 +1680,13 @@ module.exports = {
 			let activeStepIndex = steps.findIndex((step) => {
 				return step.active === true;
 			});
-			if(activeStep) {
+			if (activeStep) {
 				let { reviewStatus } = module.exports.getActiveStepStatus(activeStep);
 				//Update active step with review status
 				steps[activeStepIndex] = {
 					...steps[activeStepIndex],
-					reviewStatus
-				}
+					reviewStatus,
+				};
 			}
 			workflowStatus = {
 				workflowName,
@@ -1695,8 +1703,16 @@ module.exports = {
 	},
 
 	getActiveStepStatus: (activeStep, users = []) => {
-		let reviewStatus = '', deadlinePassed = false, remainingActioners = [];
-		let { stepName, deadline, startDateTime, reviewers = [], recommendations = [] } = activeStep;
+		let reviewStatus = '',
+			deadlinePassed = false,
+			remainingActioners = [];
+		let {
+			stepName,
+			deadline,
+			startDateTime,
+			reviewers = [],
+			recommendations = [],
+		} = activeStep;
 		let deadlineDate = moment(startDateTime).add(deadline, 'days');
 		let diff = parseInt(deadlineDate.diff(new Date(), 'days'));
 		if (diff > 0) {
@@ -1715,10 +1731,12 @@ module.exports = {
 		);
 		remainingActioners = users.filter((user) =>
 			remainingActioners.some(
-					(actioner) => actioner.toString() === user._id.toString()
-				)
-		);
-		return { stepName, remainingActioners, deadlinePassed, reviewStatus };
+				(actioner) => actioner.toString() === user._id.toString()
+			)
+		).map((user) => { 
+			return `${user.firstname} ${user.lastname}`;
+		});
+		return { stepName, remainingActioners: remainingActioners.join(', '), deadlinePassed, reviewStatus };
 	},
 
 	getActiveWorkflowStep: (workflow) => {
@@ -1726,5 +1744,5 @@ module.exports = {
 		return steps.find((step) => {
 			return step.active;
 		});
-	}
+	},
 };
