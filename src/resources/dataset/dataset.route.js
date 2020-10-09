@@ -22,6 +22,39 @@ router.post('/', async (req, res) => {
     return res.json({ success: true, message: "Caching started" });
 });
 
+// @router   GET /api/v1/datasets/pidList
+// @desc     Returns List of PIDs with linked datasetIDs
+// @access   Public
+router.get(
+    '/pidList/',
+    async (req, res) => {
+        var q = Data.find(
+            { "type" : "dataset", "pid" : { "$exists" : true } }, 
+            { "pid" : 1, "datasetid" : 1 }
+        ).sort({ "pid" : 1 });
+        
+        q.exec((err, data) => {
+            var listOfPIDs = []
+            
+            data.forEach((item) => {
+                if (listOfPIDs.find(x => x.pid === item.pid)) {
+                    var index = listOfPIDs.findIndex(x => x.pid === item.pid)
+                    listOfPIDs[index].datasetIds.push(item.datasetid)
+                }
+                else {
+                    listOfPIDs.push({"pid":item.pid, "datasetIds":[item.datasetid]})
+                }
+            
+            })
+
+            return res.json({ success: true, data: listOfPIDs });
+        })        
+    }
+);
+
+
+
+
 router.get('/:datasetID', async (req, res) => {
     var q = Data.aggregate([
         { $match: { $and: [{ datasetid: req.params.datasetID }] } }
