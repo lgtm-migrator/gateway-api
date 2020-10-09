@@ -170,7 +170,7 @@ module.exports = {
 			// 6. Append projectName and applicants
 			let modifiedApplications = [...applications]
 				.map((app) => {
-					return datarequestController.createApplicationDTO(app.toObject());
+					return datarequestController.createApplicationDTO(app.toObject(), _id.toString());
 				})
 				.sort((a, b) => b.updatedAt - a.updatedAt);
 

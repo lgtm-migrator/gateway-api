@@ -1512,17 +1512,22 @@ module.exports = {
 		return fullnames;
 	},
 
-	createApplicationDTO: (app) => {
+	createApplicationDTO: (app, userId = '') => {
 		let projectName = '',
 			applicants = '',
 			workflowName = '',
 			workflowCompleted = false,
 			remainingActioners = [],
 			decisionDuration = '',
+			decisionMade = false,
+			decisionStatus = '',
+			decisionComments = '',
 			managerUsers = [],
 			stepName = '', 
 			deadlinePassed = '', 
-			reviewStatus = ''
+			reviewStatus = '',
+			isReviewer = false,
+			reviewPanels = []
 
 		// Check if the application has a workflow assigned
 		let { workflow = {}, applicationStatus } = app;
@@ -1551,9 +1556,10 @@ module.exports = {
 				let activeStep = module.exports.getActiveWorkflowStep(workflow);
 				// Calculate active step status
 				if (activeStep) {
-					({stepName = '', remainingActioners = [], deadlinePassed = '', reviewStatus = ''} = module.exports.getActiveStepStatus(
+					({stepName = '', remainingActioners = [], deadlinePassed = '', reviewStatus = '', decisionMade = false, decisionStatus = '', decisionComments = '', isReviewer = false, reviewPanels = [] } = module.exports.getActiveStepStatus(
 						activeStep,
-						users
+						users,
+						userId
 					));
 				} else if (
 					_.isUndefined(activeStep) &&
@@ -1608,10 +1614,15 @@ module.exports = {
 			workflowName,
 			workflowCompleted,
 			decisionDuration,
+			decisionMade,
+			decisionStatus,
+			decisionComments,
 			remainingActioners,
 			stepName, 
 			deadlinePassed, 
-			reviewStatus
+			reviewStatus,
+			isReviewer,
+			reviewPanels
 		};
 	},
 
@@ -1688,6 +1699,11 @@ module.exports = {
 					reviewStatus,
 				};
 			}
+			//Update steps with user friendly review sections
+			steps = steps.map((step) => {
+				step.reviewPanels = step.sections.map(section => helper.darPanelMapper[section]).join(', ');
+			});
+
 			workflowStatus = {
 				workflowName,
 				steps,
@@ -1702,16 +1718,20 @@ module.exports = {
 		return steps.every((step) => step.completed);
 	},
 
-	getActiveStepStatus: (activeStep, users = []) => {
+	getActiveStepStatus: (activeStep, users = [], userId = '') => {
 		let reviewStatus = '',
 			deadlinePassed = false,
-			remainingActioners = [];
+			remainingActioners = [],
+			decisionMade = false, 
+			decisionStatus = '', 
+			decisionComments = '';
 		let {
 			stepName,
 			deadline,
 			startDateTime,
 			reviewers = [],
 			recommendations = [],
+			sections = []
 		} = activeStep;
 		let deadlineDate = moment(startDateTime).add(deadline, 'days');
 		let diff = parseInt(deadlineDate.diff(new Date(), 'days'));
@@ -1736,7 +1756,33 @@ module.exports = {
 		).map((user) => { 
 			return `${user.firstname} ${user.lastname}`;
 		});
-		return { stepName, remainingActioners: remainingActioners.join(', '), deadlinePassed, reviewStatus };
+
+		let isReviewer = reviewers.some(
+			(reviewer) => reviewer.toString() === userId.toString()
+		);
+		let hasRecommended = recommendations.some(
+			(rec) => rec.reviewer.toString() === userId.toString()
+		);
+
+		decisionMade = isReviewer && hasRecommended;
+
+		if(decisionMade) {
+			decisionStatus = 'Decision made for this phase';
+		}
+		else {
+			decisionStatus = 'Decision required';
+		}
+
+		if(hasRecommended) {
+			let recommendation = recommendations.find(
+				(rec) => rec.reviewer.toString() === userId.toString()
+			);
+			({ decisionComments = '' } = recommendation);
+		}
+
+		let reviewPanels = sections.map(section => helper.darPanelMapper[section]).join(', ');
+
+		return { stepName, remainingActioners: remainingActioners.join(', '), deadlinePassed, isReviewer, reviewStatus, decisionMade, decisionStatus, decisionComments, reviewPanels };
 	},
 
 	getActiveWorkflowStep: (workflow) => {
