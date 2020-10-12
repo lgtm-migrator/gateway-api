@@ -59,6 +59,8 @@ const DataSchema = new Schema(
 
     //dataset related fields
     datasetid: String,
+    pid: String,
+    datasetVersion: String,
     datasetfields: {
         publisher: String,
         geographicCoverage: [String],
@@ -77,6 +79,7 @@ const DataSchema = new Schema(
         periodicity: String,
         populationSize: String,
         metadataquality : {},
+        datautility : {},
         metadataschema : {},
         technicaldetails : [],
         versionLinks: [],
