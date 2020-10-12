@@ -927,6 +927,7 @@ module.exports = {
 				approved,
 				comments,
 				reviewer: new mongoose.Types.ObjectId(userId),
+				createdDate: new Date()
 			};
 			// 10. Update access record with recommendation
 			accessRecord.workflow.steps[activeStepIndex].recommendations = [
