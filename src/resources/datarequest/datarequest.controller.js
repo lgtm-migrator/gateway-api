@@ -1742,6 +1742,7 @@ module.exports = {
 			decisionMade = false,
 			decisionComments = '',
 			decisionApproved = false,
+			decisionDate = '',
 			decisionStatus = '';
 		let {
 			stepName,
