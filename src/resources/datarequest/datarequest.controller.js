@@ -1690,7 +1690,6 @@ module.exports = {
 		// Return active review mode if conditions apply
 		if (applicationStatus === 'inReview' && isActiveStepReviewer) {
 			inReviewMode = true;
-			reviewSections;
 		}
 
 		return { inReviewMode, reviewSections };
