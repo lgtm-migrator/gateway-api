@@ -1723,8 +1723,9 @@ module.exports = {
 			deadlinePassed = false,
 			remainingActioners = [],
 			decisionMade = false, 
-			decisionStatus = '', 
-			decisionComments = '';
+			decisionComments = '',
+			decisionApproved = false,
+			decisionStatus = '';
 		let {
 			stepName,
 			deadline,
@@ -1769,20 +1770,22 @@ module.exports = {
 		if(decisionMade) {
 			decisionStatus = 'Decision made for this phase';
 		}
-		else {
+		else if(isReviewer) {
 			decisionStatus = 'Decision required';
+		} else {
+			decisionStatus = '';
 		}
 
 		if(hasRecommended) {
 			let recommendation = recommendations.find(
 				(rec) => rec.reviewer.toString() === userId.toString()
 			);
-			({ decisionComments = '' } = recommendation);
+			({ comments: decisionComments = '', approved: decisionApproved = false } = recommendation);
 		}
 
 		let reviewPanels = sections.map(section => helper.darPanelMapper[section]).join(', ');
 
-		return { stepName, remainingActioners: remainingActioners.join(', '), deadlinePassed, isReviewer, reviewStatus, decisionMade, decisionStatus, decisionComments, reviewPanels };
+		return { stepName, remainingActioners: remainingActioners.join(', '), deadlinePassed, isReviewer, reviewStatus, decisionMade, decisionApproved, decisionStatus, decisionComments, reviewPanels };
 	},
 
 	getActiveWorkflowStep: (workflow) => {
