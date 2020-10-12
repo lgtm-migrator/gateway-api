@@ -294,7 +294,10 @@ const editTool = async (req, res) => {
     if (activeflag === 'active') {
       message.messageType = 'approved';
       message.messageDescription = `Your ${toolType} ${toolName} has been approved and is now live ${toolLink}`
-    } else if (activeflag === 'archive' || activeflag === 'rejected') {
+    } else if (activeflag === 'archive') {
+      message.messageType = 'archive';
+      message.messageDescription = `Your ${toolType} ${toolName} has been archived ${toolLink}`
+    } else if (activeflag === 'rejected') {
       message.messageType = 'rejected';
       message.messageDescription = `Your ${toolType} ${toolName} has been rejected ${toolLink}`
       message.messageDescription = (rejectionReason) ? message.messageDescription.concat(` Rejection reason: ${rejectionReason}`) : message.messageDescription
@@ -317,7 +320,10 @@ const editTool = async (req, res) => {
     if (activeflag === 'active') {
       subject = `Your ${tool.type} ${tool.name} has been approved and is now live`
       html = `Your ${tool.type} ${tool.name} has been approved and is now live <br /><br />  ${toolLink}`
-    } else if (activeflag === 'archive' || activeflag === 'rejected') {
+    } else if (activeflag === 'archive') {
+      subject = `Your ${tool.type} ${tool.name} has been archived`
+      html = `Your ${tool.type} ${tool.name} has been archived <br /><br /> ${toolLink}`
+    } else if (activeflag === 'rejected') {
       subject = `Your ${tool.type} ${tool.name} has been rejected`
       html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`
     }
