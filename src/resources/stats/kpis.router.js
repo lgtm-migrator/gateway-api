@@ -14,70 +14,73 @@ router.get('', async (req, res) => {
 
     var selectedMonthEnd = new Date(req.query.selectedDate);
     selectedMonthEnd.setMonth(selectedMonthEnd.getMonth()+1);
-    selectedMonthEnd.setDate(0);
+    selectedMonthEnd.setDate(0); 
     selectedMonthEnd.setHours(23,59,59,999);
+
+    console.log(`selectedMonthStart - ${selectedMonthStart}`)
+    console.log(`selectedMonthEnd - ${selectedMonthEnd}`)
 
     switch (req.query.kpi) {
       case 'technicalmetadata':
         var totalDatasetsQuery = [
-					{
-						$facet: {
-							TotalDataSets: [
-								{
-									$match: {
-										$and: [
-											{ activeflag: "active" },
-											{ type: "dataset" },
-											{ "datasetfields.publisher": { $ne: "HDR UK" } },
-										],
-									},
-								},
-								{ $count: "TotalDataSets" },
-							],
-							TotalMetaData: [
-								{
-									$match: {
-										activeflag: "active",
-										type: "dataset",
-										"datasetfields.technicaldetails": {
-											$exists: true,
-											$not: {
-												$size: 0,
-											},
-										},
-									},
-								},
-								{
-									$count: "TotalMetaData",
-								},
-							],
-						},
-					},
-				];
+          {
+            $facet: {
+              TotalDataSets: [
+                {
+                  $match: {
+                    $and: [
+                      { activeflag: "active" },
+                      { type: "dataset" },
+                      { "datasetfields.publisher": { $ne: "HDR UK" } },
+                    ],
+                  },
+                },
+                { $count: "TotalDataSets" },
+              ],
+              TotalMetaData: [
+                {
+                  $match: {
+                    activeflag: "active",
+                    type: "dataset",
+                    "datasetfields.technicaldetails": {
+                      $exists: true,
+                      $not: {
+                        $size: 0,
+                      },
+                    },
+                  },
+                },
+                {
+                  $count: "TotalMetaData",
+                },
+              ],
+            },
+          },
+        ];
 
-				var q = Data.aggregate(totalDatasetsQuery);
+        var q = Data.aggregate(totalDatasetsQuery);
 
-				var result;
-				q.exec((err, dataSets) => {
-					if (err) return res.json({ success: false, error: err });
+        var result;
+        q.exec((err, dataSets) => {
+          if (err) return res.json({ success: false, error: err });
 
-					if (typeof dataSets[0].TotalDataSets[0] === "undefined") {
-						dataSets[0].TotalDataSets[0].TotalDataSets = 0;
-					}
-					if (typeof dataSets[0].TotalMetaData[0] === "undefined") {
-						dataSets[0].TotalMetaData[0].TotalMetaData = 0;
-					}
+          if (typeof dataSets[0].TotalDataSets[0] === "undefined") {
+            dataSets[0].TotalDataSets[0].TotalDataSets = 0;
+          }
+          if (typeof dataSets[0].TotalMetaData[0] === "undefined") {
+            dataSets[0].TotalMetaData[0].TotalMetaData = 0;
+          }
 
-					result = res.json({
-						success: true,
-						data: {
-							totalDatasets: dataSets[0].TotalDataSets[0].TotalDataSets,
-							datasetsMetadata: dataSets[0].TotalMetaData[0].TotalMetaData,
-						},
-					});
-				});
+          result = res.json({
+            success: true,
+            data: {
+              totalDatasets: dataSets[0].TotalDataSets[0].TotalDataSets,
+              datasetsMetadata: dataSets[0].TotalMetaData[0].TotalMetaData,
+            },
+          });
+        });
 
-				return result;
+        return result;
       break;
 
       case 'searchanddar':
@@ -110,14 +113,21 @@ router.get('', async (req, res) => {
                 // some older fields only have timeStamp --> only timeStamp in the production db
                 //checking for both currently
                 { $match: {
-                  $and: [{ 
-                    $or: [ 
-                      { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} },
-                      { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } ]
-                    },
-                    {
-                      "applicationStatus": "submitted"
-                    }]
+                    $and: [
+                      { 
+                        $or: [  
+                          { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} },
+                          { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } 
+                        ] 
+                      },
+                      {
+                        $or: [
+                          {"applicationStatus":"submitted"}, 
+                          {"applicationStatus":"approved"}, 
+                          {"applicationStatus":"rejected"}
+                        ]
+                      }
+                    ] 
                   }
                 },
                 {
