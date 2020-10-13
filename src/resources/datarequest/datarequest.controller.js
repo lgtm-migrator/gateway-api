@@ -124,7 +124,15 @@ module.exports = {
 			) {
 				readOnly = false;
 			}
-			// 7. Return application form
+			// 7. Set the review mode if user is a custodian reviewing the current step
+			let { inReviewMode, reviewSections } = module.exports.getReviewStatus(
+				accessRecord,
+				req.user._id
+			);
+			// 8. Get the workflow/voting status
+			let workflow = module.exports.getWorkflowStatus(accessRecord.toObject());
+
+			// 9. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -138,6 +146,9 @@ module.exports = {
 					projectId:
 						accessRecord.projectId ||
 						helper.generateFriendlyId(accessRecord._id),
+					inReviewMode,
+					reviewSections,
+					workflow,
 				},
 			});
 		} catch (err) {
@@ -234,6 +245,8 @@ module.exports = {
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: 'applicant',
+					inReviewMode: false,
+					reviewSections: [],
 				},
 			});
 		} catch (err) {
@@ -331,6 +344,8 @@ module.exports = {
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: 'applicant',
+					inReviewMode: false,
+					reviewSections: [],
 				},
 			});
 		} catch (err) {
@@ -912,6 +927,7 @@ module.exports = {
 				approved,
 				comments,
 				reviewer: new mongoose.Types.ObjectId(userId),
+				createdDate: new Date(),
 			};
 			// 10. Update access record with recommendation
 			accessRecord.workflow.steps[activeStepIndex].recommendations = [
@@ -1497,9 +1513,83 @@ module.exports = {
 		return fullnames;
 	},
 
-	createApplicationDTO: (app) => {
-		let projectName = '';
-		let applicants = '';
+	createApplicationDTO: (app, userId = '') => {
+		let projectName = '',
+			applicants = '',
+			workflowName = '',
+			workflowCompleted = false,
+			remainingActioners = [],
+			decisionDuration = '',
+			decisionMade = false,
+			decisionStatus = '',
+			decisionComments = '',
+			decisionDate = '',
+			decisionApproved = false,
+			managerUsers = [],
+			stepName = '',
+			deadlinePassed = '',
+			reviewStatus = '',
+			isReviewer = false,
+			reviewPanels = [];
+
+		// Check if the application has a workflow assigned
+		let { workflow = {}, applicationStatus } = app;
+		if (_.has(app, 'publisherObj.team.members')) {
+			let {
+				publisherObj: {
+					team: { members, users },
+				},
+			} = app;
+			let managers = members.filter((mem) => {
+				return mem.roles.includes('manager');
+			});
+			managerUsers = users
+				.filter((user) =>
+					managers.some(
+						(manager) => manager.memberid.toString() === user._id.toString()
+					)
+				)
+				.map((user) => {
+					return `${user.firstname} ${user.lastname}`;
+				});
+			if (applicationStatus === 'submitted') {
+				remainingActioners = managerUsers.join(', ');
+			}
+			if (!_.isEmpty(workflow)) {
+				({ workflowName } = workflow);
+				workflowCompleted = module.exports.getWorkflowCompleted(workflow);
+				let activeStep = module.exports.getActiveWorkflowStep(workflow);
+				// Calculate active step status
+				if (activeStep) {
+					({
+						stepName = '',
+						remainingActioners = [],
+						deadlinePassed = '',
+						reviewStatus = '',
+						decisionMade = false,
+						decisionStatus = '',
+						decisionComments = '',
+						decisionApproved,
+						decisionDate,
+						isReviewer = false,
+						reviewPanels = []
+					} = module.exports.getActiveStepStatus(activeStep, users, userId));
+				} else if (
+					_.isUndefined(activeStep) &&
+					applicationStatus === 'inReview'
+				) {
+					reviewStatus = 'Final decision required';
+					remainingActioners = managerUsers.join(', ');
+				}
+				// Get decision duration if completed
+				let { dateFinalStatus, dateSubmitted } = app;
+				if (dateFinalStatus) {
+					decisionDuration = parseInt(
+						moment(dateFinalStatus).diff(dateSubmitted, 'days')
+					);
+				}
+			}
+		}
 
 		// Ensure backward compatibility with old single dataset DARs
 		if (_.isEmpty(app.datasets) || _.isUndefined(app.datasets)) {
@@ -1529,7 +1619,26 @@ module.exports = {
 			let { firstname, lastname } = app.mainApplicant;
 			applicants = `${firstname} ${lastname}`;
 		}
-		return { ...app, projectName, applicants, publisher };
+		return {
+			...app,
+			projectName,
+			applicants,
+			publisher,
+			workflowName,
+			workflowCompleted,
+			decisionDuration,
+			decisionMade,
+			decisionStatus,
+			decisionComments,
+			decisionDate,
+			decisionApproved,
+			remainingActioners,
+			stepName,
+			deadlinePassed,
+			reviewStatus,
+			isReviewer,
+			reviewPanels,
+		};
 	},
 
 	calculateAvgDecisionTime: (applications) => {
@@ -1556,5 +1665,172 @@ module.exports = {
 				return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
+	},
+
+	getReviewStatus: (application, userId) => {
+		let inReviewMode = false,
+			reviewSections = [],
+			isActiveStepReviewer = false;
+		// Get current application status
+		let { applicationStatus } = application;
+		// Check if the current user is a reviewer on the current step of an attached workflow
+		let { workflow = {} } = application;
+		if (!_.isEmpty(workflow)) {
+			let { steps } = workflow;
+			let activeStep = steps.find((step) => {
+				return step.active === true;
+			});
+			if (activeStep) {
+				isActiveStepReviewer = activeStep.reviewers.some(
+					(reviewer) => reviewer.toString() === userId.toString()
+				);
+				reviewSections = [...activeStep.sections];
+			}
+		}
+		// Return active review mode if conditions apply
+		if (applicationStatus === 'inReview' && isActiveStepReviewer) {
+			inReviewMode = true;
+		}
+
+		return { inReviewMode, reviewSections };
+	},
+
+	getWorkflowStatus: (application) => {
+		let workflowStatus = {};
+		let { workflow = {} } = application;
+		if (!_.isEmpty(workflow)) {
+			let { workflowName, steps } = workflow;
+			// Find the active step in steps
+			let activeStep = module.exports.getActiveWorkflowStep(workflow);
+			let activeStepIndex = steps.findIndex((step) => {
+				return step.active === true;
+			});
+			if (activeStep) {
+				let { reviewStatus } = module.exports.getActiveStepStatus(activeStep);
+				//Update active step with review status
+				steps[activeStepIndex] = {
+					...steps[activeStepIndex],
+					reviewStatus,
+				};
+			}
+			//Update steps with user friendly review sections
+			let formattedSteps = [...steps].reduce((arr, item) => {
+				let step = {
+					...item,
+					sections: [...item.sections].map(section => helper.darPanelMapper[section])
+				}
+				arr.push(step);
+				return arr;
+			}, []);
+
+			workflowStatus = {
+				workflowName,
+				steps: formattedSteps,
+				isCompleted: module.exports.getWorkflowCompleted(workflow),
+			};
+		}
+		return workflowStatus;
+	},
+
+	getWorkflowCompleted: (workflow) => {
+		let { steps } = workflow;
+		return steps.every((step) => step.completed);
+	},
+
+	getActiveStepStatus: (activeStep, users = [], userId = '') => {
+		let reviewStatus = '',
+			deadlinePassed = false,
+			remainingActioners = [],
+			decisionMade = false,
+			decisionComments = '',
+			decisionApproved = false,
+			decisionDate = '',
+			decisionStatus = '';
+		let {
+			stepName,
+			deadline,
+			startDateTime,
+			reviewers = [],
+			recommendations = [],
+			sections = [],
+		} = activeStep;
+		let deadlineDate = moment(startDateTime).add(deadline, 'days');
+		let diff = parseInt(deadlineDate.diff(new Date(), 'days'));
+		if (diff > 0) {
+			reviewStatus = `Deadline in ${diff} days`;
+		} else if (diff < 0) {
+			reviewStatus = `Deadline was ${Math.abs(diff)} days ago`;
+			deadlinePassed = true;
+		} else {
+			reviewStatus = `Deadline is today`;
+		}
+		remainingActioners = reviewers.filter(
+			(reviewer) =>
+				!recommendations.some(
+					(rec) => rec.reviewer.toString() === reviewer.toString()
+				)
+		);
+		remainingActioners = users
+			.filter((user) =>
+				remainingActioners.some(
+					(actioner) => actioner.toString() === user._id.toString()
+				)
+			)
+			.map((user) => {
+				return `${user.firstname} ${user.lastname}`;
+			});
+
+		let isReviewer = reviewers.some(
+			(reviewer) => reviewer.toString() === userId.toString()
+		);
+		let hasRecommended = recommendations.some(
+			(rec) => rec.reviewer.toString() === userId.toString()
+		);
+
+		decisionMade = isReviewer && hasRecommended;
+
+		if (decisionMade) {
+			decisionStatus = 'Decision made for this phase';
+		} else if (isReviewer) {
+			decisionStatus = 'Decision required';
+		} else {
+			decisionStatus = '';
+		}
+
+		if (hasRecommended) {
+			let recommendation = recommendations.find(
+				(rec) => rec.reviewer.toString() === userId.toString()
+			);
+			({
+				comments: decisionComments,
+				approved: decisionApproved,
+				createdDate: decisionDate
+			} = recommendation);
+		}
+
+		let reviewPanels = sections
+			.map((section) => helper.darPanelMapper[section])
+			.join(', ');
+
+		return {
+			stepName,
+			remainingActioners: remainingActioners.join(', '),
+			deadlinePassed,
+			isReviewer,
+			reviewStatus,
+			decisionMade,
+			decisionApproved,
+			decisionDate,
+			decisionStatus,
+			decisionComments,
+			reviewPanels,
+		};
+	},
+
+	getActiveWorkflowStep: (workflow) => {
+		let { steps } = workflow;
+		return steps.find((step) => {
+			return step.active;
+		});
 	},
 };
