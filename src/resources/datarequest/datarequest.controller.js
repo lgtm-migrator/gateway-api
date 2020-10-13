@@ -1714,15 +1714,18 @@ module.exports = {
 				};
 			}
 			//Update steps with user friendly review sections
-			steps = steps.map((step) => {
-				step.reviewPanels = step.sections
-					.map((section) => helper.darPanelMapper[section])
-					.join(', ');
-			});
+			let formattedSteps = [...steps].reduce((arr, item) => {
+				let step = {
+					...item,
+					sections: [...item.sections].map(section => helper.darPanelMapper[section])
+				}
+				arr.push(step);
+				return arr;
+			}, []);
 
 			workflowStatus = {
 				workflowName,
-				steps,
+				steps: formattedSteps,
 				isCompleted: module.exports.getWorkflowCompleted(workflow),
 			};
 		}
