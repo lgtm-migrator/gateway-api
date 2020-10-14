@@ -1325,12 +1325,7 @@ module.exports = {
 				for (let emailRecipientType of emailRecipientTypes) {
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
-						emailRecipients = [...custodianUsers].filter(function (user) {
-							let {
-								additionalInfo: { emailNotifications },
-							} = user;
-							return emailNotifications === true;
-						});
+						emailRecipients = [...custodianUsers];
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [
