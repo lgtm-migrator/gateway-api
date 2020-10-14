@@ -175,7 +175,7 @@ export async function loadDatasets(override) {
                     const phenotypes = phenotypesList.data[datasetMDC.id] || [];
                     
                     const metadataSchemaCall = axios.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/'+ datasetMDC.id, { timeout:5000 }).catch(err => { console.log('Unable to get metadata schema '+err.message) }); 
-                    const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses?max=100', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
+                    const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses?max=300', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
                     const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetMDC.id+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
                     const [metadataSchema, dataClass, versionLinks] = await axios.all([metadataSchemaCall, dataClassCall, versionLinksCall]);
                     
@@ -185,7 +185,7 @@ export async function loadDatasets(override) {
                         (p, dataclassMDC) => p.then(
                             () => (new Promise(resolve => {
                                 setTimeout(async function () {
-                                    const dataClassElementCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses/'+dataclassMDC.id+'/dataElements?max=100', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass element '+err.message) }); 
+                                    const dataClassElementCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses/'+dataclassMDC.id+'/dataElements?max=300', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass element '+err.message) }); 
                                     const [dataClassElement] = await axios.all([dataClassElementCall]);
                                     var dataClassElementArray = []
 
