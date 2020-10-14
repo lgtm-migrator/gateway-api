@@ -86,12 +86,14 @@ module.exports = {
 			// 2. Find the matching record and include attached datasets records with publisher details
 			let accessRecord = await DataRequestModel.findOne({
 				_id: requestId,
-			})
-				.populate({ path: 'mainApplicant', select: 'firstname lastname -id' })
-				.populate({
+			}).populate([
+				{ path: 'mainApplicant', select: 'firstname lastname -id' },
+				{
 					path: 'datasets dataset authors',
 					populate: { path: 'publisher', populate: { path: 'team' } },
-				});
+				},
+				{ path: 'workflow.steps.reviewers', select: 'firstname lastname' }
+			]);
 			// 3. If no matching application found, return 404
 			if (!accessRecord) {
 				return res
@@ -1572,7 +1574,7 @@ module.exports = {
 						decisionApproved,
 						decisionDate,
 						isReviewer = false,
-						reviewPanels = []
+						reviewPanels = [],
 					} = module.exports.getActiveStepStatus(activeStep, users, userId));
 				} else if (
 					_.isUndefined(activeStep) &&
@@ -1706,19 +1708,25 @@ module.exports = {
 				return step.active === true;
 			});
 			if (activeStep) {
-				let { reviewStatus } = module.exports.getActiveStepStatus(activeStep);
+				let {
+					reviewStatus,
+					deadlinePassed,
+				} = module.exports.getActiveStepStatus(activeStep);
 				//Update active step with review status
 				steps[activeStepIndex] = {
 					...steps[activeStepIndex],
 					reviewStatus,
+					deadlinePassed,
 				};
 			}
 			//Update steps with user friendly review sections
 			let formattedSteps = [...steps].reduce((arr, item) => {
 				let step = {
 					...item,
-					sections: [...item.sections].map(section => helper.darPanelMapper[section])
-				}
+					sections: [...item.sections].map(
+						(section) => helper.darPanelMapper[section]
+					),
+				};
 				arr.push(step);
 				return arr;
 			}, []);
@@ -1804,7 +1812,7 @@ module.exports = {
 			({
 				comments: decisionComments,
 				approved: decisionApproved,
-				createdDate: decisionDate
+				createdDate: decisionDate,
 			} = recommendation);
 		}
 
