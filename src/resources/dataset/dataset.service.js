@@ -67,7 +67,7 @@ export async function loadDataset(datasetID) {
     var geographicCoverageArray = splitString(dataset.data.geographicCoverage)
     
     const metadataQuality = metadataQualityList.data.find(x => x.id === datasetID);
-    const phenotypes = phenotypesList.data[datasetMDC.id] || [];
+    const phenotypes = phenotypesList.data[datasetID] || [];
 
     var data = new Data(); 
     data.id = uniqueID;
@@ -93,7 +93,7 @@ export async function loadDataset(datasetID) {
     data.datasetfields.statisticalPopulation = dataset.data.statisticalPopulation;
     data.datasetfields.ageBand = dataset.data.ageBand;
     data.datasetfields.contactPoint = dataset.data.contactPoint;
-    data.datasetfields.periodicity = datasetMDC.periodicity;
+    data.datasetfields.periodicity = dataset.data.periodicity;
     
     data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
     data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
