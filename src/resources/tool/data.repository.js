@@ -256,7 +256,7 @@ const editTool = async (req, res) => {
   const setStatus = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       try {
-        const { activeflag } = req.body;
+        const { activeflag, rejectionReason } = req.body;
         const id = req.params.id;
       
         let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
@@ -266,17 +266,17 @@ const editTool = async (req, res) => {
   
         if (tool.authors) {
           tool.authors.forEach(async (authorId) => {
-            await createMessage(authorId, id, tool.name, tool.type, activeflag);
+            await createMessage(authorId, id, tool.name, tool.type, activeflag, rejectionReason);
           });
         }
-        await createMessage(0, id, tool.name, tool.type, activeflag);
+        await createMessage(0, id, tool.name, tool.type, activeflag, rejectionReason);
   
         if (!tool.discourseTopicId && tool.activeflag === 'active') {
           await createDiscourseTopic(tool);
         }
         
         // Send email notification of status update to admins and authors who have opted in
-        await sendEmailNotifications(tool, activeflag);
+        await sendEmailNotifications(tool, activeflag, rejectionReason);
   
         resolve(id);
         
@@ -287,7 +287,7 @@ const editTool = async (req, res) => {
     });
   };
 
-  async function createMessage(authorId, toolId, toolName, toolType, activeflag) {
+  async function createMessage(authorId, toolId, toolName, toolType, activeflag, rejectionReason) {
     let message = new MessagesModel();
     const toolLink = process.env.homeURL + '/' + toolType + '/' + toolId;
   
@@ -295,8 +295,12 @@ const editTool = async (req, res) => {
       message.messageType = 'approved';
       message.messageDescription = `Your ${toolType} ${toolName} has been approved and is now live ${toolLink}`
     } else if (activeflag === 'archive') {
+      message.messageType = 'archive';
+      message.messageDescription = `Your ${toolType} ${toolName} has been archived ${toolLink}`
+    } else if (activeflag === 'rejected') {
       message.messageType = 'rejected';
       message.messageDescription = `Your ${toolType} ${toolName} has been rejected ${toolLink}`
+      message.messageDescription = (rejectionReason) ? message.messageDescription.concat(` Rejection reason: ${rejectionReason}`) : message.messageDescription
     }
     message.messageID = parseInt(Math.random().toString().replace('0.', ''));
     message.messageTo = authorId;
@@ -306,7 +310,7 @@ const editTool = async (req, res) => {
     await message.save();
   }
   
-  async function sendEmailNotifications(tool, activeflag) {
+  async function sendEmailNotifications(tool, activeflag, rejectionReason) {
     let subject;
     let html;
     // 1. Generate tool URL for linking user from email
@@ -317,8 +321,11 @@ const editTool = async (req, res) => {
       subject = `Your ${tool.type} ${tool.name} has been approved and is now live`
       html = `Your ${tool.type} ${tool.name} has been approved and is now live <br /><br />  ${toolLink}`
     } else if (activeflag === 'archive') {
+      subject = `Your ${tool.type} ${tool.name} has been archived`
+      html = `Your ${tool.type} ${tool.name} has been archived <br /><br /> ${toolLink}`
+    } else if (activeflag === 'rejected') {
       subject = `Your ${tool.type} ${tool.name} has been rejected`
-      html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  ${toolLink}`
+      html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`
     }
     
     // 3. Find all authors of the tool who have opted in to email updates
