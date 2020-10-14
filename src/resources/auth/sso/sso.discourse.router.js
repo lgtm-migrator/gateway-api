@@ -11,7 +11,7 @@ const router = express.Router();
 router.get("/", function(req, res, next) {
 	passport.authenticate("jwt", function(err, user, info) {
 		if (err || !user) {
-			return res.status(200);
+			return res.status(200).json({ redirectUrl: null });
 		} else {
 			let redirectUrl = null;
 
