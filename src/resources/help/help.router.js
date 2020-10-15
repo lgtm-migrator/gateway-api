@@ -7,13 +7,25 @@ const router = express.Router();
 // @desc     Get Help FAQ for a category
 // @access   Public
 router.get("/:category", async (req, res) => {
-    let query = Help.aggregate([
-        { $match: { $and: [{ active: true }, { category: req.params.category }] } }
-    ]);
-    query.exec((err, data) => {
-        if (err) return res.json({ success: false, error: err });
-        return res.json({ success: true, data: data });
-    });
+    try {
+        // 1. Destructure category parameter with safe default
+        let { category = '' } = req.params;
+        // 2. Check if parameter is empty (if required throw error response)
+        if(_.isEmpty(category)) {
+            return res.status(400).json({ success: false, message: 'Category is required' });
+        }
+        // 3. Find matching help items in MongoDb
+        let help = await Help.find({ $and: [{ active: true }, { category }] });
+        // 4. Return help data in response
+        return res.status(200).json({ success: true, help });
+    }
+    catch (err) {
+        console.error(err.message);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred searching for help data',
+        });
+    }
 });
 
 module.exports = router;
