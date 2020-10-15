@@ -133,8 +133,18 @@ module.exports = {
 			);
 			// 8. Get the workflow/voting status
 			let workflow = module.exports.getWorkflowStatus(accessRecord.toObject());
-
-			// 9. Return application form
+			// 9. Check if the current user can override the current step
+			let isManager = false;
+			if(_.has(accessRecord.datasets[0].toObject(), 'publisher.team')) {
+					isManager = teamController.checkTeamPermissions(
+					teamController.roleTypes.MANAGER,
+					accessRecord.datasets[0].publisher.team.toObject(),
+					req.user._id
+				);
+				// Set the workflow override capability if there is an active step and user is a manager
+				workflow.canOverrideStep = !workflow.isCompleted && isManager;
+			}
+			// 10. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -150,7 +160,7 @@ module.exports = {
 						helper.generateFriendlyId(accessRecord._id),
 					inReviewMode,
 					reviewSections,
-					workflow,
+					workflow
 				},
 			});
 		} catch (err) {
@@ -1067,7 +1077,7 @@ module.exports = {
 					bpmController.postCompleteReview(bpmContext);
 				}
 			});
-			// 13. Return aplication and successful response
+			// 12. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
 			console.log(err.message);
@@ -1710,7 +1720,7 @@ module.exports = {
 			workflowStatus = {
 				workflowName,
 				steps: formattedSteps,
-				isCompleted: module.exports.getWorkflowCompleted(workflow),
+				isCompleted: module.exports.getWorkflowCompleted(workflow)
 			};
 		}
 		return workflowStatus;
