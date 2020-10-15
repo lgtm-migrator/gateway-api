@@ -34,7 +34,7 @@ export const clients = [
         //grant_types: ['authorization_code', 'implicit'],
         response_types: ['code'],
         //response_types: ['code'],
-        redirect_uris: [process.env.BCPRedirectURI || ''],
+        redirect_uris: process.env.BCPRedirectURI.split(",") || [''],
         id_token_signed_response_alg: 'HS256'
     }
 ];
