@@ -2,6 +2,7 @@ import { Data } from '../tool/data.model'
 import { MetricsData } from '../stats/metrics.model'
 import axios from 'axios';
 import emailGenerator from '../utilities/emailGenerator.util';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function loadDataset(datasetID) {
     var metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
@@ -67,7 +68,7 @@ export async function loadDataset(datasetID) {
     var geographicCoverageArray = splitString(dataset.data.geographicCoverage)
     
     const metadataQuality = metadataQualityList.data.find(x => x.id === datasetID);
-    const phenotypes = phenotypesList.data[datasetMDC.id] || [];
+    const phenotypes = phenotypesList.data[datasetID] || [];
 
     var data = new Data(); 
     data.id = uniqueID;
@@ -93,7 +94,7 @@ export async function loadDataset(datasetID) {
     data.datasetfields.statisticalPopulation = dataset.data.statisticalPopulation;
     data.datasetfields.ageBand = dataset.data.ageBand;
     data.datasetfields.contactPoint = dataset.data.contactPoint;
-    data.datasetfields.periodicity = datasetMDC.periodicity;
+    data.datasetfields.periodicity = dataset.data.periodicity;
     
     data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
     data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
@@ -160,6 +161,7 @@ export async function loadDatasets(override) {
 
     const metadataQualityList = await axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/metadata_quality.json', { timeout:5000 }).catch(err => { console.log('Unable to get metadata quality value '+err.message) }); 
     const phenotypesList = await axios.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout:5000 }).catch(err => { console.log('Unable to get phenotypes '+err.message) }); 
+    const dataUtilityList = await axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout:5000 }).catch(err => { console.log('Unable to get data utility '+err.message) }); 
     var datasetsMDCIDs = []
     var counter = 0;
 
@@ -172,10 +174,11 @@ export async function loadDatasets(override) {
                     datasetsMDCIDs.push({ datasetid: datasetMDC.id });
                     
                     const metadataQuality = metadataQualityList.data.find(x => x.id === datasetMDC.id);
+                    const dataUtility = dataUtilityList.data.find(x => x.id === datasetMDC.id);
                     const phenotypes = phenotypesList.data[datasetMDC.id] || [];
                     
                     const metadataSchemaCall = axios.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/'+ datasetMDC.id, { timeout:5000 }).catch(err => { console.log('Unable to get metadata schema '+err.message) }); 
-                    const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses?max=100', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
+                    const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses?max=300', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
                     const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetMDC.id+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
                     const [metadataSchema, dataClass, versionLinks] = await axios.all([metadataSchemaCall, dataClassCall, versionLinksCall]);
                     
@@ -185,7 +188,7 @@ export async function loadDatasets(override) {
                         (p, dataclassMDC) => p.then(
                             () => (new Promise(resolve => {
                                 setTimeout(async function () {
-                                    const dataClassElementCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses/'+dataclassMDC.id+'/dataElements?max=100', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass element '+err.message) }); 
+                                    const dataClassElementCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses/'+dataclassMDC.id+'/dataElements?max=300', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass element '+err.message) }); 
                                     const [dataClassElement] = await axios.all([dataClassElementCall]);
                                     var dataClassElementArray = []
 
@@ -223,12 +226,44 @@ export async function loadDatasets(override) {
                     
                     if (datasetHDR) {
                         //Edit
+                        if (!datasetHDR.pid) {
+                            var uuid = uuidv4();
+                            var listOfVersions =[];
+                            datasetHDR.pid = uuid;
+                            datasetHDR.datasetVersion = "0.0.1";
+                            
+                            if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
+                                versionLinks.data.items.forEach((item) => {
+                                    if (!listOfVersions.find(x => x.id === item.source.id)) {
+                                        listOfVersions.push({"id":item.source.id, "version":item.source.documentationVersion});
+                                    }
+                                    if (!listOfVersions.find(x => x.id === item.target.id)) {
+                                        listOfVersions.push({"id":item.target.id, "version":item.target.documentationVersion});
+                                    }
+                                })
+
+                                listOfVersions.forEach(async (item) => {
+                                    if (item.id !== datasetMDC.id) {
+                                        await Data.findOneAndUpdate({ datasetid: item.id },
+                                            { pid: uuid, datasetVersion: item.version }
+                                        )
+                                    }
+                                    else {
+                                        datasetHDR.pid = uuid;
+                                        datasetHDR.datasetVersion = item.version;
+                                    }
+                                })
+                            }
+                        }
+
                         var keywordArray = splitString(datasetMDC.keywords)
                         var physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability)
                         var geographicCoverageArray = splitString(datasetMDC.geographicCoverage)
                         
                         await Data.findOneAndUpdate({ datasetid: datasetMDC.id },
                             {
+                                pid: datasetHDR.pid,
+                                datasetVersion: datasetHDR.datasetVersion,
                                 name: datasetMDC.title,
                                 description: datasetMDC.description,
                                 activeflag: 'active',
@@ -254,6 +289,7 @@ export async function loadDatasets(override) {
                                     periodicity: datasetMDC.periodicity,
                                     
                                     metadataquality: metadataQuality ? metadataQuality : {},
+                                    datautility: dataUtility ? dataUtility : {},
                                     metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
                                     technicaldetails: technicaldetails,
                                     versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
@@ -264,6 +300,37 @@ export async function loadDatasets(override) {
                     }
                     else {
                         //Add
+                        var uuid = uuidv4();
+                        var listOfVersions =[];
+                        var pid = uuid;
+                        var datasetVersion = "0.0.1";
+                        
+                        if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
+                            versionLinks.data.items.forEach((item) => {
+                                if (!listOfVersions.find(x => x.id === item.source.id)) {
+                                    listOfVersions.push({"id":item.source.id, "version":item.source.documentationVersion});
+                                }
+                                if (!listOfVersions.find(x => x.id === item.target.id)) {
+                                    listOfVersions.push({"id":item.target.id, "version":item.target.documentationVersion});
+                                }
+                            })
+
+                            listOfVersions.forEach(async (item) => {
+                                if (item.id !== datasetMDC.id) {
+                                    var existingDataset = await Data.findOne({ datasetid: item.id });
+                                    if (existingDataset && existingDataset.pid) pid = existingDataset.pid;
+                                    else {
+                                        await Data.findOneAndUpdate({ datasetid: item.id },
+                                            { pid: uuid, datasetVersion: item.version }
+                                        )
+                                    }
+                                }
+                                else {
+                                    datasetVersion = item.version;
+                                }
+                            })
+                        }
+                        
                         var uniqueID='';
                         while (uniqueID === '') {
                             uniqueID = parseInt(Math.random().toString().replace('0.', ''));
@@ -271,12 +338,14 @@ export async function loadDatasets(override) {
                                 uniqueID = '';
                             }
                         }
-                        
+
                         var keywordArray = splitString(datasetMDC.keywords)
                         var physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability)
                         var geographicCoverageArray = splitString(datasetMDC.geographicCoverage)
                         
                         var data = new Data(); 
+                        data.pid = pid;
+                        data.datasetVersion = datasetVersion;
                         data.id = uniqueID;
                         data.datasetid = datasetMDC.id;
                         data.type = 'dataset';
@@ -303,6 +372,7 @@ export async function loadDatasets(override) {
                         data.datasetfields.periodicity = datasetMDC.periodicity;
                         
                         data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
+                        data.datasetfields.datautility = dataUtility ? dataUtility : {};
                         data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
                         data.datasetfields.technicaldetails = technicaldetails;
                         data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
