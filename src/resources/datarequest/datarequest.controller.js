@@ -134,9 +134,8 @@ module.exports = {
 			// 8. Get the workflow/voting status
 			let workflow = module.exports.getWorkflowStatus(accessRecord.toObject());
 			// 9. Check if the current user can override the current step
-			let isManager = false;
 			if(_.has(accessRecord.datasets[0].toObject(), 'publisher.team')) {
-					isManager = teamController.checkTeamPermissions(
+					let isManager = teamController.checkTeamPermissions(
 					teamController.roleTypes.MANAGER,
 					accessRecord.datasets[0].publisher.team.toObject(),
 					req.user._id
@@ -1670,7 +1669,7 @@ module.exports = {
 			});
 			if (activeStep) {
 				isActiveStepReviewer = activeStep.reviewers.some(
-					(reviewer) => reviewer.toString() === userId.toString()
+					(reviewer) => reviewer._id.toString() === userId.toString()
 				);
 				reviewSections = [...activeStep.sections];
 			}
