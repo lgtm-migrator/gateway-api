@@ -127,7 +127,7 @@ module.exports = {
 				readOnly = false;
 			}
 			// 7. Set the review mode if user is a custodian reviewing the current step
-			let { inReviewMode, reviewSections } = module.exports.getReviewStatus(
+			let { inReviewMode, reviewSections, hasRecommended } = module.exports.getReviewStatus(
 				accessRecord,
 				req.user._id
 			);
@@ -159,7 +159,8 @@ module.exports = {
 						helper.generateFriendlyId(accessRecord._id),
 					inReviewMode,
 					reviewSections,
-					workflow
+					hasRecommended,
+					workflow,
 				},
 			});
 		} catch (err) {
@@ -1657,7 +1658,8 @@ module.exports = {
 	getReviewStatus: (application, userId) => {
 		let inReviewMode = false,
 			reviewSections = [],
-			isActiveStepReviewer = false;
+			isActiveStepReviewer = false,
+			hasRecommended = false;
 		// Get current application status
 		let { applicationStatus } = application;
 		// Check if the current user is a reviewer on the current step of an attached workflow
@@ -1672,6 +1674,13 @@ module.exports = {
 					(reviewer) => reviewer._id.toString() === userId.toString()
 				);
 				reviewSections = [...activeStep.sections];
+				
+				let { recommendations = [] } = activeStep;
+				if(!_.isEmpty(recommendations)) {
+					hasRecommended = recommendations.some(
+						(rec) => rec.reviewer.toString() === userId.toString()
+					);
+				}
 			}
 		}
 		// Return active review mode if conditions apply
@@ -1679,7 +1688,7 @@ module.exports = {
 			inReviewMode = true;
 		}
 
-		return { inReviewMode, reviewSections };
+		return { inReviewMode, reviewSections, hasRecommended };
 	},
 
 	getWorkflowStatus: (application) => {
@@ -1701,7 +1710,7 @@ module.exports = {
 				steps[activeStepIndex] = {
 					...steps[activeStepIndex],
 					reviewStatus,
-					deadlinePassed,
+					deadlinePassed
 				};
 			}
 			//Update steps with user friendly review sections
@@ -1816,7 +1825,7 @@ module.exports = {
 			decisionDate,
 			decisionStatus,
 			decisionComments,
-			reviewPanels,
+			reviewPanels
 		};
 	},
 
