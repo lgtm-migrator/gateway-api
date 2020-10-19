@@ -258,7 +258,7 @@ module.exports = {
 				let formattedSteps = [...steps].reduce((arr, item) => {
 					let step = {
 						...item,
-						sections: [...item.sections].map(section => helper.darPanelMapper[section])
+						displaySections: [...item.sections].map(section => helper.darPanelMapper[section])
 					}
 					arr.push(step);
 					return arr;
