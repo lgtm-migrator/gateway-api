@@ -141,7 +141,9 @@ module.exports = {
 					req.user._id
 				);
 				// Set the workflow override capability if there is an active step and user is a manager
-				workflow.canOverrideStep = !workflow.isCompleted && isManager;
+				if(!_.isEmpty(workflow)) {
+					workflow.canOverrideStep = !workflow.isCompleted && isManager;
+				}
 			}
 			// 10. Return application form
 			return res.status(200).json({
