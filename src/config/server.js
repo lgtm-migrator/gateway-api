@@ -77,6 +77,20 @@ function setNoCache(req, res, next) {
     next();
 }
 
+app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
+    passport.authenticate('jwt', async function (err, user, info) {
+        if (err || !user) {
+            return res.status(200).redirect(process.env.homeURL+'/search?search=');
+        }
+        oidc.Session.destory;
+        req.logout();
+	    res.clearCookie('jwt');
+
+        return res.status(200).redirect(process.env.homeURL+'/search?search=');
+    })(req, res, next);
+})
+
+
 app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
     passport.authenticate('jwt', async function (err, user, info) {
 
