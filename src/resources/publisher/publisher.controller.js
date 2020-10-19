@@ -144,6 +144,10 @@ module.exports = {
 							},
 						},
 					},
+					{ 
+						path: 'workflow.steps.reviewers', 
+						select: 'firstname lastname' 
+					}
 				]);
 
 			if (!isManager) {
