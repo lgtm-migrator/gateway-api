@@ -20,7 +20,6 @@ const strategy = () => {
         const [err, user] = await to(getUserById(jwtPayload.data._id))
 
         if (err) {
-            console.log("error");
             return cb(err)
         }
         req.user = user
