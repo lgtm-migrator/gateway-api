@@ -14,9 +14,13 @@ const strategy = () => {
     }
 
     const verifyCallback = async (req, jwtPayload, cb) => {
+        if(typeof jwtPayload.data === 'string') {
+            jwtPayload.data = JSON.parse(jwtPayload.data);
+        }
         const [err, user] = await to(getUserById(jwtPayload.data._id))
 
         if (err) {
+            console.log("error");
             return cb(err)
         }
         req.user = user

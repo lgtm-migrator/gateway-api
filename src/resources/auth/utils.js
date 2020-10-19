@@ -28,6 +28,17 @@ const signToken = (user) => {
     )
 }
 
+const camundaToken = () => {
+    return jwt.sign(
+        { username: "HDRAdmin", groupIds: ["camunda-admin"], tenantIds: []},
+        process.env.JWTSecret,  
+        { //Here change it so only id
+            algorithm: 'HS256',
+            expiresIn: 604800
+        }
+    )
+}
+
 const hashPassword = async password => {
     if (!password) {
         throw new Error('Password was not provided')
@@ -74,4 +85,4 @@ const getRedirectUrl = role => {
     }
 }
 
-export { setup, signToken, hashPassword, verifyPassword, checkIsInRole, getRedirectUrl, whatIsRole }
+export { setup, signToken, camundaToken, hashPassword, verifyPassword, checkIsInRole, getRedirectUrl, whatIsRole }
