@@ -1182,6 +1182,7 @@ module.exports = {
 		let { firstname, lastname } = user;
 		// Instantiate default params
 		let custodianUsers = [],
+			custodianManagers = [],
 			emailRecipients = [],
 			options = {},
 			html = '',
@@ -1286,14 +1287,17 @@ module.exports = {
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
 					// Retrieve all custodian user Ids to generate notifications
-					custodianUsers = [...accessRecord.datasets[0].publisher.team.users];
-					let custodianUserIds = custodianUsers.map((user) => user.id);
+					custodianManagers = teamController.getTeamManagers(accessRecord.datasets[0].publisher.team);
+					let custodianUserIds = custodianManagers.map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
 						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
 						'data access request',
 						accessRecord._id
 					);
+				} else {
+					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
+					custodianManagers = [{ email: dataCustodianEmail }];
 				}
 				// Applicant notification
 				await notificationBuilder.triggerNotificationMessage(
@@ -1316,7 +1320,6 @@ module.exports = {
 				options = {
 					userType: '',
 					userEmail: appEmail,
-					custodianEmail: contactPoint,
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
@@ -1325,7 +1328,7 @@ module.exports = {
 				for (let emailRecipientType of emailRecipientTypes) {
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
-						emailRecipients = [...custodianUsers];
+						emailRecipients = [...custodianManagers];
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [
@@ -1683,7 +1686,7 @@ module.exports = {
 			if (activeStep) {
 				let {
 					reviewStatus,
-					deadlinePassed,
+					deadlinePassed
 				} = module.exports.getActiveStepStatus(activeStep);
 				//Update active step with review status
 				steps[activeStepIndex] = {
