@@ -1568,7 +1568,8 @@ module.exports = {
 					)
 				)
 				.map((user) => {
-					return `${user.firstname} ${user.lastname}`;
+					let isCurrentUser = user._id.toString() === userId.toString();
+					return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)`:``}`;
 				});
 			if (
 				applicationStatus === 'submitted' ||
@@ -1831,7 +1832,8 @@ module.exports = {
 				)
 			)
 			.map((user) => {
-				return `${user.firstname} ${user.lastname}`;
+				let isCurrentUser = user._id.toString() === userId.toString();
+				return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)`:``}`;
 			});
 
 		let isReviewer = reviewers.some(
