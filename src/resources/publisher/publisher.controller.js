@@ -168,7 +168,7 @@ module.exports = {
 
 					let elapsedSteps = [...steps].slice(0, activeStepIndex + 1);
 					let found = elapsedSteps.some((step) =>
-						step.reviewers.some((reviewer) => reviewer_.id.equals(_id))
+						step.reviewers.some((reviewer) => reviewer._id.equals(_id))
 					);
 
 					if (found) {
