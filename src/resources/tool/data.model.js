@@ -50,17 +50,17 @@ const DataSchema = new Schema(
     firstname: String,
     lastname: String,
     bio: String, //institution
-    displayBio: Boolean,
+    showBio: Boolean,
     orcid: String,
-    displayOrcid: Boolean,
+    showOrcid: Boolean,
     emailNotifications: Boolean,
     terms: Boolean,
     sector: String,
-    displaySector: Boolean,
+    showSector: Boolean,
     organisation: String,
     showOrganisation: {type: Boolean, default: false },
-    displayLink: Boolean,
-    displayDomain: Boolean,
+    showLink: Boolean,
+    showDomain: Boolean,
 
     //dataset related fields 
     datasetid: String,

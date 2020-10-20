@@ -44,7 +44,7 @@ router.put('/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-  let { id, firstname, lastname, email, bio, displayBio, displayLink, displayOrcid, emailNotifications, terms, sector, displaySector, organisation, showOrganisation, tags, displayDomain } = req.body;
+  let { id, firstname, lastname, email, bio, showBio, showLink, showOrcid, emailNotifications, terms, sector, showSector, organisation, showOrganisation, tags, showDomain } = req.body;
   const type = 'person';
   let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
   let orcid = urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid));
@@ -62,19 +62,19 @@ router.put('/',
       lastname,
       type,
       bio,
-      displayBio,
+      showBio,
       link,
-      displayLink,
+      showLink,
       orcid,
-      displayOrcid,
+      showOrcid,
       emailNotifications,
       terms,
       sector,
-      displaySector,
+      showSector,
       organisation,
       showOrganisation,
       tags,
-      displayDomain,
+      showDomain,
     },
     {new:true});
     await UserModel.findOneAndUpdate({ id: id }, 

@@ -28,7 +28,7 @@ router.get('/:personID',
 // @access   Public
 router.post('/', 
     async (req, res) => {
-    const { id, firstname, lastname, email, bio, displayBio, displayLink, displayOrcid, redirectURL, sector, displaySector,  organisation, emailNotifications, terms, tags, displayDomain } = req.body
+    const { id, firstname, lastname, email, bio, showBio, showLink, showOrcid, redirectURL, sector, showSector,  organisation, emailNotifications, terms, tags, showDomain } = req.body
     let link = urlValidator.validateURL(req.body.link);
     let orcid = urlValidator.validateOrcidURL(req.body.orcid);
     let username = `${firstname.toLowerCase()}.${lastname.toLowerCase()}`;
@@ -57,18 +57,18 @@ router.post('/',
             firstname,
             lastname,
             bio,
-            displayBio,
+            showBio,
             link,
-            displayLink,
+            showLink,
             orcid,
-            displayOrcid,
+            showOrcid,
             emailNotifications,
             terms,
             sector,
-            displaySector,
+            showSector,
             organisation,
             tags,
-            displayDomain,
+            showDomain,
         })
     )
 
