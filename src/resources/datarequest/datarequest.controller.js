@@ -1470,7 +1470,7 @@ module.exports = {
 				}
 			}
 			// If user is not authenticated as a custodian, check if they are an author or the main applicant
-			if (_.isEmpty(userType)) {
+			if (application.applicationStatus === 'inProgress' || _.isEmpty(userType)) {
 				if (
 					application.authorIds.includes(userId) ||
 					application.userId === userId
