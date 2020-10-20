@@ -1129,8 +1129,12 @@ module.exports = {
 			// 4. Update application to submitted status
 			accessRecord.applicationStatus = 'submitted';
 			// Check if workflow/5 Safes based application, set final status date if status will never change again
-			if (!accessRecord.datasets[0].publisher.workflowEnabled) {
-				accessRecord.dateFinalStatus = new Date();
+			let workflowEnabled = false;
+			if(_.has(accessRecord.datasets[0], 'publisher')) {
+				if (!accessRecord.datasets[0].publisher.workflowEnabled) {
+					workflowEnabled = true;
+					accessRecord.dateFinalStatus = new Date();
+				}
 			}
 			let dateSubmitted = new Date();
 			accessRecord.dateSubmitted = dateSubmitted;
@@ -1148,7 +1152,7 @@ module.exports = {
 						req.user
 					);
 					// Start workflow process if publisher requires it
-					if (accessRecord.datasets[0].publisher.workflowEnabled) {
+					if (workflowEnabled) {
 						// Call Camunda controller to start workflow for submitted application
 						let {
 							publisherObj: { name: publisher },
