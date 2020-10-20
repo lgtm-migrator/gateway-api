@@ -1566,7 +1566,7 @@ module.exports = {
 				.map((user) => {
 					return `${user.firstname} ${user.lastname}`;
 				});
-			if (applicationStatus === 'submitted' || (applicationStatus === 'inReview' && !_.isEmpty(workflow))) {
+			if (applicationStatus === 'submitted' || (applicationStatus === 'inReview' && _.isEmpty(workflow))) {
 				remainingActioners = managerUsers.join(', ');
 			}
 			if (!_.isEmpty(workflow)) {
