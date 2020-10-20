@@ -1595,7 +1595,13 @@ module.exports = {
 						isReviewer = false,
 						reviewPanels = [],
 					} = module.exports.getActiveStepStatus(activeStep, users, userId));
-					activeStep = { ...activeStep, reviewStatus };
+					let activeStepIndex = workflow.steps.findIndex((step) => {
+						return step.active === true;
+					});
+					workflow.steps[activeStepIndex] = {
+						...workflow.steps[activeStepIndex],
+						reviewStatus,
+					};
 				} else if (
 					_.isUndefined(activeStep) &&
 					applicationStatus === 'inReview'
@@ -1614,8 +1620,10 @@ module.exports = {
 				let formattedSteps = [...workflow.steps].reduce((arr, item) => {
 					let step = {
 						...item,
-						sections: [...item.sections].map(section => helper.darPanelMapper[section])
-					}
+						sections: [...item.sections].map(
+							(section) => helper.darPanelMapper[section]
+						),
+					};
 					arr.push(step);
 					return arr;
 				}, []);
