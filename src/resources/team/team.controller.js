@@ -104,12 +104,12 @@ module.exports = {
 		return false;
 	},
 
-	getTeamManagers: (team) => {
+	getTeamMembersByRole: (team, role) => {
 		// Destructure members array and populated users array (populate 'users' must be included in the original Mongo query)
 		let { members = [], users = [] } = team;
-		// Get all userIds for managers within team
-		let managerIds = members.filter(mem => mem.roles.includes('manager')).map(mem => mem.memberid.toString());
-		// return all user records for managers
-		return users.filter(user => managerIds.includes(user._id.toString()));
+		// Get all userIds for role within team
+		let userIds = members.filter(mem => mem.roles.includes(role)).map(mem => mem.memberid.toString());
+		// return all user records for role
+		return users.filter(user => userIds.includes(user._id.toString()));
 	}
 };

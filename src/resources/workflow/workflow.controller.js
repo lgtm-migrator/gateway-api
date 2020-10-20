@@ -389,5 +389,208 @@ module.exports = {
 			};
 		}
 		return bpmContext;
+	},
+
+	getWorkflowCompleted: (workflow = {}) => {
+		let workflowCompleted = false;
+		if (!_.isEmpty(workflow)) {
+			let { steps } = workflow;
+			workflowCompleted = steps.every((step) => step.completed);
+		}
+		return workflowCompleted;
+	},
+
+	getActiveWorkflowStep: (workflow = {}) => {
+		let activeStep = {};
+		if (!_.isEmpty(workflow)) {
+			let { steps } = workflow;
+			activeStep = steps.find((step) => {
+				return step.active;
+			});
+		}
+		return activeStep;
+	},
+
+	getActiveStepReviewers: (workflow = {}) => {
+		let stepReviewers = [];
+		// Attempt to get step reviewers if workflow passed
+		if (!_.isEmpty(workflow)) {
+			// Get active step
+			let activeStep = module.exports.getActiveWorkflowStep(workflow);
+			// If active step, return the reviewers
+			if(activeStep) {
+				({ reviewers: stepReviewers }) = activeStep;
+			}
+		}
+		return stepReviewers;
+	},
+
+	getActiveStepStatus: (activeStep, users = [], userId = '') => {
+		let reviewStatus = '',
+			deadlinePassed = false,
+			remainingActioners = [],
+			decisionMade = false,
+			decisionComments = '',
+			decisionApproved = false,
+			decisionDate = '',
+			decisionStatus = '';
+		let {
+			stepName,
+			deadline,
+			startDateTime,
+			reviewers = [],
+			recommendations = [],
+			sections = [],
+		} = activeStep;
+		let deadlineDate = moment(startDateTime).add(deadline, 'days');
+		let diff = parseInt(deadlineDate.diff(new Date(), 'days'));
+		if (diff > 0) {
+			reviewStatus = `Deadline in ${diff} days`;
+		} else if (diff < 0) {
+			reviewStatus = `Deadline was ${Math.abs(diff)} days ago`;
+			deadlinePassed = true;
+		} else {
+			reviewStatus = `Deadline is today`;
+		}
+		remainingActioners = reviewers.filter(
+			(reviewer) =>
+				!recommendations.some(
+					(rec) => rec.reviewer.toString() === reviewer.toString()
+				)
+		);
+		remainingActioners = users
+			.filter((user) =>
+				remainingActioners.some(
+					(actioner) => actioner.toString() === user._id.toString()
+				)
+			)
+			.map((user) => {
+				return `${user.firstname} ${user.lastname}`;
+			});
+
+		let isReviewer = reviewers.some(
+			(reviewer) => reviewer.toString() === userId.toString()
+		);
+		let hasRecommended = recommendations.some(
+			(rec) => rec.reviewer.toString() === userId.toString()
+		);
+
+		decisionMade = isReviewer && hasRecommended;
+
+		if (decisionMade) {
+			decisionStatus = 'Decision made for this phase';
+		} else if (isReviewer) {
+			decisionStatus = 'Decision required';
+		} else {
+			decisionStatus = '';
+		}
+
+		if (hasRecommended) {
+			let recommendation = recommendations.find(
+				(rec) => rec.reviewer.toString() === userId.toString()
+			);
+			({
+				comments: decisionComments,
+				approved: decisionApproved,
+				createdDate: decisionDate,
+			} = recommendation);
+		}
+
+		let reviewPanels = sections
+			.map((section) => helper.darPanelMapper[section])
+			.join(', ');
+
+		return {
+			stepName,
+			remainingActioners: remainingActioners.join(', '),
+			deadlinePassed,
+			isReviewer,
+			reviewStatus,
+			decisionMade,
+			decisionApproved,
+			decisionDate,
+			decisionStatus,
+			decisionComments,
+			reviewPanels
+		};
+	},
+
+	getWorkflowStatus: (application) => {
+		let workflowStatus = {};
+		let { workflow = {} } = application;
+		if (!_.isEmpty(workflow)) {
+			let { workflowName, steps } = workflow;
+			// Find the active step in steps
+			let activeStep = module.exports.getActiveWorkflowStep(workflow);
+			let activeStepIndex = steps.findIndex((step) => {
+				return step.active === true;
+			});
+			if (!_.isEmpty(activeStep)) {
+				let {
+					reviewStatus,
+					deadlinePassed
+				} = module.exports.getActiveStepStatus(activeStep);
+				//Update active step with review status
+				steps[activeStepIndex] = {
+					...steps[activeStepIndex],
+					reviewStatus,
+					deadlinePassed
+				};
+			}
+			//Update steps with user friendly review sections
+			let formattedSteps = [...steps].reduce((arr, item) => {
+				let step = {
+					...item,
+					sections: [...item.sections].map(
+						(section) => helper.darPanelMapper[section]
+					),
+				};
+				arr.push(step);
+				return arr;
+			}, []);
+
+			workflowStatus = {
+				workflowName,
+				steps: formattedSteps,
+				isCompleted: module.exports.getWorkflowCompleted(workflow)
+			};
+		}
+		return workflowStatus;
+	},
+
+	getReviewStatus: (application, userId) => {
+		let inReviewMode = false,
+			reviewSections = [],
+			isActiveStepReviewer = false,
+			hasRecommended = false;
+		// Get current application status
+		let { applicationStatus } = application;
+		// Check if the current user is a reviewer on the current step of an attached workflow
+		let { workflow = {} } = application;
+		if (!_.isEmpty(workflow)) {
+			let { steps } = workflow;
+			let activeStep = steps.find((step) => {
+				return step.active === true;
+			});
+			if (activeStep) {
+				isActiveStepReviewer = activeStep.reviewers.some(
+					(reviewer) => reviewer._id.toString() === userId.toString()
+				);
+				reviewSections = [...activeStep.sections];
+				
+				let { recommendations = [] } = activeStep;
+				if(!_.isEmpty(recommendations)) {
+					hasRecommended = recommendations.some(
+						(rec) => rec.reviewer.toString() === userId.toString()
+					);
+				}
+			}
+		}
+		// Return active review mode if conditions apply
+		if (applicationStatus === 'inReview' && isActiveStepReviewer) {
+			inReviewMode = true;
+		}
+
+		return { inReviewMode, reviewSections, hasRecommended };
 	}
 };
