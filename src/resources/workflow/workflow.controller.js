@@ -324,7 +324,7 @@ module.exports = {
 		// Extract deadline and reminder offset in days from step definition
 		let { deadline, reminderOffset } = step;
 		// Subtract SLA reminder offset
-		let reminderPeriod = deadline - reminderOffset;
+		let reminderPeriod = +deadline - +reminderOffset;
 		return `P${reminderPeriod}D`;
 	},
 
