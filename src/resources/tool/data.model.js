@@ -58,7 +58,6 @@ const DataSchema = new Schema(
     sector: String,
     displaySector: Boolean,
     organisation: String,
-    displayOrganisation: Boolean,
     showOrganisation: {type: Boolean, default: false },
     displayLink: Boolean,
     displayDomain: Boolean,

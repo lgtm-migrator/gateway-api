@@ -44,7 +44,7 @@ router.put('/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-  let { id, firstname, lastname, email, bio, displayBio, displayLink, displayOrcid, emailNotifications, terms, sector, displaySector, organisation, displayOrganisation, showOrganisation, tags, displayDomain } = req.body;
+  let { id, firstname, lastname, email, bio, displayBio, displayLink, displayOrcid, emailNotifications, terms, sector, displaySector, organisation, showOrganisation, tags, displayDomain } = req.body;
   const type = 'person';
   let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
   let orcid = urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid));
@@ -53,8 +53,9 @@ router.put('/',
   bio = inputSanitizer.removeNonBreakingSpaces(bio);
   sector = inputSanitizer.removeNonBreakingSpaces(sector);
   organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
-  tags = inputSanitizer.removeNonBreakingSpaces(tags);
+  tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
   console.log(req.body)
+
   await Data.findOneAndUpdate({ id: id },
     {
       firstname,
@@ -71,7 +72,6 @@ router.put('/',
       sector,
       displaySector,
       organisation,
-      displayOrganisation,
       showOrganisation,
       tags,
       displayDomain,
