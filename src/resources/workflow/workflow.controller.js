@@ -324,7 +324,7 @@ module.exports = {
 		// Extract deadline and reminder offset in days from step definition
 		let { deadline, reminderOffset } = step;
 		// Subtract SLA reminder offset
-		let reminderPeriod = deadline - reminderOffset;
+		let reminderPeriod = +deadline - +reminderOffset;
 		return `P${reminderPeriod}D`;
 	},
 
@@ -455,28 +455,29 @@ module.exports = {
 		remainingActioners = reviewers.filter(
 			(reviewer) =>
 				!recommendations.some(
-					(rec) => rec.reviewer.toString() === reviewer.toString()
+					(rec) => rec.reviewer.toString() === reviewer._id.toString()
 				)
 		);
 		remainingActioners = users
 			.filter((user) =>
 				remainingActioners.some(
-					(actioner) => actioner.toString() === user._id.toString()
+					(actioner) => actioner._id.toString() === user._id.toString()
 				)
 			)
 			.map((user) => {
-				return `${user.firstname} ${user.lastname}`;
+				let isCurrentUser = user._id.toString() === userId.toString();
+				return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)`:``}`;
 			});
-
+	
 		let isReviewer = reviewers.some(
-			(reviewer) => reviewer.toString() === userId.toString()
+			(reviewer) => reviewer._id.toString() === userId.toString()
 		);
 		let hasRecommended = recommendations.some(
 			(rec) => rec.reviewer.toString() === userId.toString()
 		);
-
+	
 		decisionMade = isReviewer && hasRecommended;
-
+	
 		if (decisionMade) {
 			decisionStatus = 'Decision made for this phase';
 		} else if (isReviewer) {
@@ -484,7 +485,7 @@ module.exports = {
 		} else {
 			decisionStatus = '';
 		}
-
+	
 		if (hasRecommended) {
 			let recommendation = recommendations.find(
 				(rec) => rec.reviewer.toString() === userId.toString()
@@ -495,11 +496,11 @@ module.exports = {
 				createdDate: decisionDate,
 			} = recommendation);
 		}
-
+	
 		let reviewPanels = sections
 			.map((section) => helper.darPanelMapper[section])
 			.join(', ');
-
+	
 		return {
 			stepName,
 			remainingActioners: remainingActioners.join(', '),
@@ -511,10 +512,10 @@ module.exports = {
 			decisionDate,
 			decisionStatus,
 			decisionComments,
-			reviewPanels
+			reviewPanels,
 		};
 	},
-
+	
 	getWorkflowStatus: (application) => {
 		let workflowStatus = {};
 		let { workflow = {} } = application;
@@ -525,16 +526,16 @@ module.exports = {
 			let activeStepIndex = steps.findIndex((step) => {
 				return step.active === true;
 			});
-			if (!_.isEmpty(activeStep)) {
+			if (activeStep) {
 				let {
 					reviewStatus,
-					deadlinePassed
+					deadlinePassed,
 				} = module.exports.getActiveStepStatus(activeStep);
 				//Update active step with review status
 				steps[activeStepIndex] = {
 					...steps[activeStepIndex],
 					reviewStatus,
-					deadlinePassed
+					deadlinePassed,
 				};
 			}
 			//Update steps with user friendly review sections
@@ -548,11 +549,11 @@ module.exports = {
 				arr.push(step);
 				return arr;
 			}, []);
-
+	
 			workflowStatus = {
 				workflowName,
 				steps: formattedSteps,
-				isCompleted: module.exports.getWorkflowCompleted(workflow)
+				isCompleted: module.exports.getWorkflowCompleted(workflow),
 			};
 		}
 		return workflowStatus;
@@ -577,9 +578,9 @@ module.exports = {
 					(reviewer) => reviewer._id.toString() === userId.toString()
 				);
 				reviewSections = [...activeStep.sections];
-				
+	
 				let { recommendations = [] } = activeStep;
-				if(!_.isEmpty(recommendations)) {
+				if (!_.isEmpty(recommendations)) {
 					hasRecommended = recommendations.some(
 						(rec) => rec.reviewer.toString() === userId.toString()
 					);
@@ -590,7 +591,7 @@ module.exports = {
 		if (applicationStatus === 'inReview' && isActiveStepReviewer) {
 			inReviewMode = true;
 		}
-
+	
 		return { inReviewMode, reviewSections, hasRecommended };
-	}
+	},
 };

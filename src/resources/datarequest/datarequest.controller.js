@@ -92,7 +92,7 @@ module.exports = {
 					path: 'datasets dataset authors',
 					populate: { path: 'publisher', populate: { path: 'team' } },
 				},
-				{ path: 'workflow.steps.reviewers', select: 'firstname lastname' }
+				{ path: 'workflow.steps.reviewers', select: 'firstname lastname' },
 			]);
 			// 3. If no matching application found, return 404
 			if (!accessRecord) {
@@ -134,14 +134,14 @@ module.exports = {
 			// 8. Get the workflow/voting status
 			let workflow = workflowController.getWorkflowStatus(accessRecord.toObject());
 			// 9. Check if the current user can override the current step
-			if(_.has(accessRecord.datasets[0].toObject(), 'publisher.team')) {
-					let isManager = teamController.checkTeamPermissions(
+			if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team')) {
+				let isManager = teamController.checkTeamPermissions(
 					teamController.roleTypes.MANAGER,
 					accessRecord.datasets[0].publisher.team.toObject(),
 					req.user._id
 				);
 				// Set the workflow override capability if there is an active step and user is a manager
-				if(!_.isEmpty(workflow)) {
+				if (!_.isEmpty(workflow)) {
 					workflow.canOverrideStep = !workflow.isCompleted && isManager;
 				}
 			}
@@ -491,16 +491,21 @@ module.exports = {
 			if (userType === userTypes.CUSTODIAN) {
 				// Only a custodian manager can set the final status of an application
 				authorised = false;
-				if (_.has(accessRecord.publisherObj.toObject(), 'team')) {
-					let {
-						publisherObj: { team },
-					} = accessRecord;
+				let team = {};
+				if (_.isNull(accessRecord.publisherObj)) {
+					({ team = {} } = accessRecord.datasets[0].publisher.toObject());
+				} else {
+					({ team = {} } = accessRecord.publisherObj.toObject());
+				}
+
+				if (!_.isEmpty(team)) {
 					authorised = teamController.checkTeamPermissions(
 						teamController.roleTypes.MANAGER,
-						team.toObject(),
+						team,
 						_id
 					);
 				}
+
 				if (!authorised) {
 					return res
 						.status(401)
@@ -1101,21 +1106,32 @@ module.exports = {
 				params: { id },
 			} = req;
 			// 2. Find the relevant data request application
-			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
-				path: 'datasets dataset mainApplicant authors publisherObj',
-				populate: {
-					path: 'publisher additionalInfo',
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+				{
+					path: 'datasets dataset',
 					populate: {
-						path: 'team',
+						path: 'publisher',
 						populate: {
-							path: 'users',
+							path: 'team',
 							populate: {
-								path: 'additionalInfo',
+								path: 'users',
+								populate: {
+									path: 'additionalInfo',
+								},
 							},
 						},
 					},
 				},
-			});
+				{
+					path: 'mainApplicant authors',
+					populate: {
+						path: 'additionalInfo',
+					},
+				},
+				{
+					path: 'publisherObj',
+				},
+			]);
 			if (!accessRecord) {
 				return res
 					.status(404)
@@ -1129,8 +1145,13 @@ module.exports = {
 			// 4. Update application to submitted status
 			accessRecord.applicationStatus = 'submitted';
 			// Check if workflow/5 Safes based application, set final status date if status will never change again
-			if (!accessRecord.datasets[0].publisher.workflowEnabled) {
-				accessRecord.dateFinalStatus = new Date();
+			let workflowEnabled = false;
+			if (_.has(accessRecord.datasets[0].toObject(), 'publisher')) {
+				if (!accessRecord.datasets[0].publisher.workflowEnabled) {
+					accessRecord.dateFinalStatus = new Date();
+				} else {
+					workflowEnabled = true;
+				}
 			}
 			let dateSubmitted = new Date();
 			accessRecord.dateSubmitted = dateSubmitted;
@@ -1148,7 +1169,7 @@ module.exports = {
 						req.user
 					);
 					// Start workflow process if publisher requires it
-					if (accessRecord.datasets[0].publisher.workflowEnabled) {
+					if (workflowEnabled) {
 						// Call Camunda controller to start workflow for submitted application
 						let {
 							publisherObj: { name: publisher },
@@ -1317,7 +1338,8 @@ module.exports = {
 						accessRecord._id
 					);
 				} else {
-					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
+					const dataCustodianEmail =
+						process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
 					custodianManagers = [{ email: dataCustodianEmail }];
 				}
 				// Applicant notification
@@ -1354,7 +1376,7 @@ module.exports = {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [
 							accessRecord.mainApplicant,
-							...accessRecord.authors
+							...accessRecord.authors,
 						];
 					}
 					// Establish email context object
@@ -1507,7 +1529,10 @@ module.exports = {
 				}
 			}
 			// If user is not authenticated as a custodian, check if they are an author or the main applicant
-			if (_.isEmpty(userType)) {
+			if (
+				application.applicationStatus === 'inProgress' ||
+				_.isEmpty(userType)
+			) {
 				if (
 					application.authorIds.includes(userId) ||
 					application.userId === userId
@@ -1587,9 +1612,13 @@ module.exports = {
 					)
 				)
 				.map((user) => {
-					return `${user.firstname} ${user.lastname}`;
+					let isCurrentUser = user._id.toString() === userId.toString();
+					return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)`:``}`;
 				});
-			if (applicationStatus === 'submitted') {
+			if (
+				applicationStatus === 'submitted' ||
+				(applicationStatus === 'inReview' && _.isEmpty(workflow))
+			) {
 				remainingActioners = managerUsers.join(', ');
 			}
 			if (!_.isEmpty(workflow)) {
@@ -1611,6 +1640,13 @@ module.exports = {
 						isReviewer = false,
 						reviewPanels = [],
 					} = workflowController.getActiveStepStatus(activeStep, users, userId));
+					let activeStepIndex = workflow.steps.findIndex((step) => {
+						return step.active === true;
+					});
+					workflow.steps[activeStepIndex] = {
+						...workflow.steps[activeStepIndex],
+						reviewStatus,
+					};
 				} else if (
 					_.isUndefined(activeStep) &&
 					applicationStatus === 'inReview'
@@ -1625,6 +1661,18 @@ module.exports = {
 						moment(dateFinalStatus).diff(dateSubmitted, 'days')
 					);
 				}
+				// Set review section to display format
+				let formattedSteps = [...workflow.steps].reduce((arr, item) => {
+					let step = {
+						...item,
+						sections: [...item.sections].map(
+							(section) => helper.darPanelMapper[section]
+						),
+					};
+					arr.push(step);
+					return arr;
+				}, []);
+				workflow.steps = [...formattedSteps];
 			}
 		}
 
