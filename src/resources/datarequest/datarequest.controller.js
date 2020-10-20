@@ -1795,13 +1795,13 @@ module.exports = {
 		remainingActioners = reviewers.filter(
 			(reviewer) =>
 				!recommendations.some(
-					(rec) => rec.reviewer.toString() === reviewer.toString()
+					(rec) => rec.reviewer.toString() === reviewer._id.toString()
 				)
 		);
 		remainingActioners = users
 			.filter((user) =>
 				remainingActioners.some(
-					(actioner) => actioner.toString() === user._id.toString()
+					(actioner) => actioner._id.toString() === user._id.toString()
 				)
 			)
 			.map((user) => {
