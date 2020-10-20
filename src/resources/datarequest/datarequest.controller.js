@@ -1809,7 +1809,7 @@ module.exports = {
 			});
 
 		let isReviewer = reviewers.some(
-			(reviewer) => reviewer.toString() === userId.toString()
+			(reviewer) => reviewer._id.toString() === userId.toString()
 		);
 		let hasRecommended = recommendations.some(
 			(rec) => rec.reviewer.toString() === userId.toString()
