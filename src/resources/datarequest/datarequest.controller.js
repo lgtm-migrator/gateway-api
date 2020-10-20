@@ -487,16 +487,22 @@ module.exports = {
 			if (userType === userTypes.CUSTODIAN) {
 				// Only a custodian manager can set the final status of an application
 				authorised = false;
-				if (_.has(accessRecord.publisherObj.toObject(), 'team')) {
-					let {
-						publisherObj: { team },
-					} = accessRecord;
-					authorised = teamController.checkTeamPermissions(
-						teamController.roleTypes.MANAGER,
-						team.toObject(),
-						_id
-					);
+				let team = {};
+				if (_.isNull(accessRecord.publisherObj)) {
+						({ team = {} } = accessRecord.datasets[0].publisher.toObject());
+				} else {
+						({ team = {} } = accessRecord.publisherObj.toObject());
 				}
+
+				if (!_.isEmpty(team)) {
+						authorised = teamController.checkTeamPermissions(
+								teamController.roleTypes.MANAGER,
+								team,
+								_id
+						);
+				
+				}
+
 				if (!authorised) {
 					return res
 						.status(401)
