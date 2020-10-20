@@ -5,7 +5,7 @@ import passport from "passport";
 import { ROLES } from '../user/user.roles'
 import {addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository';
 import emailGenerator from '../utilities/emailGenerator.util';
-import { UserModel } from '../user/user.model'
+import { UserModel } from '../user/user.model' 
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
 
@@ -44,7 +44,7 @@ router.put('/',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-  let { id, firstname, lastname, email, bio, emailNotifications, terms, sector, organisation, showOrganisation, tags } = req.body;
+  let { id, firstname, lastname, email, bio, showBio, showLink, showOrcid, emailNotifications, terms, sector, showSector, organisation, showOrganisation, tags, showDomain } = req.body;
   const type = 'person';
   let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
   let orcid = urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid));
@@ -53,22 +53,28 @@ router.put('/',
   bio = inputSanitizer.removeNonBreakingSpaces(bio);
   sector = inputSanitizer.removeNonBreakingSpaces(sector);
   organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
-  tags = inputSanitizer.removeNonBreakingSpaces(tags);
+  tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
   console.log(req.body)
+
   await Data.findOneAndUpdate({ id: id },
     {
       firstname,
       lastname,
       type,
       bio,
+      showBio,
       link,
+      showLink,
       orcid,
+      showOrcid,
       emailNotifications,
       terms,
       sector,
+      showSector,
       organisation,
       showOrganisation,
       tags,
+      showDomain,
     },
     {new:true});
     await UserModel.findOneAndUpdate({ id: id }, 

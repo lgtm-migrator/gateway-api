@@ -17,7 +17,7 @@ const router = express.Router()
 // @access   Public
 router.get('/:personID', 
     async (req, res) => {
-        const [err, user] = await to(getUserByUserId(req.params.personID))
+        const [err, user] = await to(getUserByUserId(req.params.personID)) 
         
         if (err) return res.json({ success: false, error: err });
         return res.json({ success: true, data: user }); 
@@ -28,7 +28,7 @@ router.get('/:personID',
 // @access   Public
 router.post('/', 
     async (req, res) => {
-    const { id, firstname, lastname, email, bio, redirectURL, sector, organisation, emailNotifications, terms } = req.body
+    const { id, firstname, lastname, email, bio, showBio, showLink, showOrcid, redirectURL, sector, showSector,  organisation, emailNotifications, terms, tags, showDomain } = req.body
     let link = urlValidator.validateURL(req.body.link);
     let orcid = urlValidator.validateOrcidURL(req.body.orcid);
     let username = `${firstname.toLowerCase()}.${lastname.toLowerCase()}`;
@@ -57,12 +57,18 @@ router.post('/',
             firstname,
             lastname,
             bio,
+            showBio,
             link,
+            showLink,
             orcid,
+            showOrcid,
             emailNotifications,
             terms,
             sector,
-            organisation
+            showSector,
+            organisation,
+            tags,
+            showDomain,
         })
     )
 
