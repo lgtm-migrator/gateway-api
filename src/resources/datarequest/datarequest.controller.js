@@ -1101,21 +1101,34 @@ module.exports = {
 				params: { id },
 			} = req;
 			// 2. Find the relevant data request application
-			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
-				path: 'datasets dataset mainApplicant authors publisherObj',
-				populate: {
-					path: 'publisher additionalInfo',
-					populate: {
-						path: 'team',
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate(
+				[
+					{
+						path: 'datasets dataset',
 						populate: {
-							path: 'users',
+							path: 'publisher',
 							populate: {
-								path: 'additionalInfo',
-							},
-						},
+								path: 'team',
+								populate: {
+									path: 'users',
+									populate: {
+										path: 'additionalInfo',
+									},
+								},
+							}
+						}
 					},
-				},
-			});
+					{
+						path: 'mainApplicant authors',
+						populate: {
+							path: 'additionalInfo'
+						}
+					},
+					{
+						path: 'publisherObj'
+					}
+				]
+			);
 			if (!accessRecord) {
 				return res
 					.status(404)
@@ -1130,10 +1143,11 @@ module.exports = {
 			accessRecord.applicationStatus = 'submitted';
 			// Check if workflow/5 Safes based application, set final status date if status will never change again
 			let workflowEnabled = false;
-			if(_.has(accessRecord.datasets[0], 'publisher')) {
+			if(_.has(accessRecord.datasets[0].toObject(), 'publisher')) {
 				if (!accessRecord.datasets[0].publisher.workflowEnabled) {
-					workflowEnabled = true;
 					accessRecord.dateFinalStatus = new Date();
+				} else {
+					workflowEnabled = true;
 				}
 			}
 			let dateSubmitted = new Date();
@@ -1552,7 +1566,7 @@ module.exports = {
 				.map((user) => {
 					return `${user.firstname} ${user.lastname}`;
 				});
-			if (applicationStatus === 'submitted') {
+			if (applicationStatus === 'submitted' || (applicationStatus === 'inReview' && !_.isEmpty(workflow))) {
 				remainingActioners = managerUsers.join(', ');
 			}
 			if (!_.isEmpty(workflow)) {
