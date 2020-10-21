@@ -594,4 +594,20 @@ module.exports = {
 	
 		return { inReviewMode, reviewSections, hasRecommended };
 	},
+	
+	getWorkflowEmailContext: (workflow, activeStepIndex) => {
+		const { workflowName, steps } = workflow;
+		const { stepName } = steps[activeStepIndex];
+		const stepReviewers = workflowController.getActiveStepReviewers(workflow);
+		const reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+		const reviewSections = [...steps[activeStepIndex].sections].map((section) => helper.darPanelMapper[section]);
+		let nextStepName = '';
+		//Find name of next step if this is not the final step
+		if(activeStepIndex + 1 > steps.length) {
+			nextStepName = 'No next step';
+		} else {
+			({ stepName: nextStepName } = steps[activeStepIndex + 1]);
+		}
+		return { workflowName, stepName, reviewerNames, reviewSections, nextStepName };
+	},
 };

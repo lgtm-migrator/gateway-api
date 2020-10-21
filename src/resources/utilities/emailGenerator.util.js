@@ -383,7 +383,7 @@ const _getUserDetails = async (userObj) => {
       reject({fullname: '',  email: ''});
     }
   });
-}
+};
 
 const _generateEmail = async (
   questions,
@@ -427,7 +427,7 @@ const _displayConditionalStatusDesc = (applicationStatus, applicationStatusDesc)
     `
   }
   return '';
-}
+};
 
 const _displayDARLink = (accessId) => {
   if(!accessId)
@@ -435,7 +435,7 @@ const _displayDARLink = (accessId) => {
 
   let darLink = `${process.env.homeURL}/data-access-request/${accessId}`;
   return `<a style="color: #475da7;" href="${darLink}">View application</a>`;
-}
+};
 
 const _generateDARStatusChangedEmail = (options) => {
   let { id, applicationStatus, applicationStatusDesc, projectId, projectName, publisher, datasetTitles, dateSubmitted, applicants } = options;
@@ -493,7 +493,6 @@ const _generateDARStatusChangedEmail = (options) => {
             ${_displayDARLink(id)}
             </div>
           </div>`;
-
   return body;
 };
 
@@ -554,7 +553,303 @@ const _generateContributorEmail = (options) => {
           </div>`;
 
   return body;
-}
+};
+
+const _generateStepOverrideEmail = (options) => {
+  let { id, projectName, projectId, datasetTitles, actioner, applicants, workflowName, stepName, nextStepName, reviewSections, reviewerNames } = options;
+  let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Data access request application review phase completed 
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${actioner} has manually completed the review phase '${stepName}' for the following data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review phase completed</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${workflowName} - ${stepName}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review sections</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${reviewSections}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Reviewers</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${reviewerNames}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Next review phase</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${workflowName} - ${nextStepName}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayDARLink(id)}
+            </div>
+          </div>`;
+  return body;
+};
+
+const _generateNewReviewPhaseEmail = (options) => {
+  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames } = options;
+  let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Data access request application review phase commenced 
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     You are now required to complete the review phase '${stepName}' for the following data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review phase</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${workflowName} - ${stepName}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review sections</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${reviewSections}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Reviewers</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${reviewerNames}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateDeadline).format('D MMM YYYY HH:mm')}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayDARLink(id)}
+            </div>
+          </div>`;
+  return body;
+};
+
+const _generateReviewDeadlineWarning = (options) => {
+  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames } = options;
+  let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Data access request application review phase approaching deadline in ${days} days
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     The following data access request application is approaching the review deadline.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review phase</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${workflowName} - ${stepName}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review sections</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${reviewSections}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Reviewers</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${reviewerNames}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateDeadline).format('D MMM YYYY HH:mm')}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayDARLink(id)}
+            </div>
+          </div>`;
+  return body;
+};
+
+const _generateReviewDeadlinePassed = (options) => {
+  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames } = options;
+  let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Data access request application review phase deadlined passed
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     The review phase '${stepName}' deadline has now passed for the following data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review phase</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${workflowName} - ${stepName}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review sections</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${reviewSections}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Reviewers</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${reviewerNames}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateDeadline).format('D MMM YYYY HH:mm')}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayDARLink(id)}
+            </div>
+          </div>`;
+  return body;
+};
 
 /**
  * [_sendEmail]
@@ -633,6 +928,10 @@ export default {
   generateEmail: _generateEmail,
   generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
   generateContributorEmail: _generateContributorEmail,
+  generateStepOverrideEmail: _generateStepOverrideEmail,
+  generateNewReviewPhaseEmail: _generateNewReviewPhaseEmail,
+  generateReviewDeadlineWarning: _generateReviewDeadlineWarning,
+  generateReviewDeadlinePassed: _generateReviewDeadlinePassed,
   sendEmail: _sendEmail,
   generateEmailFooter: _generateEmailFooter
 };

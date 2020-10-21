@@ -761,8 +761,11 @@ module.exports = {
 						reviewerList,
 					};
 					bpmController.postStartStepReview(bpmContext);
-					// 14. TODO Create notifications for workflow assigned (step 1 reviewers and other managers)
-					// 15. Return workflow payload
+					// 14. Gather context for notifications
+					const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
+					// 15. Create notifications to reviewers of the step that has been completed
+					module.exports.createNotifications('ReviewStepStart', emailContext, accessRecord, req.user);
+					// 16. Return workflow payload
 					return res.status(200).json({
 						success: true,
 					});
@@ -1084,13 +1087,15 @@ module.exports = {
 					console.error(err);
 					res.status(500).json({ status: 'error', message: err });
 				} else {
-					// 12. Create notifications to reviewers of the step that has been completed
-					module.exports.createNotifications('StepOverride', {}, accessRecord, req.user);
-					// 13. Call Camunda controller to start manager review process
+					// 12. Gather context for notifications
+					const emailContext = workflowController.getWorkflowEmailContext(workflow, activeStepIndex);
+					// 13. Create notifications to reviewers of the step that has been completed
+					module.exports.createNotifications('StepOverride', emailContext, accessRecord, req.user);
+					// 14. Call Camunda controller to start manager review process
 					bpmController.postCompleteReview(bpmContext);
 				}
 			});
-			// 14. Return aplication and successful response
+			// 15. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
 			console.log(err.message);
@@ -1194,6 +1199,16 @@ module.exports = {
 		}
 	},
 
+	//POST api/v1/data-access-request/:id/notify
+	notifyAccessRequestById: async (req, res) => {
+		// 1. Get workflow etc.
+		// 12. Gather context for notifications
+		//const emailContext = workflowController.getWorkflowEmailContext(workflow, activeStepIndex);
+		// 13. Create notifications to reviewers of the step that has been completed
+		//module.exports.createNotifications('DeadlineWarning', emailContext, accessRecord, req.user);
+		return res.status(200).json({ status: 'success' });
+	},
+
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Default from mail address
 		const hdrukEmail = `enquiry@healthdatagateway.org`;
@@ -1241,7 +1256,6 @@ module.exports = {
 				return { firstname, lastname, email, id };
 			});
 		}
-		
 		switch (type) {
 			// DAR application status has been updated
 			case 'StatusChange':
@@ -1471,11 +1485,16 @@ module.exports = {
 				}
 				break;
 			case 'StepOverride':
+				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
-					// Retrieve all user Ids for active step reviewers
-					stepReviewers = workflowController.getActiveStepReviewers(workflow);
+					if(!_.isEmpty(workflow)) {
+						// Retrieve all user Ids for active step reviewers
+						stepReviewers = workflowController.getActiveStepReviewers(workflow);
+						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+					}
+
 					// 1. Create reviewer notifications
 					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -1494,9 +1513,11 @@ module.exports = {
 						userName: `${appFirstName} ${appLastName}`,
 						actioner: `${firstname} ${lastname}`,
 						applicants,
+						workflowName,
 						stepName,
 						reviewSections,
-						reviewers
+						reviewerNames,
+						nextStepName
 					};
 					html = await emailGenerator.generateStepOverrideEmail(options);
 					await emailGenerator.sendEmail(
@@ -1508,6 +1529,140 @@ module.exports = {
 					);
 				}
 				break;
+			case 'ReviewStepStart':
+				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
+				if (
+					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
+				) {
+					if(!_.isEmpty(workflow)) {
+						// Retrieve all user Ids for active step reviewers
+						stepReviewers = workflowController.getActiveStepReviewers(workflow);
+						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+					}
+
+					// 1. Create reviewer notifications
+					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						stepReviewerUserIds,
+						`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+						'data access request',
+						accessRecord._id
+					);
+
+					// 2. Create reviewer emails
+					options = {
+						id: accessRecord._id,
+						projectName,
+						projectId,
+						datasetTitles,
+						userName: `${appFirstName} ${appLastName}`,
+						actioner: `${firstname} ${lastname}`,
+						applicants,
+						workflowName,
+						stepName,
+						reviewSections,
+						reviewerNames,
+						nextStepName
+					};
+					html = await emailGenerator.generateNewReviewPhaseEmail(options);
+					await emailGenerator.sendEmail(
+						stepReviewers,
+						hdrukEmail,
+						`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+						html,
+						false
+					);
+				}
+				break;
+			case 'DeadlineWarning':
+				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
+				if (
+					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
+				) {
+					if(!_.isEmpty(workflow)) {
+						// Retrieve all user Ids for active step reviewers
+						stepReviewers = workflowController.getActiveStepReviewers(workflow);
+						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+					}
+
+					// 1. Create reviewer notifications
+					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						stepReviewerUserIds,
+						`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+						'data access request',
+						accessRecord._id
+					);
+
+					// 2. Create reviewer emails
+					options = {
+						id: accessRecord._id,
+						projectName,
+						projectId,
+						datasetTitles,
+						userName: `${appFirstName} ${appLastName}`,
+						actioner: `${firstname} ${lastname}`,
+						applicants,
+						workflowName,
+						stepName,
+						reviewSections,
+						reviewerNames,
+						nextStepName
+					};
+					html = await emailGenerator.generateReviewDeadlineWarning(options);
+					await emailGenerator.sendEmail(
+						stepReviewers,
+						hdrukEmail,
+						`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+						html,
+						false
+					);
+				}
+				break;
+			case 'DeadlinePassed':
+				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
+				if (
+					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
+				) {
+					if(!_.isEmpty(workflow)) {
+						// Retrieve all user Ids for active step reviewers
+						stepReviewers = workflowController.getActiveStepReviewers(workflow);
+						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+					}
+
+					// 1. Create reviewer notifications
+					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						stepReviewerUserIds,
+						`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+						'data access request',
+						accessRecord._id
+					);
+
+					// 2. Create reviewer emails
+					options = {
+						id: accessRecord._id,
+						projectName,
+						projectId,
+						datasetTitles,
+						userName: `${appFirstName} ${appLastName}`,
+						actioner: `${firstname} ${lastname}`,
+						applicants,
+						workflowName,
+						stepName,
+						reviewSections,
+						reviewerNames,
+						nextStepName
+					};
+					html = await emailGenerator.generateReviewDeadlinePassed(options);
+					await emailGenerator.sendEmail(
+						stepReviewers,
+						hdrukEmail,
+						`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+						html,
+						false
+					);
+				}
 			}
 	},
 
