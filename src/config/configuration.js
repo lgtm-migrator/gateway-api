@@ -24,7 +24,8 @@ export const clients = [
         response_types: ['code'],
         //response_types: ['code'],
         redirect_uris: process.env.MDWRedirectURI.split(",") || [''],
-        id_token_signed_response_alg: 'HS256'
+        id_token_signed_response_alg: 'HS256',
+        post_logout_redirect_uris: ['https://atlas-test.uksouth.cloudapp.azure.com/auth/']
     },
     {
         //BC Platforms
