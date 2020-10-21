@@ -1182,6 +1182,7 @@ module.exports = {
 		let { firstname, lastname } = user;
 		// Instantiate default params
 		let custodianUsers = [],
+			custodianManagers = [],
 			emailRecipients = [],
 			options = {},
 			html = '',
@@ -1243,13 +1244,8 @@ module.exports = {
 				emailRecipients = [
 					accessRecord.mainApplicant,
 					...custodianUsers,
-					...accessRecord.authors,
-				].filter(function (user) {
-					let {
-						additionalInfo: { emailNotifications },
-					} = user;
-					return emailNotifications === true;
-				});
+					...accessRecord.authors
+				];
 				let { dateSubmitted } = accessRecord;
 				if (!dateSubmitted) ({ updatedAt: dateSubmitted } = accessRecord);
 				// Create object to pass through email data
@@ -1272,7 +1268,7 @@ module.exports = {
 					hdrukEmail,
 					`Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
 					html,
-					true
+					false
 				);
 				break;
 			case 'Submitted':
@@ -1291,14 +1287,17 @@ module.exports = {
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
 					// Retrieve all custodian user Ids to generate notifications
-					custodianUsers = [...accessRecord.datasets[0].publisher.team.users];
-					let custodianUserIds = custodianUsers.map((user) => user.id);
+					custodianManagers = teamController.getTeamManagers(accessRecord.datasets[0].publisher.team);
+					let custodianUserIds = custodianManagers.map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
 						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
 						'data access request',
 						accessRecord._id
 					);
+				} else {
+					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
+					custodianManagers = [{ email: dataCustodianEmail }];
 				}
 				// Applicant notification
 				await notificationBuilder.triggerNotificationMessage(
@@ -1321,7 +1320,6 @@ module.exports = {
 				options = {
 					userType: '',
 					userEmail: appEmail,
-					custodianEmail: contactPoint,
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
@@ -1330,23 +1328,13 @@ module.exports = {
 				for (let emailRecipientType of emailRecipientTypes) {
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
-						emailRecipients = [...custodianUsers].filter(function (user) {
-							let {
-								additionalInfo: { emailNotifications },
-							} = user;
-							return emailNotifications === true;
-						});
+						emailRecipients = [...custodianManagers];
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [
 							accessRecord.mainApplicant,
-							...accessRecord.authors,
-						].filter(function (user) {
-							let {
-								additionalInfo: { emailNotifications },
-							} = user;
-							return emailNotifications === true;
-						});
+							...accessRecord.authors
+						];
 					}
 					// Establish email context object
 					options = { ...options, userType: emailRecipientType };
@@ -1365,7 +1353,7 @@ module.exports = {
 							hdrukEmail,
 							`Data Access Request has been submitted to ${publisher} for ${datasetTitles}`,
 							html,
-							true
+							false
 						);
 					}
 				}
@@ -1400,12 +1388,6 @@ module.exports = {
 					let addedUsers = await UserModel.find({
 						id: { $in: addedAuthors },
 					}).populate('additionalInfo');
-					emailRecipients = addedUsers.filter(function (user) {
-						let {
-							additionalInfo: { emailNotifications },
-						} = user;
-						return emailNotifications === true;
-					});
 
 					await notificationBuilder.triggerNotificationMessage(
 						addedUsers.map((user) => user.id),
@@ -1414,11 +1396,11 @@ module.exports = {
 						accessRecord._id
 					);
 					await emailGenerator.sendEmail(
-						emailRecipients,
+						addedUsers,
 						hdrukEmail,
 						`You have been added as a contributor for a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
 						html,
-						true
+						false
 					);
 				}
 				// Notifications for removed contributors
@@ -1429,12 +1411,6 @@ module.exports = {
 					let removedUsers = await UserModel.find({
 						id: { $in: removedAuthors },
 					}).populate('additionalInfo');
-					emailRecipients = removedUsers.filter(function (user) {
-						let {
-							additionalInfo: { emailNotifications },
-						} = user;
-						return emailNotifications === true;
-					});
 
 					await notificationBuilder.triggerNotificationMessage(
 						removedUsers.map((user) => user.id),
@@ -1443,11 +1419,11 @@ module.exports = {
 						accessRecord._id
 					);
 					await emailGenerator.sendEmail(
-						emailRecipients,
+						removedUsers,
 						hdrukEmail,
 						`You have been removed as a contributor from a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
 						html,
-						true
+						false
 					);
 				}
 				break;
@@ -1710,7 +1686,7 @@ module.exports = {
 			if (activeStep) {
 				let {
 					reviewStatus,
-					deadlinePassed,
+					deadlinePassed
 				} = module.exports.getActiveStepStatus(activeStep);
 				//Update active step with review status
 				steps[activeStepIndex] = {
