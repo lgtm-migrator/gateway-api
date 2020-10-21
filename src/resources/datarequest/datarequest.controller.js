@@ -986,11 +986,22 @@ module.exports = {
 					console.error(err);
 					res.status(500).json({ status: 'error', message: err });
 				} else {
-					// Call Camunda controller to update workflow process
+					if(bpmContext.stepComplete && !bpmContext.finalPhaseApproved) {
+						// 15. Gather context for notifications
+						const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
+						// 16. Create notifications to reviewers of the next step that has been activated
+						module.exports.createNotifications('ReviewStepStart', emailContext, accessRecord, req.user);
+					} else if (bpmContext.stepComplete && bpmContext.finalPhaseApproved) {
+						// 15. Gather context for notifications
+						const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
+						// 16. Create notifications to managers that the application is awaiting final approval
+						module.exports.createNotifications('FinalDecisionRequired', emailContext, accessRecord, req.user);
+					}
+					// 17. Call Camunda controller to update workflow process
 					bpmController.postCompleteReview(bpmContext);
 				}
 			});
-			// 15. Return aplication and successful response
+			// 18. Return aplication and successful response
 			return res
 				.status(200)
 				.json({ status: 'success', data: accessRecord._doc });
@@ -1565,6 +1576,51 @@ module.exports = {
 						nextStepName
 					};
 					html = await emailGenerator.generateNewReviewPhaseEmail(options);
+					await emailGenerator.sendEmail(
+						stepReviewers,
+						hdrukEmail,
+						`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+						html,
+						false
+					);
+				}
+				break;
+			case 'FinalDecisionRequired':
+				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
+				if (
+					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
+				) {
+					if(!_.isEmpty(workflow)) {
+						// Retrieve all user Ids for active step reviewers
+						stepReviewers = workflowController.getActiveStepReviewers(workflow);
+						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+					}
+
+					// 1. Create reviewer notifications
+					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						stepReviewerUserIds,
+						`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+						'data access request',
+						accessRecord._id
+					);
+
+					// 2. Create reviewer emails
+					options = {
+						id: accessRecord._id,
+						projectName,
+						projectId,
+						datasetTitles,
+						userName: `${appFirstName} ${appLastName}`,
+						actioner: `${firstname} ${lastname}`,
+						applicants,
+						workflowName,
+						stepName,
+						reviewSections,
+						reviewerNames,
+						nextStepName
+					};
+					html = await emailGenerator.generateFinalDecisionRequiredEmail(options);
 					await emailGenerator.sendEmail(
 						stepReviewers,
 						hdrukEmail,
