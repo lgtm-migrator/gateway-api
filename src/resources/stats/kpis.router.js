@@ -284,7 +284,7 @@ router.get('', async (req, res) => {
             "datasetIds": [
               "7f125091-12ba-464d-af7d-9a88179b0b95",
               "0cfe60cd-038d-4c03-9a95-894c52135922",
-              // "9e798632-442a-427b-8d0e-456f754d28dc"
+              "9e798632-442a-427b-8d0e-456f754d28dc"
             ]
           },
           {
@@ -305,56 +305,42 @@ router.get('', async (req, res) => {
           }
         ];
 
-        // console.log(`tempData - ${JSON.stringify(tempData, null, 2)}`)
-
         // TRY MAP OBJECTS 
         
         let thisMap = new Map()
-        console.log(`start thisMap: ${JSON.stringify(thisMap,null,2)}`)
-        console.log(`start thisMap size - ${thisMap.size}`) 
 
-        // tempData.forEach(console.log('item'))
-        for (const x in tempData) {
-          console.log(`DAR - ${JSON.stringify(tempData[x])}`);
-
-          let datasetIdObject = tempData[x];
-
+        tempData.map((datasetIdObject) => {
+          console.log(`datasetIdObject - ${JSON.stringify(datasetIdObject, null, 2)}`);
+ 
           if(datasetIdObject.datasetIds && datasetIdObject.datasetIds.length > 0){
             //ARRAY WITH 1+ VALUE(S)
-
             datasetIdObject.datasetIds.map((datasetId) => {
-              // console.log(`datasetId: ${datasetId}`)
-              console.log(`type of datasetId: ${typeof datasetId}`)
               if(thisMap.has(datasetId)){
-               console.log('array string is there')
+               let count = thisMap.get(datasetId)
+               count++
+               thisMap.set(datasetId, count)
               } else {
                 thisMap.set(datasetId, 1)
               }
             })
-
           } 
           //UPDATE TO LODASH IS NOT EMPTY CHECK?
           else if(datasetIdObject.dataSetId && datasetIdObject.dataSetId.length > 0){
-              //STRING
-              // console.log(`type of datasetIdObject: ${typeof datasetIdObject}`)
-
-              datasetIdObject = datasetIdObject.toString();
-              console.log(`type of datasetIdObject: ${typeof datasetIdObject}`)
-
-
-              if (thisMap.has(datasetIdObject)){
+              //STRING 
+              if (thisMap.has(datasetIdObject.dataSetId)){
                console.log('string is there')
+               let count = thisMap.get(datasetIdObject.dataSetId)
+               count++
+               thisMap.set(datasetIdObject.dataSetId, count)
               } else {
-                // thisMap = {...thisMap, {datasetIdObject, 1}}
-                thisMap.set(datasetIdObject, 1)
-                // console.log(`thisMap: ${JSON.stringify(thisMap, null, 2)}`)
-
+                thisMap.set(datasetIdObject.dataSetId, 1)
               }
           }
           else { console.log('no') }
         }
+        )
 
-        console.log(`thisMap: ${JSON.stringify(thisMap, null, 2)}`)
+        console.log(`end thisMap: ${[...thisMap.entries()]}`)
         console.log(`thisMap size - ${thisMap.size}`) 
 
 
