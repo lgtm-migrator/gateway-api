@@ -556,7 +556,7 @@ const _generateContributorEmail = (options) => {
 };
 
 const _generateStepOverrideEmail = (options) => {
-  let { id, projectName, projectId, datasetTitles, actioner, applicants, workflowName, stepName, nextStepName, reviewSections, reviewerNames } = options;
+  let { id, projectName, projectId, datasetTitles, actioner, applicants, workflowName, stepName, nextStepName, reviewSections, reviewerNames, dateSubmitted } = options;
   let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -630,7 +630,7 @@ const _generateStepOverrideEmail = (options) => {
 };
 
 const _generateNewReviewPhaseEmail = (options) => {
-  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames } = options;
+  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames, dateSubmitted } = options;
   let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -704,7 +704,7 @@ const _generateNewReviewPhaseEmail = (options) => {
 };
 
 const _generateReviewDeadlineWarning = (options) => {
-  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames } = options;
+  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames, dateSubmitted } = options;
   let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -778,7 +778,7 @@ const _generateReviewDeadlineWarning = (options) => {
 };
 
 const _generateReviewDeadlinePassed = (options) => {
-  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames } = options;
+  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames, dateSubmitted } = options;
   let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -852,7 +852,7 @@ const _generateReviewDeadlinePassed = (options) => {
 };
 
 const _generateFinalDecisionRequiredEmail = (options) => {
-  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames } = options;
+  let { id, projectName, projectId, datasetTitles, applicants, workflowName, stepName, reviewSections, reviewerNames, dateSubmitted } = options;
   let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"

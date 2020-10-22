@@ -3,6 +3,7 @@ import { DataRequestModel } from './datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
 import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
+import workflowController from '../workflow/workflow.controller';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import { UserModel } from '../user/user.model';
@@ -12,7 +13,6 @@ import mongoose from 'mongoose';
 
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 const teamController = require('../team/team.controller');
-const workflowController = require('../workflow/workflow.controller');
 const notificationBuilder = require('../utilities/notificationBuilder');
 
 const hdrukEmail = `enquiry@healthdatagateway.org`;
@@ -30,8 +30,8 @@ const notificationTypes = {
 	REVIEWSTEPSTART: 'ReviewStepStart',
 	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
 	DEADLINEWARNING: 'DeadlineWarning',
-	DEADLINEPASSED: 'DeadlinePassed'
-}
+	DEADLINEPASSED: 'DeadlinePassed',
+};
 
 const applicationStatuses = {
 	SUBMITTED: 'submitted',
@@ -40,8 +40,8 @@ const applicationStatuses = {
 	APPROVED: 'approved',
 	REJECTED: 'rejected',
 	APPROVEDWITHCONDITIONS: 'approved with conditions',
-	WITHDRAWN: 'withdrawn'
-}
+	WITHDRAWN: 'withdrawn',
+};
 
 module.exports = {
 	//GET api/v1/data-access-request
@@ -150,12 +150,15 @@ module.exports = {
 				readOnly = false;
 			}
 			// 7. Set the review mode if user is a custodian reviewing the current step
-			let { inReviewMode, reviewSections, hasRecommended } = workflowController.getReviewStatus(
-				accessRecord,
-				req.user._id
-			);
+			let {
+				inReviewMode,
+				reviewSections,
+				hasRecommended,
+			} = workflowController.getReviewStatus(accessRecord, req.user._id);
 			// 8. Get the workflow/voting status
-			let workflow = workflowController.getWorkflowStatus(accessRecord.toObject());
+			let workflow = workflowController.getWorkflowStatus(
+				accessRecord.toObject()
+			);
 			// 9. Check if the current user can override the current step
 			if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team')) {
 				let isManager = teamController.checkTeamPermissions(
@@ -412,8 +415,8 @@ module.exports = {
 				updateObj = { ...updateObj, questionAnswers };
 			}
 
-			if(!_.isEmpty(jsonSchema)) {
-				updateObj = {...updateObj, jsonSchema}
+			if (!_.isEmpty(jsonSchema)) {
+				updateObj = { ...updateObj, jsonSchema };
 			}
 
 			// 3. Find data request by _id and update via body
@@ -478,9 +481,9 @@ module.exports = {
 					},
 				},
 				{
-					path: 'workflow.steps.reviewers', 
-					select: 'id email'
-				}
+					path: 'workflow.steps.reviewers',
+					select: 'id email',
+				},
 			]);
 			if (!accessRecord) {
 				return res
@@ -790,9 +793,17 @@ module.exports = {
 					};
 					bpmController.postStartStepReview(bpmContext);
 					// 14. Gather context for notifications
-					const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
+					const emailContext = workflowController.getWorkflowEmailContext(
+						workflowObj,
+						0
+					);
 					// 15. Create notifications to reviewers of the step that has been completed
-					module.exports.createNotifications(notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, req.user);
+					module.exports.createNotifications(
+						notificationTypes.REVIEWSTEPSTART,
+						emailContext,
+						accessRecord,
+						req.user
+					);
 					// 16. Return workflow payload
 					return res.status(200).json({
 						success: true,
@@ -1015,14 +1026,30 @@ module.exports = {
 					res.status(500).json({ status: 'error', message: err });
 				} else {
 					// 15. Create emails and notifications
-					if(bpmContext.stepComplete && !bpmContext.finalPhaseApproved) {
-						const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
+					if (bpmContext.stepComplete && !bpmContext.finalPhaseApproved) {
+						const emailContext = workflowController.getWorkflowEmailContext(
+							workflowObj,
+							0
+						);
 						// Create notifications to reviewers of the next step that has been activated
-						module.exports.createNotifications(notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, req.user);
+						module.exports.createNotifications(
+							notificationTypes.REVIEWSTEPSTART,
+							emailContext,
+							accessRecord,
+							req.user
+						);
 					} else if (bpmContext.stepComplete && bpmContext.finalPhaseApproved) {
-						const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
+						const emailContext = workflowController.getWorkflowEmailContext(
+							workflowObj,
+							0
+						);
 						// Create notifications to managers that the application is awaiting final approval
-						module.exports.createNotifications(notificationTypes.FINALDECISIONREQUIRED, emailContext, accessRecord, req.user);
+						module.exports.createNotifications(
+							notificationTypes.FINALDECISIONREQUIRED,
+							emailContext,
+							accessRecord,
+							req.user
+						);
 					}
 					// 16. Call Camunda controller to update workflow process
 					bpmController.postCompleteReview(bpmContext);
@@ -1047,12 +1074,27 @@ module.exports = {
 			} = req;
 			let { _id: userId } = req.user;
 			// 2. Retrieve DAR from database
-			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
-				path: 'publisherObj',
-				populate: {
-					path: 'team',
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
+						populate: {
+							path: 'users'
+						}
+					},
 				},
-			});
+				{
+					path: 'workflow.steps.reviewers',
+					select: 'firstname lastname',
+				},
+				{
+					path: 'datasets dataset'
+				},
+				{
+					path: 'mainApplicant'
+				},
+			]);
 			if (!accessRecord) {
 				return res
 					.status(404)
@@ -1125,15 +1167,37 @@ module.exports = {
 					console.error(err);
 					res.status(500).json({ status: 'error', message: err });
 				} else {
-					// 12. Gather context for notifications
-					const emailContext = workflowController.getWorkflowEmailContext(workflow, activeStepIndex);
+					// 12. Gather context for notifications (active step)
+					let emailContext = workflowController.getWorkflowEmailContext(
+						workflow,
+						activeStepIndex
+					);
 					// 13. Create notifications to reviewers of the step that has been completed
-					module.exports.createNotifications(notificationTypes.STEPOVERRIDE, emailContext, accessRecord, req.user);
-					// 14. Call Camunda controller to start manager review process
+					module.exports.createNotifications(
+						notificationTypes.STEPOVERRIDE,
+						emailContext,
+						accessRecord,
+						req.user
+					);
+					// 14. Gather context for notifications (next step)
+					if (!bpmContext.finalPhaseApproved) {
+						emailContext = workflowController.getWorkflowEmailContext(
+							workflow,
+							activeStepIndex + 1
+						);
+					}
+					// 15. Create notifications to reviewers of the next step if it was not the final step
+					module.exports.createNotifications(
+						notificationTypes.REVIEWSTEPSTART,
+						emailContext,
+						accessRecord,
+						req.user
+					);
+					// 16. Call Camunda controller to start manager review process
 					bpmController.postCompleteReview(bpmContext);
 				}
 			});
-			// 15. Return aplication and successful response
+			// 17. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
 			console.log(err.message);
@@ -1251,7 +1315,7 @@ module.exports = {
 		// Project details from about application if 5 Safes
 		let aboutApplication = JSON.parse(accessRecord.aboutApplication);
 		let { projectName } = aboutApplication;
-		let { projectId, _id, workflow = {} } = accessRecord;
+		let { projectId, _id, workflow = {}, dateSubmitted = '' } = accessRecord;
 		if (_.isEmpty(projectId)) {
 			projectId = _id;
 		}
@@ -1292,6 +1356,15 @@ module.exports = {
 				return { firstname, lastname, email, id };
 			});
 		}
+		// Deconstruct workflow context if passed
+		let {
+			workflowName = '',
+			stepName = '',
+			reviewerNames = '',
+			reviewSections = '',
+			nextStepName = '',
+		} = context;
+
 		switch (type) {
 			// DAR application status has been updated
 			case notificationTypes.STATUSCHANGE:
@@ -1301,10 +1374,17 @@ module.exports = {
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
 					// Retrieve all custodian manager user Ids and active step reviewers
-					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, teamController.roleTypes.MANAGER);
-					stepReviewers = workflowController.getActiveStepReviewers(workflow);
+					custodianManagers = teamController.getTeamMembersByRole(
+						accessRecord.datasets[0].publisher.team,
+						teamController.roleTypes.MANAGER
+					);
+					let activeStep = workflowController.getActiveWorkflowStep(workflow);
+					stepReviewers = workflowController.getStepReviewers(activeStep);
 					// Create custodian notification
-					let statusChangeUserIds = [...custodianManagers, ...stepReviewers].map((user) => user.id);
+					let statusChangeUserIds = [
+						...custodianManagers,
+						...stepReviewers,
+					].map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						statusChangeUserIds,
 						`${appFirstName} ${appLastName}'s Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,
@@ -1336,9 +1416,8 @@ module.exports = {
 					accessRecord.mainApplicant,
 					...custodianManagers,
 					...stepReviewers,
-					...accessRecord.authors
+					...accessRecord.authors,
 				];
-				let { dateSubmitted } = accessRecord;
 				if (!dateSubmitted) ({ updatedAt: dateSubmitted } = accessRecord);
 				// Create object to pass through email data
 				options = {
@@ -1379,7 +1458,10 @@ module.exports = {
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
 					// Retrieve all custodian user Ids to generate notifications
-					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, roleTypes.MANAGER);
+					custodianManagers = teamController.getTeamMembersByRole(
+						accessRecord.datasets[0].publisher.team,
+						roleTypes.MANAGER
+					);
 					let custodianUserIds = custodianManagers.map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
@@ -1521,16 +1603,9 @@ module.exports = {
 				}
 				break;
 			case notificationTypes.STEPOVERRIDE:
-				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
-					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
+					_.has(accessRecord.toObject(), 'publisherObj.team.users')
 				) {
-					if(!_.isEmpty(workflow)) {
-						// Retrieve all user Ids for active step reviewers
-						stepReviewers = workflowController.getActiveStepReviewers(workflow);
-						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-					}
-
 					// 1. Create reviewer notifications
 					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -1553,7 +1628,8 @@ module.exports = {
 						stepName,
 						reviewSections,
 						reviewerNames,
-						nextStepName
+						nextStepName,
+						dateSubmitted
 					};
 					html = await emailGenerator.generateStepOverrideEmail(options);
 					await emailGenerator.sendEmail(
@@ -1566,16 +1642,9 @@ module.exports = {
 				}
 				break;
 			case notificationTypes.REVIEWSTEPSTART:
-				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
-					if(!_.isEmpty(workflow)) {
-						// Retrieve all user Ids for active step reviewers
-						stepReviewers = workflowController.getActiveStepReviewers(workflow);
-						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-					}
-
 					// 1. Create reviewer notifications
 					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -1598,7 +1667,7 @@ module.exports = {
 						stepName,
 						reviewSections,
 						reviewerNames,
-						nextStepName
+						nextStepName,
 					};
 					html = await emailGenerator.generateNewReviewPhaseEmail(options);
 					await emailGenerator.sendEmail(
@@ -1611,16 +1680,9 @@ module.exports = {
 				}
 				break;
 			case notificationTypes.FINALDECISIONREQUIRED:
-				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
-					if(!_.isEmpty(workflow)) {
-						// Retrieve all user Ids for active step reviewers
-						stepReviewers = workflowController.getActiveStepReviewers(workflow);
-						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-					}
-
 					// 1. Create reviewer notifications
 					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -1643,9 +1705,11 @@ module.exports = {
 						stepName,
 						reviewSections,
 						reviewerNames,
-						nextStepName
+						nextStepName,
 					};
-					html = await emailGenerator.generateFinalDecisionRequiredEmail(options);
+					html = await emailGenerator.generateFinalDecisionRequiredEmail(
+						options
+					);
 					await emailGenerator.sendEmail(
 						stepReviewers,
 						hdrukEmail,
@@ -1656,16 +1720,9 @@ module.exports = {
 				}
 				break;
 			case notificationTypes.DEADLINEWARNING:
-				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
-					if(!_.isEmpty(workflow)) {
-						// Retrieve all user Ids for active step reviewers
-						stepReviewers = workflowController.getActiveStepReviewers(workflow);
-						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-					}
-
 					// 1. Create reviewer notifications
 					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -1688,7 +1745,7 @@ module.exports = {
 						stepName,
 						reviewSections,
 						reviewerNames,
-						nextStepName
+						nextStepName,
 					};
 					html = await emailGenerator.generateReviewDeadlineWarning(options);
 					await emailGenerator.sendEmail(
@@ -1701,16 +1758,9 @@ module.exports = {
 				}
 				break;
 			case notificationTypes.DEADLINEPASSED:
-				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
-					if(!_.isEmpty(workflow)) {
-						// Retrieve all user Ids for active step reviewers
-						stepReviewers = workflowController.getActiveStepReviewers(workflow);
-						reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-					}
-
 					// 1. Create reviewer notifications
 					let stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -1733,7 +1783,7 @@ module.exports = {
 						stepName,
 						reviewSections,
 						reviewerNames,
-						nextStepName
+						nextStepName,
 					};
 					html = await emailGenerator.generateReviewDeadlinePassed(options);
 					await emailGenerator.sendEmail(
@@ -1744,24 +1794,28 @@ module.exports = {
 						false
 					);
 				}
-			}
+		}
 	},
 
 	getUserPermissionsForApplication: (application, userId, _id) => {
 		try {
 			let authorised = false,
-				userType = '',
+				userType = '';
 			// Return default unauthorised with no user type if incorrect params passed
 			if (!application || !userId || !_id) {
 				return { authorised, userType };
 			}
 			// Check if the user is a custodian team member and assign permissions if so
 			if (_.has(application.datasets[0].toObject(), 'publisher.team')) {
-				let isTeamMember = teamController.checkTeamPermissions('', application.datasets[0].publisher.team.toObject() ,_id);
-				if(isTeamMember) {
+				let isTeamMember = teamController.checkTeamPermissions(
+					'',
+					application.datasets[0].publisher.team.toObject(),
+					_id
+				);
+				if (isTeamMember) {
 					userType = userTypes.CUSTODIAN;
 					authorised = true;
-				};
+				}
 			}
 			// If user is not authenticated as a custodian, check if they are an author or the main applicant
 			if (
@@ -1848,11 +1902,14 @@ module.exports = {
 				)
 				.map((user) => {
 					let isCurrentUser = user._id.toString() === userId.toString();
-					return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)`:``}`;
+					return `${user.firstname} ${user.lastname}${
+						isCurrentUser ? ` (you)` : ``
+					}`;
 				});
 			if (
 				applicationStatus === applicationStatuses.SUBMITTED ||
-				(applicationStatus === applicationStatuses.INREVIEW && _.isEmpty(workflow))
+				(applicationStatus === applicationStatuses.INREVIEW &&
+					_.isEmpty(workflow))
 			) {
 				remainingActioners = managerUsers.join(', ');
 			}
@@ -1874,7 +1931,11 @@ module.exports = {
 						decisionDate,
 						isReviewer = false,
 						reviewPanels = [],
-					} = workflowController.getActiveStepStatus(activeStep, users, userId));
+					} = workflowController.getActiveStepStatus(
+						activeStep,
+						users,
+						userId
+					));
 					let activeStepIndex = workflow.steps.findIndex((step) => {
 						return step.active === true;
 					});
@@ -1985,5 +2046,5 @@ module.exports = {
 				return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
-	}
+	},
 };

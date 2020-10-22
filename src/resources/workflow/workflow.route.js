@@ -1,7 +1,6 @@
 import express from 'express';
 import passport from 'passport';
-
-const workflowController = require('./workflow.controller');
+import workflowController from './workflow.controller';
 
 const router = express.Router();
 

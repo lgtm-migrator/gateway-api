@@ -3,14 +3,14 @@ import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from './workflow.model';
 import helper from '../utilities/helper.util';
 
+import moment from 'moment';
 import _ from 'lodash';
 import mongoose from 'mongoose';
 
 const teamController = require('../team/team.controller');
 
-module.exports = {
 	// GET api/v1/workflows/:id
-	getWorkflowById: async (req, res) => {
+	const getWorkflowById = async (req, res) => {
 		try {
 			// 1. Get the workflow from the database including the team members to check authorisation and the number of in-flight applications
 			const workflow = await WorkflowModel.findOne({
@@ -91,10 +91,10 @@ module.exports = {
 				message: 'An error occurred searching for the specified workflow',
 			});
 		}
-	},
+	};
 
 	// POST api/v1/workflows
-	createWorkflow: async (req, res) => {
+	const createWorkflow = async (req, res) => {
 		try {
 			const { _id: userId } = req.user;
 			// 1. Look at the payload for the publisher passed
@@ -166,10 +166,10 @@ module.exports = {
 				message: 'An error occurred creating the workflow',
 			});
 		}
-	},
+	};
 
 	// PUT api/v1/workflows/:id
-	updateWorkflow: async (req, res) => {
+	const updateWorkflow = async (req, res) => {
 		try {
 			const { _id: userId } = req.user;
 			const { id: workflowId } = req.params;
@@ -251,10 +251,10 @@ module.exports = {
 				message: 'An error occurred editing the workflow',
 			});
 		}
-	},
+	};
 
 	// DELETE api/v1/workflows/:id
-	deleteWorkflow: async (req, res) => {
+	const deleteWorkflow = async (req, res) => {
 		try {
 			const { _id: userId } = req.user;
 			const { id: workflowId } = req.params;
@@ -318,17 +318,17 @@ module.exports = {
 				message: 'An error occurred deleting the workflow',
 			});
 		}
-	},
+	};
 
-	calculateStepDeadlineReminderDate: (step) => {
+	const calculateStepDeadlineReminderDate = (step) => {
 		// Extract deadline and reminder offset in days from step definition
 		let { deadline, reminderOffset } = step;
 		// Subtract SLA reminder offset
 		let reminderPeriod = +deadline - +reminderOffset;
 		return `P${reminderPeriod}D`;
-	},
+	};
 
-	workflowStepContainsManager: (reviewers, team) => {
+	const workflowStepContainsManager = (reviewers, team) => {
 		let managerExists = false;
 		// 1. Extract team members
 		let { members } = team;
@@ -347,9 +347,9 @@ module.exports = {
 			}
 		})
 		return managerExists;
-	},
+	};
 
-	buildNextStep: (userId, application, activeStepIndex, override) => {
+	const buildNextStep = (userId, application, activeStepIndex, override) => {
 		// Check the current position of the application within its assigned workflow
 		const finalStep = activeStepIndex === application.workflow.steps.length -1;
 		const requiredReviews = application.workflow.steps[activeStepIndex].reviewers.length;
@@ -382,25 +382,25 @@ module.exports = {
 				...bpmContext,
 				dataRequestPublisher,
 				dataRequestStepName,
-				notifyReviewerSLA: module.exports.calculateStepDeadlineReminderDate(
+				notifyReviewerSLA: calculateStepDeadlineReminderDate(
 					nextStep
 				),
 				reviewerList
 			};
 		}
 		return bpmContext;
-	},
+	};
 
-	getWorkflowCompleted: (workflow = {}) => {
+	const getWorkflowCompleted = (workflow = {}) => {
 		let workflowCompleted = false;
 		if (!_.isEmpty(workflow)) {
 			let { steps } = workflow;
 			workflowCompleted = steps.every((step) => step.completed);
 		}
 		return workflowCompleted;
-	},
+	};
 
-	getActiveWorkflowStep: (workflow = {}) => {
+	const getActiveWorkflowStep = (workflow = {}) => {
 		let activeStep = {};
 		if (!_.isEmpty(workflow)) {
 			let { steps } = workflow;
@@ -409,23 +409,21 @@ module.exports = {
 			});
 		}
 		return activeStep;
-	},
+	};
 
-	getActiveStepReviewers: (workflow = {}) => {
+	const getStepReviewers = (step = {}) => {
 		let stepReviewers = [];
 		// Attempt to get step reviewers if workflow passed
-		if (!_.isEmpty(workflow)) {
-			// Get active step
-			let activeStep = module.exports.getActiveWorkflowStep(workflow);
-			// If active step, return the reviewers
-			if(activeStep) {
-				({ reviewers: stepReviewers }) = activeStep;
+		if (!_.isEmpty(step)) {
+			// Get active reviewers
+			if(step) {
+				({ reviewers: stepReviewers } = step);
 			}
 		}
 		return stepReviewers;
-	},
+	};
 
-	getActiveStepStatus: (activeStep, users = [], userId = '') => {
+	const getActiveStepStatus = (activeStep, users = [], userId = '') => {
 		let reviewStatus = '',
 			deadlinePassed = false,
 			remainingActioners = [],
@@ -514,15 +512,15 @@ module.exports = {
 			decisionComments,
 			reviewPanels,
 		};
-	},
+	};
 	
-	getWorkflowStatus: (application) => {
+	const getWorkflowStatus = (application) => {
 		let workflowStatus = {};
 		let { workflow = {} } = application;
 		if (!_.isEmpty(workflow)) {
 			let { workflowName, steps } = workflow;
 			// Find the active step in steps
-			let activeStep = module.exports.getActiveWorkflowStep(workflow);
+			let activeStep = getActiveWorkflowStep(workflow);
 			let activeStepIndex = steps.findIndex((step) => {
 				return step.active === true;
 			});
@@ -530,7 +528,7 @@ module.exports = {
 				let {
 					reviewStatus,
 					deadlinePassed,
-				} = module.exports.getActiveStepStatus(activeStep);
+				} = getActiveStepStatus(activeStep);
 				//Update active step with review status
 				steps[activeStepIndex] = {
 					...steps[activeStepIndex],
@@ -553,13 +551,13 @@ module.exports = {
 			workflowStatus = {
 				workflowName,
 				steps: formattedSteps,
-				isCompleted: module.exports.getWorkflowCompleted(workflow),
+				isCompleted: getWorkflowCompleted(workflow),
 			};
 		}
 		return workflowStatus;
-	},
+	};
 
-	getReviewStatus: (application, userId) => {
+	const getReviewStatus = (application, userId) => {
 		let inReviewMode = false,
 			reviewSections = [],
 			isActiveStepReviewer = false,
@@ -593,21 +591,37 @@ module.exports = {
 		}
 	
 		return { inReviewMode, reviewSections, hasRecommended };
-	},
+	};
 	
-	getWorkflowEmailContext: (workflow, activeStepIndex) => {
+	const getWorkflowEmailContext = (workflow, relatedStepIndex) => {
 		const { workflowName, steps } = workflow;
-		const { stepName } = steps[activeStepIndex];
-		const stepReviewers = workflowController.getActiveStepReviewers(workflow);
-		const reviewerNames = stepReviewers.map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-		const reviewSections = [...steps[activeStepIndex].sections].map((section) => helper.darPanelMapper[section]);
+		const { stepName } = steps[relatedStepIndex];
+		const stepReviewers = getStepReviewers(steps[relatedStepIndex]);
+		const reviewerNames = [...stepReviewers].map((reviewer) => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => helper.darPanelMapper[section]).join(', ');
 		let nextStepName = '';
 		//Find name of next step if this is not the final step
-		if(activeStepIndex + 1 > steps.length) {
+		if(relatedStepIndex + 1 > steps.length) {
 			nextStepName = 'No next step';
 		} else {
-			({ stepName: nextStepName } = steps[activeStepIndex + 1]);
+			({ stepName: nextStepName } = steps[relatedStepIndex + 1]);
 		}
 		return { workflowName, stepName, reviewerNames, reviewSections, nextStepName };
-	},
+	};
+
+export default {
+	getWorkflowById: getWorkflowById,
+	createWorkflow: createWorkflow,
+	updateWorkflow: updateWorkflow,
+	deleteWorkflow: deleteWorkflow,
+	calculateStepDeadlineReminderDate: calculateStepDeadlineReminderDate,
+	workflowStepContainsManager: workflowStepContainsManager,
+	buildNextStep: buildNextStep,
+	getWorkflowCompleted: getWorkflowCompleted,
+	getActiveWorkflowStep: getActiveWorkflowStep,
+	getStepReviewers: getStepReviewers,
+	getActiveStepStatus: getActiveStepStatus,
+	getWorkflowStatus: getWorkflowStatus,
+	getReviewStatus: getReviewStatus,
+	getWorkflowEmailContext: getWorkflowEmailContext
 };
