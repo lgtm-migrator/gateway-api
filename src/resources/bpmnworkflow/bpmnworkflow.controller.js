@@ -1,17 +1,22 @@
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import _ from 'lodash';
+import { utils } from "../auth";
 
 axiosRetry(axios, { retries: 3, retryDelay: () => {
     return 3000;
   }});
 
 const bpmnBaseUrl = process.env.BPMNBASEURL;
+//Generate Bearer token for camunda endpoints
+const config = {
+	headers: { Authorization: `Bearer ${utils.camundaToken()}` },
+};
 
 module.exports = {
     //Generic Get Task Process Endpoints
     getProcess: async (businessKey) => {
-        return await axios.get(`${bpmnBaseUrl}/engine-rest/task?processInstanceBusinessKey=${businessKey.toString()}`);
+        return await axios.get(`${bpmnBaseUrl}/engine-rest/task?processInstanceBusinessKey=${businessKey.toString()}`, config);
     },
 
     //Simple Workflow Endpoints
@@ -39,7 +44,7 @@ module.exports = {
             },
             "businessKey": businessKey.toString()
         }
-        await axios.post(`${bpmnBaseUrl}/engine-rest/process-definition/key/GatewayWorkflowSimple/start`, data)
+        await axios.post(`${bpmnBaseUrl}/engine-rest/process-definition/key/GatewayWorkflowSimple/start`, data, config)
             .catch((err) => { 
                 console.error(err);
             });
@@ -71,7 +76,7 @@ module.exports = {
                 }
             }
         }
-        await axios.post(`${bpmnBaseUrl}/engine-rest/task/${taskId}/complete`, data)
+        await axios.post(`${bpmnBaseUrl}/engine-rest/task/${taskId}/complete`, data, config)
             .catch((err) => { 
                 console.error(err);
             });
@@ -98,7 +103,7 @@ module.exports = {
             },
             "businessKey": businessKey.toString()
         }
-        await axios.post(`${bpmnBaseUrl}/engine-rest/process-definition/key/GatewayReviewWorkflowComplex/start`, data)
+        await axios.post(`${bpmnBaseUrl}/engine-rest/process-definition/key/GatewayReviewWorkflowComplex/start`, data, config)
             .catch((err) => {
                 console.error(err);
             });
@@ -126,7 +131,7 @@ module.exports = {
                 }
             }
         }
-        await axios.post(`${bpmnBaseUrl}/engine-rest/task/${taskId}/complete`, data)
+        await axios.post(`${bpmnBaseUrl}/engine-rest/task/${taskId}/complete`, data, config)
             .catch((err) => { 
                 console.error(err);
             });
@@ -134,7 +139,7 @@ module.exports = {
     postManagerApproval: async (bpmContext) => {
         // Manager has approved sectoin
         let { businessKey } = bpmContext;
-        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`, bpmContext)
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`, bpmContext. config)
         .catch((err) => {
             console.error(err);
         })
@@ -142,7 +147,7 @@ module.exports = {
     postStartStepReview: async (bpmContext) => {
         //Start Step-Review process
         let { businessKey } = bpmContext;
-        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/complete/review/${businessKey}`, bpmContext)
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/complete/review/${businessKey}`, bpmContext, config)
             .catch((err) => {
                 console.error(err);
             });
@@ -150,7 +155,7 @@ module.exports = {
     postCompleteReview: async (bpmContext) => {
         //Start Next-Step process
         let { businessKey } = bpmContext;
-        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/reviewer/complete/${businessKey}`, bpmContext)
+        await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/reviewer/complete/${businessKey}`, bpmContext, config)
         .catch((err) => {
             console.error(err);
         });

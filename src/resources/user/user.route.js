@@ -12,48 +12,68 @@ const router = express.Router();
 // @desc     find user by id
 // @access   Private
 router.get(
-    '/:userID',
-    passport.authenticate('jwt'),
-    utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-    async (req, res) => {
-    //req.params.id is how you get the id from the url
-    var q = UserModel.find({ id: req.params.userID });
-  
-    q.exec((err, userdata) => {
-      if (err) return res.json({ success: false, error: err });
-      return res.json({ success: true, userdata: userdata });
-    });
-  });
+	'/:userID',
+	passport.authenticate('jwt'),
+	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+	async (req, res) => {
+		//req.params.id is how you get the id from the url
+		var q = UserModel.find({ id: req.params.userID });
+
+		q.exec((err, userdata) => {
+			if (err) return res.json({ success: false, error: err });
+			return res.json({ success: true, userdata: userdata });
+		});
+	}
+);
 
 // @router   GET /api/v1/users
 // @desc     get all
 // @access   Private
-router.get('/', async (req, res) => {
-    
-    var q = Data.aggregate([
-        // Find all tools with type of person
-        { $match: { type: 'person' } },
-        // Perform lookup to users
-        { $lookup: { from: 'users', localField: 'id', foreignField: 'id', as: 'user' } },
-        // select fields to use
-        { $project: { id: 1, firstname: 1, lastname: 1, orcid: 1, bio: 1, email: '$user.email' } },
-    ]);
+router.get(
+	'/',
+	passport.authenticate('jwt'),
+	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+	async (req, res) => {
+		var q = Data.aggregate([
+			// Find all tools with type of person
+			{ $match: { type: 'person' } },
+			// Perform lookup to users
+			{
+				$lookup: {
+					from: 'users',
+					localField: 'id',
+					foreignField: 'id',
+					as: 'user',
+				},
+			},
+			// select fields to use
+			{
+				$project: {
+					id: 1,
+					firstname: 1,
+					lastname: 1,
+					orcid: 1,
+					bio: 1,
+					email: '$user.email',
+				},
+			},
+		]);
 
-    q.exec((err, data) => {
-        if (err) {
-            return new Error({ success: false, error: err });
-        }
+		q.exec((err, data) => {
+			if (err) {
+				return new Error({ success: false, error: err });
+			}
 
-        const users = [];
-        data.map((dat) => {
-            let { id, firstname, lastname, orcid = '', bio = '', email = '' } = dat;
-            if (email.length !== 0) email = helper.censorEmail(email[0]);
-            users.push({ id, orcid, name: `${firstname} ${lastname}`, bio, email });
-        });
+			const users = [];
+			data.map((dat) => {
+				let { id, firstname, lastname, orcid = '', bio = '', email = '' } = dat;
+				if (email.length !== 0) email = helper.censorEmail(email[0]);
+				users.push({ id, orcid, name: `${firstname} ${lastname}`, bio, email });
+			});
 
-        return res.json({ success: true, data: users });
-
-    });
-});
+			return res.json({ success: true, data: users });
+		});
+	}
+);
 
 module.exports = router
