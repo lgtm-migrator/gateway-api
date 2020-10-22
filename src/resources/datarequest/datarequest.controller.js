@@ -400,7 +400,7 @@ module.exports = {
 			} = req;
 			// 2. Destructure body and update only specific fields by building a segregated non-user specified update object
 			let updateObj;
-			let { aboutApplication, questionAnswers } = req.body;
+			let { aboutApplication, questionAnswers, jsonSchema = '' } = req.body;
 			if (aboutApplication) {
 				let parsedObj = JSON.parse(aboutApplication);
 				let updatedDatasetIds = parsedObj.selectedDatasets.map(
@@ -411,6 +411,11 @@ module.exports = {
 			if (questionAnswers) {
 				updateObj = { ...updateObj, questionAnswers };
 			}
+
+			if(!_.isEmpty(jsonSchema)) {
+				updateObj = {...updateObj, jsonSchema}
+			}
+
 			// 3. Find data request by _id and update via body
 			let accessRequestRecord = await DataRequestModel.findByIdAndUpdate(
 				id,
