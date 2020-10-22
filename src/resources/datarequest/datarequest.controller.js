@@ -20,6 +20,21 @@ const userTypes = {
 	APPLICANT: 'applicant',
 };
 
+const notificationTypes = {
+	STATUSCHANGE: 'StatusChange',
+	SUBMITTED: 'Submitted',
+	CONTRIBUTORCHANGE: 'ContributorChange',
+	STEPOVERRIDE: 'StepOverride',
+	REVIEWSTEPSTART: 'ReviewStepStart',
+	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
+	DEADLINEWARNING: 'DeadlineWarning',
+	DEADLINEPASSED: 'DeadlinePassed'
+}
+
+const applicationStatuses = {
+	SUBMITTED: 'submitted'
+}
+
 module.exports = {
 	//GET api/v1/data-access-request
 	getAccessRequestsByUser: async (req, res) => {
@@ -514,7 +529,7 @@ module.exports = {
 				// Extract params from body
 				({ applicationStatus, applicationStatusDesc } = req.body);
 				const finalStatuses = [
-					'submitted',
+					applicationStatuses.SUBMITTED,
 					'approved',
 					'rejected',
 					'approved with conditions',
@@ -581,7 +596,7 @@ module.exports = {
 						// Send notifications to added/removed contributors
 						if (contributorChange) {
 							await module.exports.createNotifications(
-								'ContributorChange',
+								notificationTypes.CONTRIBUTORCHANGE,
 								{ newAuthors, currentAuthors },
 								accessRecord,
 								req.user
@@ -590,7 +605,7 @@ module.exports = {
 						if (statusChange) {
 							// Send notifications to custodian team, main applicant and contributors regarding status change
 							await module.exports.createNotifications(
-								'StatusChange',
+								notificationTypes.STATUSCHANGE,
 								{ applicationStatus, applicationStatusDesc },
 								accessRecord,
 								req.user
@@ -764,7 +779,7 @@ module.exports = {
 					// 14. Gather context for notifications
 					const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
 					// 15. Create notifications to reviewers of the step that has been completed
-					module.exports.createNotifications('ReviewStepStart', emailContext, accessRecord, req.user);
+					module.exports.createNotifications(notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, req.user);
 					// 16. Return workflow payload
 					return res.status(200).json({
 						success: true,
@@ -818,7 +833,7 @@ module.exports = {
 			}
 			// 5. Check application is in submitted state
 			let { applicationStatus } = accessRecord;
-			if (applicationStatus !== 'submitted') {
+			if (applicationStatus !== applicationStatuses.SUBMITTED) {
 				return res.status(400).json({
 					success: false,
 					message:
@@ -990,12 +1005,12 @@ module.exports = {
 						// 15. Gather context for notifications
 						const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
 						// 16. Create notifications to reviewers of the next step that has been activated
-						module.exports.createNotifications('ReviewStepStart', emailContext, accessRecord, req.user);
+						module.exports.createNotifications(notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, req.user);
 					} else if (bpmContext.stepComplete && bpmContext.finalPhaseApproved) {
 						// 15. Gather context for notifications
 						const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
 						// 16. Create notifications to managers that the application is awaiting final approval
-						module.exports.createNotifications('FinalDecisionRequired', emailContext, accessRecord, req.user);
+						module.exports.createNotifications(notificationTypes.FINALDECISIONREQUIRED, emailContext, accessRecord, req.user);
 					}
 					// 17. Call Camunda controller to update workflow process
 					bpmController.postCompleteReview(bpmContext);
@@ -1101,7 +1116,7 @@ module.exports = {
 					// 12. Gather context for notifications
 					const emailContext = workflowController.getWorkflowEmailContext(workflow, activeStepIndex);
 					// 13. Create notifications to reviewers of the step that has been completed
-					module.exports.createNotifications('StepOverride', emailContext, accessRecord, req.user);
+					module.exports.createNotifications(notificationTypes.STEPOVERRIDE, emailContext, accessRecord, req.user);
 					// 14. Call Camunda controller to start manager review process
 					bpmController.postCompleteReview(bpmContext);
 				}
@@ -1159,7 +1174,7 @@ module.exports = {
 			}
 
 			// 4. Update application to submitted status
-			accessRecord.applicationStatus = 'submitted';
+			accessRecord.applicationStatus = applicationStatuses.SUBMITTED;
 			// Check if workflow/5 Safes based application, set final status date if status will never change again
 			let workflowEnabled = false;
 			if (_.has(accessRecord.datasets[0].toObject(), 'publisher')) {
@@ -1179,7 +1194,7 @@ module.exports = {
 					// If save has succeeded - send notifications
 					// Send notifications and emails to custodian team and main applicant
 					await module.exports.createNotifications(
-						'Submitted',
+						notificationTypes.SUBMITTED,
 						{},
 						accessRecord,
 						req.user
@@ -1192,7 +1207,7 @@ module.exports = {
 						} = accessRecord;
 						let bpmContext = {
 							dateSubmitted,
-							applicationStatus: 'submitted',
+							applicationStatus: applicationStatuses.SUBMITTED,
 							publisher,
 							businessKey: id,
 						};
@@ -1216,7 +1231,7 @@ module.exports = {
 		// 12. Gather context for notifications
 		//const emailContext = workflowController.getWorkflowEmailContext(workflow, activeStepIndex);
 		// 13. Create notifications to reviewers of the step that has been completed
-		//module.exports.createNotifications('DeadlineWarning', emailContext, accessRecord, req.user);
+		//module.exports.createNotifications(notificationTypes.DEADLINEWARNING, emailContext, accessRecord, req.user);
 		return res.status(200).json({ status: 'success' });
 	},
 
@@ -1269,7 +1284,7 @@ module.exports = {
 		}
 		switch (type) {
 			// DAR application status has been updated
-			case 'StatusChange':
+			case notificationTypes.STATUSCHANGE:
 				// 1. Create notifications
 				// Custodian manager and current step reviewer notifications
 				if (
@@ -1338,7 +1353,7 @@ module.exports = {
 					false
 				);
 				break;
-			case 'Submitted':
+			case notificationTypes.SUBMITTED:
 				// 1. Prepare data for notifications
 				const emailRecipientTypes = ['applicant', 'dataCustodian'];
 				// Destructure the application
@@ -1426,7 +1441,7 @@ module.exports = {
 					}
 				}
 				break;
-			case 'ContributorChange':
+			case notificationTypes.CONTRIBUTORCHANGE:
 				// 1. Deconstruct authors array from context to compare with existing Mongo authors
 				const { newAuthors, currentAuthors } = context;
 				// 2. Determine authors who have been removed
@@ -1495,7 +1510,7 @@ module.exports = {
 					);
 				}
 				break;
-			case 'StepOverride':
+			case notificationTypes.STEPOVERRIDE:
 				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
@@ -1540,7 +1555,7 @@ module.exports = {
 					);
 				}
 				break;
-			case 'ReviewStepStart':
+			case notificationTypes.REVIEWSTEPSTART:
 				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
@@ -1585,7 +1600,7 @@ module.exports = {
 					);
 				}
 				break;
-			case 'FinalDecisionRequired':
+			case notificationTypes.FINALDECISIONREQUIRED:
 				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
@@ -1630,7 +1645,7 @@ module.exports = {
 					);
 				}
 				break;
-			case 'DeadlineWarning':
+			case notificationTypes.DEADLINEWARNING:
 				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
@@ -1675,7 +1690,7 @@ module.exports = {
 					);
 				}
 				break;
-			case 'DeadlinePassed':
+			case notificationTypes.DEADLINEPASSED:
 				let { workflowName, stepName, reviewerNames, reviewSections, nextStepName } = context;
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
@@ -1827,7 +1842,7 @@ module.exports = {
 					return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)`:``}`;
 				});
 			if (
-				applicationStatus === 'submitted' ||
+				applicationStatus === applicationStatuses.SUBMITTED ||
 				(applicationStatus === 'inReview' && _.isEmpty(workflow))
 			) {
 				remainingActioners = managerUsers.join(', ');
