@@ -32,7 +32,8 @@ const notificationTypes = {
 }
 
 const applicationStatuses = {
-	SUBMITTED: 'submitted'
+	SUBMITTED: 'submitted',
+	INPROGRESS: 'inProgress'
 }
 
 module.exports = {
@@ -137,7 +138,7 @@ module.exports = {
 			// 6. Set edit mode for applicants who have not yet submitted
 			if (
 				userType === userTypes.APPLICANT &&
-				accessRecord.applicationStatus === 'inProgress'
+				accessRecord.applicationStatus === applicationStatuses.INPROGRESS
 			) {
 				readOnly = false;
 			}
@@ -202,7 +203,7 @@ module.exports = {
 			accessRecord = await DataRequestModel.findOne({
 				dataSetId,
 				userId,
-				applicationStatus: 'inProgress',
+				applicationStatus: applicationStatuses.INPROGRESS,
 			}).populate({
 				path: 'mainApplicant',
 				select: 'firstname lastname -id -_id',
@@ -246,7 +247,7 @@ module.exports = {
 					publisher,
 					questionAnswers: '{}',
 					aboutApplication: '{}',
-					applicationStatus: 'inProgress',
+					applicationStatus: applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
 				const newApplication = await record.save();
@@ -301,7 +302,7 @@ module.exports = {
 			accessRecord = await DataRequestModel.findOne({
 				datasetIds: { $all: arrDatasetIds },
 				userId,
-				applicationStatus: 'inProgress',
+				applicationStatus: applicationStatuses.INPROGRESS,
 			})
 				.populate({
 					path: 'mainApplicant',
@@ -346,7 +347,7 @@ module.exports = {
 					publisher,
 					questionAnswers: '{}',
 					aboutApplication: '{}',
-					applicationStatus: 'inProgress',
+					applicationStatus: applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
 				const newApplication = await record.save();
@@ -1756,7 +1757,7 @@ module.exports = {
 			}
 			// If user is not authenticated as a custodian, check if they are an author or the main applicant
 			if (
-				application.applicationStatus === 'inProgress' ||
+				application.applicationStatus === applicationStatuses.INPROGRESS ||
 				_.isEmpty(userType)
 			) {
 				if (
