@@ -593,20 +593,42 @@ const teamController = require('../team/team.controller');
 		return { inReviewMode, reviewSections, hasRecommended };
 	};
 	
-	const getWorkflowEmailContext = (workflow, relatedStepIndex) => {
+	const getWorkflowEmailContext = (accessRecord, workflow, relatedStepIndex) => {
+		const { dateReviewStart = '' } = accessRecord;
 		const { workflowName, steps } = workflow;
-		const { stepName } = steps[relatedStepIndex];
+		const { stepName, startDateTime = '', endDateTime = '' } = steps[relatedStepIndex];
 		const stepReviewers = getStepReviewers(steps[relatedStepIndex]);
 		const reviewerNames = [...stepReviewers].map((reviewer) => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
 		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => helper.darPanelMapper[section]).join(', ');
-		let nextStepName = '';
-		//Find name of next step if this is not the final step
-		if(relatedStepIndex + 1 > steps.length) {
-			nextStepName = 'No next step';
-		} else {
-			({ stepName: nextStepName } = steps[relatedStepIndex + 1]);
+		const stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
+		const { deadline: stepDeadline = 0 } = steps[relatedStepIndex];
+		const currentDeadline = stepDeadline === 0 ? 'No deadline specified' : moment().add(stepDeadline, 'days');
+		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '';
+
+		// Calculate duration for step if it is completed
+		if(!_.isEmpty(startDateTime.toString()) && !_.isEmpty(endDateTime.toString())) {
+			duration = moment(endDateTime).diff(moment(startDateTime), 'days');
+			duration = duration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
 		}
-		return { workflowName, stepName, reviewerNames, reviewSections, nextStepName };
+
+		if(relatedStepIndex + 1 === steps.length) {
+			// If workflow completed
+			nextStepName = 'No next step';
+			// Calculate total duration for workflow
+			if(steps[relatedStepIndex].completed && !_.isEmpty(dateReviewStart.toString())){
+				totalDuration = moment().diff(moment(dateReviewStart), 'days');
+				totalDuration = totalDuration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
+			}
+		} else {
+			// Get details of next step if this is not the final step
+			({ stepName: nextStepName } = steps[relatedStepIndex + 1]);
+			let nextStepReviewers = getStepReviewers(steps[relatedStepIndex + 1]);
+			nextReviewerNames = [...nextStepReviewers].map((reviewer) => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+			nextReviewSections = [...steps[relatedStepIndex + 1].sections].map((section) => helper.darPanelMapper[section]).join(', ');
+			let { deadline = 0 } = steps[relatedStepIndex + 1];
+			nextDeadline = deadline === 0 ? 'No deadline specified' : moment().add(deadline, 'days');
+		}
+		return { workflowName, stepName, startDateTime, endDateTime, stepReviewers, duration, totalDuration, reviewerNames, stepReviewerUserIds, reviewSections, currentDeadline, nextStepName, nextReviewerNames, nextReviewSections, nextDeadline };
 	};
 
 export default {
