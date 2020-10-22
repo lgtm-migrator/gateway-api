@@ -127,11 +127,10 @@ module.exports = {
 				readOnly = false;
 			}
 			// 7. Set the review mode if user is a custodian reviewing the current step
-			let {
-				inReviewMode,
-				reviewSections,
-				hasRecommended,
-			} = module.exports.getReviewStatus(accessRecord, req.user._id);
+			let { inReviewMode, reviewSections, hasRecommended } = module.exports.getReviewStatus(
+				accessRecord,
+				req.user._id
+			);
 			// 8. Get the workflow/voting status
 			let workflow = module.exports.getWorkflowStatus(accessRecord.toObject());
 			// 9. Check if the current user can override the current step
@@ -1762,13 +1761,13 @@ module.exports = {
 			if (activeStep) {
 				let {
 					reviewStatus,
-					deadlinePassed,
+					deadlinePassed
 				} = module.exports.getActiveStepStatus(activeStep);
 				//Update active step with review status
 				steps[activeStepIndex] = {
 					...steps[activeStepIndex],
 					reviewStatus,
-					deadlinePassed,
+					deadlinePassed
 				};
 			}
 			//Update steps with user friendly review sections
@@ -1884,7 +1883,7 @@ module.exports = {
 			decisionDate,
 			decisionStatus,
 			decisionComments,
-			reviewPanels,
+			reviewPanels
 		};
 	},
 
