@@ -197,6 +197,7 @@ app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.rou
 app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
 app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
 
+app.use('/api/v1/course', require('../resources/course/course.route'));
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
