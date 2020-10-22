@@ -1332,11 +1332,49 @@ module.exports = {
 
 	//POST api/v1/data-access-request/:id/notify
 	notifyAccessRequestById: async (req, res) => {
-		// 1. Get workflow etc.
-		// 12. Gather context for notifications
-		//const emailContext = workflowController.getWorkflowEmailContext(workflow, activeStepIndex);
-		// 13. Create notifications to reviewers of the step that has been completed
-		//module.exports.createNotifications(notificationTypes.DEADLINEWARNING, emailContext, accessRecord, req.user);
+		// 1. Get the required request params
+		const {
+			params: { id },
+		} = req;
+		// 2. Retrieve DAR from database
+		let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+			{
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
+					populate: {
+						path: 'users',
+					},
+				},
+			},
+			{
+				path: 'workflow.steps.reviewers',
+				select: 'firstname lastname id email',
+			},
+			{
+				path: 'datasets dataset',
+			},
+			{
+				path: 'mainApplicant',
+			},
+		]);
+		if (!accessRecord) {
+			return res
+				.status(404)
+				.json({ status: 'error', message: 'Application not found.' });
+		}
+		let { workflow } = accessRecord;
+		let activeStepIndex = workflow.steps.findIndex((step) => {
+			return step.active === true;
+		});
+		// 3. Determine email context if deadline has elapsed or is approaching
+		const emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
+		// 4. Send emails based on deadline elapsed or approaching
+		if(emailContext.deadlineElapsed) {
+			module.exports.createNotifications(notificationTypes.DEADLINEPASSED, emailContext, accessRecord, req.user);
+		} else {
+			module.exports.createNotifications(notificationTypes.DEADLINEWARNING, emailContext, accessRecord, req.user);
+		}
 		return res.status(200).json({ status: 'success' });
 	},
 
@@ -1397,7 +1435,6 @@ module.exports = {
 		} = context;
 
 		switch (type) {
-			// DAR application status has been updated
 			case notificationTypes.STATUSCHANGE:
 				// 1. Create notifications
 				// Custodian manager and current step reviewer notifications
