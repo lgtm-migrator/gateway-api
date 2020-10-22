@@ -95,8 +95,8 @@ module.exports = {
 			);
 			// 4. If the user was found check they hold the minimum required role
 			if (userMember) {
-				let { roles } = userMember;
-				if (roles.includes(role) || roles.includes(roleTypes.MANAGER)) {
+				let { roles = [] } = userMember;
+				if (roles.includes(role) || roles.includes(roleTypes.MANAGER) || role === '') {
 					return true;
 				}
 			}

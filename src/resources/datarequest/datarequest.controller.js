@@ -15,6 +15,8 @@ const teamController = require('../team/team.controller');
 const workflowController = require('../workflow/workflow.controller');
 const notificationBuilder = require('../utilities/notificationBuilder');
 
+const hdrukEmail = `enquiry@healthdatagateway.org`;
+
 const userTypes = {
 	CUSTODIAN: 'custodian',
 	APPLICANT: 'applicant',
@@ -33,7 +35,12 @@ const notificationTypes = {
 
 const applicationStatuses = {
 	SUBMITTED: 'submitted',
-	INPROGRESS: 'inProgress'
+	INPROGRESS: 'inProgress',
+	INREVIEW: 'inReview',
+	APPROVED: 'approved',
+	REJECTED: 'rejected',
+	APPROVEDWITHCONDITIONS: 'approved with conditions',
+	WITHDRAWN: 'withdrawn'
 }
 
 module.exports = {
@@ -274,7 +281,7 @@ module.exports = {
 					aboutApplication: JSON.parse(data.aboutApplication),
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
-					userType: 'applicant',
+					userType: userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
 				},
@@ -373,7 +380,7 @@ module.exports = {
 					aboutApplication: JSON.parse(data.aboutApplication),
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
-					userType: 'applicant',
+					userType: userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
 				},
@@ -531,10 +538,10 @@ module.exports = {
 				({ applicationStatus, applicationStatusDesc } = req.body);
 				const finalStatuses = [
 					applicationStatuses.SUBMITTED,
-					'approved',
-					'rejected',
-					'approved with conditions',
-					'withdrawn',
+					applicationStatuses.APPROVED,
+					applicationStatuses.REJECTED,
+					applicationStatuses.APPROVEDWITHCONDITIONS,
+					applicationStatuses.WITHDRAWN,
 				];
 				if (applicationStatus) {
 					accessRecord.applicationStatus = applicationStatus;
@@ -719,7 +726,7 @@ module.exports = {
 			}
 			// 8. Check application is in-review
 			let { applicationStatus } = accessRecord;
-			if (applicationStatus !== 'inReview') {
+			if (applicationStatus !== applicationStatuses.INREVIEW) {
 				return res.status(400).json({
 					success: false,
 					message:
@@ -767,7 +774,7 @@ module.exports = {
 					);
 					let bpmContext = {
 						businessKey: id,
-						dataRequestStatus: 'inReview',
+						dataRequestStatus: applicationStatuses.INREVIEW,
 						dataRequestUserId: userId.toString(),
 						dataRequestPublisher,
 						dataRequestStepName: workflowObj.steps[0].stepName,
@@ -842,7 +849,7 @@ module.exports = {
 				});
 			}
 			// 6. Update application to 'in review'
-			accessRecord.applicationStatus = 'inReview';
+			accessRecord.applicationStatus = applicationStatuses.INREVIEW;
 			accessRecord.dateReviewStart = new Date();
 			// 7. Save update to access record
 			await accessRecord.save(async (err) => {
@@ -924,7 +931,7 @@ module.exports = {
 			}
 			// 5. Check application is in-review
 			let { applicationStatus } = accessRecord;
-			if (applicationStatus !== 'inReview') {
+			if (applicationStatus !== applicationStatuses.INREVIEW) {
 				return res.status(400).json({
 					success: false,
 					message:
@@ -1002,22 +1009,21 @@ module.exports = {
 					console.error(err);
 					res.status(500).json({ status: 'error', message: err });
 				} else {
+					// 15. Create emails and notifications
 					if(bpmContext.stepComplete && !bpmContext.finalPhaseApproved) {
-						// 15. Gather context for notifications
 						const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
-						// 16. Create notifications to reviewers of the next step that has been activated
+						// Create notifications to reviewers of the next step that has been activated
 						module.exports.createNotifications(notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, req.user);
 					} else if (bpmContext.stepComplete && bpmContext.finalPhaseApproved) {
-						// 15. Gather context for notifications
 						const emailContext = workflowController.getWorkflowEmailContext(workflowObj, 0);
-						// 16. Create notifications to managers that the application is awaiting final approval
+						// Create notifications to managers that the application is awaiting final approval
 						module.exports.createNotifications(notificationTypes.FINALDECISIONREQUIRED, emailContext, accessRecord, req.user);
 					}
-					// 17. Call Camunda controller to update workflow process
+					// 16. Call Camunda controller to update workflow process
 					bpmController.postCompleteReview(bpmContext);
 				}
 			});
-			// 18. Return aplication and successful response
+			// 17. Return aplication and successful response
 			return res
 				.status(200)
 				.json({ status: 'success', data: accessRecord._doc });
@@ -1065,7 +1071,7 @@ module.exports = {
 			}
 			// 5. Check application is in review state
 			let { applicationStatus } = accessRecord;
-			if (applicationStatus !== 'inReview') {
+			if (applicationStatus !== applicationStatuses.INREVIEW) {
 				return res.status(400).json({
 					success: false,
 					message: 'The application status must be set to in review',
@@ -1237,8 +1243,6 @@ module.exports = {
 	},
 
 	createNotifications: async (type, context, accessRecord, user) => {
-		// Default from mail address
-		const hdrukEmail = `enquiry@healthdatagateway.org`;
 		// Project details from about application if 5 Safes
 		let aboutApplication = JSON.parse(accessRecord.aboutApplication);
 		let { projectName } = aboutApplication;
@@ -1742,18 +1746,17 @@ module.exports = {
 		try {
 			let authorised = false,
 				userType = '',
-				members = [];
 			// Return default unauthorised with no user type if incorrect params passed
 			if (!application || !userId || !_id) {
 				return { authorised, userType };
 			}
 			// Check if the user is a custodian team member and assign permissions if so
-			if (_.has(application.datasets[0].toObject(), 'publisher.team.members')) {
-				({ members } = application.datasets[0].publisher.team.toObject());
-				if (members.some((el) => el.memberid.toString() === _id.toString())) {
+			if (_.has(application.datasets[0].toObject(), 'publisher.team')) {
+				let isTeamMember = teamController.checkTeamPermissions('', application.datasets[0].publisher.team.toObject() ,_id);
+				if(isTeamMember) {
 					userType = userTypes.CUSTODIAN;
 					authorised = true;
-				}
+				};
 			}
 			// If user is not authenticated as a custodian, check if they are an author or the main applicant
 			if (
@@ -1844,7 +1847,7 @@ module.exports = {
 				});
 			if (
 				applicationStatus === applicationStatuses.SUBMITTED ||
-				(applicationStatus === 'inReview' && _.isEmpty(workflow))
+				(applicationStatus === applicationStatuses.INREVIEW && _.isEmpty(workflow))
 			) {
 				remainingActioners = managerUsers.join(', ');
 			}
@@ -1876,7 +1879,7 @@ module.exports = {
 					};
 				} else if (
 					_.isUndefined(activeStep) &&
-					applicationStatus === 'inReview'
+					applicationStatus === applicationStatuses.INREVIEW
 				) {
 					reviewStatus = 'Final decision required';
 					remainingActioners = managerUsers.join(', ');
