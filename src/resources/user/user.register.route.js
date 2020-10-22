@@ -66,12 +66,7 @@ router.post('/',
             organisation,
             tags,
             showDomain,
-            showSector,
             showOrganisation,
-            showBio,
-            showLink,
-            showOrcid,
-            showDomain
         })
     )
 
