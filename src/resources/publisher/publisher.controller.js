@@ -144,6 +144,10 @@ module.exports = {
 							},
 						},
 					},
+					{ 
+						path: 'workflow.steps.reviewers', 
+						select: 'firstname lastname' 
+					}
 				]);
 
 			if (!isManager) {
@@ -164,7 +168,7 @@ module.exports = {
 
 					let elapsedSteps = [...steps].slice(0, activeStepIndex + 1);
 					let found = elapsedSteps.some((step) =>
-						step.reviewers.some((reviewer) => reviewer.equals(_id))
+						step.reviewers.some((reviewer) => reviewer._id.equals(_id))
 					);
 
 					if (found) {
@@ -254,7 +258,7 @@ module.exports = {
 				let formattedSteps = [...steps].reduce((arr, item) => {
 					let step = {
 						...item,
-						sections: [...item.sections].map(section => helper.darPanelMapper[section])
+						displaySections: [...item.sections].map(section => helper.darPanelMapper[section])
 					}
 					arr.push(step);
 					return arr;

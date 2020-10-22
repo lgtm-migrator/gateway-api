@@ -19,23 +19,25 @@ export const clients = [
         //Metadata works
         client_id: process.env.MDWClientID || '',
         client_secret: process.env.MDWClientSecret || '',
-        grant_types: ['authorization_code'],
-        //grant_types: ['authorization_code', 'implicit'],
-        response_types: ['code'],
+        //grant_types: ['authorization_code'],
+        grant_types: ['authorization_code', 'implicit'],
+        response_types: ['code id_token'],
         //response_types: ['code'],
         redirect_uris: process.env.MDWRedirectURI.split(",") || [''],
-        id_token_signed_response_alg: 'HS256'
+        id_token_signed_response_alg: 'HS256',
+        post_logout_redirect_uris: []
     },
     {
         //BC Platforms
         client_id: process.env.BCPClientID || '',
         client_secret: process.env.BCPClientSecret || '',
-        grant_types: ['authorization_code'],
-        //grant_types: ['authorization_code', 'implicit'],
-        response_types: ['code'],
+        //grant_types: ['authorization_code'],
+        grant_types: ['authorization_code', 'implicit'],
+        response_types: ['code id_token'],
         //response_types: ['code'],
         redirect_uris: process.env.BCPRedirectURI.split(",") || [''],
-        id_token_signed_response_alg: 'HS256'
+        id_token_signed_response_alg: 'HS256',
+        post_logout_redirect_uris: ['https://atlas-test.uksouth.cloudapp.azure.com/auth/']
     }
 ];
 
@@ -63,6 +65,11 @@ export const features = {
     introspection: { enabled: true },
     revocation: { enabled: true },
     encryption: { enabled: true },
+    rpInitiatedLogout: {
+        enabled: true,
+        logoutSource,
+        postLogoutSuccessSource
+      }
 };
 
 export const jwks = require('./jwks.json');
@@ -74,3 +81,29 @@ export const ttl = {
     DeviceCode: 10 * 60,
     RefreshToken: 1 * 24 * 60 * 60,
 };
+
+async function logoutSource(ctx, form) {
+    // @param ctx - koa request context
+    // @param form - form source (id="op.logoutForm") to be embedded in the page and submitted by
+    //   the End-User
+    ctx.body = `<!DOCTYPE html>
+      <head>
+        <title>Logout Request</title>
+        <style>/* css and html classes omitted for brevity, see lib/helpers/defaults.js */</style>
+      </head>
+      <body>
+        <div>
+          <h1>Do you want to sign-out from ${ctx.host}?</h1>
+          ${form}
+          <button autofocus type="submit" form="op.logoutForm" value="yes" name="logout">Yes, sign me out</button>
+          <button type="submit" form="op.logoutForm">No, stay signed in</button>
+        </div>
+      </body>
+      </html>`;
+  }
+
+  async function postLogoutSuccessSource(ctx) {
+    // @param ctx - koa request context
+    ctx.res.clearCookie('jwt');
+    ctx.res.status(200).redirect(process.env.homeURL+'/search?search=');
+  }

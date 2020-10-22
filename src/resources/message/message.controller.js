@@ -56,7 +56,6 @@ module.exports = {
             // 5. Create new message
             const message = await MessagesModel.create({
                 messageID: parseInt(Math.random().toString().replace('0.', '')),
-                messageTo: 0,
                 messageObjectID: parseInt(Math.random().toString().replace('0.', '')),
                 messageDescription,
                 topic,
