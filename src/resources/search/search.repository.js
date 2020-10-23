@@ -43,6 +43,9 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 
                 "title": 1,
                 "courseOptions": 1,
+                "provider":1,
+                "keywords":1,
+                "domains":1,
 
                 "activeflag": 1,
                 "counter": 1,
