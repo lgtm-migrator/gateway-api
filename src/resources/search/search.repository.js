@@ -1,7 +1,10 @@
 import { Data } from '../tool/data.model';
+import { Course } from '../course/course.model';
 import _ from 'lodash';
 
 export function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort) {
+    let collection = Data;
+    if (type === 'course') collection = Course;
     var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
     newSearchQuery["$and"].push({ type: type })
     
@@ -58,7 +61,7 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
         else queryObject.push({ "$sort": { "datasetfields.metadataquality.quality_score": -1, score: { $meta: "textScore" }}});
     }
     
-    var q = Data.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+    var q = collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
     return new Promise((resolve, reject) => {
         q.exec((err, data) => {
             if (typeof data === "undefined") resolve([]);
@@ -68,12 +71,14 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 }
 
 export function getObjectCount(type, searchAll, searchQuery) {
+    let collection = Data;
+    if (type === 'course') collection = Course;
     var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
     newSearchQuery["$and"].push({ type: type })
     var q = '';
     
     if (searchAll) {
-        q = Data.aggregate([
+        q = collection.aggregate([
             { $match: newSearchQuery }, 
             {
                 "$group": {
@@ -92,7 +97,7 @@ export function getObjectCount(type, searchAll, searchQuery) {
         ]);
     }
     else {
-        q = Data.aggregate([
+        q = collection.aggregate([
             { $match: newSearchQuery },
             {
                 "$group": {
@@ -267,11 +272,13 @@ export function getObjectFilters(searchQueryStart, req, type) {
 
 export const getFilter = async (searchString, type, field, isArray, activeFiltersQuery) => {
     return new Promise(async (resolve, reject) => {
+        let collection = Data;
+        if (type === 'course') collection = Course;
         var q = '', p = '';
         var combinedResults = [], activeCombinedResults = [];
 
-        if (searchString) q = Data.aggregate(filterQueryGenerator(field, searchString, type, isArray, {}));
-        else q = Data.aggregate(filterQueryGenerator(field, '', type, isArray, {}));
+        if (searchString) q = collection.aggregate(filterQueryGenerator(field, searchString, type, isArray, {}));
+        else q = collection.aggregate(filterQueryGenerator(field, '', type, isArray, {}));
         
         q.exec((err, data) => {
             if (err) return resolve({})
@@ -288,8 +295,8 @@ export const getFilter = async (searchString, type, field, isArray, activeFilter
             var newSearchQuery = JSON.parse(JSON.stringify(activeFiltersQuery));
             newSearchQuery["$and"].push({ type: type })
             
-            if (searchString) p = Data.aggregate(filterQueryGenerator(field, searchString, type, isArray, newSearchQuery));
-            else p = Data.aggregate(filterQueryGenerator(field, '', type, isArray, newSearchQuery));
+            if (searchString) p = collection.aggregate(filterQueryGenerator(field, searchString, type, isArray, newSearchQuery));
+            else p = collection.aggregate(filterQueryGenerator(field, '', type, isArray, newSearchQuery));
             
             p.exec((activeErr, activeData) => {
                 if (activeData.length) {

@@ -130,7 +130,7 @@ const addCourse = async (req, res) => {
 
 
 
-const editTool = async (req, res) => {
+const editCourse = async (req, res) => {
   return new Promise(async(resolve, reject) => {
 
     const toolCreator = req.body.toolCreator;
@@ -195,7 +195,7 @@ const editTool = async (req, res) => {
     })
   };
 
-  const deleteTool = async(req, res) => {
+  const deleteCourse = async(req, res) => {
     return new Promise(async(resolve, reject) => {
       const { id } = req.params.id;
       Course.findOneAndDelete({ id: req.params.id }, (err) => {
@@ -213,7 +213,7 @@ const editTool = async (req, res) => {
     )
   })};
 
-  const getToolsAdmin = async (req, res) => {
+  const getCourseAdmin = async (req, res) => {
     return new Promise(async (resolve, reject) => {
 
       let startIndex = 0;
@@ -227,14 +227,11 @@ const editTool = async (req, res) => {
       if (req.query.limit) {
         limit = req.query.limit;
       }
-      if (req.params.type) {
-        typeString = req.params.type;
-      }
       if (req.query.q) {
         searchString = req.query.q || "";;
       }
 
-      let searchQuery = { $and: [{ type: typeString }] };
+      let searchQuery = { $and: [{ type: 'course' }] };
       let searchAll = false;
 
       if (searchString.length > 0) {
@@ -251,7 +248,7 @@ const editTool = async (req, res) => {
     });
   }
 
-  const getTools = async (req, res) => {
+  const getCourse = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       let startIndex = 0;
       let limit = 1000;
@@ -273,7 +270,7 @@ const editTool = async (req, res) => {
   
       let query = Course.aggregate([
         { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "creator" } },
         { $sort: { updatedAt : -1}}
       ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
       query.exec((err, data) => {
@@ -470,4 +467,4 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
   })
 };
 
-export { addCourse, editTool, deleteTool, setStatus, getTools, getToolsAdmin }
+export { addCourse, editCourse, deleteCourse, setStatus, getCourse, getCourseAdmin }

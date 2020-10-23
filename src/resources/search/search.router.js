@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
         searchAll = true;
     }
     
-    var allResults = [], datasetResults = [], toolResults = [], projectResults = [], paperResults = [], personResults = [];
+    var allResults = [], datasetResults = [], toolResults = [], projectResults = [], paperResults = [], personResults = [], courseResults = [];
 
     if (tab === '') {
         allResults = await Promise.all([
@@ -55,7 +55,8 @@ router.get('/', async (req, res) => {
             getObjectResult('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), req.query.toolIndex || 0, req.query.maxResults || 40, req.query.toolSort || ''),
             getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project'), req.query.projectIndex || 0, req.query.maxResults || 40, req.query.projectSort || ''),
             getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), req.query.paperIndex || 0, req.query.maxResults || 40, req.query.paperSort || ''),
-            getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.personSort)
+            getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.personSort),
+            getObjectResult('course', searchAll, getObjectFilters(searchQuery, req, 'course'), req.query.courseIndex || 0, req.query.maxResults || 40, req.query.courseSort || '')
         ]);
     }
     else if (tab === 'Datasets') {
@@ -82,6 +83,11 @@ router.get('/', async (req, res) => {
         personResults = await Promise.all([
             getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.personSort || '')
         ]);
+    }  
+    else if (tab === 'Courses') {
+        courseResults = await Promise.all([
+            getObjectResult('course', searchAll, getObjectFilters(searchQuery, req, 'course'), req.query.courseIndex || 0, req.query.maxResults || 40, req.query.courseSort || '')
+        ]);
     }
 
     var summaryCounts = await Promise.all([
@@ -89,7 +95,8 @@ router.get('/', async (req, res) => {
         getObjectCount('tool', searchAll, getObjectFilters(searchQuery, req, 'tool')),
         getObjectCount('project', searchAll, getObjectFilters(searchQuery, req, 'project')),
         getObjectCount('paper', searchAll, getObjectFilters(searchQuery, req, 'paper')),
-        getObjectCount('person', searchAll, searchQuery)
+        getObjectCount('person', searchAll, searchQuery),
+        getObjectCount('course', searchAll, getObjectFilters(searchQuery, req, 'course'))
     ]);
 
     var summary = { 
@@ -97,7 +104,8 @@ router.get('/', async (req, res) => {
         tools: summaryCounts[1][0] !== undefined ? summaryCounts[1][0].count : 0,
         projects: summaryCounts[2][0] !== undefined ? summaryCounts[2][0].count : 0,
         papers: summaryCounts[3][0] !== undefined ? summaryCounts[3][0].count : 0,
-        persons: summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0 
+        persons: summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0, 
+        courses: summaryCounts[5][0] !== undefined ? summaryCounts[5][0].count : 0
     }
 
     let recordSearchData = new RecordSearchData();
@@ -107,6 +115,7 @@ router.get('/', async (req, res) => {
     recordSearchData.returned.project = summaryCounts[2][0] !== undefined ? summaryCounts[2][0].count : 0;
     recordSearchData.returned.paper = summaryCounts[3][0] !== undefined ? summaryCounts[3][0].count : 0;
     recordSearchData.returned.person = summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0;
+    recordSearchData.returned.course = summaryCounts[5][0] !== undefined ? summaryCounts[5][0].count : 0;
     recordSearchData.datesearched = Date.now();
     recordSearchData.save((err) => { });
 
@@ -118,6 +127,7 @@ router.get('/', async (req, res) => {
             projectResults: allResults[2],
             paperResults: allResults[3],
             personResults: allResults[4],
+            courseResults: allResults[5],
             summary: summary
         });
     }
@@ -128,6 +138,7 @@ router.get('/', async (req, res) => {
         projectResults: projectResults[0],
         paperResults: paperResults[0],
         personResults: personResults[0],
+        courseResults: courseResults[0],
         summary: summary
     });
 });

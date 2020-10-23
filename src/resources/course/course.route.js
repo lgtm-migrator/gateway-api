@@ -8,18 +8,18 @@ import { UserModel } from '../user/user.model';
 import { MessagesModel } from '../message/message.model';
 import {
   addCourse,
-  editTool,
-  deleteTool,
+  editCourse,
+  deleteCourse,
   setStatus,
-  getTools,
-  getToolsAdmin,
+  getCourse,
+  getCourseAdmin,
 } from './course.repository';
 import emailGenerator from '../utilities/emailGenerator.util';
 import inputSanitizer from '../utilities/inputSanitizer';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const router = express.Router();
 
-// @router   POST /api/v1/Course
+// @router   POST /api/v1/course
 // @desc     Add Course as user
 // @access   Private
 router.post(
@@ -37,16 +37,15 @@ router.post(
   }
 );
 
-// @router   PUT /api/v1/{id}
-// @desc     Edit tools user
+// @router   PUT /api/v1/course/{id}
+// @desc     Edit Course as user
 // @access   Private
-// router.put('/{id}',
 router.put(
   '/:id',
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-    await editTool(req)
+    await editCourse(req)
       .then((response) => {
         return res.json({ success: true, response });
       })
@@ -64,11 +63,10 @@ router.get(
   passport.authenticate('jwt'),
   utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
   async (req, res) => {
-    req.params.type = 'tool';
     let role = req.user.role;
 
     if (role === ROLES.Admin) {
-      await getToolsAdmin(req)
+      await getCourseAdmin(req)
         .then((data) => {
           return res.json({ success: true, data });
         })
@@ -76,7 +74,7 @@ router.get(
           return res.json({ success: false, err });
         });
     } else if (role === ROLES.Creator) {
-      await getTools(req)
+      await getCourseTools(req)
         .then((data) => {
           return res.json({ success: true, data });
         })
@@ -94,8 +92,7 @@ router.get(
 router.get(
   '/',
   async (req, res) => {
-    req.params.type = 'tool';
-      await getToolsAdmin(req)
+      await getCourseAdmin(req)
         .then((data) => {
           return res.json({ success: true, data });
         })
@@ -106,7 +103,7 @@ router.get(
 );
 
 // @router   PATCH /api/v1/status
-// @desc     Set tool status
+// @desc     Set course status
 // @access   Private
 router.patch(
   '/:id',
@@ -186,14 +183,14 @@ router.get('/:id', async (req, res) => {
  * Return the details on the tool based on the tool ID for edit.
  */
 router.get('/edit/:id', async (req, res) => {
-  var query = Data.aggregate([
+  var query = Course.aggregate([
     { $match: { $and: [{ id: parseInt(req.params.id) }] } },
     {
       $lookup: {
         from: 'tools',
         localField: 'authors',
         foreignField: 'id',
-        as: 'persons',
+        as: 'creator',
       },
     },
   ]);
@@ -203,7 +200,7 @@ router.get('/edit/:id', async (req, res) => {
     } else {
       return res.json({
         success: false,
-        error: `Tool not found for tool id ${req.params.id}`,
+        error: `Course not found for course id ${req.params.id}`,
       });
     }
   });
