@@ -193,7 +193,7 @@ module.exports = {
 			// 7. Return all applications
 			return res
 				.status(200)
-				.json({ success: true, data: modifiedApplications, avgDecisionTime });
+				.json({ success: true, data: modifiedApplications, avgDecisionTime, canViewSubmitted: isManager });
 		} catch (err) {
 			console.error(err);
 			return res.status(500).json({
