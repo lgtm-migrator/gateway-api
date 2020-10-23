@@ -85,7 +85,7 @@ module.exports = {
 			// 6. Return payload
 			return res
 				.status(200)
-				.json({ success: true, data: modifiedApplications, avgDecisionTime });
+				.json({ success: true, data: modifiedApplications, avgDecisionTime, canViewSubmitted: true });
 		} catch (error) {
 			console.error(error);
 			return res.status(500).json({
