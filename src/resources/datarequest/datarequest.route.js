@@ -61,4 +61,9 @@ router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestControl
 // @access  Private - Applicant (Gateway User)
 router.post('/:id', passport.authenticate('jwt'), datarequestController.submitAccessRequestById);
 
+// @route   POST api/v1/data-access-request/:id/notify
+// @desc    External facing endpoint to trigger notifications for Data Access Request workflows
+// @access  Private
+router.post('/:id', passport.authenticate('jwt'), datarequestController.notifyAccessRequestById);
+
 module.exports = router;
