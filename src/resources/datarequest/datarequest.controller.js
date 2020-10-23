@@ -3,6 +3,7 @@ import { DataRequestModel } from './datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
 import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
+import workflowController from '../workflow/workflow.controller';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import { UserModel } from '../user/user.model';
@@ -12,12 +13,30 @@ import mongoose from 'mongoose';
 
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 const teamController = require('../team/team.controller');
-const workflowController = require('../workflow/workflow.controller');
 const notificationBuilder = require('../utilities/notificationBuilder');
-
+const hdrukEmail = `enquiry@healthdatagateway.org`;
 const userTypes = {
 	CUSTODIAN: 'custodian',
 	APPLICANT: 'applicant',
+};
+const notificationTypes = {
+	STATUSCHANGE: 'StatusChange',
+	SUBMITTED: 'Submitted',
+	CONTRIBUTORCHANGE: 'ContributorChange',
+	STEPOVERRIDE: 'StepOverride',
+	REVIEWSTEPSTART: 'ReviewStepStart',
+	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
+	DEADLINEWARNING: 'DeadlineWarning',
+	DEADLINEPASSED: 'DeadlinePassed',
+};
+const applicationStatuses = {
+	SUBMITTED: 'submitted',
+	INPROGRESS: 'inProgress',
+	INREVIEW: 'inReview',
+	APPROVED: 'approved',
+	REJECTED: 'rejected',
+	APPROVEDWITHCONDITIONS: 'approved with conditions',
+	WITHDRAWN: 'withdrawn',
 };
 
 module.exports = {
@@ -66,7 +85,7 @@ module.exports = {
 			// 6. Return payload
 			return res
 				.status(200)
-				.json({ success: true, data: modifiedApplications, avgDecisionTime });
+				.json({ success: true, data: modifiedApplications, avgDecisionTime, canViewSubmitted: true });
 		} catch (error) {
 			console.error(error);
 			return res.status(500).json({
@@ -122,17 +141,20 @@ module.exports = {
 			// 6. Set edit mode for applicants who have not yet submitted
 			if (
 				userType === userTypes.APPLICANT &&
-				accessRecord.applicationStatus === 'inProgress'
+				accessRecord.applicationStatus === applicationStatuses.INPROGRESS
 			) {
 				readOnly = false;
 			}
 			// 7. Set the review mode if user is a custodian reviewing the current step
-			let { inReviewMode, reviewSections, hasRecommended } = module.exports.getReviewStatus(
-				accessRecord,
-				req.user._id
-			);
+			let {
+				inReviewMode,
+				reviewSections,
+				hasRecommended,
+			} = workflowController.getReviewStatus(accessRecord, req.user._id);
 			// 8. Get the workflow/voting status
-			let workflow = module.exports.getWorkflowStatus(accessRecord.toObject());
+			let workflow = workflowController.getWorkflowStatus(
+				accessRecord.toObject()
+			);
 			// 9. Check if the current user can override the current step
 			if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team')) {
 				let isManager = teamController.checkTeamPermissions(
@@ -187,7 +209,7 @@ module.exports = {
 			accessRecord = await DataRequestModel.findOne({
 				dataSetId,
 				userId,
-				applicationStatus: 'inProgress',
+				applicationStatus: applicationStatuses.INPROGRESS,
 			}).populate({
 				path: 'mainApplicant',
 				select: 'firstname lastname -id -_id',
@@ -231,7 +253,7 @@ module.exports = {
 					publisher,
 					questionAnswers: '{}',
 					aboutApplication: '{}',
-					applicationStatus: 'inProgress',
+					applicationStatus: applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
 				const newApplication = await record.save();
@@ -258,7 +280,7 @@ module.exports = {
 					aboutApplication: JSON.parse(data.aboutApplication),
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
-					userType: 'applicant',
+					userType: userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
 				},
@@ -286,7 +308,7 @@ module.exports = {
 			accessRecord = await DataRequestModel.findOne({
 				datasetIds: { $all: arrDatasetIds },
 				userId,
-				applicationStatus: 'inProgress',
+				applicationStatus: applicationStatuses.INPROGRESS,
 			})
 				.populate({
 					path: 'mainApplicant',
@@ -331,7 +353,7 @@ module.exports = {
 					publisher,
 					questionAnswers: '{}',
 					aboutApplication: '{}',
-					applicationStatus: 'inProgress',
+					applicationStatus: applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
 				const newApplication = await record.save();
@@ -357,7 +379,7 @@ module.exports = {
 					aboutApplication: JSON.parse(data.aboutApplication),
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
-					userType: 'applicant',
+					userType: userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
 				},
@@ -389,8 +411,8 @@ module.exports = {
 				updateObj = { ...updateObj, questionAnswers };
 			}
 
-			if(!_.isEmpty(jsonSchema)) {
-				updateObj = {...updateObj, jsonSchema}
+			if (!_.isEmpty(jsonSchema)) {
+				updateObj = { ...updateObj, jsonSchema };
 			}
 
 			// 3. Find data request by _id and update via body
@@ -454,6 +476,10 @@ module.exports = {
 						path: 'team',
 					},
 				},
+				{
+					path: 'workflow.steps.reviewers',
+					select: 'id email',
+				},
 			]);
 			if (!accessRecord) {
 				return res
@@ -515,11 +541,11 @@ module.exports = {
 				// Extract params from body
 				({ applicationStatus, applicationStatusDesc } = req.body);
 				const finalStatuses = [
-					'submitted',
-					'approved',
-					'rejected',
-					'approved with conditions',
-					'withdrawn',
+					applicationStatuses.SUBMITTED,
+					applicationStatuses.APPROVED,
+					applicationStatuses.REJECTED,
+					applicationStatuses.APPROVEDWITHCONDITIONS,
+					applicationStatuses.WITHDRAWN,
 				];
 				if (applicationStatus) {
 					accessRecord.applicationStatus = applicationStatus;
@@ -582,7 +608,7 @@ module.exports = {
 						// Send notifications to added/removed contributors
 						if (contributorChange) {
 							await module.exports.createNotifications(
-								'ContributorChange',
+								notificationTypes.CONTRIBUTORCHANGE,
 								{ newAuthors, currentAuthors },
 								accessRecord,
 								req.user
@@ -591,7 +617,7 @@ module.exports = {
 						if (statusChange) {
 							// Send notifications to custodian team, main applicant and contributors regarding status change
 							await module.exports.createNotifications(
-								'StatusChange',
+								notificationTypes.STATUSCHANGE,
 								{ applicationStatus, applicationStatusDesc },
 								accessRecord,
 								req.user
@@ -704,7 +730,7 @@ module.exports = {
 			}
 			// 8. Check application is in-review
 			let { applicationStatus } = accessRecord;
-			if (applicationStatus !== 'inReview') {
+			if (applicationStatus !== applicationStatuses.INREVIEW) {
 				return res.status(400).json({
 					success: false,
 					message:
@@ -752,7 +778,7 @@ module.exports = {
 					);
 					let bpmContext = {
 						businessKey: id,
-						dataRequestStatus: 'inReview',
+						dataRequestStatus: applicationStatuses.INREVIEW,
 						dataRequestUserId: userId.toString(),
 						dataRequestPublisher,
 						dataRequestStepName: workflowObj.steps[0].stepName,
@@ -762,8 +788,20 @@ module.exports = {
 						reviewerList,
 					};
 					bpmController.postStartStepReview(bpmContext);
-					// 14. TODO Create notifications for workflow assigned (step 1 reviewers and other managers)
-					// 15. Return workflow payload
+					// 14. Gather context for notifications
+					const emailContext = workflowController.getWorkflowEmailContext(
+						accessRecord,
+						workflowObj,
+						0
+					);
+					// 15. Create notifications to reviewers of the step that has been completed
+					module.exports.createNotifications(
+						notificationTypes.REVIEWSTEPSTART,
+						emailContext,
+						accessRecord,
+						req.user
+					);
+					// 16. Return workflow payload
 					return res.status(200).json({
 						success: true,
 					});
@@ -816,7 +854,7 @@ module.exports = {
 			}
 			// 5. Check application is in submitted state
 			let { applicationStatus } = accessRecord;
-			if (applicationStatus !== 'submitted') {
+			if (applicationStatus !== applicationStatuses.SUBMITTED) {
 				return res.status(400).json({
 					success: false,
 					message:
@@ -824,7 +862,7 @@ module.exports = {
 				});
 			}
 			// 6. Update application to 'in review'
-			accessRecord.applicationStatus = 'inReview';
+			accessRecord.applicationStatus = applicationStatuses.INREVIEW;
 			accessRecord.dateReviewStart = new Date();
 			// 7. Save update to access record
 			await accessRecord.save(async (err) => {
@@ -877,12 +915,27 @@ module.exports = {
 				});
 			}
 			// 2. Retrieve DAR from database
-			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
-				path: 'publisherObj',
-				populate: {
-					path: 'team',
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
+						populate: {
+							path: 'users',
+						},
+					},
 				},
-			});
+				{
+					path: 'workflow.steps.reviewers',
+					select: 'firstname lastname id email',
+				},
+				{
+					path: 'datasets dataset',
+				},
+				{
+					path: 'mainApplicant',
+				},
+			]);
 			if (!accessRecord) {
 				return res
 					.status(404)
@@ -906,7 +959,7 @@ module.exports = {
 			}
 			// 5. Check application is in-review
 			let { applicationStatus } = accessRecord;
-			if (applicationStatus !== 'inReview') {
+			if (applicationStatus !== applicationStatuses.INREVIEW) {
 				return res.status(400).json({
 					success: false,
 					message:
@@ -927,7 +980,11 @@ module.exports = {
 			let activeStepIndex = steps.findIndex((step) => {
 				return step.active === true;
 			});
-			if (!steps[activeStepIndex].reviewers.includes(userId)) {
+			if (
+				!steps[activeStepIndex].reviewers
+					.map((reviewer) => reviewer._id.toString())
+					.includes(userId.toString())
+			) {
 				return res.status(400).json({
 					success: false,
 					message: 'You have not been assigned to vote on this review phase',
@@ -984,11 +1041,37 @@ module.exports = {
 					console.error(err);
 					res.status(500).json({ status: 'error', message: err });
 				} else {
-					// Call Camunda controller to update workflow process
+					// 15. Create emails and notifications
+					let relevantStepIndex = 0,
+						relevantNotificationType = '';
+					if (bpmContext.stepComplete && !bpmContext.finalPhaseApproved) {
+						// Create notifications to reviewers of the next step that has been activated
+						relevantStepIndex = activeStepIndex + 1;
+						relevantNotificationType = notificationTypes.REVIEWSTEPSTART;
+					} else if (bpmContext.stepComplete && bpmContext.finalPhaseApproved) {
+						// Create notifications to managers that the application is awaiting final approval
+						relevantStepIndex = activeStepIndex;
+						relevantNotificationType = notificationTypes.FINALDECISIONREQUIRED;
+					}
+					// Continue only if notification required
+					if (!_.isEmpty(relevantNotificationType)) {
+						const emailContext = workflowController.getWorkflowEmailContext(
+							accessRecord,
+							workflow,
+							relevantStepIndex
+						);
+						module.exports.createNotifications(
+							relevantNotificationType,
+							emailContext,
+							accessRecord,
+							req.user
+						);
+					}
+					// 16. Call Camunda controller to update workflow process
 					bpmController.postCompleteReview(bpmContext);
 				}
 			});
-			// 15. Return aplication and successful response
+			// 17. Return aplication and successful response
 			return res
 				.status(200)
 				.json({ status: 'success', data: accessRecord._doc });
@@ -1007,12 +1090,27 @@ module.exports = {
 			} = req;
 			let { _id: userId } = req.user;
 			// 2. Retrieve DAR from database
-			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
-				path: 'publisherObj',
-				populate: {
-					path: 'team',
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
+						populate: {
+							path: 'users',
+						},
+					},
 				},
-			});
+				{
+					path: 'workflow.steps.reviewers',
+					select: 'firstname lastname id email',
+				},
+				{
+					path: 'datasets dataset',
+				},
+				{
+					path: 'mainApplicant',
+				},
+			]);
 			if (!accessRecord) {
 				return res
 					.status(404)
@@ -1036,7 +1134,7 @@ module.exports = {
 			}
 			// 5. Check application is in review state
 			let { applicationStatus } = accessRecord;
-			if (applicationStatus !== 'inReview') {
+			if (applicationStatus !== applicationStatuses.INREVIEW) {
 				return res.status(400).json({
 					success: false,
 					message: 'The application status must be set to in review',
@@ -1085,11 +1183,50 @@ module.exports = {
 					console.error(err);
 					res.status(500).json({ status: 'error', message: err });
 				} else {
-					// 12. Call Camunda controller to start manager review process
+					// 12. Gather context for notifications (active step)
+					let emailContext = workflowController.getWorkflowEmailContext(
+						accessRecord,
+						workflow,
+						activeStepIndex
+					);
+					// 13. Create notifications to reviewers of the step that has been completed
+					module.exports.createNotifications(
+						notificationTypes.STEPOVERRIDE,
+						emailContext,
+						accessRecord,
+						req.user
+					);
+					// 14. Create emails and notifications
+					let relevantStepIndex = 0,
+						relevantNotificationType = '';
+					if (bpmContext.finalPhaseApproved) {
+						// Create notifications to managers that the application is awaiting final approval
+						relevantStepIndex = activeStepIndex;
+						relevantNotificationType = notificationTypes.FINALDECISIONREQUIRED;
+					} else {
+						// Create notifications to reviewers of the next step that has been activated
+						relevantStepIndex = activeStepIndex + 1;
+						relevantNotificationType = notificationTypes.REVIEWSTEPSTART;
+					}
+					// Get the email context only if required
+					if(relevantStepIndex !== activeStepIndex) {
+						emailContext = workflowController.getWorkflowEmailContext(
+							accessRecord,
+							workflow,
+							relevantStepIndex
+						);
+					}
+					module.exports.createNotifications(
+						relevantNotificationType,
+						emailContext,
+						accessRecord,
+						req.user
+					);
+					// 15. Call Camunda controller to start manager review process
 					bpmController.postCompleteReview(bpmContext);
 				}
 			});
-			// 12. Return aplication and successful response
+			// 16. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
 			console.log(err.message);
@@ -1142,7 +1279,7 @@ module.exports = {
 			}
 
 			// 4. Update application to submitted status
-			accessRecord.applicationStatus = 'submitted';
+			accessRecord.applicationStatus = applicationStatuses.SUBMITTED;
 			// Check if workflow/5 Safes based application, set final status date if status will never change again
 			let workflowEnabled = false;
 			if (_.has(accessRecord.datasets[0].toObject(), 'publisher')) {
@@ -1162,7 +1299,7 @@ module.exports = {
 					// If save has succeeded - send notifications
 					// Send notifications and emails to custodian team and main applicant
 					await module.exports.createNotifications(
-						'Submitted',
+						notificationTypes.SUBMITTED,
 						{},
 						accessRecord,
 						req.user
@@ -1175,7 +1312,7 @@ module.exports = {
 						} = accessRecord;
 						let bpmContext = {
 							dateSubmitted,
-							applicationStatus: 'submitted',
+							applicationStatus: applicationStatuses.SUBMITTED,
 							publisher,
 							businessKey: id,
 						};
@@ -1193,13 +1330,59 @@ module.exports = {
 		}
 	},
 
+	//POST api/v1/data-access-request/:id/notify
+	notifyAccessRequestById: async (req, res) => {
+		// 1. Get the required request params
+		const {
+			params: { id },
+		} = req;
+		// 2. Retrieve DAR from database
+		let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+			{
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
+					populate: {
+						path: 'users',
+					},
+				},
+			},
+			{
+				path: 'workflow.steps.reviewers',
+				select: 'firstname lastname id email',
+			},
+			{
+				path: 'datasets dataset',
+			},
+			{
+				path: 'mainApplicant',
+			},
+		]);
+		if (!accessRecord) {
+			return res
+				.status(404)
+				.json({ status: 'error', message: 'Application not found.' });
+		}
+		let { workflow } = accessRecord;
+		let activeStepIndex = workflow.steps.findIndex((step) => {
+			return step.active === true;
+		});
+		// 3. Determine email context if deadline has elapsed or is approaching
+		const emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
+		// 4. Send emails based on deadline elapsed or approaching
+		if(emailContext.deadlineElapsed) {
+			module.exports.createNotifications(notificationTypes.DEADLINEPASSED, emailContext, accessRecord, req.user);
+		} else {
+			module.exports.createNotifications(notificationTypes.DEADLINEWARNING, emailContext, accessRecord, req.user);
+		}
+		return res.status(200).json({ status: 'success' });
+	},
+
 	createNotifications: async (type, context, accessRecord, user) => {
-		// Default from mail address
-		const hdrukEmail = `enquiry@healthdatagateway.org`;
 		// Project details from about application if 5 Safes
 		let aboutApplication = JSON.parse(accessRecord.aboutApplication);
 		let { projectName } = aboutApplication;
-		let { projectId, _id } = accessRecord;
+		let { projectId, _id, workflow = {}, dateSubmitted = '' } = accessRecord;
 		if (_.isEmpty(projectId)) {
 			projectId = _id;
 		}
@@ -1219,8 +1402,7 @@ module.exports = {
 		// Requesting user
 		let { firstname, lastname } = user;
 		// Instantiate default params
-		let custodianUsers = [],
-			custodianManagers = [],
+		let custodianManagers = [],
 			emailRecipients = [],
 			options = {},
 			html = '',
@@ -1240,20 +1422,39 @@ module.exports = {
 				return { firstname, lastname, email, id };
 			});
 		}
+		// Deconstruct workflow context if passed
+		let {
+			workflowName = '',
+			stepName = '',
+			reviewerNames = '',
+			reviewSections = '',
+			nextStepName = '',
+			stepReviewers = [],
+			stepReviewerUserIds = [],
+			currentDeadline = '',
+		} = context;
 
 		switch (type) {
-			// DAR application status has been updated
-			case 'StatusChange':
+			case notificationTypes.STATUSCHANGE:
 				// 1. Create notifications
-				// Custodian team notifications
+				// Custodian manager and current step reviewer notifications
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
-					// Retrieve all custodian user Ids to generate notifications
-					custodianUsers = [...accessRecord.datasets[0].publisher.team.users];
-					let custodianUserIds = custodianUsers.map((user) => user.id);
+					// Retrieve all custodian manager user Ids and active step reviewers
+					custodianManagers = teamController.getTeamMembersByRole(
+						accessRecord.datasets[0].publisher.team,
+						teamController.roleTypes.MANAGER
+					);
+					let activeStep = workflowController.getActiveWorkflowStep(workflow);
+					stepReviewers = workflowController.getStepReviewers(activeStep);
+					// Create custodian notification
+					let statusChangeUserIds = [
+						...custodianManagers,
+						...stepReviewers,
+					].map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
-						custodianUserIds,
+						statusChangeUserIds,
 						`${appFirstName} ${appLastName}'s Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
@@ -1281,10 +1482,10 @@ module.exports = {
 				// Aggregate objects for custodian and applicant
 				emailRecipients = [
 					accessRecord.mainApplicant,
-					...custodianUsers,
+					...custodianManagers,
+					...stepReviewers,
 					...accessRecord.authors,
 				];
-				let { dateSubmitted } = accessRecord;
 				if (!dateSubmitted) ({ updatedAt: dateSubmitted } = accessRecord);
 				// Create object to pass through email data
 				options = {
@@ -1309,7 +1510,7 @@ module.exports = {
 					false
 				);
 				break;
-			case 'Submitted':
+			case notificationTypes.SUBMITTED:
 				// 1. Prepare data for notifications
 				const emailRecipientTypes = ['applicant', 'dataCustodian'];
 				// Destructure the application
@@ -1325,8 +1526,9 @@ module.exports = {
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
 				) {
 					// Retrieve all custodian user Ids to generate notifications
-					custodianManagers = teamController.getTeamManagers(
-						accessRecord.datasets[0].publisher.team
+					custodianManagers = teamController.getTeamMembersByRole(
+						accessRecord.datasets[0].publisher.team,
+						teamController.roleTypes.MANAGER
 					);
 					let custodianUserIds = custodianManagers.map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -1399,7 +1601,7 @@ module.exports = {
 					}
 				}
 				break;
-			case 'ContributorChange':
+			case notificationTypes.CONTRIBUTORCHANGE:
 				// 1. Deconstruct authors array from context to compare with existing Mongo authors
 				const { newAuthors, currentAuthors } = context;
 				// 2. Determine authors who have been removed
@@ -1424,7 +1626,7 @@ module.exports = {
 				// Notifications for added contributors
 				if (!_.isEmpty(addedAuthors)) {
 					options.change = 'added';
-					html = await emailGenerator.generateContributorEmail(options);
+					html = emailGenerator.generateContributorEmail(options);
 					// Find related user objects and filter out users who have not opted in to email communications
 					let addedUsers = await UserModel.find({
 						id: { $in: addedAuthors },
@@ -1468,29 +1670,196 @@ module.exports = {
 					);
 				}
 				break;
+			case notificationTypes.STEPOVERRIDE:
+				// 1. Create reviewer notifications
+				notificationBuilder.triggerNotificationMessage(
+					stepReviewerUserIds,
+					`${firstname} ${lastname} has approved a Data Access Request application phase that you were assigned to review`,
+					'data access request',
+					accessRecord._id
+				);
+				// 2. Create reviewer emails
+				options = {
+					id: accessRecord._id,
+					projectName,
+					projectId,
+					datasetTitles,
+					userName: `${appFirstName} ${appLastName}`,
+					actioner: `${firstname} ${lastname}`,
+					applicants,
+					dateSubmitted,
+					...context,
+				};
+				html = emailGenerator.generateStepOverrideEmail(options);
+				emailGenerator.sendEmail(
+					stepReviewers,
+					hdrukEmail,
+					`${firstname} ${lastname} has approved a Data Access Request application phase that you were assigned to review`,
+					html,
+					false
+				);
+				break;
+			case notificationTypes.REVIEWSTEPSTART:
+				// 1. Create reviewer notifications
+				notificationBuilder.triggerNotificationMessage(
+					stepReviewerUserIds,
+					`You are required to review a new Data Access Request application for ${publisher} by ${moment(
+						currentDeadline
+					).format('D MMM YYYY HH:mm')}`,
+					'data access request',
+					accessRecord._id
+				);
+				// 2. Create reviewer emails
+				options = {
+					id: accessRecord._id,
+					projectName,
+					projectId,
+					datasetTitles,
+					userName: `${appFirstName} ${appLastName}`,
+					actioner: `${firstname} ${lastname}`,
+					applicants,
+					dateSubmitted,
+					...context,
+				};
+				html = emailGenerator.generateNewReviewPhaseEmail(options);
+				emailGenerator.sendEmail(
+					stepReviewers,
+					hdrukEmail,
+					`You are required to review a new Data Access Request application for ${publisher} by ${moment(
+						currentDeadline
+					).format('D MMM YYYY HH:mm')}`,
+					html,
+					false
+				);
+				break;
+			case notificationTypes.FINALDECISIONREQUIRED:
+				// 1. Get managers for publisher
+				custodianManagers = teamController.getTeamMembersByRole(
+					accessRecord.publisherObj.team,
+					teamController.roleTypes.MANAGER
+				);
+				let managerUserIds = custodianManagers.map((user) => user.id);
+
+				// 1. Create manager notifications
+				notificationBuilder.triggerNotificationMessage(
+					managerUserIds,
+					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
+					'data access request',
+					accessRecord._id
+				);
+				// 2. Create manager emails
+				options = {
+					id: accessRecord._id,
+					projectName,
+					projectId,
+					datasetTitles,
+					userName: `${appFirstName} ${appLastName}`,
+					actioner: `${firstname} ${lastname}`,
+					applicants,
+					dateSubmitted,
+					...context,
+				};
+				html = emailGenerator.generateFinalDecisionRequiredEmail(options);
+				emailGenerator.sendEmail(
+					custodianManagers,
+					hdrukEmail,
+					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
+					html,
+					false
+				);
+				break;
+			case notificationTypes.DEADLINEWARNING:
+				// 1. Get all reviewers who have not yet voted on active phase
+				// 2. Create reviewer notifications
+				await notificationBuilder.triggerNotificationMessage(
+					stepReviewerUserIds,
+					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					'data access request',
+					accessRecord._id
+				);
+				// 3. Create reviewer emails
+				options = {
+					id: accessRecord._id,
+					projectName,
+					projectId,
+					datasetTitles,
+					userName: `${appFirstName} ${appLastName}`,
+					actioner: `${firstname} ${lastname}`,
+					applicants,
+					workflowName,
+					stepName,
+					reviewSections,
+					reviewerNames,
+					nextStepName,
+				};
+				html = await emailGenerator.generateReviewDeadlineWarning(options);
+				await emailGenerator.sendEmail(
+					stepReviewers,
+					hdrukEmail,
+					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					html,
+					false
+				);
+				break;
+			case notificationTypes.DEADLINEPASSED:
+				// 1. Get all reviewers who have not yet voted on active phase
+				// 2. Get all managers
+				// 3. Create notifications
+				await notificationBuilder.triggerNotificationMessage(
+					stepReviewerUserIds,
+					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					'data access request',
+					accessRecord._id
+				);
+				// 4. Create emails
+				options = {
+					id: accessRecord._id,
+					projectName,
+					projectId,
+					datasetTitles,
+					userName: `${appFirstName} ${appLastName}`,
+					actioner: `${firstname} ${lastname}`,
+					applicants,
+					workflowName,
+					stepName,
+					reviewSections,
+					reviewerNames,
+					nextStepName,
+				};
+				html = await emailGenerator.generateReviewDeadlinePassed(options);
+				await emailGenerator.sendEmail(
+					stepReviewers,
+					hdrukEmail,
+					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					html,
+					false
+				);
 		}
 	},
 
 	getUserPermissionsForApplication: (application, userId, _id) => {
 		try {
 			let authorised = false,
-				userType = '',
-				members = [];
+				userType = '';
 			// Return default unauthorised with no user type if incorrect params passed
 			if (!application || !userId || !_id) {
 				return { authorised, userType };
 			}
 			// Check if the user is a custodian team member and assign permissions if so
-			if (_.has(application.datasets[0].toObject(), 'publisher.team.members')) {
-				({ members } = application.datasets[0].publisher.team.toObject());
-				if (members.some((el) => el.memberid.toString() === _id.toString())) {
+			if (_.has(application.datasets[0].toObject(), 'publisher.team')) {
+				let isTeamMember = teamController.checkTeamPermissions(
+					'',
+					application.datasets[0].publisher.team.toObject(),
+					_id
+				);
+				if (isTeamMember) {
 					userType = userTypes.CUSTODIAN;
 					authorised = true;
 				}
 			}
 			// If user is not authenticated as a custodian, check if they are an author or the main applicant
 			if (
-				application.applicationStatus === 'inProgress' ||
+				application.applicationStatus === applicationStatuses.INPROGRESS ||
 				_.isEmpty(userType)
 			) {
 				if (
@@ -1573,20 +1942,23 @@ module.exports = {
 				)
 				.map((user) => {
 					let isCurrentUser = user._id.toString() === userId.toString();
-					return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)`:``}`;
+					return `${user.firstname} ${user.lastname}${
+						isCurrentUser ? ` (you)` : ``
+					}`;
 				});
 			if (
-				applicationStatus === 'submitted' ||
-				(applicationStatus === 'inReview' && _.isEmpty(workflow))
+				applicationStatus === applicationStatuses.SUBMITTED ||
+				(applicationStatus === applicationStatuses.INREVIEW &&
+					_.isEmpty(workflow))
 			) {
 				remainingActioners = managerUsers.join(', ');
 			}
 			if (!_.isEmpty(workflow)) {
 				({ workflowName } = workflow);
-				workflowCompleted = module.exports.getWorkflowCompleted(workflow);
-				let activeStep = module.exports.getActiveWorkflowStep(workflow);
+				workflowCompleted = workflowController.getWorkflowCompleted(workflow);
+				let activeStep = workflowController.getActiveWorkflowStep(workflow);
 				// Calculate active step status
-				if (activeStep) {
+				if (!_.isEmpty(activeStep)) {
 					({
 						stepName = '',
 						remainingActioners = [],
@@ -1599,7 +1971,11 @@ module.exports = {
 						decisionDate,
 						isReviewer = false,
 						reviewPanels = [],
-					} = module.exports.getActiveStepStatus(activeStep, users, userId));
+					} = workflowController.getActiveStepStatus(
+						activeStep,
+						users,
+						userId
+					));
 					let activeStepIndex = workflow.steps.findIndex((step) => {
 						return step.active === true;
 					});
@@ -1609,7 +1985,7 @@ module.exports = {
 					};
 				} else if (
 					_.isUndefined(activeStep) &&
-					applicationStatus === 'inReview'
+					applicationStatus === applicationStatuses.INREVIEW
 				) {
 					reviewStatus = 'Final decision required';
 					remainingActioners = managerUsers.join(', ');
@@ -1710,187 +2086,5 @@ module.exports = {
 				return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
-	},
-
-	getReviewStatus: (application, userId) => {
-		let inReviewMode = false,
-			reviewSections = [],
-			isActiveStepReviewer = false,
-			hasRecommended = false;
-		// Get current application status
-		let { applicationStatus } = application;
-		// Check if the current user is a reviewer on the current step of an attached workflow
-		let { workflow = {} } = application;
-		if (!_.isEmpty(workflow)) {
-			let { steps } = workflow;
-			let activeStep = steps.find((step) => {
-				return step.active === true;
-			});
-			if (activeStep) {
-				isActiveStepReviewer = activeStep.reviewers.some(
-					(reviewer) => reviewer._id.toString() === userId.toString()
-				);
-				reviewSections = [...activeStep.sections];
-
-				let { recommendations = [] } = activeStep;
-				if (!_.isEmpty(recommendations)) {
-					hasRecommended = recommendations.some(
-						(rec) => rec.reviewer.toString() === userId.toString()
-					);
-				}
-			}
-		}
-		// Return active review mode if conditions apply
-		if (applicationStatus === 'inReview' && isActiveStepReviewer) {
-			inReviewMode = true;
-		}
-
-		return { inReviewMode, reviewSections, hasRecommended };
-	},
-
-	getWorkflowStatus: (application) => {
-		let workflowStatus = {};
-		let { workflow = {} } = application;
-		if (!_.isEmpty(workflow)) {
-			let { workflowName, steps } = workflow;
-			// Find the active step in steps
-			let activeStep = module.exports.getActiveWorkflowStep(workflow);
-			let activeStepIndex = steps.findIndex((step) => {
-				return step.active === true;
-			});
-			if (activeStep) {
-				let {
-					reviewStatus,
-					deadlinePassed
-				} = module.exports.getActiveStepStatus(activeStep);
-				//Update active step with review status
-				steps[activeStepIndex] = {
-					...steps[activeStepIndex],
-					reviewStatus,
-					deadlinePassed
-				};
-			}
-			//Update steps with user friendly review sections
-			let formattedSteps = [...steps].reduce((arr, item) => {
-				let step = {
-					...item,
-					sections: [...item.sections].map(
-						(section) => helper.darPanelMapper[section]
-					),
-				};
-				arr.push(step);
-				return arr;
-			}, []);
-
-			workflowStatus = {
-				workflowName,
-				steps: formattedSteps,
-				isCompleted: module.exports.getWorkflowCompleted(workflow),
-			};
-		}
-		return workflowStatus;
-	},
-
-	getWorkflowCompleted: (workflow) => {
-		let { steps } = workflow;
-		return steps.every((step) => step.completed);
-	},
-
-	getActiveStepStatus: (activeStep, users = [], userId = '') => {
-		let reviewStatus = '',
-			deadlinePassed = false,
-			remainingActioners = [],
-			decisionMade = false,
-			decisionComments = '',
-			decisionApproved = false,
-			decisionDate = '',
-			decisionStatus = '';
-		let {
-			stepName,
-			deadline,
-			startDateTime,
-			reviewers = [],
-			recommendations = [],
-			sections = [],
-		} = activeStep;
-		let deadlineDate = moment(startDateTime).add(deadline, 'days');
-		let diff = parseInt(deadlineDate.diff(new Date(), 'days'));
-		if (diff > 0) {
-			reviewStatus = `Deadline in ${diff} days`;
-		} else if (diff < 0) {
-			reviewStatus = `Deadline was ${Math.abs(diff)} days ago`;
-			deadlinePassed = true;
-		} else {
-			reviewStatus = `Deadline is today`;
-		}
-		remainingActioners = reviewers.filter(
-			(reviewer) =>
-				!recommendations.some(
-					(rec) => rec.reviewer.toString() === reviewer._id.toString()
-				)
-		);
-		remainingActioners = users
-			.filter((user) =>
-				remainingActioners.some(
-					(actioner) => actioner._id.toString() === user._id.toString()
-				)
-			)
-			.map((user) => {
-				let isCurrentUser = user._id.toString() === userId.toString();
-				return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)`:``}`;
-			});
-
-		let isReviewer = reviewers.some(
-			(reviewer) => reviewer._id.toString() === userId.toString()
-		);
-		let hasRecommended = recommendations.some(
-			(rec) => rec.reviewer.toString() === userId.toString()
-		);
-
-		decisionMade = isReviewer && hasRecommended;
-
-		if (decisionMade) {
-			decisionStatus = 'Decision made for this phase';
-		} else if (isReviewer) {
-			decisionStatus = 'Decision required';
-		} else {
-			decisionStatus = '';
-		}
-
-		if (hasRecommended) {
-			let recommendation = recommendations.find(
-				(rec) => rec.reviewer.toString() === userId.toString()
-			);
-			({
-				comments: decisionComments,
-				approved: decisionApproved,
-				createdDate: decisionDate,
-			} = recommendation);
-		}
-
-		let reviewPanels = sections
-			.map((section) => helper.darPanelMapper[section])
-			.join(', ');
-
-		return {
-			stepName,
-			remainingActioners: remainingActioners.join(', '),
-			deadlinePassed,
-			isReviewer,
-			reviewStatus,
-			decisionMade,
-			decisionApproved,
-			decisionDate,
-			decisionStatus,
-			decisionComments,
-			reviewPanels
-		};
-	},
-
-	getActiveWorkflowStep: (workflow) => {
-		let { steps } = workflow;
-		return steps.find((step) => {
-			return step.active;
-		});
 	},
 };
