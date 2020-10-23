@@ -395,34 +395,42 @@ router.delete(
 
 // @router   GET /api/v1/project/tag/name
 // @desc     Get tools by tag search
-// @access   Public
-router.get('/:type/tag/:name', async (req, res) => {
-	try {
-		// 1. Destructure tag name parameter passed
-		let { type, name } = req.params;
-		// 2. Check if parameters are empty
-		if (_.isEmpty(name) || _.isEmpty(type)) {
-			return res
-				.status(400)
-				.json({ success: false, message: 'Entity type and tag are required' });
+// @access   Private
+router.get(
+	'/:type/tag/:name',
+	passport.authenticate('jwt'),
+	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
+	async (req, res) => {
+		try {
+			// 1. Destructure tag name parameter passed
+			let { type, name } = req.params;
+			// 2. Check if parameters are empty
+			if (_.isEmpty(name) || _.isEmpty(type)) {
+				return res
+					.status(400)
+					.json({
+						success: false,
+						message: 'Entity type and tag are required',
+					});
+			}
+			// 3. Find matching projects in MongoDb selecting name and id
+			let entities = await Data.find({
+				$and: [
+					{ type },
+					{ $or: [{ 'tags.topics': name }, { 'tags.features': name }] },
+				],
+			}).select('id name');
+			// 4. Return projects
+			return res.status(200).json({ success: true, entities });
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred searching for tools by tag',
+			});
 		}
-		// 3. Find matching projects in MongoDb selecting name and id
-		let entities = await Data.find({
-			$and: [
-				{ type },
-				{ $or: [{ 'tags.topics': name }, { 'tags.features': name }] },
-			],
-		}).select('id name');
-		// 4. Return projects
-		return res.status(200).json({ success: true, entities });
-	} catch (err) {
-		console.error(err.message);
-		return res.status(500).json({
-			success: false,
-			message: 'An error occurred searching for tools by tag',
-		});
 	}
-});
+);
 
 module.exports = router;
 

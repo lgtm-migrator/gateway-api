@@ -28,6 +28,20 @@ const signToken = (user) => {
     )
 }
 
+const camundaToken = () => {
+    return jwt.sign(
+        // This structure must not change or the authenication between camunda and the gateway will fail
+        // username: An admin user the exists within the camunda-admin group
+        // groupIds: The admin group that has been configured on the camunda portal.
+        { username: process.env.BPMN_ADMIN_USER, groupIds: ["camunda-admin"], tenantIds: []},
+        process.env.JWTSecret,  
+        { //Here change it so only id
+            algorithm: 'HS256',
+            expiresIn: 604800
+        }
+    )
+}
+
 const hashPassword = async password => {
     if (!password) {
         throw new Error('Password was not provided')
@@ -74,4 +88,4 @@ const getRedirectUrl = role => {
     }
 }
 
-export { setup, signToken, hashPassword, verifyPassword, checkIsInRole, getRedirectUrl, whatIsRole }
+export { setup, signToken, camundaToken, hashPassword, verifyPassword, checkIsInRole, getRedirectUrl, whatIsRole }

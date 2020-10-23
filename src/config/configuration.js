@@ -20,22 +20,24 @@ export const clients = [
         client_id: process.env.MDWClientID || '',
         client_secret: process.env.MDWClientSecret || '',
         grant_types: ['authorization_code'],
-        //grant_types: ['authorization_code', 'implicit'],
         response_types: ['code'],
-        //response_types: ['code'],
+        //grant_types: ['authorization_code', 'implicit'],
+        //response_types: ['code id_token'],
         redirect_uris: process.env.MDWRedirectURI.split(",") || [''],
-        id_token_signed_response_alg: 'HS256'
+        id_token_signed_response_alg: 'HS256',
+        post_logout_redirect_uris: ['https://web.uatbeta.healthdatagateway.org/search?search=&logout=true']
     },
     {
         //BC Platforms
         client_id: process.env.BCPClientID || '',
         client_secret: process.env.BCPClientSecret || '',
-        grant_types: ['authorization_code'],
-        //grant_types: ['authorization_code', 'implicit'],
-        response_types: ['code'],
+        //grant_types: ['authorization_code'],
         //response_types: ['code'],
+        grant_types: ['authorization_code', 'implicit'],
+        response_types: ['code id_token'],
         redirect_uris: process.env.BCPRedirectURI.split(",") || [''],
-        id_token_signed_response_alg: 'HS256'
+        id_token_signed_response_alg: 'HS256',
+        post_logout_redirect_uris: ['https://web.uatbeta.healthdatagateway.org/search?search=&logout=true']
     }
 ];
 
