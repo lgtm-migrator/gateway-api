@@ -17,7 +17,7 @@ router.post('/',
     async (req, res) => {
       const { firstname, lastname, bio, emailNotifications, terms, sector, organisation, showOrganisation, tags} = req.body;
       let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
-      let orcid = urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid));
+      let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
       let data = Data();
       console.log(req.body)
       data.id = parseInt(Math.random().toString().replace('0.', ''));
@@ -47,7 +47,7 @@ router.put('/',
   let { id, firstname, lastname, email, bio, showBio, showLink, showOrcid, emailNotifications, terms, sector, showSector, organisation, showOrganisation, tags, showDomain } = req.body;
   const type = 'person';
   let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
-  let orcid = urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid));
+  let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
   firstname = inputSanitizer.removeNonBreakingSpaces(firstname),
   lastname = inputSanitizer.removeNonBreakingSpaces(lastname),
   bio = inputSanitizer.removeNonBreakingSpaces(bio);
