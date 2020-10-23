@@ -594,23 +594,41 @@ const teamController = require('../team/team.controller');
 	};
 	
 	const getWorkflowEmailContext = (accessRecord, workflow, relatedStepIndex) => {
+		// Extract workflow email variables
 		const { dateReviewStart = '' } = accessRecord;
 		const { workflowName, steps } = workflow;
-		const { stepName, startDateTime = '', endDateTime = '' } = steps[relatedStepIndex];
+		const { stepName, startDateTime = '', endDateTime = '', completed = false, deadline: stepDeadline = 0, reminderOffset = 0 } = steps[relatedStepIndex];
 		const stepReviewers = getStepReviewers(steps[relatedStepIndex]);
 		const reviewerNames = [...stepReviewers].map((reviewer) => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
 		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => helper.darPanelMapper[section]).join(', ');
 		const stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
-		const { deadline: stepDeadline = 0 } = steps[relatedStepIndex];
 		const currentDeadline = stepDeadline === 0 ? 'No deadline specified' : moment().add(stepDeadline, 'days');
-		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '';
+		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '', deadlineElapsed = false, deadlineApproaching = false, daysToDeadline = 0;
 
 		// Calculate duration for step if it is completed
+		if(completed)
 		if(!_.isEmpty(startDateTime.toString()) && !_.isEmpty(endDateTime.toString())) {
 			duration = moment(endDateTime).diff(moment(startDateTime), 'days');
 			duration = duration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
+		} else {
+			//If related step is not completed, check if deadline has elapsed or is approaching
+			if(!_.isEmpty(startDateTime.toString()) && stepDeadline != 0) {
+				let deadline = moment(startDateTime).add(stepDeadline, 'days');
+				deadlineElapsed = moment().isAfter(deadline, 'second');
+
+				// If deadline is not elapsed, check if it is within SLA period
+				if(!deadlineElapsed && reminderOffset !== 0) {
+					let deadlineReminderDate = deadline.subtract(reminderOffset, 'days');
+					deadlineApproaching = moment().isAfter(deadlineReminderDate, 'second');
+				}
+
+				// Get number of days remaining/passed deadline
+				let daysDiff = deadline.diff(moment(), 'days');
+				daysToDeadline = daysDiff < 0 ? `${Math.abs(daysDiff)} days passed the deadline` : `${daysDiff} days until the deadline`;
+			}
 		}
 
+		// Check if there is another step after the current related step
 		if(relatedStepIndex + 1 === steps.length) {
 			// If workflow completed
 			nextStepName = 'No next step';
@@ -628,7 +646,26 @@ const teamController = require('../team/team.controller');
 			let { deadline = 0 } = steps[relatedStepIndex + 1];
 			nextDeadline = deadline === 0 ? 'No deadline specified' : moment().add(deadline, 'days');
 		}
-		return { workflowName, stepName, startDateTime, endDateTime, stepReviewers, duration, totalDuration, reviewerNames, stepReviewerUserIds, reviewSections, currentDeadline, nextStepName, nextReviewerNames, nextReviewSections, nextDeadline };
+		return { 
+			workflowName, 
+			stepName,
+			startDateTime, 
+			endDateTime, 
+			stepReviewers, 
+			duration, 
+			totalDuration, 
+			reviewerNames, 
+			stepReviewerUserIds, 
+			reviewSections, 
+			currentDeadline, 
+			nextStepName, 
+			nextReviewerNames, 
+			nextReviewSections, 
+			nextDeadline, 
+			deadlineElapsed,
+			deadlineApproaching, 
+			daysToDeadline 
+		};
 	};
 
 export default {
