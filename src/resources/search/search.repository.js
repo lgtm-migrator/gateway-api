@@ -41,6 +41,12 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                 "persons.firstname": 1,
                 "persons.lastname": 1,
 
+                "title": 1,
+                "courseOptions": 1,
+                "provider":1,
+                "keywords":1,
+                "domains":1,
+
                 "activeflag": 1,
                 "counter": 1,
                 "datasetfields.metadataquality.quality_score": 1

@@ -246,7 +246,7 @@ const editCourse = async (req, res) => {
         resolve(values[0]);
     });
     });
-  }
+  } 
 
   const getCourse = async (req, res) => {
     return new Promise(async (resolve, reject) => {
@@ -280,7 +280,7 @@ const editCourse = async (req, res) => {
     });
   }
 
-  const setStatus = async (req, res) => {
+  const setStatus = async (req, res) => { 
     return new Promise(async (resolve, reject) => {
       try {
         const { activeflag, rejectionReason } = req.body;
@@ -440,13 +440,13 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
 };
 
 function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
-  let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
+  let newSearchQuery = JSON.parse(JSON.stringify(searchQuery)); 
   let q = '';
 
   if (searchAll) {
     q = Course.aggregate([
         { $match: newSearchQuery },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "creator", foreignField: "id", as: "persons" } },
         { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
         { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
     ]).sort({ updatedAt : -1}).skip(parseInt(startIndex)).limit(parseInt(limit));
@@ -454,7 +454,7 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
   else{
     q = Course.aggregate([
       { $match: newSearchQuery },
-      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+      { $lookup: { from: "tools", localField: "creator", foreignField: "id", as: "persons" } },
       { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
       { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
     ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(limit));

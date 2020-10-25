@@ -1,7 +1,6 @@
 import express from 'express'
 import { Data } from '../tool/data.model'
 import { Course } from "../course/course.model";
-
 import axios from 'axios';
 
 const router = express.Router();
