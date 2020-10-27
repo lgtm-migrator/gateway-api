@@ -194,7 +194,56 @@ router.get('/', async (req, res) => {
             });
         });
     }
+    else if (tab === 'Courses') {
+        let searchQuery = { $and: [{ activeflag: 'active' }] };
+        if (searchString.length > 0) searchQuery["$and"].push({ $text: { $search: searchString } });
+        var activeFiltersQuery = getObjectFilters(searchQuery, req, 'course')
+        
+        await Promise.all([
+            getFilter(searchString, 'course', 'courseOptions.startDate', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'provider', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'location', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'courseOptions.studyMode', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'award', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'entries.level', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'domains', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'keywords', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'competencyFramework', true, activeFiltersQuery),
+            getFilter(searchString, 'course', 'nationalPriority', true, activeFiltersQuery)
+        ]).then((values) => {
+            return res.json({
+                success: true, 
+                allFilters: {
+                    courseStartDatesFilter: values[0][0],
+                    courseProviderFilter: values[1][0],
+                    courseLocationFilter: values[2][0],
+                    courseStudyModeFilter: values[3][0],
+                    courseAwardFilter: values[4][0],
+                    courseEntryLevelFilter: values[5][0],
+                    courseDomainsFilter: values[6][0],
+                    courseKeywordsFilter: values[7][0],
+                    courseFrameworkFilter: values[8][0],
+                    coursePriorityFilter: values[9][0]
+                },
+                filterOptions: {
+                    courseStartDatesFilterOptions: values[0][1],
+                    courseProviderFilterOptions: values[1][0],
+                    courseLocationFilterOptions: values[2][0],
+                    courseStudyModeFilterOptions: values[3][0],
+                    courseAwardFilterOptions: values[4][0],
+                    courseEntryLevelFilterOptions: values[5][0],
+                    courseDomainsFilterOptions: values[6][0],
+                    courseKeywordsFilterOptions: values[7][0],
+                    courseFrameworkFilterOptions: values[8][0],
+                    coursePriorityFilterOptions: values[9][0]
+                }
+            });
+        });
+    }
 });
+
+
+
 
 // @route   GET api/v1/search/filter/topic/:type
 // @desc    GET Get list of topics by entity type

@@ -197,12 +197,15 @@ app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.rou
 app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
 app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
 
+app.use('/api/v1/course', require('../resources/course/course.route')); 
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
 app.use('/api/v1/projects', require('../resources/project/project.route'));
 app.use('/api/v1/papers', require('../resources/paper/paper.route'));
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
+app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
+
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
