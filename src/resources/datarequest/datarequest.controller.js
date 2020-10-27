@@ -1,11 +1,12 @@
 import emailGenerator from '../utilities/emailGenerator.util';
 import { DataRequestModel } from './datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
-import { Data as ToolModel } from '../tool/data.model';
+import { Data, Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import workflowController from '../workflow/workflow.controller';
 import helper from '../utilities/helper.util';
-import _ from 'lodash';
+import {processFile, getFile, fileStatus} from '../utilities/cloudStorage.util';
+import _, { filter } from 'lodash';
 import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
 import moment from 'moment';
@@ -19,6 +20,7 @@ const userTypes = {
 	CUSTODIAN: 'custodian',
 	APPLICANT: 'applicant',
 };
+
 const notificationTypes = {
 	STATUSCHANGE: 'StatusChange',
 	SUBMITTED: 'Submitted',
@@ -29,6 +31,7 @@ const notificationTypes = {
 	DEADLINEWARNING: 'DeadlineWarning',
 	DEADLINEPASSED: 'DeadlinePassed',
 };
+
 const applicationStatuses = {
 	SUBMITTED: 'submitted',
 	INPROGRESS: 'inProgress',
@@ -38,6 +41,7 @@ const applicationStatuses = {
 	APPROVEDWITHCONDITIONS: 'approved with conditions',
 	WITHDRAWN: 'withdrawn',
 };
+
 
 module.exports = {
 	//GET api/v1/data-access-request
@@ -112,6 +116,7 @@ module.exports = {
 					populate: { path: 'publisher', populate: { path: 'team' } },
 				},
 				{ path: 'workflow.steps.reviewers', select: 'firstname lastname' },
+				{ path: 'files.owner', select: 'firstname lastname' },
 			]);
 			// 3. If no matching application found, return 404
 			if (!accessRecord) {
@@ -185,6 +190,7 @@ module.exports = {
 					reviewSections,
 					hasRecommended,
 					workflow,
+					files: accessRecord.files || []
 				},
 			});
 		} catch (err) {
@@ -283,6 +289,7 @@ module.exports = {
 					userType: userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
+					files: data.files || []
 				},
 			});
 		} catch (err) {
@@ -310,10 +317,11 @@ module.exports = {
 				userId,
 				applicationStatus: applicationStatuses.INPROGRESS,
 			})
-				.populate({
+				.populate([{
 					path: 'mainApplicant',
 					select: 'firstname lastname -id -_id',
-				})
+				},
+				{ path: 'files.owner', select: 'firstname lastname' }])
 				.sort({ createdAt: 1 });
 			// 4. Get datasets
 			datasets = await ToolModel.find({
@@ -382,6 +390,7 @@ module.exports = {
 					userType: userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
+					files: data.files || []
 				},
 			});
 		} catch (err) {
@@ -897,6 +906,125 @@ module.exports = {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err });
 		}
+	},
+
+	//POST api/v1/data-access-request/:id/upload
+	uploadFiles: async (req, res) => {
+		try {
+			// 1. get DAR ID
+			const { params: { id }} = req;
+			// 2. get files
+			let files  = req.files;
+			// 3. descriptions and uniqueIds file from FE
+			let { descriptions, ids } = req.body;
+			// 4. get access record
+			let accessRecord = await DataRequestModel.findOne({ _id: id });
+			if(!accessRecord) {
+				return res
+				.status(404)
+				.json({ status: 'error', message: 'Application not found.' });
+			}
+			// 5. Check if requesting user is custodian member or applicant/contributor
+			// let { authorised } = module.exports.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+			// 6. check authorisation
+			// if (!authorised) {
+			// 	return res
+			// 		.status(401)
+			// 		.json({ status: 'failure', message: 'Unauthorised' });
+			// }
+			// 7. check files
+			if(_.isEmpty(files)) {
+				return res
+					.status(400)
+					.json({status: 'error', message: 'No files to upload'});
+			}
+			let fileArr = [];
+			let descriptionArray = Array.isArray(descriptions);  
+			// 8. process the files for scanning
+			for (let i = 0; i < files.length; i++) {
+				const response = await processFile(files[i], id);
+				// deconstruct response
+				let { file, status } = response;
+				// get description information
+				let description = descriptionArray ? descriptions[i] : descriptions;
+				// get uniqueId
+				let uniqueId = ids[i];
+				console.log(files[i].originalname, description, uniqueId);
+				// setup fileArr for mongoo
+				let newFile = {
+					status: status.trim(),
+					description: description.trim(),
+					fileId: uniqueId.trim(),
+					size: files[i].size,
+					name: files[i].originalname,
+					owner: req.user._id,
+					error: status === fileStatus.ERROR ? 'Could not upload. Unknown error. Please try again.' : ''
+				};
+				// update local for post back to FE
+				fileArr.push(newFile);
+				// mongoo db update files array
+				accessRecord.files.push(newFile);
+			}
+			// 9. write back into mongo [{userId, fileName, status: enum, size}]
+			const savedDataSet = await accessRecord.save();
+			// 10. get the latest updates with the users
+			let updatedRecord = await DataRequestModel.findOne({ _id: id }).populate([
+				{
+					path: 'files.owner',
+					select: 'firstname lastname id',
+				}]);
+
+			// 11. process access record into object
+			let record = updatedRecord._doc;
+			// 12. fet files
+			let mediaFiles = record.files.map((f)=> {
+				return f._doc
+			});
+			// 10. return response
+			return res.status(200).json({ status: 'success', mediaFiles });
+
+		} catch (err) {
+			console.log(err.message);
+			res.status(500).json({ status: 'error', message: err });
+		}
+	},
+
+	//GET api/v1/data-access-request/:id/file/:fileId
+	getFile: async(req, res) => {
+		try {
+			// 1. get params
+			const { params: { id, fileId }} = req;
+			// 2. get AccessRecord
+			let accessRecord = await DataRequestModel.findOne({ _id: id });
+
+			if(!accessRecord) {
+				return res
+				.status(404)
+				.json({ status: 'error', message: 'Application not found.' });
+			}
+			// 3. process access record into object
+			let record = accessRecord._doc;
+			// 4. find the file in the files array from db
+			let mediaFile = record.files.find((f)=> {
+				let {fileId: dbFileId} = f._doc;
+				return dbFileId === fileId
+			}) || {};
+			// 5. no file return
+			if(_.isEmpty(mediaFile)) {
+				return res
+					.status(400)
+					.json({status: 'error', message: 'No file to download, please try again later'});
+			}
+			// 6. get the name of the file
+			let { name } = mediaFile._doc;
+			// 7. get the file
+			const fullFile = await getFile(name, id);
+			// 8. send file back to user
+			return res.status(200).sendFile(`${process.env.TMPDIR}${id}/${name}`);
+		} catch(err) {
+			console.log(err);
+			res.status(500).json({ status: 'error', message: err });
+		}  
 	},
 
 	//PUT api/v1/data-access-request/:id/vote

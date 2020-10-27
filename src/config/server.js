@@ -10,7 +10,6 @@ import bodyParser from 'body-parser';
 import logger from 'morgan';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
-
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
 
@@ -20,19 +19,13 @@ const Account = require('./account');
 const configuration = require('./configuration');
 
 
-
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
 var app = express();
 
-
-
 configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
-
-
-
 
 var domains = [process.env.homeURL];
 

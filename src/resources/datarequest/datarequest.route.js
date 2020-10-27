@@ -1,8 +1,19 @@
 import express from 'express';
 import passport from 'passport';
 import _ from 'lodash';
-
+import multer from 'multer';
 const datarequestController = require('./datarequest.controller');
+const fs = require('fs');
+const path = './tmp';
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    if (!fs.existsSync(path)) {
+      fs.mkdirSync(path);
+    }
+    cb(null, path)
+  }
+})
+const multerMid = multer({ storage: storage });
 
 const router = express.Router();
 
@@ -25,6 +36,11 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), datarequestContr
 // @desc    GET Access request with multiple datasets for user
 // @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
 router.get('/datasets/:datasetIds', passport.authenticate('jwt'), datarequestController.getAccessRequestByUserAndMultipleDatasets);
+
+// @route   GET api/v1/data-access-request/:id/file/:fileId
+// @desc    GET 
+// @access  Private
+router.get('/:id/file/:fileId', passport.authenticate('jwt'), datarequestController.getFile);
 
 // @route   PATCH api/v1/data-access-request/:id
 // @desc    Update application passing single object to update database entry with specified key
@@ -55,6 +71,11 @@ router.put('/:id/startreview', passport.authenticate('jwt'), datarequestControll
 // @desc    Update access request with current step overriden (manager ends current phase regardless of votes cast)
 // @access  Private - Custodian Manager
 router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestController.updateAccessRequestStepOverride);
+
+// @route   POST api/v1/data-access-request/:id/upload
+// @desc    POST application files to scan bucket
+// @access  Private - Applicant (Gateway User / Custoidan Manager)
+router.post('/:id/upload', passport.authenticate('jwt'), multerMid.array('assets'), datarequestController.uploadFiles);
 
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record
