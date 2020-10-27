@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
             getObjectResult('project', searchAll, getObjectFilters(searchQuery, req, 'project'), req.query.projectIndex || 0, req.query.maxResults || 40, req.query.projectSort || ''),
             getObjectResult('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), req.query.paperIndex || 0, req.query.maxResults || 40, req.query.paperSort || ''),
             getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.personSort),
-            getObjectResult('course', searchAll, getObjectFilters(searchQuery, req, 'course'), req.query.courseIndex || 0, req.query.maxResults || 40, req.query.courseSort || '')
+            getObjectResult('course', searchAll, getObjectFilters(searchQuery, req, 'course'), req.query.courseIndex || 0, req.query.maxResults || 40, 'startdate')
         ]);
     }
     else if (tab === 'Datasets') {
@@ -86,7 +86,7 @@ router.get('/', async (req, res) => {
     }  
     else if (tab === 'Courses') {
         courseResults = await Promise.all([
-            getObjectResult('course', searchAll, getObjectFilters(searchQuery, req, 'course'), req.query.courseIndex || 0, req.query.maxResults || 40, req.query.courseSort || '')
+            getObjectResult('course', searchAll, getObjectFilters(searchQuery, req, 'course'), req.query.courseIndex || 0, req.query.maxResults || 40, 'startdate')
         ]);
     }
 

@@ -26,14 +26,15 @@ const CourseSchema = new Schema(
         keywords: [String],
         domains: [String],
         courseOptions: [{
-            flexibleDates: String,
+            flexibleDates: {type: Boolean, default: false },
             startDate: Date,
             studyMode: String,
             studyDurationNumber: Number,
             studyDurationMeasure: String, 
             fees: [{ 
                 feeDescription: String,
-                feeAmount: Number
+                feeAmount: Number,
+                feePer: String
             }],
         }],
         entries: [

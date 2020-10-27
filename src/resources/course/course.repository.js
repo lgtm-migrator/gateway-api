@@ -33,18 +33,16 @@ const addCourse = async (req, res) => {
        
         if (req.body.courseOptions) {
             req.body.courseOptions.forEach((x) => {
-                x.flexibleDates = inputSanitizer.removeNonBreakingSpaces(x.flexibleDates);
                 x.startDate = inputSanitizer.removeNonBreakingSpaces(x.startDate);
                 x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
                 x.studyDurationNumber = x.studyDurationNumber;
                 x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
-                if (req.body.fees) {
-                    req.body.fees.forEach((y) => {
+                if (x.fees) {
+                    x.fees.forEach((y) => {
                         y.feeDescription = inputSanitizer.removeNonBreakingSpaces(y.feeDescription);
-                        x.feeAmount = inputSanitizer.removeNonBreakingSpaces(x.feeAmount);
+                        y.feePer = inputSanitizer.removeNonBreakingSpaces(y.feePer);
                     });
                 }
-                course.fees = req.body.fees;
             });
         }
         course.courseOptions = req.body.courseOptions;
@@ -75,7 +73,7 @@ const addCourse = async (req, res) => {
       if(!newCourse) 
         reject(new Error(`Can't persist data object to DB.`));
 
-      let message = new MessagesModel();
+      /* let message = new MessagesModel();
       message.messageID = parseInt(Math.random().toString().replace('0.', ''));
       message.messageTo = 0;
       message.messageObjectID = course.id;
@@ -116,10 +114,10 @@ const addCourse = async (req, res) => {
       });
 
       if (course.type === 'course') {
-          await sendEmailNotificationToAuthors(course, course.creator);
+          //await sendEmailNotificationToAuthors(course, course.creator);
       }
-      await storeNotificationsForAuthors(course, course.creator);
-
+      //await storeNotificationsForAuthors(course, course.creator);
+ */
       resolve(newCourse);
     })
 };
@@ -132,51 +130,54 @@ const addCourse = async (req, res) => {
 
 const editCourse = async (req, res) => {
   return new Promise(async(resolve, reject) => {
-
-    const toolCreator = req.body.toolCreator;
-    let { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
     let id = req.params.id;
-    let programmingLanguage = req.body.programmingLanguage;
 
-    if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
-
-    if(programmingLanguage){
-      programmingLanguage.forEach((p) => 
-      {   
-          p.programmingLanguage = inputSanitizer.removeNonBreakingSpaces(p.programmingLanguage);
-          p.version = (inputSanitizer.removeNonBreakingSpaces(p.version));
+    if(req.body.entries){
+        req.body.entries.forEach((e) => {   
+          e.level = inputSanitizer.removeNonBreakingSpaces(e.level);
+          e.subject = (inputSanitizer.removeNonBreakingSpaces(e.subject));
       });
     }
     
-    let data = {
+    if (req.body.courseOptions) {
+        req.body.courseOptions.forEach((x) => {
+            if (x.flexibleDates) x.startDate = null;
+            else x.startDate = inputSanitizer.removeNonBreakingSpaces(x.startDate);
+            x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
+            x.studyDurationNumber = x.studyDurationNumber;
+            x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
+            if (x.fees) {
+                x.fees.forEach((y) => {
+                    y.feeDescription = inputSanitizer.removeNonBreakingSpaces(y.feeDescription);
+                    y.feePer = inputSanitizer.removeNonBreakingSpaces(y.feePer);
+                });
+            }
+        });
+    }
+    
+    /* let data = {
       id: id,
-      name: name,
+      name: req.body.title,
       authors: authors,
-    };
+    }; */
 
     Course.findOneAndUpdate({ id: id },
       {
-        type: inputSanitizer.removeNonBreakingSpaces(type),
-        name: inputSanitizer.removeNonBreakingSpaces(name),
-        link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link)),
-        description: inputSanitizer.removeNonBreakingSpaces(description),
-        resultsInsights: inputSanitizer.removeNonBreakingSpaces(resultsInsights),
-        journal: inputSanitizer.removeNonBreakingSpaces(journal),
-        journalYear: inputSanitizer.removeNonBreakingSpaces(journalYear),
-        categories: {
-          category: inputSanitizer.removeNonBreakingSpaces(categories.category),
-          programmingLanguage: categories.programmingLanguage,
-          programmingLanguageVersion: categories.programmingLanguageVersion
-        },
-        license: inputSanitizer.removeNonBreakingSpaces(license),
-        authors: authors,
-        programmingLanguage: programmingLanguage,
-        tags: {
-          features: inputSanitizer.removeNonBreakingSpaces(tags.features),
-          topics: inputSanitizer.removeNonBreakingSpaces(tags.topics)
-        },
-        relatedObjects: relatedObjects,
-        isPreprint: isPreprint
+        title: inputSanitizer.removeNonBreakingSpaces(req.body.title),
+        link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link)),
+        provider: inputSanitizer.removeNonBreakingSpaces(req.body.provider),
+        description: inputSanitizer.removeNonBreakingSpaces(req.body.description),
+        courseDelivery: inputSanitizer.removeNonBreakingSpaces(req.body.courseDelivery),
+        location: inputSanitizer.removeNonBreakingSpaces(req.body.location),
+        keywords: inputSanitizer.removeNonBreakingSpaces(req.body.keywords),
+        domains: inputSanitizer.removeNonBreakingSpaces(req.body.domains),
+        relatedObjects: req.body.relatedObjects,
+        courseOptions: req.body.courseOptions,
+        entries:req.body.entries,
+        restrictions: inputSanitizer.removeNonBreakingSpaces(req.body.restrictions),
+        award: inputSanitizer.removeNonBreakingSpaces(req.body.award),
+        competencyFramework: inputSanitizer.removeNonBreakingSpaces(req.body.competencyFramework),
+        nationalPriority: inputSanitizer.removeNonBreakingSpaces(req.body.nationalPriority),
       }, (err) => {
         if (err) {
           reject(new Error(`Failed to update.`));
@@ -185,10 +186,10 @@ const editCourse = async (req, res) => {
         if(tool == null){
           reject(new Error(`No record found with id of ${id}.`));
         } 
-        else if (type === 'tool') {
+        else if (req.body.type === 'tool') {
           // Send email notification of update to all authors who have opted in to updates
-          sendEmailNotificationToAuthors(data, toolCreator);
-          storeNotificationsForAuthors(data, toolCreator);
+          //sendEmailNotificationToAuthors(data, toolCreator);
+          //storeNotificationsForAuthors(data, toolCreator);
         }
           resolve(tool);
       });
