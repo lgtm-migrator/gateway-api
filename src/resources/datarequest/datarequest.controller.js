@@ -174,7 +174,7 @@ module.exports = {
 					...accessRecord.toObject(),
 					jsonSchema: JSON.parse(accessRecord.jsonSchema),
 					questionAnswers: JSON.parse(accessRecord.questionAnswers),
-					aboutApplication: JSON.parse(accessRecord.aboutApplication),
+					aboutApplication: typeof accessRecord.aboutApplication === 'string' ? JSON.parse(accessRecord.aboutApplication) : accessRecord.aboutApplication,
 					datasets: accessRecord.datasets,
 					readOnly,
 					userType,
@@ -252,7 +252,7 @@ module.exports = {
 					jsonSchema,
 					publisher,
 					questionAnswers: '{}',
-					aboutApplication: '{}',
+					aboutApplication: {},
 					applicationStatus: applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
@@ -271,13 +271,17 @@ module.exports = {
 				data = { ...accessRecord.toObject() };
 			}
 
+			if (typeof a_string === 'string') {
+				// this is a string
+			}
+
 			return res.status(200).json({
 				status: 'success',
 				data: {
 					...data,
 					jsonSchema: JSON.parse(data.jsonSchema),
 					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: JSON.parse(data.aboutApplication),
+					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: userTypes.APPLICANT,
@@ -352,7 +356,7 @@ module.exports = {
 					jsonSchema,
 					publisher,
 					questionAnswers: '{}',
-					aboutApplication: '{}',
+					aboutApplication: {},
 					applicationStatus: applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
@@ -376,7 +380,7 @@ module.exports = {
 					...data,
 					jsonSchema: JSON.parse(data.jsonSchema),
 					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: JSON.parse(data.aboutApplication),
+					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: userTypes.APPLICANT,
@@ -401,8 +405,10 @@ module.exports = {
 			let updateObj;
 			let { aboutApplication, questionAnswers, jsonSchema = '' } = req.body;
 			if (aboutApplication) {
-				let parsedObj = JSON.parse(aboutApplication);
-				let updatedDatasetIds = parsedObj.selectedDatasets.map(
+				if(typeof aboutApplication === 'string') {
+					aboutApplication = JSON.parse(aboutApplication)
+				}
+				let updatedDatasetIds = aboutApplication.selectedDatasets.map(
 					(dataset) => dataset.datasetId
 				);
 				updateObj = { aboutApplication, datasetIds: updatedDatasetIds };
@@ -1380,7 +1386,10 @@ module.exports = {
 
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
-		let aboutApplication = JSON.parse(accessRecord.aboutApplication);
+		let { aboutApplication } = accessRecord;
+		if(typeof aboutApplication === 'string') {
+			aboutApplication = JSON.parse(accessRecord.aboutApplication);
+		} 
 		let { projectName } = aboutApplication;
 		let { projectId, _id, workflow = {}, dateSubmitted = '' } = accessRecord;
 		if (_.isEmpty(projectId)) {
@@ -2024,8 +2033,10 @@ module.exports = {
 		let { aboutApplication, questionAnswers } = app;
 
 		if (aboutApplication) {
-			let aboutObj = JSON.parse(aboutApplication);
-			({ projectName } = aboutObj);
+			if(typeof aboutApplication === 'string') {
+				aboutApplication = JSON.parse(aboutApplication);
+			}
+			({ projectName } = aboutApplication);
 		}
 		if (_.isEmpty(projectName)) {
 			projectName = `${publisher} - ${name}`;

@@ -29,8 +29,8 @@ const DataRequestSchema = new Schema({
     default: "{}"
   },
   aboutApplication: {
-    type: String,
-    default: "{}"
+    type: Object,
+    default: {}
   },
   dateSubmitted: {
     type: Date
