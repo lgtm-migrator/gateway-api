@@ -271,10 +271,6 @@ module.exports = {
 				data = { ...accessRecord.toObject() };
 			}
 
-			if (typeof a_string === 'string') {
-				// this is a string
-			}
-
 			return res.status(200).json({
 				status: 'success',
 				data: {
