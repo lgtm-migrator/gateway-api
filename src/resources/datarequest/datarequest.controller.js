@@ -136,7 +136,7 @@ module.exports = {
 			});
 		} catch (err) {
 			console.error(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -226,7 +226,7 @@ module.exports = {
 			});
 		} catch (err) {
 			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -315,7 +315,7 @@ module.exports = {
 			});
 		} catch (err) {
 			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -361,7 +361,7 @@ module.exports = {
 			});
 		} catch (err) {
 			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -469,7 +469,7 @@ module.exports = {
 				await accessRecord.save(async (err) => {
 					if(err) {
 						console.error(err);
-						res.status(500).json({ status: 'error', message: err });
+						res.status(500).json({ status: 'error', message: err.message });
 					} else {
 						// If save has succeeded - send notifications
 						// Send notifications to added/removed contributors
@@ -491,7 +491,7 @@ module.exports = {
 							);
 						}
 						// Update workflow process if publisher requires it
-						if (accessRecord.datasets[0].publisher.workflowEnabled) {
+						if (accessRecord.datasets[0].publisher && accessRecord.datasets[0].publisher.workflowEnabled) {
 							// Call Camunda controller to get current workflow process for application
 							let response = await bpmController.getProcess(id);
 							let { data = {} } = response;
@@ -559,7 +559,7 @@ module.exports = {
 			// 4. Update application to submitted status
 			accessRecord.applicationStatus = 'submitted';
 			// Check if workflow/5 Safes based application, set final status date if status will never change again
-			if (!accessRecord.datasets[0].publisher.workflowEnabled) {
+			if (accessRecord.datasets[0].publisher === null || (accessRecord.datasets[0].publisher && !accessRecord.datasets[0].publisher.workflowEnabled)) {
 				accessRecord.dateFinalStatus = new Date();
 			}
 			let dateSubmitted = new Date();
@@ -567,13 +567,13 @@ module.exports = {
 			await accessRecord.save(async(err) => {
 				if(err) {
 					console.error(err);
-					res.status(500).json({ status: 'error', message: err });
+					res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// If save has succeeded - send notifications
 					// Send notifications and emails to custodian team and main applicant
 					await module.exports.createNotifications('Submitted', {}, accessRecord, req.user);
 					// Start workflow process if publisher requires it
-					if (accessRecord.datasets[0].publisher.workflowEnabled) {
+					if (accessRecord.datasets[0].publisher && accessRecord.datasets[0].publisher.workflowEnabled) {
 						// Call Camunda controller to start workflow for submitted application
 						let { name: publisher } = accessRecord.datasets[0].publisher;
 						let { _id: userId } = req.user;
@@ -588,7 +588,7 @@ module.exports = {
 				.json({ status: 'success', data: accessRecord._doc });
 		} catch (err) {
 			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
