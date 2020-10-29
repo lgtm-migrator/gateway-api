@@ -61,6 +61,7 @@ const DataSchema = new Schema(
     showOrganisation: {type: Boolean, default: false },
     showLink: Boolean,
     showDomain: Boolean,
+    profileComplete: Boolean,
 
     //dataset related fields 
     datasetid: String,
