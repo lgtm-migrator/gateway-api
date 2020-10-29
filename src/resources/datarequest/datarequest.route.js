@@ -2,6 +2,7 @@ import express from 'express';
 import passport from 'passport';
 import _ from 'lodash';
 import multer from 'multer';
+import { param } from 'express-validator';
 const datarequestController = require('./datarequest.controller');
 const fs = require('fs');
 const path = './tmp';
@@ -40,7 +41,7 @@ router.get('/datasets/:datasetIds', passport.authenticate('jwt'), datarequestCon
 // @route   GET api/v1/data-access-request/:id/file/:fileId
 // @desc    GET 
 // @access  Private
-router.get('/:id/file/:fileId', passport.authenticate('jwt'), datarequestController.getFile);
+router.get('/:id/file/:fileId', param('id').customSanitizer(value => {return value}), passport.authenticate('jwt'), datarequestController.getFile);
 
 // @route   PATCH api/v1/data-access-request/:id
 // @desc    Update application passing single object to update database entry with specified key
