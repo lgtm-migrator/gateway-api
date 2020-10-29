@@ -997,7 +997,7 @@ module.exports = {
 	getFile: async(req, res) => {
 		try {
 			// 1. get params
-			const { params: { id, fileId }} = req;
+			const { params: { id = 0, fileId = 0}} = req;
 			// 2. get AccessRecord
 			let accessRecord = await DataRequestModel.findOne({ _id: id });
 			if(!accessRecord) {
