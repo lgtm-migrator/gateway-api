@@ -939,22 +939,27 @@ module.exports = {
 					.json({status: 'error', message: 'No files to upload'});
 			}
 			let fileArr = [];
+			// check and see if descriptions and ids are an array
 			let descriptionArray = Array.isArray(descriptions);  
+			let idArray = Array.isArray(ids);  
 			// 8. process the files for scanning
 			for (let i = 0; i < files.length; i++) {
-				const response = await processFile(files[i], id);
-				// deconstruct response
-				let { file, status } = response;
 				// get description information
 				let description = descriptionArray ? descriptions[i] : descriptions;
 				// get uniqueId
-				let uniqueId = ids[i];
+				let generatedId = idArray ? ids[i] : ids;
+				// remove - from uuidV4
+				let uniqueId = generatedId.replace(/-/gmi, '');
+				// send to db
+				const response = await processFile(files[i], id, uniqueId);
+				// deconstruct response
+				let { file, status } = response;
 				console.log(files[i].originalname, description, uniqueId);
 				// setup fileArr for mongoo
 				let newFile = {
 					status: status.trim(),
 					description: description.trim(),
-					fileId: uniqueId.trim(),
+					fileId: uniqueId,
 					size: files[i].size,
 					name: files[i].originalname,
 					owner: req.user._id,
@@ -1016,11 +1021,11 @@ module.exports = {
 					.json({status: 'error', message: 'No file to download, please try again later'});
 			}
 			// 6. get the name of the file
-			let { name } = mediaFile._doc;
+			let { name, fileId: dbFileId } = mediaFile._doc;
 			// 7. get the file
-			const fullFile = await getFile(name, id);
+			const fullFile = await getFile(name, dbFileId, id);
 			// 8. send file back to user
-			return res.status(200).sendFile(`${process.env.TMPDIR}${id}/${name}`);
+			return res.status(200).sendFile(`${process.env.TMPDIR}${id}/${dbFileId}_${name}`);
 		} catch(err) {
 			console.log(err);
 			res.status(500).json({ status: 'error', message: err });

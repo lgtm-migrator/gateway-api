@@ -10,12 +10,12 @@ export const fileStatus = {
   SCANNED: 'SCANNED'
 };
 
-export const processFile = (file, id) => new Promise(async (resolve, reject) => {
+export const processFile = (file, id, uniqueId) => new Promise(async (resolve, reject) => {
   const storage = new Storage();
   let { originalname, path } = file;
     storage.bucket(bucketName).upload(path, {
       gzip: true,
-      destination: `dar-${id}-${originalname}`,
+      destination: `dar-${id}-${uniqueId}_${originalname}`,
       metadata: { cacheControl: 'none-cache'}
     }, (err, file) => {
       if(!err) {
@@ -29,20 +29,20 @@ export const processFile = (file, id) => new Promise(async (resolve, reject) => 
     });
 });
 
-export const getFile = (file, id) => new Promise(async (resolve) => {
+export const getFile = (file, fileId, id) => new Promise(async (resolve) => {
   // 1. new storage obj
   const storage = new Storage();
   //  2. set option for file dest
   let options = {
     // The path to which the file should be downloaded
-    destination: `${process.env.TMPDIR}${id}/${file}`,
+    destination: `${process.env.TMPDIR}${id}/${fileId}_${file}`,
   };
   // create tmp
   if (!fs.existsSync(`${process.env.TMPDIR}${id}`)) {
     fs.mkdirSync(`${process.env.TMPDIR}${id}`);
   }
   // 3. set path
-  const path = `dar/${id}/${file}`;
+  const path = `dar/${id}/${fileId}_${file}`;
   // 4. get file from GCP
   resolve(storage.bucket(sourceBucket).file(path).download(options));
 });
