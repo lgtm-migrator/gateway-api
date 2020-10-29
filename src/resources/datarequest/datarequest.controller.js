@@ -1,12 +1,12 @@
 import emailGenerator from '../utilities/emailGenerator.util';
 import { DataRequestModel } from './datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
-import { Data, Data as ToolModel } from '../tool/data.model';
+import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import workflowController from '../workflow/workflow.controller';
 import helper from '../utilities/helper.util';
 import {processFile, getFile, fileStatus} from '../utilities/cloudStorage.util';
-import _, { filter } from 'lodash';
+import _ from 'lodash';
 import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
 import moment from 'moment';
@@ -953,8 +953,7 @@ module.exports = {
 				// send to db
 				const response = await processFile(files[i], id, uniqueId);
 				// deconstruct response
-				let { file, status } = response;
-				console.log(files[i].originalname, description, uniqueId);
+				let { status } = response;
 				// setup fileArr for mongoo
 				let newFile = {
 					status: status.trim(),
@@ -971,7 +970,7 @@ module.exports = {
 				accessRecord.files.push(newFile);
 			}
 			// 9. write back into mongo [{userId, fileName, status: enum, size}]
-			const savedDataSet = await accessRecord.save();
+			await accessRecord.save();
 			// 10. get the latest updates with the users
 			let updatedRecord = await DataRequestModel.findOne({ _id: id }).populate([
 				{
@@ -1023,7 +1022,7 @@ module.exports = {
 			// 6. get the name of the file
 			let { name, fileId: dbFileId } = mediaFile._doc;
 			// 7. get the file
-			const fullFile = await getFile(name, dbFileId, id);
+			await getFile(name, dbFileId, id);
 			// 8. send file back to user
 			return res.status(200).sendFile(`${process.env.TMPDIR}${id}/${dbFileId}_${name}`);
 		} catch(err) {

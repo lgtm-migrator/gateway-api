@@ -1,7 +1,6 @@
 import {Storage} from '@google-cloud/storage';
 import fs from 'fs';
 const bucketName = process.env.SCAN_BUCKET;
-const dir = process.env.TMPDIR;
 const sourceBucket = process.env.DESTINATION_BUCKET;
 
 export const fileStatus = {
