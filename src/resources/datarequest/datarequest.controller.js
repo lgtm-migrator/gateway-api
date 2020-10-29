@@ -1000,7 +1000,6 @@ module.exports = {
 			const { params: { id, fileId }} = req;
 			// 2. get AccessRecord
 			let accessRecord = await DataRequestModel.findOne({ _id: id });
-
 			if(!accessRecord) {
 				return res
 				.status(404)

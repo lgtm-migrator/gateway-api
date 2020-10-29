@@ -37,11 +37,15 @@ export const getFile = (file, fileId, id) => new Promise(async (resolve) => {
     destination: `${process.env.TMPDIR}${id}/${fileId}_${file}`,
   };
   // create tmp
-  if (!fs.existsSync(`${process.env.TMPDIR}${id}`)) {
-    fs.mkdirSync(`${process.env.TMPDIR}${id}`);
+  const sanitisedId = id.replace( /[^0-9a-z]/ig,'');
+
+  const filePath = `${process.env.TMPDIR}${sanitisedId}`;
+
+  if (!fs.existsSync(filePath)) {
+    fs.mkdirSync(filePath);
   }
   // 3. set path
-  const path = `dar/${id}/${fileId}_${file}`;
+  const path = `dar/${sanitisedId}/${fileId}_${file}`;
   // 4. get file from GCP
   resolve(storage.bucket(sourceBucket).file(path).download(options));
 });
