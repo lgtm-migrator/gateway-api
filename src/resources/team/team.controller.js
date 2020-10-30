@@ -170,8 +170,9 @@ const addTeamMembers = async (req, res) => {
 					req.user
 				);
 				// 11. Return success response
-				return res.status(204).json({
+				return res.status(201).json({
 					success: true,
+					team
 				});
 			}
 		});
