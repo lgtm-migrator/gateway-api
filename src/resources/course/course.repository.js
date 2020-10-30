@@ -35,7 +35,6 @@ const addCourse = async (req, res) => {
             req.body.courseOptions.forEach((x) => {
                 if (x.flexibleDates) x.startDate = null;
                 x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
-                x.studyDurationNumber = x.studyDurationNumber;
                 x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
                 if (x.fees) {
                     x.fees.forEach((y) => {
@@ -143,7 +142,6 @@ const editCourse = async (req, res) => {
         req.body.courseOptions.forEach((x) => {
             if (x.flexibleDates) x.startDate = null;
             x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
-            x.studyDurationNumber = x.studyDurationNumber;
             x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
             if (x.fees) {
                 x.fees.forEach((y) => {
@@ -154,6 +152,10 @@ const editCourse = async (req, res) => {
         });
     }
     
+    let relatedObjects = req.body.relatedObjects;
+    let courseOptions = req.body.courseOptions;
+    let entries = req.body.entries;
+
    Course.findOneAndUpdate({ id: id },
       {
         title: inputSanitizer.removeNonBreakingSpaces(req.body.title),
@@ -164,9 +166,9 @@ const editCourse = async (req, res) => {
         location: inputSanitizer.removeNonBreakingSpaces(req.body.location),
         keywords: inputSanitizer.removeNonBreakingSpaces(req.body.keywords),
         domains: inputSanitizer.removeNonBreakingSpaces(req.body.domains),
-        relatedObjects: req.body.relatedObjects,
-        courseOptions: req.body.courseOptions,
-        entries:req.body.entries,
+        relatedObjects: relatedObjects,
+        courseOptions: courseOptions,
+        entries:entries,
         restrictions: inputSanitizer.removeNonBreakingSpaces(req.body.restrictions),
         award: inputSanitizer.removeNonBreakingSpaces(req.body.award),
         competencyFramework: inputSanitizer.removeNonBreakingSpaces(req.body.competencyFramework),
@@ -244,17 +246,17 @@ const editCourse = async (req, res) => {
 
   const getCourse = async (req, res) => {
     return new Promise(async (resolve, reject) => {
-      let startIndex = 0;
-      let limit = 1000;
+      //let startIndex = 0;
+      //let limit = 1000;
       let typeString = "";
       let idString = req.user.id;
   
-      if (req.query.startIndex) {
+      /* if (req.query.startIndex) {
         startIndex = req.query.startIndex;
       }
       if (req.query.limit) {
         limit = req.query.limit;
-      }
+      } */
       if (req.params.type) {
         typeString = req.params.type;
       }
@@ -266,7 +268,7 @@ const editCourse = async (req, res) => {
         { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "creator" } },
         { $sort: { updatedAt : -1}}
-      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
+      ]);//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
       query.exec((err, data) => {
         if (err) reject({ success: false, error: err });
         resolve(data);
@@ -407,7 +409,6 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 
 async function storeNotificationsForAuthors(tool, toolOwner) {
     //store messages to alert a user has been added as an author
-    const toolLink = process.env.homeURL + '/tool/' + tool.id
   
     //normal user
     var toolCopy = JSON.parse(JSON.stringify(tool));

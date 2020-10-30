@@ -4,19 +4,12 @@ import { Data } from '../tool/data.model';
 import { Course } from './course.model';
 import passport from 'passport';
 import { utils } from '../auth';
-import { UserModel } from '../user/user.model';
-import { MessagesModel } from '../message/message.model';
 import {
   addCourse,
   editCourse,
-  deleteCourse,
   setStatus,
-  getCourse,
   getCourseAdmin,
 } from './course.repository';
-import emailGenerator from '../utilities/emailGenerator.util';
-import inputSanitizer from '../utilities/inputSanitizer';
-const hdrukEmail = `enquiry@healthdatagateway.org`;
 const router = express.Router();
 
 // @router   POST /api/v1/course
@@ -126,6 +119,7 @@ router.patch(
  * Return the details on the tool based on the tool ID.
  */
 router.get('/:id', async (req, res) => {
+    let id = parseInt(req.params.id)
   var query = Course.aggregate([
     { $match: { id: parseInt(req.params.id) } },
     {
@@ -172,7 +166,7 @@ router.get('/:id', async (req, res) => {
         });
       });
     } else {
-      return res.status(404).send(`Course not found for Id: ${req.params.id}`);
+      return res.status(404).send(`Course not found for Id: ${id}`);
     }
   });
 });
