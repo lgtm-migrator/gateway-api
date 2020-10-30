@@ -8,11 +8,22 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
     if (type === 'course') collection = Course;
     var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
     newSearchQuery["$and"].push({ type: type })
-    if (type === 'course') newSearchQuery["$and"].push({$or:[{"courseOptions.startDate": { $gt: new Date(Date.now())}}, { 'courseOptions.flexibleDates':true}]});
+
+    if (type === 'course') {
+        newSearchQuery["$and"].forEach((x) => {
+            if (x.$or) {
+                x.$or.forEach((y) => {
+                    if (y['courseOptions.startDate']) y['courseOptions.startDate'] = new Date (y['courseOptions.startDate'])
+                })
+            }
+        })
+        newSearchQuery["$and"].push({$or:[{"courseOptions.startDate": { $gte: new Date(Date.now())}}, { 'courseOptions.flexibleDates':true}]});
+    }
 
     var queryObject;
     if (type === 'course') {
         queryObject = [
+            { $unwind: '$courseOptions' },
             { $match: newSearchQuery },
             {
                 $project: {
@@ -104,45 +115,100 @@ export function getObjectCount(type, searchAll, searchQuery) {
     if (type === 'course') collection = Course;
     var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
     newSearchQuery["$and"].push({ type: type })
-    var q = '';
+    if (type === 'course') {
+        newSearchQuery["$and"].forEach((x) => {
+            if (x.$or) {
+                x.$or.forEach((y) => {
+                    if (y['courseOptions.startDate']) y['courseOptions.startDate'] = new Date (y['courseOptions.startDate'])
+                })
+            }
+        })
+        newSearchQuery["$and"].push({$or:[{"courseOptions.startDate": { $gte: new Date(Date.now())}}, { 'courseOptions.flexibleDates':true}]});
+    }
     
-    if (searchAll) {
-        q = collection.aggregate([
-            { $match: newSearchQuery }, 
-            {
-                "$group": {
-                    "_id": {},
-                    "count": {
-                        "$sum": 1
+    //if (type === 'course') newSearchQuery["$and"].push({$or:[{"courseOptions.startDate": { $gte: new Date(Date.now())}}, { 'courseOptions.flexibleDates':true}]});
+    var q = '';
+    if (type === 'course') {
+        if (searchAll) {
+            q = collection.aggregate([
+                { $unwind: '$courseOptions' },
+                { $match: newSearchQuery }, 
+                {
+                    "$group": {
+                        "_id": {},
+                        "count": {
+                            "$sum": 1
+                        }
+                    }
+                }, 
+                {
+                    "$project": {
+                        "count": "$count",
+                        "_id": 0
                     }
                 }
-            }, 
-            {
-                "$project": {
-                    "count": "$count",
-                    "_id": 0
+            ]);
+        }
+        else {
+            q = collection.aggregate([
+                { $unwind: '$courseOptions' },
+                { $match: newSearchQuery }, 
+                {
+                    "$group": {
+                        "_id": {},
+                        "count": {
+                            "$sum": 1
+                        }
+                    }
+                }, 
+                {
+                    "$project": {
+                        "count": "$count",
+                        "_id": 0
+                    }
                 }
-            }
-        ]);
+            ]).sort({ score: { $meta: "textScore" } });
+        }
     }
     else {
-        q = collection.aggregate([
-            { $match: newSearchQuery },
-            {
-                "$group": {
-                    "_id": {},
-                    "count": {
-                        "$sum": 1
+        if (searchAll) {
+            q = collection.aggregate([
+                { $match: newSearchQuery }, 
+                {
+                    "$group": {
+                        "_id": {},
+                        "count": {
+                            "$sum": 1
+                        }
+                    }
+                }, 
+                {
+                    "$project": {
+                        "count": "$count",
+                        "_id": 0
                     }
                 }
-            }, 
-            {
-                "$project": {
-                    "count": "$count",
-                    "_id": 0
+            ]);
+        }
+        else {
+            q = collection.aggregate([
+                { $match: newSearchQuery },
+                {
+                    "$group": {
+                        "_id": {},
+                        "count": {
+                            "$sum": 1
+                        }
+                    }
+                }, 
+                {
+                    "$project": {
+                        "count": "$count",
+                        "_id": 0
+                    }
                 }
-            }
-        ]).sort({ score: { $meta: "textScore" } });
+            ]).sort({ score: { $meta: "textScore" } });
+        }
     }
     
     return new Promise((resolve, reject) => {
@@ -301,8 +367,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
         if (coursestartdates.length > 0) {
             var filterTermArray = [];
             coursestartdates.split('::').forEach((filterTerm) => {
-                const d = new Date(filterTerm);
-                filterTermArray.push({ "courseOptions.startDate": new Date(d) })
+                filterTermArray.push({ "courseOptions.startDate": filterTerm })
             });
             searchQuery["$and"].push({ "$or": filterTermArray });
         }
@@ -429,6 +494,11 @@ export const getFilter = async (searchString, type, field, isArray, activeFilter
 
 export function filterQueryGenerator(filter, searchString, type, isArray, activeFiltersQuery) {
     var queryArray = []
+
+    if (type === "course") {
+        queryArray.push({ $unwind: '$courseOptions' });
+        queryArray.push({ $match: {$or:[{"courseOptions.startDate": { $gte: new Date(Date.now())}}, { 'courseOptions.flexibleDates':true}]}});
+    }
 
     if (!_.isEmpty(activeFiltersQuery)) {
         queryArray.push({ $match: activeFiltersQuery});

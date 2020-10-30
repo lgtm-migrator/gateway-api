@@ -33,7 +33,8 @@ const addCourse = async (req, res) => {
        
         if (req.body.courseOptions) {
             req.body.courseOptions.forEach((x) => {
-                x.startDate = inputSanitizer.removeNonBreakingSpaces(x.startDate);
+                if (x.flexibleDates) x.startDate = null;
+                //else x.startDate = inputSanitizer.removeNonBreakingSpaces(x.startDate);
                 x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
                 x.studyDurationNumber = x.studyDurationNumber;
                 x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
@@ -142,7 +143,7 @@ const editCourse = async (req, res) => {
     if (req.body.courseOptions) {
         req.body.courseOptions.forEach((x) => {
             if (x.flexibleDates) x.startDate = null;
-            else x.startDate = inputSanitizer.removeNonBreakingSpaces(x.startDate);
+            //else x.startDate = inputSanitizer.removeNonBreakingSpaces(x.startDate);
             x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
             x.studyDurationNumber = x.studyDurationNumber;
             x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);

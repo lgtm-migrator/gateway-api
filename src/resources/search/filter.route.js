@@ -227,15 +227,15 @@ router.get('/', async (req, res) => {
                 },
                 filterOptions: {
                     courseStartDatesFilterOptions: values[0][1],
-                    courseProviderFilterOptions: values[1][0],
-                    courseLocationFilterOptions: values[2][0],
-                    courseStudyModeFilterOptions: values[3][0],
-                    courseAwardFilterOptions: values[4][0],
-                    courseEntryLevelFilterOptions: values[5][0],
-                    courseDomainsFilterOptions: values[6][0],
-                    courseKeywordsFilterOptions: values[7][0],
-                    courseFrameworkFilterOptions: values[8][0],
-                    coursePriorityFilterOptions: values[9][0]
+                    courseProviderFilterOptions: values[1][1],
+                    courseLocationFilterOptions: values[2][1],
+                    courseStudyModeFilterOptions: values[3][1],
+                    courseAwardFilterOptions: values[4][1],
+                    courseEntryLevelFilterOptions: values[5][1],
+                    courseDomainsFilterOptions: values[6][1],
+                    courseKeywordsFilterOptions: values[7][1],
+                    courseFrameworkFilterOptions: values[8][1],
+                    coursePriorityFilterOptions: values[9][1]
                 }
             });
         });
@@ -334,4 +334,50 @@ router.get('/organisation/:type',
         });
     }
 );
+
+// @route   GET api/v1/search/filter/domains/:type
+// @desc    GET Get list of features by entity type
+// @access  Public
+router.get('/domains/:type',
+    async (req, res) => {
+      await getFilter('', req.params.type, 'domains', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
+
+// @route   GET api/v1/search/filter/keywords/:type
+// @desc    GET Get list of features by entity type
+// @access  Public
+router.get('/keywords/:type',
+    async (req, res) => {
+      await getFilter('', req.params.type, 'keywords', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
+
+// @route   GET api/v1/search/filter/awards/:type
+// @desc    GET Get list of features by entity type
+// @access  Public
+router.get('/awards/:type',
+    async (req, res) => {
+      await getFilter('', req.params.type, 'award', true, getObjectFilters({ $and: [{ activeflag: 'active' }] }, req, req.params.type))
+        .then(data => {
+          return res.json({success: true, data});
+        })
+        .catch(err => {
+          return res.json({success: false, err});
+        });
+    }
+);
+
 module.exports = router;
