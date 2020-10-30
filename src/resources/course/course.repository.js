@@ -34,7 +34,6 @@ const addCourse = async (req, res) => {
         if (req.body.courseOptions) {
             req.body.courseOptions.forEach((x) => {
                 if (x.flexibleDates) x.startDate = null;
-                //else x.startDate = inputSanitizer.removeNonBreakingSpaces(x.startDate);
                 x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
                 x.studyDurationNumber = x.studyDurationNumber;
                 x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
@@ -143,7 +142,6 @@ const editCourse = async (req, res) => {
     if (req.body.courseOptions) {
         req.body.courseOptions.forEach((x) => {
             if (x.flexibleDates) x.startDate = null;
-            //else x.startDate = inputSanitizer.removeNonBreakingSpaces(x.startDate);
             x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
             x.studyDurationNumber = x.studyDurationNumber;
             x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
@@ -156,13 +154,7 @@ const editCourse = async (req, res) => {
         });
     }
     
-    /* let data = {
-      id: id,
-      name: req.body.title,
-      authors: authors,
-    }; */
-
-    Course.findOneAndUpdate({ id: id },
+   Course.findOneAndUpdate({ id: id },
       {
         title: inputSanitizer.removeNonBreakingSpaces(req.body.title),
         link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link)),

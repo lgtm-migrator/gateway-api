@@ -126,7 +126,6 @@ export function getObjectCount(type, searchAll, searchQuery) {
         newSearchQuery["$and"].push({$or:[{"courseOptions.startDate": { $gte: new Date(Date.now())}}, { 'courseOptions.flexibleDates':true}]});
     }
     
-    //if (type === 'course') newSearchQuery["$and"].push({$or:[{"courseOptions.startDate": { $gte: new Date(Date.now())}}, { 'courseOptions.flexibleDates':true}]});
     var q = '';
     if (type === 'course') {
         if (searchAll) {
