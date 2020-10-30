@@ -12,7 +12,8 @@ export async function loadDataset(datasetID) {
     const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetID+'/dataClasses', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
     const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetID+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
     const phenotypesCall = await axios.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout:5000 }).catch(err => { console.log('Unable to get phenotypes '+err.message) }); 
-    const [dataset, metadataQualityList, metadataSchema, dataClass, versionLinks, phenotypesList] = await axios.all([datasetCall, metadataQualityCall, metadataSchemaCall, dataClassCall, versionLinksCall, phenotypesCall]);
+    const dataUtilityCall = await axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout:5000 }).catch(err => { console.log('Unable to get data utility '+err.message) }); 
+    const [dataset, metadataQualityList, metadataSchema, dataClass, versionLinks, phenotypesList, dataUtilityList] = await axios.all([datasetCall, metadataQualityCall, metadataSchemaCall, dataClassCall, versionLinksCall, phenotypesCall,dataUtilityCall]);
 
     var technicaldetails = [];
 
@@ -69,6 +70,7 @@ export async function loadDataset(datasetID) {
     
     const metadataQuality = metadataQualityList.data.find(x => x.id === datasetID);
     const phenotypes = phenotypesList.data[datasetID] || [];
+    const dataUtility = dataUtilityList.data.find(x => x.id === datasetID);
 
     var data = new Data(); 
     data.id = uniqueID;
@@ -101,6 +103,7 @@ export async function loadDataset(datasetID) {
     data.datasetfields.technicaldetails = technicaldetails;
     data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
     data.datasetfields.phenotypes = phenotypes;
+    data.datasetfields.datautility = dataUtility ? dataUtility : {};
 
     return await data.save();
 }

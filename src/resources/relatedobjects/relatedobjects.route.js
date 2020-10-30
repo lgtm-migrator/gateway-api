@@ -1,5 +1,6 @@
 import express from 'express'
 import { Data } from '../tool/data.model'
+import { Course } from "../course/course.model";
 import axios from 'axios';
 
 const router = express.Router();
@@ -9,7 +10,8 @@ const router = express.Router();
  * 
  * Return the details on the relatedobject based on the ID.
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res) => { 
+    console.log(`in relatedobjects.route`)
     var id = req.params.id;
     if (!isNaN(id)) {
         var q = Data.aggregate([
@@ -31,5 +33,19 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
+
+router.get('/course/:id', async (req, res) => { 
+    var id = req.params.id;
+
+        var q = Course.aggregate([
+            { $match: { $and: [{ id: parseInt(id) }] } },
+            // { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
+        ]);
+        q.exec((err, data) => {
+            if (err) return res.json({ success: false, error: err });
+            return res.json({ success: true, data: data });
+        });
+ 
+    });
 
 module.exports = router;
