@@ -1,13 +1,12 @@
 import { PublisherModel } from '../publisher/publisher.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from './workflow.model';
+import teamController from '../team/team.controller';
 import helper from '../utilities/helper.util';
 
 import moment from 'moment';
 import _ from 'lodash';
 import mongoose from 'mongoose';
-
-const teamController = require('../team/team.controller');
 
 	// GET api/v1/workflows/:id
 	const getWorkflowById = async (req, res) => {
