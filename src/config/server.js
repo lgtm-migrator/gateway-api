@@ -10,7 +10,6 @@ import bodyParser from 'body-parser';
 import logger from 'morgan';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
-
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
 
@@ -20,19 +19,13 @@ const Account = require('./account');
 const configuration = require('./configuration');
 
 
-
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
 var app = express();
 
-
-
 configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
-
-
-
 
 var domains = [process.env.homeURL];
 
@@ -197,12 +190,15 @@ app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.rou
 app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
 app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
 
+app.use('/api/v1/course', require('../resources/course/course.route')); 
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
 app.use('/api/v1/projects', require('../resources/project/project.route'));
 app.use('/api/v1/papers', require('../resources/paper/paper.route'));
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
+app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
+
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
