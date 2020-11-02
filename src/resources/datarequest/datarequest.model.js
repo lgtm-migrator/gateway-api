@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+import { WorkflowSchema } from '../workflow/workflow.model'; 
 
 const DataRequestSchema = new Schema({
   version: Number,
@@ -7,6 +8,8 @@ const DataRequestSchema = new Schema({
   dataSetId: String,
   datasetIds: [{ type: String}],
   projectId: String,
+  workflowId: { type : Schema.Types.ObjectId, ref: 'Workflow' },
+  workflow: { type: WorkflowSchema },
   applicationStatus: {
     type: String,
     default: 'inProgress',
@@ -26,8 +29,8 @@ const DataRequestSchema = new Schema({
     default: "{}"
   },
   aboutApplication: {
-    type: String,
-    default: "{}"
+    type: Object,
+    default: {}
   },
   dateSubmitted: {
     type: Date
@@ -35,10 +38,26 @@ const DataRequestSchema = new Schema({
   dateFinalStatus: {
     type: Date
   },
+  dateReviewStart: {
+    type: Date
+  },
   publisher: {
     type: String,
     default: ""
-  }
+  },
+  files: [{ 
+    name: { type: String },
+    size: { type: Number },
+    description: { type: String },
+    status: { type: String },
+    fileId: { type: String },
+    error: { type: String, default: '' },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: 'User' 
+    }
+  }],
+
 }, {
     timestamps: true,
     toJSON:     { virtuals: true },

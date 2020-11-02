@@ -3,7 +3,7 @@ import { UserModel } from './user.model';
 export async function getUserById(id) {
     const user = await UserModel.findById(id).populate({ 
         path: 'teams',
-        select: 'publisher type -_id', 
+        select: 'publisher type members -_id', 
           populate: { 
             path: 'publisher',
             select: 'name'
