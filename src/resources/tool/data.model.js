@@ -2,7 +2,7 @@ import { model, Schema } from 'mongoose';
 //DO NOT DELETE publisher and team model below
 import { PublisherModel } from '../publisher/publisher.model';
 import { TeamModel } from '../team/team.model';
-
+ 
 // this will be our data base's data structure 
 const DataSchema = new Schema( 
   {
@@ -50,15 +50,22 @@ const DataSchema = new Schema(
     firstname: String,
     lastname: String,
     bio: String, //institution
+    showBio: Boolean,
     orcid: String,
+    showOrcid: Boolean,
     emailNotifications: Boolean,
     terms: Boolean,
     sector: String,
+    showSector: Boolean,
     organisation: String,
     showOrganisation: {type: Boolean, default: false },
+    showLink: Boolean,
+    showDomain: Boolean,
 
-    //dataset related fields
+    //dataset related fields 
     datasetid: String,
+    pid: String,
+    datasetVersion: String,
     datasetfields: {
         publisher: String,
         geographicCoverage: [String],
@@ -77,6 +84,7 @@ const DataSchema = new Schema(
         periodicity: String,
         populationSize: String,
         metadataquality : {},
+        datautility : {},
         metadataschema : {},
         technicaldetails : [],
         versionLinks: [],

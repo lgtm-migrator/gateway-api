@@ -3,7 +3,13 @@ import { Data } from '../tool/data.model'
 import { loadDataset, loadDatasets } from './dataset.service';
 import { getToolsAdmin } from '../tool/data.repository';
 const router = express.Router();
+const rateLimit = require("express-rate-limit");
 
+const datasetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour window
+    max: 10, // start blocking after 10 requests
+    message: "Too many calls have been made to this api from this IP, please try again after an hour"
+});
 
 router.post('/', async (req, res) => {
     //Check to see if header is in json format
@@ -21,6 +27,40 @@ router.post('/', async (req, res) => {
     loadDatasets(parsedBody.override || false);
     return res.json({ success: true, message: "Caching started" });
 });
+
+// @router   GET /api/v1/datasets/pidList
+// @desc     Returns List of PIDs with linked datasetIDs
+// @access   Public
+router.get(
+    '/pidList/',
+    datasetLimiter,
+    async (req, res) => {
+        var q = Data.find(
+            { "type" : "dataset", "pid" : { "$exists" : true } }, 
+            { "pid" : 1, "datasetid" : 1 }
+        ).sort({ "pid" : 1 });
+        
+        q.exec((err, data) => {
+            var listOfPIDs = []
+            
+            data.forEach((item) => {
+                if (listOfPIDs.find(x => x.pid === item.pid)) {
+                    var index = listOfPIDs.findIndex(x => x.pid === item.pid)
+                    listOfPIDs[index].datasetIds.push(item.datasetid)
+                }
+                else {
+                    listOfPIDs.push({"pid":item.pid, "datasetIds":[item.datasetid]})
+                }
+            
+            })
+
+            return res.json({ success: true, data: listOfPIDs });
+        })        
+    }
+);
+
+
+
 
 router.get('/:datasetID', async (req, res) => {
     var q = Data.aggregate([

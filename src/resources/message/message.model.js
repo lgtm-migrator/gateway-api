@@ -14,12 +14,14 @@ const MessageSchema = new Schema({
     enum: ['message', 
            'add', 
            'approved', 
+           'archive',
            'author',
            'rejected',
            'added collection',
            'review',
            'data access request',
-           'data access request unlinked'
+           'data access request unlinked',
+           'edit'
           ]
   },
   createdBy:{

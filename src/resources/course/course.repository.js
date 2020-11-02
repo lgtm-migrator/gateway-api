@@ -1,4 +1,4 @@
-import { Data } from './data.model';
+import { Course } from './course.model';
 import { MessagesModel } from '../message/message.model'
 import { UserModel } from '../user/user.model'
 import { createDiscourseTopic } from '../discourse/discourse.service'
@@ -9,171 +9,157 @@ const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
 
 export async function getObjectById(id) {
-    return await Data.findOne({ id }).exec()
+    return await Course.findOne({ id }).exec()
 }
 
-const addTool = async (req, res) => {
+const addCourse = async (req, res) => {
   return new Promise(async(resolve, reject) => {
-      let data = new Data(); 
-      const toolCreator = req.body.toolCreator; 
-      const { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, programmingLanguage, isPreprint } = req.body;
-      data.id = parseInt(Math.random().toString().replace('0.', ''));
-      data.type = inputSanitizer.removeNonBreakingSpaces(type);
-      data.name = inputSanitizer.removeNonBreakingSpaces(name);
-      data.link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link));  
-      data.journal = inputSanitizer.removeNonBreakingSpaces(journal);
-      data.journalYear = inputSanitizer.removeNonBreakingSpaces(journalYear); 
-      data.description = inputSanitizer.removeNonBreakingSpaces(description);
-      data.resultsInsights = inputSanitizer.removeNonBreakingSpaces(resultsInsights);
-      console.log(req.body)
-      if (categories && typeof categories !== undefined) data.categories.category = inputSanitizer.removeNonBreakingSpaces(categories.category);
-      data.license = inputSanitizer.removeNonBreakingSpaces(license);
-      data.authors = authors;
-      data.tags.features = inputSanitizer.removeNonBreakingSpaces(tags.features),
-      data.tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
-      data.activeflag = 'review';
-      data.updatedon = Date.now();
-      data.relatedObjects = relatedObjects;
+        let course = new Course();
+        course.id = parseInt(Math.random().toString().replace('0.', ''));
+        course.type = 'course';
+        course.creator = req.user.id;
+        course.activeflag = 'review';
+        course.updatedon = Date.now();
+        course.relatedObjects = req.body.relatedObjects;
+        
+        course.title = inputSanitizer.removeNonBreakingSpaces(req.body.title);
+        course.link = inputSanitizer.removeNonBreakingSpaces(req.body.link);
+        course.provider = inputSanitizer.removeNonBreakingSpaces(req.body.provider);
+        course.description = inputSanitizer.removeNonBreakingSpaces(req.body.description);
+        course.courseDelivery = inputSanitizer.removeNonBreakingSpaces(req.body.courseDelivery);
+        course.location = inputSanitizer.removeNonBreakingSpaces(req.body.location);
+        course.keywords = inputSanitizer.removeNonBreakingSpaces(req.body.keywords);
+        course.domains = inputSanitizer.removeNonBreakingSpaces(req.body.domains);
+       
+        if (req.body.courseOptions) {
+            req.body.courseOptions.forEach((x) => {
+                if (x.flexibleDates) x.startDate = null;
+                x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
+                x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
+                if (x.fees) {
+                    x.fees.forEach((y) => {
+                        y.feeDescription = inputSanitizer.removeNonBreakingSpaces(y.feeDescription);
+                        y.feePer = inputSanitizer.removeNonBreakingSpaces(y.feePer);
+                    });
+                }
+            });
+        }
+        course.courseOptions = req.body.courseOptions;
 
-      if(programmingLanguage){
-        programmingLanguage.forEach((p) => 
-        {   
-            p.programmingLanguage = inputSanitizer.removeNonBreakingSpaces(p.programmingLanguage);
-            p.version = (inputSanitizer.removeNonBreakingSpaces(p.version));
-        });
-      }
-      data.programmingLanguage = programmingLanguage;
+        if (req.body.entries) {
+            req.body.entries.forEach((x) => {
+                x.level = inputSanitizer.removeNonBreakingSpaces(x.level);
+                x.subject = inputSanitizer.removeNonBreakingSpaces(x.subject);
+            });
+        }
+        course.entries = req.body.entries;
 
-      data.isPreprint = isPreprint;
-      data.uploader = req.user.id;
-      let newDataObj = await data.save();
-      if(!newDataObj)
+        course.restrictions = inputSanitizer.removeNonBreakingSpaces(req.body.restrictions);
+        course.award = inputSanitizer.removeNonBreakingSpaces(req.body.award);
+        course.competencyFramework = inputSanitizer.removeNonBreakingSpaces(req.body.competencyFramework);
+        course.nationalPriority = inputSanitizer.removeNonBreakingSpaces(req.body.nationalPriority);
+
+
+      
+
+
+
+
+
+
+
+      let newCourse = await course.save();
+      if(!newCourse) 
         reject(new Error(`Can't persist data object to DB.`));
 
-      let message = new MessagesModel();
-      message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-      message.messageTo = 0;
-      message.messageObjectID = data.id;
-      message.messageType = 'add';
-      message.messageDescription = `Approval needed: new ${data.type} added ${name}`
-      message.messageSent = Date.now();
-      message.isRead = false;
-      let newMessageObj = await message.save();
-      if(!newMessageObj)
-        reject(new Error(`Can't persist message to DB.`));
-
-      // 1. Generate URL for linking tool from email
-      const toolLink = process.env.homeURL + '/' + data.type + '/' + data.id 
-
-      // 2. Query Db for all admins who have opted in to email updates
-      var q = UserModel.aggregate([
-        // Find all users who are admins
-        { $match: { role: 'Admin' } },
-        // Perform lookup to check opt in/out flag in tools schema
-        { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
-        // Filter out any user who has opted out of email notifications
-        { $match: { 'tool.emailNotifications': true } },
-        // Reduce response payload size to required fields
-        { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
-      ]);
-
-      // 3. Use the returned array of email recipients to generate and send emails with SendGrid
-      q.exec((err, emailRecipients) => {
-        if (err) {
-          return new Error({ success: false, error: err });
-        }
-        emailGenerator.sendEmail(
-          emailRecipients,
-          `${hdrukEmail}`,
-          `A new ${data.type} has been added and is ready for review`,
-          `Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`
-        );
-      });
-
-      if (data.type === 'tool') {
-          await sendEmailNotificationToAuthors(data, toolCreator);
-      }
-      await storeNotificationsForAuthors(data, toolCreator);
-
-      resolve(newDataObj);
+        await createMessage(course.creator, course.id, course.title, course.type, 'add');  
+        await createMessage(0, course.id, course.title, course.type, 'add');
+        // Send email notification of status update to admins and authors who have opted in
+        await sendEmailNotifications(course, 'add');  
+      resolve(newCourse);
     })
 };
 
 
-const editTool = async (req, res) => {
+
+
+
+
+
+const editCourse = async (req, res) => {
   return new Promise(async(resolve, reject) => {
-
-    const toolCreator = req.body.toolCreator;
-    let { type, name, link, description, resultsInsights, categories, license, authors, tags, journal, journalYear, relatedObjects, isPreprint } = req.body;
     let id = req.params.id;
-    let programmingLanguage = req.body.programmingLanguage;
 
-    if (!categories || typeof categories === undefined) categories = {'category':'', 'programmingLanguage':[], 'programmingLanguageVersion':''}
-
-    if(programmingLanguage){
-      programmingLanguage.forEach((p) => 
-      {   
-          p.programmingLanguage = inputSanitizer.removeNonBreakingSpaces(p.programmingLanguage);
-          p.version = (inputSanitizer.removeNonBreakingSpaces(p.version));
+    if(req.body.entries){
+        req.body.entries.forEach((e) => {   
+          e.level = inputSanitizer.removeNonBreakingSpaces(e.level);
+          e.subject = (inputSanitizer.removeNonBreakingSpaces(e.subject));
       });
     }
     
-    let data = {
-      id: id,
-      name: name,
-      authors: authors,
-    };
+    if (req.body.courseOptions) {
+        req.body.courseOptions.forEach((x) => {
+            if (x.flexibleDates) x.startDate = null;
+            x.studyMode = inputSanitizer.removeNonBreakingSpaces(x.studyMode);
+            x.studyDurationMeasure = inputSanitizer.removeNonBreakingSpaces(x.studyDurationMeasure);
+            if (x.fees) {
+                x.fees.forEach((y) => {
+                    y.feeDescription = inputSanitizer.removeNonBreakingSpaces(y.feeDescription);
+                    y.feePer = inputSanitizer.removeNonBreakingSpaces(y.feePer);
+                });
+            }
+        });
+    }
+    
+    let relatedObjects = req.body.relatedObjects;
+    let courseOptions = req.body.courseOptions;
+    let entries = req.body.entries;
 
-    Data.findOneAndUpdate({ id: id },
+   Course.findOneAndUpdate({ id: id },
       {
-        type: inputSanitizer.removeNonBreakingSpaces(type),
-        name: inputSanitizer.removeNonBreakingSpaces(name),
-        link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link)),
-        description: inputSanitizer.removeNonBreakingSpaces(description),
-        resultsInsights: inputSanitizer.removeNonBreakingSpaces(resultsInsights),
-        journal: inputSanitizer.removeNonBreakingSpaces(journal),
-        journalYear: inputSanitizer.removeNonBreakingSpaces(journalYear),
-        categories: {
-          category: inputSanitizer.removeNonBreakingSpaces(categories.category),
-          programmingLanguage: categories.programmingLanguage,
-          programmingLanguageVersion: categories.programmingLanguageVersion
-        },
-        license: inputSanitizer.removeNonBreakingSpaces(license),
-        authors: authors,
-        programmingLanguage: programmingLanguage,
-        tags: {
-          features: inputSanitizer.removeNonBreakingSpaces(tags.features),
-          topics: inputSanitizer.removeNonBreakingSpaces(tags.topics)
-        },
+        title: inputSanitizer.removeNonBreakingSpaces(req.body.title),
+        link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link)),
+        provider: inputSanitizer.removeNonBreakingSpaces(req.body.provider),
+        description: inputSanitizer.removeNonBreakingSpaces(req.body.description),
+        courseDelivery: inputSanitizer.removeNonBreakingSpaces(req.body.courseDelivery),
+        location: inputSanitizer.removeNonBreakingSpaces(req.body.location),
+        keywords: inputSanitizer.removeNonBreakingSpaces(req.body.keywords),
+        domains: inputSanitizer.removeNonBreakingSpaces(req.body.domains),
         relatedObjects: relatedObjects,
-        isPreprint: isPreprint
+        courseOptions: courseOptions,
+        entries:entries,
+        restrictions: inputSanitizer.removeNonBreakingSpaces(req.body.restrictions),
+        award: inputSanitizer.removeNonBreakingSpaces(req.body.award),
+        competencyFramework: inputSanitizer.removeNonBreakingSpaces(req.body.competencyFramework),
+        nationalPriority: inputSanitizer.removeNonBreakingSpaces(req.body.nationalPriority),
       }, (err) => {
         if (err) {
           reject(new Error(`Failed to update.`));
         }
-      }).then((tool) => {
-        if(tool == null){
+      }).then(async (course) => {
+        if(course == null){
           reject(new Error(`No record found with id of ${id}.`));
         } 
-        else if (type === 'tool') {
-          // Send email notification of update to all authors who have opted in to updates
-          sendEmailNotificationToAuthors(data, toolCreator);
-          storeNotificationsForAuthors(data, toolCreator);
-        }
-          resolve(tool);
+        
+        await createMessage(course.creator, id, course.title, course.type, 'edit');  
+        await createMessage(0, id, course.title, course.type, 'edit');
+        // Send email notification of status update to admins and authors who have opted in
+        await sendEmailNotifications(course, 'edit');  
+        
+        resolve(course);
       });
     })
   };
 
-  const deleteTool = async(req, res) => {
+  const deleteCourse = async(req, res) => {
     return new Promise(async(resolve, reject) => {
       const { id } = req.params.id;
-      Data.findOneAndDelete({ id: req.params.id }, (err) => {
+      Course.findOneAndDelete({ id: req.params.id }, (err) => {
         if (err) reject(err);
 
         
-      }).then((tool) => {
-        if(tool == null){
+      }).then((course) => {
+        if(course == null){
           reject(`No Content`);
         }
         else{
@@ -183,7 +169,7 @@ const editTool = async (req, res) => {
     )
   })};
 
-  const getToolsAdmin = async (req, res) => {
+  const getCourseAdmin = async (req, res) => {
     return new Promise(async (resolve, reject) => {
 
       let startIndex = 0;
@@ -197,14 +183,11 @@ const editTool = async (req, res) => {
       if (req.query.limit) {
         limit = req.query.limit;
       }
-      if (req.params.type) {
-        typeString = req.params.type;
-      }
       if (req.query.q) {
         searchString = req.query.q || "";;
       }
 
-      let searchQuery = { $and: [{ type: typeString }] };
+      let searchQuery = { $and: [{ type: 'course' }] };
       let searchAll = false;
 
       if (searchString.length > 0) {
@@ -219,33 +202,29 @@ const editTool = async (req, res) => {
         resolve(values[0]);
     });
     });
-  }
+  } 
 
-  const getTools = async (req, res) => {
+  const getCourse = async (req, res) => {
     return new Promise(async (resolve, reject) => {
-      let startIndex = 0;
-      let limit = 1000;
-      let typeString = "";
+      //let startIndex = 0;
+      //let limit = 1000;
       let idString = req.user.id;
   
-      if (req.query.startIndex) {
+      /* if (req.query.startIndex) {
         startIndex = req.query.startIndex;
       }
       if (req.query.limit) {
         limit = req.query.limit;
-      }
-      if (req.params.type) {
-        typeString = req.params.type;
-      }
+      } */
       if (req.query.id) {
         idString = req.query.id;
       }
   
-      let query = Data.aggregate([
-        { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+      let query = Course.aggregate([
+        { $match: { $and: [{ type: 'course' }, { creator: parseInt(idString) }] } },
+        { $lookup: { from: "tools", localField: "creator", foreignField: "id", as: "persons" } },
         { $sort: { updatedAt : -1}}
-      ])//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
+      ]);//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
       query.exec((err, data) => {
         if (err) reject({ success: false, error: err });
         resolve(data);
@@ -253,30 +232,27 @@ const editTool = async (req, res) => {
     });
   }
 
-  const setStatus = async (req, res) => {
+  const setStatus = async (req, res) => { 
     return new Promise(async (resolve, reject) => {
       try {
         const { activeflag, rejectionReason } = req.body;
         const id = req.params.id;
       
-        let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
-        if (!tool) {
-          reject(new Error('Tool not found'));
+        let course = await Course.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
+        if (!course) {
+          reject(new Error('Course not found'));
         }
   
-        if (tool.authors) {
-          tool.authors.forEach(async (authorId) => {
-            await createMessage(authorId, id, tool.name, tool.type, activeflag, rejectionReason);
-          });
-        }
-        await createMessage(0, id, tool.name, tool.type, activeflag, rejectionReason);
+        
+        await createMessage(course.creator, id, course.title, course.type, activeflag, rejectionReason);
+        await createMessage(0, id, course.title, course.type, activeflag, rejectionReason);
   
-        if (!tool.discourseTopicId && tool.activeflag === 'active') {
-          await createDiscourseTopic(tool);
+        if (!course.discourseTopicId && course.activeflag === 'active') {
+          await createDiscourseTopic(course);
         }
         
         // Send email notification of status update to admins and authors who have opted in
-        await sendEmailNotifications(tool, activeflag, rejectionReason);
+        await sendEmailNotifications(course, activeflag, rejectionReason);
   
         resolve(id);
         
@@ -290,7 +266,7 @@ const editTool = async (req, res) => {
   async function createMessage(authorId, toolId, toolName, toolType, activeflag, rejectionReason) {
     let message = new MessagesModel();
     const toolLink = process.env.homeURL + '/' + toolType + '/' + toolId;
-  
+    
     if (activeflag === 'active') {
       message.messageType = 'approved';
       message.messageDescription = `Your ${toolType} ${toolName} has been approved and is now live ${toolLink}`
@@ -302,6 +278,14 @@ const editTool = async (req, res) => {
       message.messageDescription = `Your ${toolType} ${toolName} has been rejected ${toolLink}`
       message.messageDescription = (rejectionReason) ? message.messageDescription.concat(` Rejection reason: ${rejectionReason}`) : message.messageDescription
     }
+    else if (activeflag === 'add') {
+        message.messageType = 'add';
+        message.messageDescription = `Your ${toolType} ${toolName} has been submitted for approval`
+      }
+    else if (activeflag === 'edit') {
+        message.messageType = 'edit';
+        message.messageDescription = `Your ${toolType} ${toolName} has been updated`
+      }
     message.messageID = parseInt(Math.random().toString().replace('0.', ''));
     message.messageTo = authorId;
     message.messageObjectID = toolId;
@@ -327,6 +311,14 @@ const editTool = async (req, res) => {
       subject = `Your ${tool.type} ${tool.name} has been rejected`
       html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`
     }
+    else if (activeflag === 'add') {
+        subject = `Your ${tool.type} ${tool.name} has been submitted for approval`
+        html = `Your ${tool.type} ${tool.name} has been submitted for approval<br /><br /> ${toolLink}`
+      }
+      else if (activeflag === 'edit') {
+        subject = `Your ${tool.type} ${tool.name} has been updated`
+        html = `Your ${tool.type} ${tool.name} has been updated<br /><br /> ${toolLink}`
+      }
     
     // 3. Find all authors of the tool who have opted in to email updates
     var q = UserModel.aggregate([
@@ -356,12 +348,12 @@ const editTool = async (req, res) => {
 
 async function sendEmailNotificationToAuthors(tool, toolOwner) {
     // 1. Generate tool URL for linking user from email
-    const toolLink = process.env.homeURL + '/tool/' + tool.id
+    const toolLink = process.env.homeURL + '/course/' + tool.id
     
     // 2. Find all authors of the tool who have opted in to email updates
     var q = UserModel.aggregate([
       // Find all authors of this tool
-      { $match: { id: { $in: tool.authors } } },
+      { $match: { id: tool.creator } },
       // Perform lookup to check opt in/out flag in tools schema
       { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
       // Filter out any user who has opted out of email notifications
@@ -386,18 +378,17 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 
 async function storeNotificationsForAuthors(tool, toolOwner) {
     //store messages to alert a user has been added as an author
-    const toolLink = process.env.homeURL + '/tool/' + tool.id
   
     //normal user
     var toolCopy = JSON.parse(JSON.stringify(tool));
+    var listToEmail = [toolCopy.creator];
     
-    toolCopy.authors.push(0);
-    asyncModule.eachSeries(toolCopy.authors, async (author) => {
-  
+    asyncModule.eachSeries(listToEmail, async (author) => {
+        const user = await UserModel.findById(author)
       let message = new MessagesModel();
       message.messageType = 'author';
       message.messageSent = Date.now();
-      message.messageDescription = `${toolOwner.name} added you as an author of the ${toolCopy.type} ${toolCopy.name}`
+      message.messageDescription = `${toolOwner.name} added you as an author of the ${toolCopy.type} ${toolCopy.title}`
       message.isRead = false;
       message.messageObjectID = toolCopy.id;
       message.messageID = parseInt(Math.random().toString().replace('0.', ''));
@@ -413,21 +404,21 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
 };
 
 function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
-  let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
+  let newSearchQuery = JSON.parse(JSON.stringify(searchQuery)); 
   let q = '';
 
   if (searchAll) {
-    q = Data.aggregate([
+    q = Course.aggregate([
         { $match: newSearchQuery },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+        { $lookup: { from: "tools", localField: "creator", foreignField: "id", as: "persons" } },
         { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
         { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
     ]).sort({ updatedAt : -1}).skip(parseInt(startIndex)).limit(parseInt(limit));
   }
   else{
-    q = Data.aggregate([
+    q = Course.aggregate([
       { $match: newSearchQuery },
-      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
+      { $lookup: { from: "tools", localField: "creator", foreignField: "id", as: "persons" } },
       { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "objects" } },
       { $lookup: { from: "reviews", localField: "id", foreignField: "toolID", as: "reviews" } }
     ]).sort({ score: { $meta: "textScore" } }).skip(parseInt(startIndex)).limit(parseInt(limit));
@@ -440,4 +431,4 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
   })
 };
 
-export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin }
+export { addCourse, editCourse, deleteCourse, setStatus, getCourse, getCourseAdmin }

@@ -84,11 +84,18 @@ export async function createDiscourseTopic(tool) {
     rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/paper/${tool.id}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_PAPERS_ID;
   }
+  else if (tool.type === 'course') {
+    rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/course/${tool.id}`;
+    categoryIs = process.env.DISCOURSE_CATEGORY_COURSES_ID;
+  }
   else if (tool.type === 'collection') {
     rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/collection/${tool.id}`;
     categoryIs = process.env.DISCOURSE_CATEGORY_COLLECTIONS_ID;
   }
   // 3. Assemble payload for creating a topic in Discourse
+  let title = '';
+  if (tool.type === 'course') tool.title
+  else tool.name
   const payload = {
     title: tool.name,
     raw: rawIs,

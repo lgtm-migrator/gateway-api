@@ -10,7 +10,6 @@ import bodyParser from 'body-parser';
 import logger from 'morgan';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
-
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
 
@@ -20,19 +19,13 @@ const Account = require('./account');
 const configuration = require('./configuration');
 
 
-
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
 var app = express();
 
-
-
 configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
-
-
-
 
 var domains = [process.env.homeURL];
 
@@ -76,6 +69,20 @@ function setNoCache(req, res, next) {
     res.set('Cache-Control', 'no-cache, no-store');
     next();
 }
+
+app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
+    passport.authenticate('jwt', async function (err, user, info) {
+        if (err || !user) {
+            return res.status(200).redirect(process.env.homeURL+'/search?search=');
+        }
+        oidc.Session.destory;
+        req.logout();
+	    res.clearCookie('jwt');
+
+        return res.status(200).redirect(process.env.homeURL+'/search?search=');
+    })(req, res, next);
+})
+
 
 app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
     passport.authenticate('jwt', async function (err, user, info) {
@@ -168,6 +175,8 @@ app.use('/api/v1/auth/register', require('../resources/user/user.register.route'
 app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/topics', require('../resources/topic/topic.route'));
 app.use('/api/v1/publishers', require('../resources/publisher/publisher.route'));
+app.use('/api/v1/teams', require('../resources/team/team.route'));
+app.use('/api/v1/workflows', require('../resources/workflow/workflow.route'));
 app.use('/api/v1/messages', require('../resources/message/message.route'));
 app.use('/api/v1/reviews', require('../resources/tool/review.route'));
 app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
@@ -181,12 +190,15 @@ app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.rou
 app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
 app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
 
+app.use('/api/v1/course', require('../resources/course/course.route')); 
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
 app.use('/api/v1/projects', require('../resources/project/project.route'));
 app.use('/api/v1/papers', require('../resources/paper/paper.route'));
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
+app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
+
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
@@ -197,6 +209,8 @@ app.use('/api/v1/data-access-request', require('../resources/datarequest/datareq
 app.use('/api/v1/collections', require('../resources/collections/collections.route'));
 
 app.use('/api/v1/analyticsdashboard', require('../resources/googleanalytics/googleanalytics.router'));
+
+app.use('/api/v1/help', require('../resources/help/help.router'));
 
 initialiseAuthentication(app);
 
