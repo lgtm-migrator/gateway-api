@@ -20,7 +20,8 @@ const MessageSchema = new Schema({
            'added collection',
            'review',
            'data access request',
-           'data access request unlinked'
+           'data access request unlinked',
+           'edit'
           ]
   },
   createdBy:{
