@@ -1881,10 +1881,11 @@ module.exports = {
 				break;
 			case constants.notificationTypes.DEADLINEWARNING:
 				// 1. Get all reviewers who have not yet voted on active phase
+
 				// 2. Create reviewer notifications
 				await notificationBuilder.triggerNotificationMessage(
 					stepReviewerUserIds,
-					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					'data access request',
 					accessRecord._id
 				);
@@ -1907,18 +1908,20 @@ module.exports = {
 				await emailGenerator.sendEmail(
 					stepReviewers,
 					hdrukEmail,
-					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					html,
 					false
 				);
 				break;
 			case constants.notificationTypes.DEADLINEPASSED:
 				// 1. Get all reviewers who have not yet voted on active phase
+
 				// 2. Get all managers
+				
 				// 3. Create notifications
 				await notificationBuilder.triggerNotificationMessage(
 					stepReviewerUserIds,
-					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					`The deadline for a Data Access Request review phase has now elapsed`,
 					'data access request',
 					accessRecord._id
 				);
@@ -1941,7 +1944,7 @@ module.exports = {
 				await emailGenerator.sendEmail(
 					stepReviewers,
 					hdrukEmail,
-					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					`The deadline for a Data Access Request review phase has now elapsed`,
 					html,
 					false
 				);

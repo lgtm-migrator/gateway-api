@@ -192,8 +192,6 @@ const injectAmendments = (accessRecord, userType) => {
 	return accessRecord;
 };
 
-
-
 const formatSchema = (jsonSchema, amendmentIterations) => {
 	// 1. Add history for all questions in previous iterations
 	// TODO for versioning

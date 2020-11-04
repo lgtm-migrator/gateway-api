@@ -1,5 +1,5 @@
 const amendments = require('./reduce');
-const data = require('./data');
+const data = require('../__tests__.data');
 
 const testData = data.accessRecord;
 
