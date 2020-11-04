@@ -2,6 +2,7 @@ import express from 'express';
 import { RecordSearchData } from '../search/record.search.model';
 import { Data } from '../tool/data.model';
 import {DataRequestModel} from '../datarequests/datarequests.model';
+// import _ from 'lodash';
 
 const router = express.Router()
 
@@ -221,7 +222,7 @@ router.get('', async (req, res) => {
 
         timeSeries.forEach(data => {
         
-            data.points.forEach(data => {
+            data.points.forEach(data => { 
               dailyUptime.push(data.value.doubleValue)
             })
 
@@ -236,133 +237,157 @@ router.get('', async (req, res) => {
       
         return result;
       break; 
-
+ 
       case 'topdatasets':
 
-        let datasetIds = DataRequestModel.find(
-          {
-            // VALUES YOU ARE CHECKING MATCH SPECIFIED CRITERIA IE. WHERE
-            $and: [
-              {
-                $or: [
-                  {
-                    createdAt: {
-                      $gte: selectedMonthStart,
-                      $lt: selectedMonthEnd
-                    }
-                  },
-                  {
-                    timeStamp: {
-                      $gte: selectedMonthStart,
-                      $lt: selectedMonthEnd
+      let DarInfoMap = new Map()
+
+      let hdrDatasetID = await getHdrDatasetId()
+
+      console.log(`this hdrDatasetID - ${hdrDatasetID[0].datasetid}`)
+      console.log(`type hdrDatasetID - ${typeof hdrDatasetID[0].datasetid}`)
+
+          await getDarIds(req, selectedMonthStart, selectedMonthEnd)
+            .then(async (data) => {
+
+              for (let datasetIdObject in data) { 
+                if(data[datasetIdObject].datasetIds && data[datasetIdObject].datasetIds.length > 0){
+
+                  for (let datasetId in data[datasetIdObject].datasetIds) { 
+
+                    if(data[datasetIdObject].datasetIds[datasetId] !== hdrDatasetID[0].datasetid){
+
+                      let result = await getDarInfo(data[datasetIdObject].datasetIds[datasetId])
+
+                      if(result.length > 0){
+                        if (DarInfoMap.has(data[datasetIdObject].datasetIds[datasetId])){ 
+                          let count = DarInfoMap.get(data[datasetIdObject].datasetIds[datasetId])
+                          count.requests++
+                          DarInfoMap.set(data[datasetIdObject].datasetIds[datasetId], {"requests": count.requests, "name": result[0].name, "publisher": result[0].datasetfields.publisher});
+                          } else {
+                            DarInfoMap.set(data[datasetIdObject].datasetIds[datasetId], {"requests": 1, "name": result[0].name, "publisher": result[0].datasetfields.publisher});
+                          }
+                      }
                     }
                   }
-                ]
-              },
-              {
-                $or: [
-                  { applicationStatus: "submitted" },
-                  { applicationStatus: "approved" },
-                  { applicationStatus: "rejected" }
-                ]
-              }
-            ]
-          },
-          {
-            // THE FIELDS YOU WANT TO RETURN
-            _id: 0,
-            dataSetId: 1, 
-            datasetIds: 1
-          }
-        );
+                } 
+                else 
+                if(data[datasetIdObject].dataSetId && data[datasetIdObject].dataSetId.length > 0 && data[datasetIdObject].dataSetId !== hdrDatasetID[0].datasetid ){
+                  let result = await getDarInfo(data[datasetIdObject].dataSetId)
+                  if(result.length > 0){
+                    if (DarInfoMap.has(data[datasetIdObject].dataSetId)){ 
+                      let count = DarInfoMap.get(data[datasetIdObject].dataSetId)
+                      count.requests++
+                      DarInfoMap.set(data[datasetIdObject].dataSetId, {"requests": count.requests, "name": result[0].name, "publisher": result[0].datasetfields.publisher});
+                      } else {
+                        DarInfoMap.set(data[datasetIdObject].dataSetId, {"requests": 1, "name": result[0].name, "publisher": result[0].datasetfields.publisher});
+                      }
+                  }
+                }
+            }
+          })
+          .catch((err) => {
+            return res.json({ success: false, error: err });
+          }); 
 
+        let sortedResults = Array.from(DarInfoMap).sort((a,b) => { return b[1].requests - a[1].requests})
 
+        sortedResults = sortedResults.slice(0, 5)
 
-
-        let tempData = [
-          {
-            "datasetIds": [
-              "7f125091-12ba-464d-af7d-9a88179b0b95",
-              "0cfe60cd-038d-4c03-9a95-894c52135922",
-              "9e798632-442a-427b-8d0e-456f754d28dc"
-            ]
-          },
-          {
-            "datasetIds": [
-              
-            ],
-            "dataSetId": "0cfe60cd-038d-4c03-9a95-894c52135922"
-          },
-          {
-            "datasetIds": [
-              "9e798632-442a-427b-8d0e-456f754d28dc"
-            ]
-          },
-          {
-            "datasetIds": [
-              "9e798632-442a-427b-8d0e-456f754d28dc"
-            ]
-          }
-        ];
-
-        // TRY MAP OBJECTS 
-        
-        let thisMap = new Map()
-
-        tempData.map((datasetIdObject) => {
-          console.log(`datasetIdObject - ${JSON.stringify(datasetIdObject, null, 2)}`);
- 
-          if(datasetIdObject.datasetIds && datasetIdObject.datasetIds.length > 0){
-            //ARRAY WITH 1+ VALUE(S)
-            datasetIdObject.datasetIds.map((datasetId) => {
-              if(thisMap.has(datasetId)){
-               let count = thisMap.get(datasetId)
-               count++
-               thisMap.set(datasetId, count)
-              } else {
-                thisMap.set(datasetId, 1)
-              }
-            })
-          } 
-          //UPDATE TO LODASH IS NOT EMPTY CHECK?
-          else if(datasetIdObject.dataSetId && datasetIdObject.dataSetId.length > 0){
-              //STRING 
-              if (thisMap.has(datasetIdObject.dataSetId)){
-               console.log('string is there')
-               let count = thisMap.get(datasetIdObject.dataSetId)
-               count++
-               thisMap.set(datasetIdObject.dataSetId, count)
-              } else {
-                thisMap.set(datasetIdObject.dataSetId, 1)
-              }
-          }
-          else { console.log('no') }
-        }
-        )
-
-        console.log(`end thisMap: ${[...thisMap.entries()]}`)
-        console.log(`thisMap size - ${thisMap.size}`) 
-
-
-        // var q = DataRequestModel.find({ counter: { $gt : 0} }).sort({ counter: -1 }).limit(10);
-
-        // let singleDatasetApplications = await DataRequestModel.find({
-        //   $and: [
-        //     {
-        //       $or: [{ userId: parseInt(userId) }, { authorIds: userId }],
-        //     },
-        //     { dataSetId: { $ne: null } },
-        //   ],
-        // }).populate('dataset mainApplicant');
-
-        
-        datasetIds.exec((err, data) => {
-            if (err) return res.json({ success: false, error: err });
-            return res.json({ success: true, data: data, thisMap: thisMap });
-          });
+        return res.json({ success: true, data: sortedResults });
 
       break;
     }
   });
 
 module.exports = router
+
+const getHdrDatasetId = async() => {
+  return new Promise(async (resolve, reject) => {
+    let hdrDatasetID = Data.find(
+      {   
+          "datasetfields.publisher": "HDR UK" 
+        },
+        {
+          _id: 0,
+          datasetid: 1,
+        }
+      );
+  
+      hdrDatasetID.exec((err, data) => {
+          console.log(`hdr dataset id -${data[0].datasetid}`)
+          if (err) reject(err);
+          else resolve(data);
+        });
+    })
+}
+
+const getDarIds = async(req, selectedMonthStart, selectedMonthEnd) => {
+  return new Promise(async (resolve, reject) => {
+
+    let DarDatasetIds = DataRequestModel.find(
+      { 
+        // VALUES YOU ARE CHECKING MATCH SPECIFIED CRITERIA IE. WHERE
+        $and: [
+          {
+            $or: [
+              {
+                createdAt: {
+                  $gte: selectedMonthStart,
+                  $lt: selectedMonthEnd
+                }
+              },
+              {
+                timeStamp: {
+                  $gte: selectedMonthStart,
+                  $lt: selectedMonthEnd
+                }
+              }
+            ]
+          },
+          {
+            $or: [
+              { applicationStatus: "submitted" },
+              { applicationStatus: "approved" },
+              { applicationStatus: "rejected" }
+            ]
+          }
+        ]
+      },
+      {
+        // THE FIELDS YOU WANT TO RETURN
+        _id: 0,
+        dataSetId: 1, 
+        datasetIds: 1
+      }
+    );
+
+    DarDatasetIds.exec((err, data) => {
+      if (err) reject(err);
+      return resolve(data);
+    });
+
+  });
+}
+
+const getDarInfo = async(id) => { 
+return new Promise(async (resolve, reject) => {
+  let DarDatasetInfo = Data.find(
+    { 
+        datasetid: id  
+      },
+      {
+        _id: 0,
+        datasetid: 1,
+        name: 1, 
+        //RETURN EMBEDDED FIELD
+        "datasetfields.publisher": 1
+      }
+    );
+
+      DarDatasetInfo.exec((err, data) => {
+        if (err) reject(err);
+        else resolve(data);
+      });
+  })
+}
