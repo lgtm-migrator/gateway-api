@@ -12,7 +12,8 @@ export async function loadDataset(datasetID) {
     const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetID+'/dataClasses', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
     const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetID+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
     const phenotypesCall = await axios.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout:5000 }).catch(err => { console.log('Unable to get phenotypes '+err.message) }); 
-    const [dataset, metadataQualityList, metadataSchema, dataClass, versionLinks, phenotypesList] = await axios.all([datasetCall, metadataQualityCall, metadataSchemaCall, dataClassCall, versionLinksCall, phenotypesCall]);
+    const dataUtilityCall = await axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout:5000 }).catch(err => { console.log('Unable to get data utility '+err.message) }); 
+    const [dataset, metadataQualityList, metadataSchema, dataClass, versionLinks, phenotypesList, dataUtilityList] = await axios.all([datasetCall, metadataQualityCall, metadataSchemaCall, dataClassCall, versionLinksCall, phenotypesCall,dataUtilityCall]);
 
     var technicaldetails = [];
 
@@ -68,7 +69,8 @@ export async function loadDataset(datasetID) {
     var geographicCoverageArray = splitString(dataset.data.geographicCoverage)
     
     const metadataQuality = metadataQualityList.data.find(x => x.id === datasetID);
-    const phenotypes = phenotypesList.data[datasetMDC.id] || [];
+    const phenotypes = phenotypesList.data[datasetID] || [];
+    const dataUtility = dataUtilityList.data.find(x => x.id === datasetID);
 
     var data = new Data(); 
     data.id = uniqueID;
@@ -94,13 +96,14 @@ export async function loadDataset(datasetID) {
     data.datasetfields.statisticalPopulation = dataset.data.statisticalPopulation;
     data.datasetfields.ageBand = dataset.data.ageBand;
     data.datasetfields.contactPoint = dataset.data.contactPoint;
-    data.datasetfields.periodicity = datasetMDC.periodicity;
+    data.datasetfields.periodicity = dataset.data.periodicity;
     
     data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
     data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
     data.datasetfields.technicaldetails = technicaldetails;
     data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
     data.datasetfields.phenotypes = phenotypes;
+    data.datasetfields.datautility = dataUtility ? dataUtility : {};
 
     return await data.save();
 }
@@ -178,7 +181,7 @@ export async function loadDatasets(override) {
                     const phenotypes = phenotypesList.data[datasetMDC.id] || [];
                     
                     const metadataSchemaCall = axios.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/'+ datasetMDC.id, { timeout:5000 }).catch(err => { console.log('Unable to get metadata schema '+err.message) }); 
-                    const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses?max=100', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
+                    const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses?max=300', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
                     const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetMDC.id+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
                     const [metadataSchema, dataClass, versionLinks] = await axios.all([metadataSchemaCall, dataClassCall, versionLinksCall]);
                     
@@ -188,7 +191,7 @@ export async function loadDatasets(override) {
                         (p, dataclassMDC) => p.then(
                             () => (new Promise(resolve => {
                                 setTimeout(async function () {
-                                    const dataClassElementCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses/'+dataclassMDC.id+'/dataElements?max=100', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass element '+err.message) }); 
+                                    const dataClassElementCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses/'+dataclassMDC.id+'/dataElements?max=300', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass element '+err.message) }); 
                                     const [dataClassElement] = await axios.all([dataClassElementCall]);
                                     var dataClassElementArray = []
 

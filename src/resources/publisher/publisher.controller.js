@@ -4,6 +4,7 @@ import { Data } from '../tool/data.model';
 import _ from 'lodash';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
+import helper from '../utilities/helper.util';
 
 const datarequestController = require('../datarequest/datarequest.controller');
 const teamController = require('../team/team.controller');
@@ -106,10 +107,10 @@ module.exports = {
 				_id
 			);
 
-			let applicationStatus = ["inProgress"];
+			let applicationStatus = ['inProgress'];
 			//If the current user is not a manager then push 'Submitted' into the applicationStatus array
-			if(!isManager) {
-				applicationStatus.push("submitted");
+			if (!isManager) {
+				applicationStatus.push('submitted');
 			}
 			// 4. Find all datasets owned by the publisher (no linkage between DAR and publisher in historic data)
 			let datasetIds = await Data.find({
@@ -129,7 +130,25 @@ module.exports = {
 				],
 			})
 				.sort({ updatedAt: -1 })
-				.populate("datasets dataset mainApplicant");
+				.populate([
+					{
+						path: 'datasets dataset mainApplicant',
+					},
+					{
+						path: 'publisherObj',
+						populate: {
+							path: 'team',
+							populate: {
+								path: 'users',
+								select: 'firstname lastname',
+							},
+						},
+					},
+					{ 
+						path: 'workflow.steps.reviewers', 
+						select: 'firstname lastname' 
+					}
+				]);
 
 			if (!isManager) {
 				applications = applications.filter((app) => {
@@ -147,8 +166,10 @@ module.exports = {
 						return step.active === true;
 					});
 
-					let elapsedSteps = [...steps].slice(0, activeStepIndex+1);
-					let found = elapsedSteps.some((step) => step.reviewers.some((reviewer) => reviewer.equals(_id)));
+					let elapsedSteps = [...steps].slice(0, activeStepIndex + 1);
+					let found = elapsedSteps.some((step) =>
+						step.reviewers.some((reviewer) => reviewer._id.equals(_id))
+					);
 
 					if (found) {
 						return app;
@@ -159,7 +180,10 @@ module.exports = {
 			// 6. Append projectName and applicants
 			let modifiedApplications = [...applications]
 				.map((app) => {
-					return datarequestController.createApplicationDTO(app.toObject());
+					return datarequestController.createApplicationDTO(
+						app.toObject(),
+						_id.toString()
+					);
 				})
 				.sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -169,7 +193,7 @@ module.exports = {
 			// 7. Return all applications
 			return res
 				.status(200)
-				.json({ success: true, data: modifiedApplications, avgDecisionTime });
+				.json({ success: true, data: modifiedApplications, avgDecisionTime, canViewSubmitted: isManager });
 		} catch (err) {
 			console.error(err);
 			return res.status(500).json({
@@ -230,10 +254,22 @@ module.exports = {
 					steps,
 					applications = [],
 				} = workflow.toObject();
+
+				let formattedSteps = [...steps].reduce((arr, item) => {
+					let step = {
+						...item,
+						displaySections: [...item.sections].map(section => helper.darPanelMapper[section])
+					}
+					arr.push(step);
+					return arr;
+				}, []);
+
 				applications = applications.map((app) => {
-					const { aboutApplication, _id } = app;
-					const aboutApplicationObj = JSON.parse(aboutApplication) || {};
-					let { projectName = 'No project name' } = aboutApplicationObj;
+					let { aboutApplication, _id } = app;
+					if(typeof aboutApplication === 'string') {
+						aboutApplication = JSON.parse(aboutApplication) || {};
+					}
+					let { projectName = 'No project name' } = aboutApplication;
 					return { projectName, _id };
 				});
 				let canDelete = applications.length === 0,
@@ -244,7 +280,7 @@ module.exports = {
 					id,
 					workflowName,
 					version,
-					steps,
+					steps: formattedSteps,
 					applications,
 					appCount: applications.length,
 					canDelete,

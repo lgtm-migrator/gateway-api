@@ -49,8 +49,10 @@ router.post('/login', async (req, res) => {
 // @desc     logout user
 // @access   Private
 router.get('/logout', function (req, res) {
-	req.logout();
-	res.clearCookie('jwt');
+    req.logout();
+    for (var prop in req.cookies) {  
+        res.clearCookie(prop);
+    }
 	return res.json({ success: true });
 });
 

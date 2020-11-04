@@ -13,7 +13,13 @@ export async function createPerson({
     organisation,
     showMyOrganisation,
     tags,
-}) {
+    showSector,
+    showOrganisation,
+    showBio,
+    showLink,
+    showOrcid,
+    showDomain 
+}){
     var type = "person";
     var activeflag = "active";
     return new Promise(async (resolve, reject) => {
@@ -32,9 +38,13 @@ export async function createPerson({
                 sector,
                 organisation,
                 showMyOrganisation,
-                tags: {
-                    features: [String],
-                },
+                tags,
+                showSector,
+                showOrganisation,
+                showBio,
+                showLink,
+                showOrcid,
+                showDomain
             })
         )
     })

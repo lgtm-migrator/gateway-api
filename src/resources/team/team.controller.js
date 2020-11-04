@@ -95,12 +95,21 @@ module.exports = {
 			);
 			// 4. If the user was found check they hold the minimum required role
 			if (userMember) {
-				let { roles } = userMember;
-				if (roles.includes(role) || roles.includes(roleTypes.MANAGER)) {
+				let { roles = [] } = userMember;
+				if (roles.includes(role) || roles.includes(roleTypes.MANAGER) || role === '') {
 					return true;
 				}
 			}
 		}
 		return false;
 	},
+
+	getTeamMembersByRole: (team, role) => {
+		// Destructure members array and populated users array (populate 'users' must be included in the original Mongo query)
+		let { members = [], users = [] } = team;
+		// Get all userIds for role within team
+		let userIds = members.filter(mem => mem.roles.includes(role)).map(mem => mem.memberid.toString());
+		// return all user records for role
+		return users.filter(user => userIds.includes(user._id.toString()));
+	}
 };

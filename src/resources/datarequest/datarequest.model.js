@@ -29,8 +29,8 @@ const DataRequestSchema = new Schema({
     default: "{}"
   },
   aboutApplication: {
-    type: String,
-    default: "{}"
+    type: Object,
+    default: {}
   },
   dateSubmitted: {
     type: Date
@@ -44,7 +44,20 @@ const DataRequestSchema = new Schema({
   publisher: {
     type: String,
     default: ""
-  }
+  },
+  files: [{ 
+    name: { type: String },
+    size: { type: Number },
+    description: { type: String },
+    status: { type: String },
+    fileId: { type: String },
+    error: { type: String, default: '' },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: 'User' 
+    }
+  }],
+
 }, {
     timestamps: true,
     toJSON:     { virtuals: true },
