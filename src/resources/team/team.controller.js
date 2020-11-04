@@ -52,7 +52,7 @@ const getTeamMembers = async (req, res) => {
 			path: 'users',
 			populate: {
 				path: 'additionalInfo',
-				select: 'organisation',
+				select: 'organisation bio',
 			},
 		});
 		if (!team) {
@@ -65,7 +65,17 @@ const getTeamMembers = async (req, res) => {
 			return res.status(401).json({ success: false });
 		}
 		// 4. Format response to include user info
-		let { users } = team;
+		let users = formatTeamUsers(team);
+		// 5. Return team members
+		return res.status(200).json({ success: true, members: users });
+	} catch (err) {
+		console.error(err.message);
+		return res.status(500).json(err);
+	}
+};
+
+const formatTeamUsers = (team) => {
+	let { users = [] } = team;
 		users = users.map((user) => {
 			let {
 				firstname,
@@ -90,12 +100,7 @@ const getTeamMembers = async (req, res) => {
 				bio,
 			};
 		});
-		// 5. Return team members
-		return res.status(200).json({ success: true, members: users });
-	} catch (err) {
-		console.error(err.message);
-		return res.status(500).json(err);
-	}
+	return users;
 };
 
 /**
@@ -137,10 +142,11 @@ const addTeamMembers = async (req, res) => {
 		}
 		// 6. Filter out any existing members to avoid duplication
 		let teamObj = team.toObject();
-		newMembers = [...newMembers].filter((newMem) =>
-			!teamObj.members.some(
-				(mem) => newMem.memberid.toString() === mem.memberid.toString()
-			)
+		newMembers = [...newMembers].filter(
+			(newMem) =>
+				!teamObj.members.some(
+					(mem) => newMem.memberid.toString() === mem.memberid.toString()
+				)
 		);
 		
 		// 8. Add members to MongoDb collection using model validation
@@ -156,17 +162,26 @@ const addTeamMembers = async (req, res) => {
 			} else {
 				// 10. Issue notification to added members
 				let newMemberIds = newMembers.map((mem) => mem.memberid);
-				let newUsers = await UserModel.find({_id: newMemberIds});
+				let newUsers = await UserModel.find({ _id: newMemberIds });
 				createNotifications(
 					notificationTypes.MEMBERADDED,
 					{ newUsers },
 					team,
 					req.user
 				);
-				// 11. Return success response
+				// 11. Get updated team users including bio data
+				const updatedTeam = await TeamModel.findOne({ _id: req.params.id }).populate({
+					path: 'users',
+					populate: {
+						path: 'additionalInfo',
+						select: 'organisation bio',
+					},
+				});
+				let users = formatTeamUsers(updatedTeam);
+				// 12. Return successful response payload
 				return res.status(201).json({
 					success: true,
-					team
+					members: users,
 				});
 			}
 		});
@@ -239,7 +254,7 @@ const deleteTeamMember = async (req, res) => {
 		let updatedMembers = [...members].filter(
 			(mem) => mem.memberid.toString() !== memberid.toString()
 		);
-		if(members.length === updatedMembers.length) {
+		if (members.length === updatedMembers.length) {
 			return res.status(400).json({
 				success: false,
 				message: 'The user requested for deletion is not a member of this team',
@@ -382,7 +397,7 @@ const createNotifications = async (type, context, team, user) => {
 			// 3. Create email for reviewers
 			options = {
 				teamName,
-				role: roleTypes.REVIEWER
+				role: roleTypes.REVIEWER,
 			};
 			html = emailGenerator.generateAddedToTeam(options);
 			emailGenerator.sendEmail(
@@ -395,7 +410,7 @@ const createNotifications = async (type, context, team, user) => {
 			// 4. Create email for managers
 			options = {
 				teamName,
-				role: roleTypes.MANAGER
+				role: roleTypes.MANAGER,
 			};
 			html = emailGenerator.generateAddedToTeam(options);
 			emailGenerator.sendEmail(
