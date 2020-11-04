@@ -11,10 +11,8 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import {processFile, getFile, fileStatus} from '../utilities/cloudStorage.util';
 import _ from 'lodash';
-import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
 
-import _ from 'lodash';
 import moment from 'moment';
 import mongoose from 'mongoose';
 
