@@ -59,7 +59,7 @@ const getTeamMembers = async (req, res) => {
 			return res.status(404).json({ success: false });
 		}
 		// 2. Check the current user is a member of the team
-		let authorised = checkTeamPermissions('', team, req.user._id);
+		let authorised = checkTeamPermissions('', team.toObject(), req.user._id);
 		// 3. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
@@ -75,7 +75,7 @@ const getTeamMembers = async (req, res) => {
 				email,
 				additionalInfo: { organisation, bio },
 			} = user;
-			let userMember = members.find(
+			let userMember = team.members.find(
 				(el) => el.memberid.toString() === user._id.toString()
 			);
 			let { roles = [] } = userMember;
