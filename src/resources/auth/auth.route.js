@@ -68,7 +68,7 @@ router.get('/status', function (req, res, next) {
 			});
 		} else {
             // 1. Reformat teams array for frontend
-            let { teams } = req.user;
+            let { teams } = req.user.toObject();
             if(teams) {
                 teams = teams.map((team) => {
                     let { publisher, type, members } = team;

@@ -45,7 +45,6 @@ const applicationStatuses = {
 	WITHDRAWN: 'withdrawn',
 };
 
-
 module.exports = {
 	//GET api/v1/data-access-request
 	getAccessRequestsByUser: async (req, res) => {
