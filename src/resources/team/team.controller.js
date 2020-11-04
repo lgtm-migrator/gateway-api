@@ -142,13 +142,7 @@ const addTeamMembers = async (req, res) => {
 				(mem) => newMem.memberid.toString() === mem.memberid.toString()
 			)
 		);
-		// 7. Return error if no members to be added
-		if (newMembers.length === 0) {
-			return res.status(400).json({
-				success: false,
-				message: 'No new members could be added as they already exist in the team',
-			});
-		}
+		
 		// 8. Add members to MongoDb collection using model validation
 		team.members = [...team.members, ...newMembers];
 		// 9. Save members handling error callback if validation fails

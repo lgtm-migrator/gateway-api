@@ -49,7 +49,7 @@ router.get(
 			// select fields to use
 			{
 				$project: {
-					_id: 1,
+					_id: '$user._id',
 					id: 1,
 					firstname: 1,
 					lastname: 1,
