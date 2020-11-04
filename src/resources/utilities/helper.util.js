@@ -30,18 +30,9 @@ const _generatedNumericId = () => {
 	return parseInt(Math.random().toString().replace('0.', ''));
 }
 
-const _darPanelMapper = {
-	safesettings: 'Safe settings',
-	safeproject: 'Safe project',
-	safepeople: 'Safe people',
-	safedata: 'Safe data',
-	safeoutputs: 'Safe outputs'
-}
-
 export default {
 	censorEmail: _censorEmail,
   	arraysEqual: _arraysEqual,
 	generateFriendlyId: _generateFriendlyId,
-	generatedNumericId: _generatedNumericId,
-	darPanelMapper: _darPanelMapper
+	generatedNumericId: _generatedNumericId
 };

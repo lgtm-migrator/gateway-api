@@ -1,9 +1,9 @@
-import mongoose from 'mongoose';
 import { PublisherModel } from './publisher.model';
 import { Data } from '../tool/data.model';
 import _ from 'lodash';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
+import constants from '../utilities/constants.util';
 import helper from '../utilities/helper.util';
 
 const datarequestController = require('../datarequest/datarequest.controller');
@@ -102,7 +102,7 @@ module.exports = {
 
 			//Check if current use is a manager
 			let isManager = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				publisher.team.toObject(),
 				_id
 			);
@@ -235,7 +235,7 @@ module.exports = {
 			// 2. Check the requesting user is a member of the team
 			let { _id: userId } = req.user;
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				workflows[0].publisher.team.toObject(),
 				userId
 			);
@@ -258,7 +258,7 @@ module.exports = {
 				let formattedSteps = [...steps].reduce((arr, item) => {
 					let step = {
 						...item,
-						displaySections: [...item.sections].map(section => helper.darPanelMapper[section])
+						displaySections: [...item.sections].map(section => constants.darPanelMapper[section])
 					}
 					arr.push(step);
 					return arr;

@@ -1,10 +1,6 @@
 import { TeamModel } from './team.model';
+import constants from '../utilities/constants.util';
 import _ from 'lodash';
-
-export const roleTypes = {
-	MANAGER: 'manager',
-	REVIEWER: 'reviewer',
-}
 
 module.exports = {
 	
@@ -96,7 +92,7 @@ module.exports = {
 			// 4. If the user was found check they hold the minimum required role
 			if (userMember) {
 				let { roles = [] } = userMember;
-				if (roles.includes(role) || roles.includes(roleTypes.MANAGER) || role === '') {
+				if (roles.includes(role) || roles.includes(constants.roleTypes.MANAGER) || role === '') {
 					return true;
 				}
 			}

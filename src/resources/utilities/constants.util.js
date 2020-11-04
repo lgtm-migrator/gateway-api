@@ -1,0 +1,59 @@
+// <DAR related enums>
+const _userTypes = {
+	CUSTODIAN: 'custodian',
+	APPLICANT: 'applicant',
+};
+
+const _notificationTypes = {
+	STATUSCHANGE: 'StatusChange',
+	SUBMITTED: 'Submitted',
+	CONTRIBUTORCHANGE: 'ContributorChange',
+	STEPOVERRIDE: 'StepOverride',
+	REVIEWSTEPSTART: 'ReviewStepStart',
+	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
+	DEADLINEWARNING: 'DeadlineWarning',
+	DEADLINEPASSED: 'DeadlinePassed',
+};
+
+const _applicationStatuses = {
+	SUBMITTED: 'submitted',
+	INPROGRESS: 'inProgress',
+	INREVIEW: 'inReview',
+	APPROVED: 'approved',
+	REJECTED: 'rejected',
+	APPROVEDWITHCONDITIONS: 'approved with conditions',
+	WITHDRAWN: 'withdrawn',
+};
+
+const _amendmentModes = {
+	ADDED: 'added',
+	REMOVED: 'removed'
+};
+
+const _darPanelMapper = {
+	safesettings: 'Safe settings',
+	safeproject: 'Safe project',
+	safepeople: 'Safe people',
+	safedata: 'Safe data',
+	safeoutputs: 'Safe outputs'
+};
+
+
+// </DAR related enums>
+
+// <Team related enums>
+const _roleTypes = {
+	MANAGER: 'manager',
+	REVIEWER: 'reviewer',
+}
+
+// </DAR related enums>
+
+export default {
+	userTypes: _userTypes,
+	notificationTypes: _notificationTypes,
+	applicationStatuses: _applicationStatuses,
+	amendmentModes: _amendmentModes,
+	roleTypes: _roleTypes,
+	darPanelMapper: _darPanelMapper
+};
