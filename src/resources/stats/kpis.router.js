@@ -244,9 +244,6 @@ router.get('', async (req, res) => {
 
       let hdrDatasetID = await getHdrDatasetId()
 
-      console.log(`this hdrDatasetID - ${hdrDatasetID[0].datasetid}`)
-      console.log(`type hdrDatasetID - ${typeof hdrDatasetID[0].datasetid}`)
-
           await getDarIds(req, selectedMonthStart, selectedMonthEnd)
             .then(async (data) => {
 
@@ -315,7 +312,6 @@ const getHdrDatasetId = async() => {
       );
   
       hdrDatasetID.exec((err, data) => {
-          console.log(`hdr dataset id -${data[0].datasetid}`)
           if (err) reject(err);
           else resolve(data);
         });
