@@ -22,7 +22,8 @@ const MessageSchema = new Schema({
            'data access request',
            'data access request unlinked',
            'team',
-           'team unlinked'
+           'team unlinked',
+           'edit'
           ]
   },
   createdBy:{

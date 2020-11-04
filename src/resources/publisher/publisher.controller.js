@@ -267,9 +267,11 @@ module.exports = {
 				}, []);
 
 				applications = applications.map((app) => {
-					const { aboutApplication, _id } = app;
-					const aboutApplicationObj = JSON.parse(aboutApplication) || {};
-					let { projectName = 'No project name' } = aboutApplicationObj;
+					let { aboutApplication, _id } = app;
+					if(typeof aboutApplication === 'string') {
+						aboutApplication = JSON.parse(aboutApplication) || {};
+					}
+					let { projectName = 'No project name' } = aboutApplication;
 					return { projectName, _id };
 				});
 				let canDelete = applications.length === 0,
