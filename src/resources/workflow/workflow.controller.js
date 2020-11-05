@@ -623,7 +623,7 @@ const teamController = require('../team/team.controller');
 		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => helper.darPanelMapper[section]).join(', ');
 		const stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 		const currentDeadline = stepDeadline === 0 ? 'No deadline specified' : moment().add(stepDeadline, 'days');
-		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '', dateDeadline = '', deadlineElapsed = false, deadlineApproaching = false, daysToDeadline = 0, remainingReviewers = [], remainingReviewerUserIds = [];
+		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '', dateDeadline = '', deadlineElapsed = false, deadlineApproaching = false, remainingReviewers = [], remainingReviewerUserIds = [];
 
 		// Calculate duration for step if it is completed
 		if(completed) {
