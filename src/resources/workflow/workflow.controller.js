@@ -424,6 +424,24 @@ import mongoose from 'mongoose';
 		return stepReviewers;
 	};
 
+	const getRemainingReviewers = (Step = {}, users) => {
+		let { reviewers = [], recommendations = []} = Step;
+		let remainingActioners = reviewers.filter(
+			(reviewer) =>
+				!recommendations.some(
+					(rec) => rec.reviewer.toString() === reviewer._id.toString()
+				)
+		);
+		remainingActioners = [...users]
+			.filter((user) =>
+				remainingActioners.some(
+					(actioner) => actioner._id.toString() === user._id.toString()
+				)
+			);
+
+		return remainingActioners;
+	}
+
 	const getActiveStepStatus = (activeStep, users = [], userId = '') => {
 		let reviewStatus = '',
 			deadlinePassed = false,
@@ -604,28 +622,32 @@ import mongoose from 'mongoose';
 		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => helper.darPanelMapper[section]).join(', ');
 		const stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 		const currentDeadline = stepDeadline === 0 ? 'No deadline specified' : moment().add(stepDeadline, 'days');
-		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '', deadlineElapsed = false, deadlineApproaching = false, daysToDeadline = 0;
+		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '', dateDeadline = '', deadlineElapsed = false, deadlineApproaching = false, remainingReviewers = [], remainingReviewerUserIds = [];
 
 		// Calculate duration for step if it is completed
-		if(completed)
-		if(!_.isEmpty(startDateTime.toString()) && !_.isEmpty(endDateTime.toString())) {
-			duration = moment(endDateTime).diff(moment(startDateTime), 'days');
-			duration = duration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
+		if(completed) {
+			if(!_.isEmpty(startDateTime.toString()) && !_.isEmpty(endDateTime.toString())) {
+				duration = moment(endDateTime).diff(moment(startDateTime), 'days');
+				duration = duration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
+			}
 		} else {
 			//If related step is not completed, check if deadline has elapsed or is approaching
 			if(!_.isEmpty(startDateTime.toString()) && stepDeadline != 0) {
-				let deadline = moment(startDateTime).add(stepDeadline, 'days');
-				deadlineElapsed = moment().isAfter(deadline, 'second');
+				dateDeadline = moment(startDateTime).add(stepDeadline, 'days');
+				deadlineElapsed = moment().isAfter(dateDeadline, 'second');
 
 				// If deadline is not elapsed, check if it is within SLA period
 				if(!deadlineElapsed && reminderOffset !== 0) {
-					let deadlineReminderDate = deadline.subtract(reminderOffset, 'days');
+					let deadlineReminderDate = moment(dateDeadline).subtract(reminderOffset, 'days');
 					deadlineApproaching = moment().isAfter(deadlineReminderDate, 'second');
 				}
-
-				// Get number of days remaining/passed deadline
-				let daysDiff = deadline.diff(moment(), 'days');
-				daysToDeadline = daysDiff < 0 ? `${Math.abs(daysDiff)} days passed the deadline` : `${daysDiff} days until the deadline`;
+			}
+			// Find reviewers of the current incomplete phase
+			let accessRecordObj = accessRecord.toObject();
+			if(_.has(accessRecordObj, 'publisherObj.team.users')){
+				let { publisherObj: { team: { users = [] } } } = accessRecordObj;
+				remainingReviewers = getRemainingReviewers(steps[relatedStepIndex], users);
+				remainingReviewerUserIds = [...remainingReviewers].map((user) => user.id);
 			}
 		}
 
@@ -663,9 +685,11 @@ import mongoose from 'mongoose';
 			nextReviewerNames, 
 			nextReviewSections, 
 			nextDeadline, 
+			dateDeadline,
 			deadlineElapsed,
-			deadlineApproaching, 
-			daysToDeadline 
+			deadlineApproaching,
+			remainingReviewers,
+			remainingReviewerUserIds
 		};
 	};
 
