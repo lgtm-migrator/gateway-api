@@ -22,13 +22,24 @@ router.get('/:collectionID', async (req, res) => {
 
     { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }  
 
-  ]);
+  ]); 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
     return res.json({ success: true, data: data });
   });
 });
 
+router.get('/datasetid/:datasetID', async (req, res) => {  
+  var q = Collections.aggregate([
+      { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.datasetID } } }, {publicflag: true}, {activeflag: "active"} ] } },
+      { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }  
+  ]);
+
+  q.exec((err, data) => {
+    if (err) return res.json({ success: false, error: err });
+    return res.json({ success: true, data: data });
+  });
+});
 
 router.put('/edit', 
   passport.authenticate('jwt'),
