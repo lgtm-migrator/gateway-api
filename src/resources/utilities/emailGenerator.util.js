@@ -246,7 +246,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of submission</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment().format(
-													'D MMM YYYY HH:mm'
+													'D MMM YYYY'
 												)}</td>
                       </tr>
                       <tr>
@@ -545,7 +545,7 @@ const _generateDARStatusChangedEmail = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateSubmitted
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                     </table>
                   </td>
@@ -703,7 +703,7 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Workflow</td>
@@ -722,11 +722,11 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase commenced</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(startDateTime).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(startDateTime).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase completed</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(endDateTime).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(endDateTime).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase duration</td>
@@ -838,7 +838,7 @@ const _generateNewReviewPhaseEmail = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateSubmitted
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Workflow</td>
@@ -889,7 +889,8 @@ const _generateReviewDeadlineWarning = (options) => {
 		stepName,
 		reviewSections,
 		reviewerNames,
-		dateSubmitted,
+    dateSubmitted,
+    dateDeadline
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -902,12 +903,14 @@ const _generateReviewDeadlineWarning = (options) => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                      Data access request application review phase approaching deadline in ${days} days
+                      The deadline is approaching for a Data Access Request application you are reviewing
                     </th>
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     The following data access request application is approaching the review deadline.
+                     The following data access request application is approaching the review deadline of ${moment(
+                      dateDeadline
+                    ).format('D MMM YYYY')}.
                     </th>
                   </tr>
                 </thead>
@@ -939,7 +942,7 @@ const _generateReviewDeadlineWarning = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateSubmitted
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review phase</td>
@@ -957,7 +960,7 @@ const _generateReviewDeadlineWarning = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateDeadline
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                     </table>
                   </td>
@@ -982,7 +985,8 @@ const _generateReviewDeadlinePassed = (options) => {
 		stepName,
 		reviewSections,
 		reviewerNames,
-		dateSubmitted,
+    dateSubmitted,
+    dateDeadline
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -1032,7 +1036,7 @@ const _generateReviewDeadlinePassed = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateSubmitted
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review phase</td>
@@ -1050,7 +1054,7 @@ const _generateReviewDeadlinePassed = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateDeadline
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                     </table>
                   </td>
@@ -1118,7 +1122,7 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Workflow</td>
@@ -1137,11 +1141,11 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase commenced</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(startDateTime).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(startDateTime).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase completed</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(endDateTime).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(endDateTime).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase duration</td>
