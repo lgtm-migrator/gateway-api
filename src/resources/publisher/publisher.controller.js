@@ -1,13 +1,15 @@
 import mongoose from 'mongoose';
+import _ from 'lodash';
+
 import { PublisherModel } from './publisher.model';
 import { Data } from '../tool/data.model';
-import _ from 'lodash';
 import { DataRequestModel } from '../datarequest/datarequest.model';
-import { WorkflowModel } from '../workflow/workflow.model';
+import { WorkflowModel } from '../workflow/workflow.model'
+import teamController from '../team/team.controller';
+
 import helper from '../utilities/helper.util';
 
 const datarequestController = require('../datarequest/datarequest.controller');
-const teamController = require('../team/team.controller');
 
 module.exports = {
 	// GET api/v1/publishers/:id
