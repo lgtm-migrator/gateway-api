@@ -72,51 +72,10 @@ const addCourse = async (req, res) => {
       if(!newCourse) 
         reject(new Error(`Can't persist data object to DB.`));
 
-      /* let message = new MessagesModel();
-      message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-      message.messageTo = 0;
-      message.messageObjectID = course.id;
-      message.messageType = 'add';
-      message.messageDescription = `Approval needed: new ${course.type} added ${course.title}`
-      message.messageSent = Date.now();
-      message.isRead = false;
-      let newMessageObj = await message.save();
-      if(!newMessageObj)
-        reject(new Error(`Can't persist message to DB.`));
-
-      // 1. Generate URL for linking tool from email
-      const courseLink = process.env.homeURL + '/' + course.type + '/' + course.id 
-
-      // 2. Query Db for all admins who have opted in to email updates
-      var q = UserModel.aggregate([
-        // Find all users who are admins
-        { $match: { role: 'Admin' } },
-        // Perform lookup to check opt in/out flag in tools schema
-        { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
-        // Filter out any user who has opted out of email notifications
-        { $match: { 'tool.emailNotifications': true } },
-        // Reduce response payload size to required fields
-        { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
-      ]);
-
-      // 3. Use the returned array of email recipients to generate and send emails with SendGrid
-      q.exec((err, emailRecipients) => {
-        if (err) {
-          return new Error({ success: false, error: err });
-        }
-        emailGenerator.sendEmail(
-          emailRecipients,
-          `${hdrukEmail}`,
-          `A new ${course.type} has been added and is ready for review`,
-          `Approval needed: new ${course.type} ${course.name} <br /><br />  ${courseLink}`
-        );
-      });
-
-      if (course.type === 'course') {
-          //await sendEmailNotificationToAuthors(course, course.creator);
-      }
-      //await storeNotificationsForAuthors(course, course.creator);
- */
+        await createMessage(course.creator, course.id, course.title, course.type, 'add');  
+        await createMessage(0, course.id, course.title, course.type, 'add');
+        // Send email notification of status update to admins and authors who have opted in
+        await sendEmailNotifications(course, 'add');  
       resolve(newCourse);
     })
 };
@@ -177,16 +136,17 @@ const editCourse = async (req, res) => {
         if (err) {
           reject(new Error(`Failed to update.`));
         }
-      }).then((tool) => {
-        if(tool == null){
+      }).then(async (course) => {
+        if(course == null){
           reject(new Error(`No record found with id of ${id}.`));
         } 
-        else if (req.body.type === 'tool') {
-          // Send email notification of update to all authors who have opted in to updates
-          //sendEmailNotificationToAuthors(data, toolCreator);
-          //storeNotificationsForAuthors(data, toolCreator);
-        }
-          resolve(tool);
+        
+        await createMessage(course.creator, id, course.title, course.type, 'edit');  
+        await createMessage(0, id, course.title, course.type, 'edit');
+        // Send email notification of status update to admins and authors who have opted in
+        await sendEmailNotifications(course, 'edit');  
+        
+        resolve(course);
       });
     })
   };
@@ -198,8 +158,8 @@ const editCourse = async (req, res) => {
         if (err) reject(err);
 
         
-      }).then((tool) => {
-        if(tool == null){
+      }).then((course) => {
+        if(course == null){
           reject(`No Content`);
         }
         else{
@@ -248,7 +208,6 @@ const editCourse = async (req, res) => {
     return new Promise(async (resolve, reject) => {
       //let startIndex = 0;
       //let limit = 1000;
-      let typeString = "";
       let idString = req.user.id;
   
       /* if (req.query.startIndex) {
@@ -257,16 +216,13 @@ const editCourse = async (req, res) => {
       if (req.query.limit) {
         limit = req.query.limit;
       } */
-      if (req.params.type) {
-        typeString = req.params.type;
-      }
       if (req.query.id) {
         idString = req.query.id;
       }
   
       let query = Course.aggregate([
-        { $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
-        { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "creator" } },
+        { $match: { $and: [{ type: 'course' }, { creator: parseInt(idString) }] } },
+        { $lookup: { from: "tools", localField: "creator", foreignField: "id", as: "persons" } },
         { $sort: { updatedAt : -1}}
       ]);//.skip(parseInt(startIndex)).limit(parseInt(maxResults));
       query.exec((err, data) => {
@@ -282,24 +238,21 @@ const editCourse = async (req, res) => {
         const { activeflag, rejectionReason } = req.body;
         const id = req.params.id;
       
-        let tool = await Course.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
-        if (!tool) {
-          reject(new Error('Tool not found'));
+        let course = await Course.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
+        if (!course) {
+          reject(new Error('Course not found'));
         }
   
-        if (tool.authors) {
-          tool.authors.forEach(async (authorId) => {
-            await createMessage(authorId, id, tool.name, tool.type, activeflag, rejectionReason);
-          });
-        }
-        await createMessage(0, id, tool.name, tool.type, activeflag, rejectionReason);
+        
+        await createMessage(course.creator, id, course.title, course.type, activeflag, rejectionReason);
+        await createMessage(0, id, course.title, course.type, activeflag, rejectionReason);
   
-        if (!tool.discourseTopicId && tool.activeflag === 'active') {
-          await createDiscourseTopic(tool);
+        if (!course.discourseTopicId && course.activeflag === 'active') {
+          await createDiscourseTopic(course);
         }
         
         // Send email notification of status update to admins and authors who have opted in
-        await sendEmailNotifications(tool, activeflag, rejectionReason);
+        await sendEmailNotifications(course, activeflag, rejectionReason);
   
         resolve(id);
         
@@ -313,7 +266,7 @@ const editCourse = async (req, res) => {
   async function createMessage(authorId, toolId, toolName, toolType, activeflag, rejectionReason) {
     let message = new MessagesModel();
     const toolLink = process.env.homeURL + '/' + toolType + '/' + toolId;
-  
+    
     if (activeflag === 'active') {
       message.messageType = 'approved';
       message.messageDescription = `Your ${toolType} ${toolName} has been approved and is now live ${toolLink}`
@@ -325,6 +278,14 @@ const editCourse = async (req, res) => {
       message.messageDescription = `Your ${toolType} ${toolName} has been rejected ${toolLink}`
       message.messageDescription = (rejectionReason) ? message.messageDescription.concat(` Rejection reason: ${rejectionReason}`) : message.messageDescription
     }
+    else if (activeflag === 'add') {
+        message.messageType = 'add';
+        message.messageDescription = `Your ${toolType} ${toolName} has been submitted for approval`
+      }
+    else if (activeflag === 'edit') {
+        message.messageType = 'edit';
+        message.messageDescription = `Your ${toolType} ${toolName} has been updated`
+      }
     message.messageID = parseInt(Math.random().toString().replace('0.', ''));
     message.messageTo = authorId;
     message.messageObjectID = toolId;
@@ -350,6 +311,14 @@ const editCourse = async (req, res) => {
       subject = `Your ${tool.type} ${tool.name} has been rejected`
       html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`
     }
+    else if (activeflag === 'add') {
+        subject = `Your ${tool.type} ${tool.name} has been submitted for approval`
+        html = `Your ${tool.type} ${tool.name} has been submitted for approval<br /><br /> ${toolLink}`
+      }
+      else if (activeflag === 'edit') {
+        subject = `Your ${tool.type} ${tool.name} has been updated`
+        html = `Your ${tool.type} ${tool.name} has been updated<br /><br /> ${toolLink}`
+      }
     
     // 3. Find all authors of the tool who have opted in to email updates
     var q = UserModel.aggregate([
@@ -379,12 +348,12 @@ const editCourse = async (req, res) => {
 
 async function sendEmailNotificationToAuthors(tool, toolOwner) {
     // 1. Generate tool URL for linking user from email
-    const toolLink = process.env.homeURL + '/tool/' + tool.id
+    const toolLink = process.env.homeURL + '/course/' + tool.id
     
     // 2. Find all authors of the tool who have opted in to email updates
     var q = UserModel.aggregate([
       // Find all authors of this tool
-      { $match: { id: { $in: tool.authors } } },
+      { $match: { id: tool.creator } },
       // Perform lookup to check opt in/out flag in tools schema
       { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
       // Filter out any user who has opted out of email notifications
@@ -412,14 +381,14 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
   
     //normal user
     var toolCopy = JSON.parse(JSON.stringify(tool));
+    var listToEmail = [toolCopy.creator];
     
-    toolCopy.authors.push(0);
-    asyncModule.eachSeries(toolCopy.authors, async (author) => {
-  
+    asyncModule.eachSeries(listToEmail, async (author) => {
+        const user = await UserModel.findById(author)
       let message = new MessagesModel();
       message.messageType = 'author';
       message.messageSent = Date.now();
-      message.messageDescription = `${toolOwner.name} added you as an author of the ${toolCopy.type} ${toolCopy.name}`
+      message.messageDescription = `${toolOwner.name} added you as an author of the ${toolCopy.type} ${toolCopy.title}`
       message.isRead = false;
       message.messageObjectID = toolCopy.id;
       message.messageID = parseInt(Math.random().toString().replace('0.', ''));

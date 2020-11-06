@@ -92,6 +92,6 @@ router.post('/:id', passport.authenticate('jwt'), datarequestController.submitAc
 // @route   POST api/v1/data-access-request/:id/notify
 // @desc    External facing endpoint to trigger notifications for Data Access Request workflows
 // @access  Private
-router.post('/:id', passport.authenticate('jwt'), datarequestController.notifyAccessRequestById);
+router.post('/:id/notify', passport.authenticate('jwt'), datarequestController.notifyAccessRequestById);
 
 module.exports = router;

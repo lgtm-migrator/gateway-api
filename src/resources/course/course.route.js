@@ -9,6 +9,7 @@ import {
   editCourse,
   setStatus,
   getCourseAdmin,
+  getCourse
 } from './course.repository';
 const router = express.Router();
 
@@ -67,7 +68,7 @@ router.get(
           return res.json({ success: false, err });
         });
     } else if (role === ROLES.Creator) {
-      await getCourseTools(req)
+      await getCourse(req)
         .then((data) => {
           return res.json({ success: true, data });
         })

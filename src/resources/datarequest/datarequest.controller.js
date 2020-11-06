@@ -158,7 +158,7 @@ module.exports = {
 					...accessRecord.toObject(),
 					jsonSchema: JSON.parse(accessRecord.jsonSchema),
 					questionAnswers: JSON.parse(accessRecord.questionAnswers),
-					aboutApplication: JSON.parse(accessRecord.aboutApplication),
+					aboutApplication: typeof accessRecord.aboutApplication === 'string' ? JSON.parse(accessRecord.aboutApplication) : accessRecord.aboutApplication,
 					datasets: accessRecord.datasets,
 					readOnly,
 					userType,
@@ -237,8 +237,8 @@ module.exports = {
 					jsonSchema,
 					publisher,
 					questionAnswers: '{}',
-					aboutApplication: '{}',
-					applicationStatus: constants.applicationStatuses.INPROGRESS,
+					aboutApplication: {},
+					applicationStatus: applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
 				const newApplication = await record.save();
@@ -262,7 +262,7 @@ module.exports = {
 					...data,
 					jsonSchema: JSON.parse(data.jsonSchema),
 					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: JSON.parse(data.aboutApplication),
+					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: constants.userTypes.APPLICANT,
@@ -339,8 +339,8 @@ module.exports = {
 					jsonSchema,
 					publisher,
 					questionAnswers: '{}',
-					aboutApplication: '{}',
-					applicationStatus: constants.applicationStatuses.INPROGRESS,
+					aboutApplication: {},
+					applicationStatus: applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
 				const newApplication = await record.save();
@@ -363,7 +363,7 @@ module.exports = {
 					...data,
 					jsonSchema: JSON.parse(data.jsonSchema),
 					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: JSON.parse(data.aboutApplication),
+					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: constants.userTypes.APPLICANT,
@@ -389,8 +389,10 @@ module.exports = {
 			let updateObj;
 			let { aboutApplication, questionAnswers, jsonSchema = '' } = req.body;
 			if (aboutApplication) {
-				let parsedObj = JSON.parse(aboutApplication);
-				let updatedDatasetIds = parsedObj.selectedDatasets.map(
+				if(typeof aboutApplication === 'string') {
+					aboutApplication = JSON.parse(aboutApplication)
+				}
+				let updatedDatasetIds = aboutApplication.selectedDatasets.map(
 					(dataset) => dataset.datasetId
 				);
 				updateObj = { aboutApplication, datasetIds: updatedDatasetIds };
@@ -1475,6 +1477,11 @@ module.exports = {
 				.json({ status: 'error', message: 'Application not found.' });
 		}
 		let { workflow } = accessRecord;
+		if (_.isEmpty(workflow)) {
+			return res
+				.status(400)
+				.json({ status: 'error', message: 'There is no workflow attached to this application.' });
+		}
 		let activeStepIndex = workflow.steps.findIndex((step) => {
 			return step.active === true;
 		});
@@ -1491,7 +1498,10 @@ module.exports = {
 
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
-		let aboutApplication = JSON.parse(accessRecord.aboutApplication);
+		let { aboutApplication } = accessRecord;
+		if(typeof aboutApplication === 'string') {
+			aboutApplication = JSON.parse(accessRecord.aboutApplication);
+		} 
 		let { projectName } = aboutApplication;
 		let { projectId, _id, workflow = {}, dateSubmitted = '' } = accessRecord;
 		if (_.isEmpty(projectId)) {
@@ -1514,11 +1524,11 @@ module.exports = {
 		let { firstname, lastname } = user;
 		// Instantiate default params
 		let custodianManagers = [],
+			managerUserIds = [],
 			emailRecipients = [],
 			options = {},
 			html = '',
-			authors = [];
-
+			authors = []
 		// Get applicants from 5 Safes form, using main applicant as fall back for single dataset applications
 		let answers = JSON.parse(accessRecord.questionAnswers);
 		let applicants = module.exports.extractApplicantNames(answers).join(', ');
@@ -1543,6 +1553,9 @@ module.exports = {
 			stepReviewers = [],
 			stepReviewerUserIds = [],
 			currentDeadline = '',
+			remainingReviewers = [],
+			remainingReviewerUserIds = [],
+			dateDeadline
 		} = context;
 
 		switch (type) {
@@ -1849,16 +1862,16 @@ module.exports = {
 					accessRecord.publisherObj.team,
 					constants.roleTypes.MANAGER
 				);
-				let managerUserIds = custodianManagers.map((user) => user.id);
+				managerUserIds = custodianManagers.map((user) => user.id);
 
-				// 1. Create manager notifications
+				// 2. Create manager notifications
 				notificationBuilder.triggerNotificationMessage(
 					managerUserIds,
 					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
 					'data access request',
 					accessRecord._id
 				);
-				// 2. Create manager emails
+				// 3. Create manager emails
 				options = {
 					id: accessRecord._id,
 					projectName,
@@ -1879,17 +1892,15 @@ module.exports = {
 					false
 				);
 				break;
-			case constants.notificationTypes.DEADLINEWARNING:
-				// 1. Get all reviewers who have not yet voted on active phase
-
-				// 2. Create reviewer notifications
+			case notificationTypes.DEADLINEWARNING:
+				// 1. Create reviewer notifications
 				await notificationBuilder.triggerNotificationMessage(
-					stepReviewerUserIds,
+					remainingReviewerUserIds,
 					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					'data access request',
 					accessRecord._id
 				);
-				// 3. Create reviewer emails
+				// 2. Create reviewer emails
 				options = {
 					id: accessRecord._id,
 					projectName,
@@ -1903,24 +1914,31 @@ module.exports = {
 					reviewSections,
 					reviewerNames,
 					nextStepName,
+					dateDeadline
 				};
 				html = await emailGenerator.generateReviewDeadlineWarning(options);
 				await emailGenerator.sendEmail(
-					stepReviewers,
+					remainingReviewers,
 					hdrukEmail,
 					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					html,
 					false
 				);
 				break;
-			case constants.notificationTypes.DEADLINEPASSED:
-				// 1. Get all reviewers who have not yet voted on active phase
+			case notificationTypes.DEADLINEPASSED:
+				// 1. Get all managers
+				custodianManagers = teamController.getTeamMembersByRole(
+					accessRecord.publisherObj.team,
+					teamController.roleTypes.MANAGER
+				);
+				managerUserIds = custodianManagers.map((user) => user.id);
+				// 2. Combine managers and reviewers remaining
+				let deadlinePassedUserIds = [...remainingReviewerUserIds, ...managerUserIds];
+				let deadlinePassedUsers = [...remainingReviewers, ...custodianManagers];
 
-				// 2. Get all managers
-				
 				// 3. Create notifications
 				await notificationBuilder.triggerNotificationMessage(
-					stepReviewerUserIds,
+					deadlinePassedUserIds,
 					`The deadline for a Data Access Request review phase has now elapsed`,
 					'data access request',
 					accessRecord._id
@@ -1939,10 +1957,11 @@ module.exports = {
 					reviewSections,
 					reviewerNames,
 					nextStepName,
+					dateDeadline
 				};
 				html = await emailGenerator.generateReviewDeadlinePassed(options);
 				await emailGenerator.sendEmail(
-					stepReviewers,
+					deadlinePassedUsers,
 					hdrukEmail,
 					`The deadline for a Data Access Request review phase has now elapsed`,
 					html,
@@ -2138,8 +2157,10 @@ module.exports = {
 		let { aboutApplication, questionAnswers } = app;
 
 		if (aboutApplication) {
-			let aboutObj = JSON.parse(aboutApplication);
-			({ projectName } = aboutObj);
+			if(typeof aboutApplication === 'string') {
+				aboutApplication = JSON.parse(aboutApplication);
+			}
+			({ projectName } = aboutApplication);
 		}
 		if (_.isEmpty(projectName)) {
 			projectName = `${publisher} - ${name}`;
