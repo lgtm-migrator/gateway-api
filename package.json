@@ -48,7 +48,12 @@
     "yamljs": "^0.3.0"
   },
   "devDependencies": {
-    "jest": "^26.0.1",
+    "@babel/preset-env": "^7.12.1",
+    "@shelf/jest-mongodb": "^1.2.3",
+    "babel-jest": "^26.6.3",
+    "jest": "^26.6.3",
+    "mongo-unit": "^2.0.1",
+    "mongodb-memory-server": "^6.9.2",
     "nodemon": "^2.0.3",
     "supertest": "^4.0.2"
   },
@@ -57,7 +62,7 @@
     "server": "nodemon index.js",
     "debug": "nodemon --inspect=0.0.0.0:3001 index.js",
     "build": "",
-    "test": "jest",
+    "test": "jest --runInBand -- product.test.js",
     "eject": "",
     "snyk-protect": "snyk protect",
     "prepublish": "npm run snyk-protect"

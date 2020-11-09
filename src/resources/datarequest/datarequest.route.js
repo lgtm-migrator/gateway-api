@@ -3,7 +3,7 @@ import passport from 'passport';
 import _ from 'lodash';
 import multer from 'multer';
 import { param } from 'express-validator';
-import amendmentController from './amendment/amendment.controller';
+const amendmentController = require('./amendment/amendment.controller');
 const datarequestController = require('./datarequest.controller');
 const fs = require('fs');
 const path = './tmp';

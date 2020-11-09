@@ -1,4 +1,4 @@
-const accessRecord = {
+module.exports = {
 	applicationStatus: 'inReview',
 	jsonSchema: {
 		pages: [
@@ -255,6 +255,10 @@ const accessRecord = {
 		{
 			dateCreated: '2020-10-03T11:14:01.843+00:00',
 			createdBy: '5f03530178e28143d7af2eb1',
+			dateReturned: '2020-10-04T11:14:01.843+00:00',
+			returnedBy: '5f03530178e28143d7af2eb1',
+			dateSubmitted: '2020-10-05T11:14:01.843+00:00',
+			submittedBy: '5f03530178e28143d7af2eb1',
 			questionAnswers: {
 				firstName: {
 					questionSetId: 'applicant',
@@ -263,18 +267,20 @@ const accessRecord = {
 					requestedBy: 'Robin Kavanagh',
 					requestedByUser: '5f03530178e28143d7af2eb1',
 					dateRequested: '2020-11-03T11:14:01.840+00:00',
-        },
-        lastName: {
+					answer: 'test answer'
+				},
+				lastName: {
 					questionSetId: 'applicant',
 					requested: true,
 					reason: 'test reason',
 					requestedBy: 'Robin Kavanagh',
 					requestedByUser: '5f03530178e28143d7af2eb1',
 					dateRequested: '2020-11-03T11:14:01.840+00:00',
+					answer: 'test answer 2'
 				},
 			},
-    },
-    {
+		},
+		{
 			dateCreated: '2020-11-03T11:14:01.843+00:00',
 			createdBy: '5f03530178e28143d7af2eb1',
 			questionAnswers: {
@@ -287,10 +293,6 @@ const accessRecord = {
 					dateRequested: '2020-11-03T11:14:01.840+00:00',
 				},
 			},
-    }
+		},
 	],
-};
-
-module.exports = {
-	accessRecord,
 };

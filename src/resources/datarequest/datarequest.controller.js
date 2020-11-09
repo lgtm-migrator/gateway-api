@@ -12,8 +12,8 @@ import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
 import moment from 'moment';
 import mongoose from 'mongoose';
-import amendmentController from './amendment/amendment.controller';
 
+const amendmentController = require('./amendment/amendment.controller');
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 const teamController = require('../team/team.controller');
 const notificationBuilder = require('../utilities/notificationBuilder');

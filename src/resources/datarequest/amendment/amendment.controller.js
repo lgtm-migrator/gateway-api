@@ -2,9 +2,9 @@ import { DataRequestModel } from '../datarequest.model';
 import { AmendmentModel } from './amendment.model';
 import constants from '../../utilities/constants.util';
 import _ from 'lodash';
-import { json } from 'body-parser';
 
 const teamController = require('../../team/team.controller');
+const mongoose = require('mongoose')
 
 //POST api/v1/data-access-request/:id/amendments
 const setAmendment = async (req, res) => {
@@ -110,7 +110,7 @@ const addAmendment = (accessRecord, questionId, questionSetId, reason, user) => 
 		}),
 	};
 	// 2. Find the index of the latest amendment iteration of the DAR
-	let index = getLatestAmendmentIteration(accessRecord);
+	let index = getLatestAmendmentIterationIndex(accessRecord);
 	// 3. If index is not -1, we need to append the new amendment to existing iteration object otherwise create a new one
 	if (index !== -1) {
 		accessRecord.amendmentIterations[index].questionAnswers = {
@@ -132,7 +132,7 @@ const addAmendment = (accessRecord, questionId, questionSetId, reason, user) => 
 
 const removeAmendment = (accessRecord, questionId) => {
 	// 1. Find the index of the latest amendment amendmentIteration of the DAR
-	let index = getLatestAmendmentIteration(accessRecord);
+	let index = getLatestAmendmentIterationIndex(accessRecord);
 	// 2. Remove the key and associated object from the current iteration if it exists
 	if (index !== -1) {
 		accessRecord.amendmentIterations[index].questionAnswers = _.omit(
@@ -142,7 +142,7 @@ const removeAmendment = (accessRecord, questionId) => {
 	}
 };
 
-const getLatestAmendmentIteration = (accessRecord) => {
+const getLatestAmendmentIterationIndex = (accessRecord) => {
 	// 1. Find and return index of latest amendment amendmentIteration that has not been returned to applicants
 	let index = -1;
 	if (!_.isUndefined(accessRecord.amendmentIterations)) {
@@ -221,13 +221,13 @@ const getLatestAmendmentIteration = (amendmentIterations) => {
 	 })[0];
 	 // 3. Return the correct object
 	return mostRecentObject;
-}
+};
 
 const removeAmendmentAnswers = (iteration) => {
 	// 1. Loop through each question answer by key (questionId)
 	Object.keys(iteration.questionAnswers).forEach((key) => {
-		// 2. If the key has an answer, remove it
-		if(key.includes(answer)) {
+		// 2. If the key object has an answer, remove it
+		if(iteration.questionAnswers[key].hasOwnProperty('answer')) {
 			delete iteration.questionAnswers[key].answer;
 		}
 	});
@@ -235,11 +235,13 @@ const removeAmendmentAnswers = (iteration) => {
 	return iteration;
 };
 
-export default {
+module.exports = {
 	setAmendment: setAmendment,
 	addAmendment: addAmendment,
 	removeAmendment: removeAmendment,
+	removeAmendmentAnswers: removeAmendmentAnswers,
 	getLatestAmendmentIteration: getLatestAmendmentIteration,
+	getLatestAmendmentIterationIndex: getLatestAmendmentIterationIndex,
 	getAmendmentIterationParty: getAmendmentIterationParty,
 	injectAmendments: injectAmendments
 };
