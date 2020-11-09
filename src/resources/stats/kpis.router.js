@@ -14,70 +14,70 @@ router.get('', async (req, res) => {
 
     var selectedMonthEnd = new Date(req.query.selectedDate);
     selectedMonthEnd.setMonth(selectedMonthEnd.getMonth()+1);
-    selectedMonthEnd.setDate(0);
+    selectedMonthEnd.setDate(0); 
     selectedMonthEnd.setHours(23,59,59,999);
 
     switch (req.query.kpi) {
       case 'technicalmetadata':
         var totalDatasetsQuery = [
-					{
-						$facet: {
-							TotalDataSets: [
-								{
-									$match: {
-										$and: [
-											{ activeflag: "active" },
-											{ type: "dataset" },
-											{ "datasetfields.publisher": { $ne: "HDR UK" } },
-										],
-									},
-								},
-								{ $count: "TotalDataSets" },
-							],
-							TotalMetaData: [
-								{
-									$match: {
-										activeflag: "active",
-										type: "dataset",
-										"datasetfields.technicaldetails": {
-											$exists: true,
-											$not: {
-												$size: 0,
-											},
-										},
-									},
-								},
-								{
-									$count: "TotalMetaData",
-								},
-							],
-						},
-					},
-				];
+          {
+            $facet: {
+              TotalDataSets: [
+                {
+                  $match: {
+                    $and: [
+                      { activeflag: "active" },
+                      { type: "dataset" },
+                      { "datasetfields.publisher": { $ne: "HDR UK" } },
+                    ],
+                  },
+                },
+                { $count: "TotalDataSets" },
+              ],
+              TotalMetaData: [
+                {
+                  $match: {
+                    activeflag: "active",
+                    type: "dataset",
+                    "datasetfields.technicaldetails": {
+                      $exists: true,
+                      $not: {
+                        $size: 0,
+                      },
+                    },
+                  },
+                },
+                {
+                  $count: "TotalMetaData",
+                },
+              ],
+            },
+          },
+        ];
 
-				var q = Data.aggregate(totalDatasetsQuery);
+        var q = Data.aggregate(totalDatasetsQuery);
 
-				var result;
-				q.exec((err, dataSets) => {
-					if (err) return res.json({ success: false, error: err });
+        var result;
+        q.exec((err, dataSets) => {
+          if (err) return res.json({ success: false, error: err });
 
-					if (typeof dataSets[0].TotalDataSets[0] === "undefined") {
-						dataSets[0].TotalDataSets[0].TotalDataSets = 0;
-					}
-					if (typeof dataSets[0].TotalMetaData[0] === "undefined") {
-						dataSets[0].TotalMetaData[0].TotalMetaData = 0;
-					}
+          if (typeof dataSets[0].TotalDataSets[0] === "undefined") {
+            dataSets[0].TotalDataSets[0].TotalDataSets = 0;
+          }
+          if (typeof dataSets[0].TotalMetaData[0] === "undefined") {
+            dataSets[0].TotalMetaData[0].TotalMetaData = 0;
+          }
 
-					result = res.json({
-						success: true,
-						data: {
-							totalDatasets: dataSets[0].TotalDataSets[0].TotalDataSets,
-							datasetsMetadata: dataSets[0].TotalMetaData[0].TotalMetaData,
-						},
-					});
-				});
+          result = res.json({
+            success: true,
+            data: {
+              totalDatasets: dataSets[0].TotalDataSets[0].TotalDataSets,
+              datasetsMetadata: dataSets[0].TotalMetaData[0].TotalMetaData,
+            },
+          });
+        });
 
-				return result;
+        return result;
       break;
 
       case 'searchanddar':
@@ -110,14 +110,22 @@ router.get('', async (req, res) => {
                 // some older fields only have timeStamp --> only timeStamp in the production db
                 //checking for both currently
                 { $match: {
-                  $and: [{ 
-                    $or: [ 
-                      { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} },
-                      { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } ]
-                    },
-                    {
-                      "applicationStatus": "submitted"
-                    }]
+                    $and: [
+                      { 
+                        $or: [  
+                          { "createdAt": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} },
+                          { "timeStamp": {"$gte": selectedMonthStart, "$lt": selectedMonthEnd} } 
+                        ] 
+                      },
+                      {
+                        $or: [
+                          {"applicationStatus":"submitted"}, 
+                          {"applicationStatus":"approved"}, 
+                          {"applicationStatus":"rejected"},
+                          {"applicationStatus":"approved with conditions"}
+                        ]
+                      }
+                    ] 
                   }
                 },
                 {
@@ -211,7 +219,7 @@ router.get('', async (req, res) => {
 
         timeSeries.forEach(data => {
         
-            data.points.forEach(data => {
+            data.points.forEach(data => { 
               dailyUptime.push(data.value.doubleValue)
             })
 
@@ -225,8 +233,156 @@ router.get('', async (req, res) => {
         });
       
         return result;
+      break; 
+ 
+      case 'topdatasets':
+
+      let DarInfoMap = new Map()
+
+      let hdrDatasetID = await getHdrDatasetId()
+
+          await getDarIds(req, selectedMonthStart, selectedMonthEnd)
+            .then(async (data) => {
+
+              for (let datasetIdObject in data) { 
+                if(data[datasetIdObject].datasetIds && data[datasetIdObject].datasetIds.length > 0){
+
+                  for (let datasetId in data[datasetIdObject].datasetIds) { 
+
+                    if(data[datasetIdObject].datasetIds[datasetId] !== hdrDatasetID[0].datasetid){
+
+                      let result = await getDarInfo(data[datasetIdObject].datasetIds[datasetId])
+
+                      if(result.length > 0){
+                        if (DarInfoMap.has(data[datasetIdObject].datasetIds[datasetId])){ 
+                          let count = DarInfoMap.get(data[datasetIdObject].datasetIds[datasetId])
+                          count.requests++
+                          DarInfoMap.set(data[datasetIdObject].datasetIds[datasetId], {"requests": count.requests, "name": result[0].name, "publisher": result[0].datasetfields.publisher});
+                          } else {
+                            DarInfoMap.set(data[datasetIdObject].datasetIds[datasetId], {"requests": 1, "name": result[0].name, "publisher": result[0].datasetfields.publisher});
+                          }
+                      }
+                    }
+                  }
+                } 
+                else 
+                if(data[datasetIdObject].dataSetId && data[datasetIdObject].dataSetId.length > 0 && data[datasetIdObject].dataSetId !== hdrDatasetID[0].datasetid ){
+                  let result = await getDarInfo(data[datasetIdObject].dataSetId)
+                  if(result.length > 0){
+                    if (DarInfoMap.has(data[datasetIdObject].dataSetId)){ 
+                      let count = DarInfoMap.get(data[datasetIdObject].dataSetId)
+                      count.requests++
+                      DarInfoMap.set(data[datasetIdObject].dataSetId, {"requests": count.requests, "name": result[0].name, "publisher": result[0].datasetfields.publisher});
+                      } else {
+                        DarInfoMap.set(data[datasetIdObject].dataSetId, {"requests": 1, "name": result[0].name, "publisher": result[0].datasetfields.publisher});
+                      }
+                  }
+                }
+            }
+          })
+          .catch((err) => {
+            return res.json({ success: false, error: err });
+          }); 
+
+        let sortedResults = Array.from(DarInfoMap).sort((a,b) => { return b[1].requests - a[1].requests})
+
+        sortedResults = sortedResults.slice(0, 5)
+
+        return res.json({ success: true, data: sortedResults });
+
       break;
     }
   });
 
 module.exports = router
+
+const getHdrDatasetId = async() => {
+  return new Promise(async (resolve, reject) => {
+    let hdrDatasetID = Data.find(
+      {   
+          "datasetfields.publisher": "HDR UK" 
+        },
+        {
+          _id: 0,
+          datasetid: 1,
+        }
+      );
+  
+      hdrDatasetID.exec((err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+    })
+}
+
+const getDarIds = async(req, selectedMonthStart, selectedMonthEnd) => {
+  return new Promise(async (resolve, reject) => {
+
+    let DarDatasetIds = DataRequestModel.find(
+      { 
+        // VALUES YOU ARE CHECKING MATCH SPECIFIED CRITERIA IE. WHERE
+        $and: [
+          {
+            $or: [
+              {
+                createdAt: {
+                  $gte: selectedMonthStart,
+                  $lt: selectedMonthEnd
+                }
+              },
+              {
+                timeStamp: {
+                  $gte: selectedMonthStart,
+                  $lt: selectedMonthEnd
+                }
+              }
+            ]
+          },
+          {
+            $or: [
+              { applicationStatus: "submitted" },
+              { applicationStatus: "approved" },
+              { applicationStatus: "rejected" },
+              {applicationStatus: "approved with conditions" }
+
+            ]
+          }
+        ]
+      },
+      {
+        // THE FIELDS YOU WANT TO RETURN
+        _id: 0,
+        dataSetId: 1, 
+        datasetIds: 1
+      }
+    );
+
+    DarDatasetIds.exec((err, data) => {
+      if (err) reject(err);
+      return resolve(data);
+    });
+
+  });
+}
+
+const getDarInfo = async(id) => { 
+return new Promise(async (resolve, reject) => {
+  let DarDatasetInfo = Data.find(
+    { 
+        datasetid: id  
+      },
+      {
+        _id: 0,
+        datasetid: 1,
+        name: 1, 
+        //RETURN EMBEDDED FIELD
+        "datasetfields.publisher": 1
+      }
+    );
+
+      DarDatasetInfo.exec((err, data) => {
+        if (err) reject(err);
+        else resolve(data);
+      });
+  })
+}
