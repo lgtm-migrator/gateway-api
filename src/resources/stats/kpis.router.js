@@ -17,9 +17,6 @@ router.get('', async (req, res) => {
     selectedMonthEnd.setDate(0); 
     selectedMonthEnd.setHours(23,59,59,999);
 
-    console.log(`selectedMonthStart - ${selectedMonthStart}`)
-    console.log(`selectedMonthEnd - ${selectedMonthEnd}`)
-
     switch (req.query.kpi) {
       case 'technicalmetadata':
         var totalDatasetsQuery = [
@@ -124,7 +121,8 @@ router.get('', async (req, res) => {
                         $or: [
                           {"applicationStatus":"submitted"}, 
                           {"applicationStatus":"approved"}, 
-                          {"applicationStatus":"rejected"}
+                          {"applicationStatus":"rejected"},
+                          {"applicationStatus":"approved with conditions"}
                         ]
                       }
                     ] 
@@ -344,7 +342,9 @@ const getDarIds = async(req, selectedMonthStart, selectedMonthEnd) => {
             $or: [
               { applicationStatus: "submitted" },
               { applicationStatus: "approved" },
-              { applicationStatus: "rejected" }
+              { applicationStatus: "rejected" },
+              {applicationStatus: "approved with conditions" }
+
             ]
           }
         ]
