@@ -1,19 +1,22 @@
-import emailGenerator from '../utilities/emailGenerator.util';
 import { DataRequestModel } from './datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
 import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
+import { UserModel } from '../user/user.model';
+
+import teamController from '../team/team.controller';
 import workflowController from '../workflow/workflow.controller';
+
+import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import {processFile, getFile, fileStatus} from '../utilities/cloudStorage.util';
 import _ from 'lodash';
-import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
+
 import moment from 'moment';
 import mongoose from 'mongoose';
 
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
-const teamController = require('../team/team.controller');
 const notificationBuilder = require('../utilities/notificationBuilder');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const userTypes = {
@@ -41,7 +44,6 @@ const applicationStatuses = {
 	APPROVEDWITHCONDITIONS: 'approved with conditions',
 	WITHDRAWN: 'withdrawn',
 };
-
 
 module.exports = {
 	//GET api/v1/data-access-request
@@ -89,7 +91,12 @@ module.exports = {
 			// 6. Return payload
 			return res
 				.status(200)
-				.json({ success: true, data: modifiedApplications, avgDecisionTime, canViewSubmitted: true });
+				.json({
+					success: true,
+					data: modifiedApplications,
+					avgDecisionTime,
+					canViewSubmitted: true,
+				});
 		} catch (error) {
 			console.error(error);
 			return res.status(500).json({
@@ -1343,7 +1350,7 @@ module.exports = {
 						relevantNotificationType = notificationTypes.REVIEWSTEPSTART;
 					}
 					// Get the email context only if required
-					if(relevantStepIndex !== activeStepIndex) {
+					if (relevantStepIndex !== activeStepIndex) {
 						emailContext = workflowController.getWorkflowEmailContext(
 							accessRecord,
 							workflow,
@@ -1498,16 +1505,35 @@ module.exports = {
 				.json({ status: 'error', message: 'Application not found.' });
 		}
 		let { workflow } = accessRecord;
+		if (_.isEmpty(workflow)) {
+			return res
+				.status(400)
+				.json({ status: 'error', message: 'There is no workflow attached to this application.' });
+		}
 		let activeStepIndex = workflow.steps.findIndex((step) => {
 			return step.active === true;
 		});
 		// 3. Determine email context if deadline has elapsed or is approaching
-		const emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
+		const emailContext = workflowController.getWorkflowEmailContext(
+			accessRecord,
+			workflow,
+			activeStepIndex
+		);
 		// 4. Send emails based on deadline elapsed or approaching
-		if(emailContext.deadlineElapsed) {
-			module.exports.createNotifications(notificationTypes.DEADLINEPASSED, emailContext, accessRecord, req.user);
+		if (emailContext.deadlineElapsed) {
+			module.exports.createNotifications(
+				notificationTypes.DEADLINEPASSED,
+				emailContext,
+				accessRecord,
+				req.user
+			);
 		} else {
-			module.exports.createNotifications(notificationTypes.DEADLINEWARNING, emailContext, accessRecord, req.user);
+			module.exports.createNotifications(
+				notificationTypes.DEADLINEWARNING,
+				emailContext,
+				accessRecord,
+				req.user
+			);
 		}
 		return res.status(200).json({ status: 'success' });
 	},
@@ -1540,11 +1566,11 @@ module.exports = {
 		let { firstname, lastname } = user;
 		// Instantiate default params
 		let custodianManagers = [],
+			managerUserIds = [],
 			emailRecipients = [],
 			options = {},
 			html = '',
-			authors = [];
-
+			authors = []
 		// Get applicants from 5 Safes form, using main applicant as fall back for single dataset applications
 		let answers = JSON.parse(accessRecord.questionAnswers);
 		let applicants = module.exports.extractApplicantNames(answers).join(', ');
@@ -1569,6 +1595,9 @@ module.exports = {
 			stepReviewers = [],
 			stepReviewerUserIds = [],
 			currentDeadline = '',
+			remainingReviewers = [],
+			remainingReviewerUserIds = [],
+			dateDeadline
 		} = context;
 
 		switch (type) {
@@ -1875,16 +1904,16 @@ module.exports = {
 					accessRecord.publisherObj.team,
 					teamController.roleTypes.MANAGER
 				);
-				let managerUserIds = custodianManagers.map((user) => user.id);
+				managerUserIds = custodianManagers.map((user) => user.id);
 
-				// 1. Create manager notifications
+				// 2. Create manager notifications
 				notificationBuilder.triggerNotificationMessage(
 					managerUserIds,
 					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
 					'data access request',
 					accessRecord._id
 				);
-				// 2. Create manager emails
+				// 3. Create manager emails
 				options = {
 					id: accessRecord._id,
 					projectName,
@@ -1906,15 +1935,14 @@ module.exports = {
 				);
 				break;
 			case notificationTypes.DEADLINEWARNING:
-				// 1. Get all reviewers who have not yet voted on active phase
-				// 2. Create reviewer notifications
+				// 1. Create reviewer notifications
 				await notificationBuilder.triggerNotificationMessage(
-					stepReviewerUserIds,
-					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					remainingReviewerUserIds,
+					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					'data access request',
 					accessRecord._id
 				);
-				// 3. Create reviewer emails
+				// 2. Create reviewer emails
 				options = {
 					id: accessRecord._id,
 					projectName,
@@ -1928,23 +1956,32 @@ module.exports = {
 					reviewSections,
 					reviewerNames,
 					nextStepName,
+					dateDeadline
 				};
 				html = await emailGenerator.generateReviewDeadlineWarning(options);
 				await emailGenerator.sendEmail(
-					stepReviewers,
+					remainingReviewers,
 					hdrukEmail,
-					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					html,
 					false
 				);
 				break;
 			case notificationTypes.DEADLINEPASSED:
-				// 1. Get all reviewers who have not yet voted on active phase
-				// 2. Get all managers
+				// 1. Get all managers
+				custodianManagers = teamController.getTeamMembersByRole(
+					accessRecord.publisherObj.team,
+					teamController.roleTypes.MANAGER
+				);
+				managerUserIds = custodianManagers.map((user) => user.id);
+				// 2. Combine managers and reviewers remaining
+				let deadlinePassedUserIds = [...remainingReviewerUserIds, ...managerUserIds];
+				let deadlinePassedUsers = [...remainingReviewers, ...custodianManagers];
+
 				// 3. Create notifications
 				await notificationBuilder.triggerNotificationMessage(
-					stepReviewerUserIds,
-					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					deadlinePassedUserIds,
+					`The deadline for a Data Access Request review phase has now elapsed`,
 					'data access request',
 					accessRecord._id
 				);
@@ -1962,15 +1999,17 @@ module.exports = {
 					reviewSections,
 					reviewerNames,
 					nextStepName,
+					dateDeadline
 				};
 				html = await emailGenerator.generateReviewDeadlinePassed(options);
 				await emailGenerator.sendEmail(
-					stepReviewers,
+					deadlinePassedUsers,
 					hdrukEmail,
-					`${firstname} ${lastname} has approved a Data Access Request phase you are reviewing`,
+					`The deadline for a Data Access Request review phase has now elapsed`,
 					html,
 					false
 				);
+				break;
 		}
 	},
 
