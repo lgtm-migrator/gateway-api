@@ -56,6 +56,37 @@ export async function loadDataset(datasetID) {
         Promise.resolve(null)
     );
     
+    var uuid = uuidv4();//c5b011eb-24e7-4953-a71a-2bd0fe20e92d
+    var listOfVersions =[];
+    var pid = uuid;
+    var datasetVersion = "0.0.1";
+    
+    if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
+        versionLinks.data.items.forEach((item) => {
+            if (!listOfVersions.find(x => x.id === item.source.id)) {
+                listOfVersions.push({"id":item.source.id, "version":item.source.documentationVersion});
+            }
+            if (!listOfVersions.find(x => x.id === item.target.id)) {
+                listOfVersions.push({"id":item.target.id, "version":item.target.documentationVersion});
+            }
+        })
+
+        for (const item of listOfVersions) {
+            if (item.id !== dataset.data.id) {
+                var existingDataset = await Data.findOne({ datasetid: item.id });
+                if (existingDataset && existingDataset.pid) pid = existingDataset.pid;
+                else {
+                    await Data.findOneAndUpdate({ datasetid: item.id },
+                        { pid: uuid, datasetVersion: item.version }
+                    )
+                }
+            }
+            else {
+                datasetVersion = item.version;
+            }
+        }
+    }
+
     var uniqueID='';
     while (uniqueID === '') {
         uniqueID = parseInt(Math.random().toString().replace('0.', ''));
@@ -73,6 +104,8 @@ export async function loadDataset(datasetID) {
     const dataUtility = dataUtilityList.data.find(x => x.id === datasetID);
 
     var data = new Data(); 
+    data.pid = pid;
+    data.datasetVersion = datasetVersion;
     data.id = uniqueID;
     data.datasetid = dataset.data.id;
     data.type = 'dataset';
@@ -318,7 +351,7 @@ export async function loadDatasets(override) {
                                 }
                             })
 
-                            listOfVersions.forEach(async (item) => {
+                            for (const item of listOfVersions) {
                                 if (item.id !== datasetMDC.id) {
                                     var existingDataset = await Data.findOne({ datasetid: item.id });
                                     if (existingDataset && existingDataset.pid) pid = existingDataset.pid;
@@ -331,7 +364,7 @@ export async function loadDatasets(override) {
                                 else {
                                     datasetVersion = item.version;
                                 }
-                            })
+                            }
                         }
                         
                         var uniqueID='';
