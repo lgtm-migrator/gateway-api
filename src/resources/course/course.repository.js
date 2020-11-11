@@ -297,53 +297,105 @@ const editCourse = async (req, res) => {
   async function sendEmailNotifications(tool, activeflag, rejectionReason) {
     let subject;
     let html;
+    let adminCanUnsubscribe = true;
     // 1. Generate tool URL for linking user from email
     const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id
 
     // 2. Build email body
     if (activeflag === 'active') {
-      subject = `Your ${tool.type} ${tool.name} has been approved and is now live`
-      html = `Your ${tool.type} ${tool.name} has been approved and is now live <br /><br />  ${toolLink}`
+      subject = `Your ${tool.type} ${tool.title} has been approved and is now live`
+      html = `Your ${tool.type} ${tool.title} has been approved and is now live <br /><br />  ${toolLink}`
     } else if (activeflag === 'archive') {
-      subject = `Your ${tool.type} ${tool.name} has been archived`
-      html = `Your ${tool.type} ${tool.name} has been archived <br /><br /> ${toolLink}`
+      subject = `Your ${tool.type} ${tool.title} has been archived`
+      html = `Your ${tool.type} ${tool.title} has been archived <br /><br /> ${toolLink}`
     } else if (activeflag === 'rejected') {
-      subject = `Your ${tool.type} ${tool.name} has been rejected`
-      html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`
+      subject = `Your ${tool.type} ${tool.title} has been rejected`
+      html = `Your ${tool.type} ${tool.title} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`
     }
     else if (activeflag === 'add') {
-        subject = `Your ${tool.type} ${tool.name} has been submitted for approval`
-        html = `Your ${tool.type} ${tool.name} has been submitted for approval<br /><br /> ${toolLink}`
+        subject = `Your ${tool.type} ${tool.title} has been submitted for approval`
+        html = `Your ${tool.type} ${tool.title} has been submitted for approval<br /><br /> ${toolLink}`
+        adminCanUnsubscribe = false;
       }
       else if (activeflag === 'edit') {
-        subject = `Your ${tool.type} ${tool.name} has been updated`
-        html = `Your ${tool.type} ${tool.name} has been updated<br /><br /> ${toolLink}`
+        subject = `Your ${tool.type} ${tool.title} has been updated`
+        html = `Your ${tool.type} ${tool.title} has been updated<br /><br /> ${toolLink}`
       }
-    
-    // 3. Find all authors of the tool who have opted in to email updates
-    var q = UserModel.aggregate([
-      // Find all authors of this tool
-      { $match: { $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] } },
-      // Perform lookup to check opt in/out flag in tools schema
-      { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
-      // Filter out any user who has opted out of email notifications
-      { $match: { 'tool.emailNotifications': true } },
-      // Reduce response payload size to required fields
-      { $project: {_id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
-    ]);
 
-    // 4. Use the returned array of email recipients to generate and send emails with SendGrid
-    q.exec((err, emailRecipients) => {
-      if (err) {
-        return new Error({ success: false, error: err });
-      }
-      emailGenerator.sendEmail(
-        emailRecipients,
-        `${hdrukEmail}`,
-        subject,
-        html
-      );
-    });
+    if(adminCanUnsubscribe){
+      // 3. Find the creator of the course if they have opted in to email updates
+      var q = UserModel.aggregate([
+        // Find the creator of the course and Admins
+        { $match: { $or: [{ role: 'Admin' }, { id: tool.creator }] } },
+        // Perform lookup to check opt in/out flag in tools schema
+        { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+        // Filter out any user who has opted out of email notifications
+        { $match: { 'tool.emailNotifications': true } },
+        // Reduce response payload size to required fields
+        { $project: {_id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+      ]);
+  
+      // 4. Use the returned array of email recipients to generate and send emails with SendGrid
+      q.exec((err, emailRecipients) => {
+        if (err) {
+          return new Error({ success: false, error: err });
+        }
+        emailGenerator.sendEmail(
+          emailRecipients,
+          `${hdrukEmail}`,
+          subject,
+          html
+        );
+      });
+    }
+    else{
+      // 3. Find the creator of the course if they have opted in to email updates
+      var q = UserModel.aggregate([
+        // Find all authors of this tool
+        { $match: { id: tool.creator } },
+        // Perform lookup to check opt in/out flag in tools schema
+        { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+        // Filter out any user who has opted out of email notifications
+        { $match: { 'tool.emailNotifications': true } },
+        // Reduce response payload size to required fields
+        { $project: {_id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+      ]);
+  
+      // 4. Use the returned array of email recipients to generate and send emails with SendGrid
+      q.exec((err, emailRecipients) => {
+        if (err) {
+          return new Error({ success: false, error: err });
+        }
+        emailGenerator.sendEmail(
+          emailRecipients,
+          `${hdrukEmail}`,
+          subject,
+          html
+        );
+      });
+
+      // 5. Find all admins regardless of email opt-in preference
+      q = UserModel.aggregate([
+        // Find all admins 
+        { $match: { role: 'Admin' } },
+        // Reduce response payload size to required fields
+        { $project: {_id: 1, firstname: 1, lastname: 1, email: 1, role: 1 } }
+      ]);
+  
+      // 6. Use the returned array of email recipients to generate and send emails with SendGrid
+      q.exec((err, emailRecipients) => {
+        if (err) {
+          return new Error({ success: false, error: err });
+        }
+        emailGenerator.sendEmail(
+          emailRecipients,
+          `${hdrukEmail}`,
+          subject,
+          html,
+          adminCanUnsubscribe
+        );
+      });
+    }
   }
 
 async function sendEmailNotificationToAuthors(tool, toolOwner) {
