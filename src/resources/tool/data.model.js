@@ -91,6 +91,7 @@ const DataSchema = new Schema(
         versionLinks: [],
         phenotypes: []
     },
+    datasetv2: {},
 
     //not used
     rating: Number, 

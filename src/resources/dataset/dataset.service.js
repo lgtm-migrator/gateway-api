@@ -1,7 +1,7 @@
 import { Data } from '../tool/data.model'
 import { MetricsData } from '../stats/metrics.model'
 import axios from 'axios';
-import emailGenerator from '../utilities/emailGenerator.util';
+//import emailGenerator from '../utilities/emailGenerator.util';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function loadDataset(datasetID) {
@@ -13,7 +13,8 @@ export async function loadDataset(datasetID) {
     const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetID+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
     const phenotypesCall = await axios.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout:5000 }).catch(err => { console.log('Unable to get phenotypes '+err.message) }); 
     const dataUtilityCall = await axios.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout:5000 }).catch(err => { console.log('Unable to get data utility '+err.message) }); 
-    const [dataset, metadataQualityList, metadataSchema, dataClass, versionLinks, phenotypesList, dataUtilityList] = await axios.all([datasetCall, metadataQualityCall, metadataSchemaCall, dataClassCall, versionLinksCall, phenotypesCall,dataUtilityCall]);
+    const datasetV2Call = axios.get(metadataCatalogueLink + '/api/facets/'+datasetID+'/metadata?all=true', { timeout:5000 }).catch(err => { console.log('Unable to get dataset version 2 '+err.message) }); 
+    const [dataset, metadataQualityList, metadataSchema, dataClass, versionLinks, phenotypesList, dataUtilityList, datasetV2] = await axios.all([datasetCall, metadataQualityCall, metadataSchemaCall, dataClassCall, versionLinksCall, phenotypesCall,dataUtilityCall, datasetV2Call]);
 
     var technicaldetails = [];
 
@@ -55,7 +56,40 @@ export async function loadDataset(datasetID) {
         ),
         Promise.resolve(null)
     );
+
+    let datasetv2Object = populateV2datasetObject(datasetV2.data.items)
     
+    let uuid = uuidv4();//c5b011eb-24e7-4953-a71a-2bd0fe20e92d
+    let listOfVersions =[];
+    let pid = uuid;
+    let datasetVersion = "0.0.1";
+    
+    if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
+        versionLinks.data.items.forEach((item) => {
+            if (!listOfVersions.find(x => x.id === item.source.id)) {
+                listOfVersions.push({"id":item.source.id, "version":item.source.documentationVersion});
+            }
+            if (!listOfVersions.find(x => x.id === item.target.id)) {
+                listOfVersions.push({"id":item.target.id, "version":item.target.documentationVersion});
+            }
+        })
+
+        for (const item of listOfVersions) {
+            if (item.id !== dataset.data.id) {
+                let existingDataset = await Data.findOne({ datasetid: item.id });
+                if (existingDataset && existingDataset.pid) pid = existingDataset.pid;
+                else {
+                    await Data.findOneAndUpdate({ datasetid: item.id },
+                        { pid: uuid, datasetVersion: item.version }
+                    )
+                }
+            }
+            else {
+                datasetVersion = item.version;
+            }
+        }
+    }
+
     var uniqueID='';
     while (uniqueID === '') {
         uniqueID = parseInt(Math.random().toString().replace('0.', ''));
@@ -73,6 +107,8 @@ export async function loadDataset(datasetID) {
     const dataUtility = dataUtilityList.data.find(x => x.id === datasetID);
 
     var data = new Data(); 
+    data.pid = pid;
+    data.datasetVersion = datasetVersion;
     data.id = uniqueID;
     data.datasetid = dataset.data.id;
     data.type = 'dataset';
@@ -104,6 +140,7 @@ export async function loadDataset(datasetID) {
     data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
     data.datasetfields.phenotypes = phenotypes;
     data.datasetfields.datautility = dataUtility ? dataUtility : {};
+    data.datasetv2 = datasetv2Object;
 
     return await data.save();
 }
@@ -183,7 +220,8 @@ export async function loadDatasets(override) {
                     const metadataSchemaCall = axios.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/'+ datasetMDC.id, { timeout:5000 }).catch(err => { console.log('Unable to get metadata schema '+err.message) }); 
                     const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/'+datasetMDC.id+'/dataClasses?max=300', { timeout:5000 }).catch(err => { console.log('Unable to get dataclass '+err.message) }); 
                     const versionLinksCall = axios.get(metadataCatalogueLink + '/api/catalogueItems/'+datasetMDC.id+'/semanticLinks', { timeout:5000 }).catch(err => { console.log('Unable to get version links '+err.message) }); 
-                    const [metadataSchema, dataClass, versionLinks] = await axios.all([metadataSchemaCall, dataClassCall, versionLinksCall]);
+                    const datasetV2Call = axios.get(metadataCatalogueLink + '/api/facets/'+datasetMDC.id+'/metadata?all=true', { timeout:5000 }).catch(err => { console.log('Unable to get dataset version 2 '+err.message) }); 
+                    const [metadataSchema, dataClass, versionLinks, datasetV2] = await axios.all([metadataSchemaCall, dataClassCall, versionLinksCall, datasetV2Call]);
                     
                     var technicaldetails = [];
 
@@ -227,11 +265,13 @@ export async function loadDatasets(override) {
                         Promise.resolve(null)
                     );
                     
+                    let datasetv2Object = populateV2datasetObject(datasetV2.data.items)
+                    
                     if (datasetHDR) {
                         //Edit
                         if (!datasetHDR.pid) {
-                            var uuid = uuidv4();
-                            var listOfVersions =[];
+                            let uuid = uuidv4();
+                            let listOfVersions =[];
                             datasetHDR.pid = uuid;
                             datasetHDR.datasetVersion = "0.0.1";
                             
@@ -259,9 +299,9 @@ export async function loadDatasets(override) {
                             }
                         }
 
-                        var keywordArray = splitString(datasetMDC.keywords)
-                        var physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability)
-                        var geographicCoverageArray = splitString(datasetMDC.geographicCoverage)
+                        let keywordArray = splitString(datasetMDC.keywords)
+                        let physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability)
+                        let geographicCoverageArray = splitString(datasetMDC.geographicCoverage)
                         
                         await Data.findOneAndUpdate({ datasetid: datasetMDC.id },
                             {
@@ -298,15 +338,16 @@ export async function loadDatasets(override) {
                                     versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
                                     phenotypes
                                 },
-                            }
+                                datasetv2: datasetv2Object
+                            },
                         );
                     }
                     else {
                         //Add
-                        var uuid = uuidv4();
-                        var listOfVersions =[];
-                        var pid = uuid;
-                        var datasetVersion = "0.0.1";
+                        let uuid = uuidv4();//c5b011eb-24e7-4953-a71a-2bd0fe20e92d
+                        let listOfVersions =[];
+                        let pid = uuid;
+                        let datasetVersion = "0.0.1";
                         
                         if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
                             versionLinks.data.items.forEach((item) => {
@@ -318,8 +359,9 @@ export async function loadDatasets(override) {
                                 }
                             })
 
-                            listOfVersions.forEach(async (item) => {
+                            for (const item of listOfVersions) {
                                 if (item.id !== datasetMDC.id) {
+
                                     var existingDataset = await Data.findOne({ datasetid: item.id });
                                     if (existingDataset && existingDataset.pid) pid = existingDataset.pid;
                                     else {
@@ -331,7 +373,7 @@ export async function loadDatasets(override) {
                                 else {
                                     datasetVersion = item.version;
                                 }
-                            })
+                            }
                         }
                         
                         var uniqueID='';
@@ -380,6 +422,7 @@ export async function loadDatasets(override) {
                         data.datasetfields.technicaldetails = technicaldetails;
                         data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
                         data.datasetfields.phenotypes = phenotypes;
+                        data.datasetv2 = datasetv2Object;
                         await data.save(); 
                     }
                     console.log("Finished "+counter+" of "+datasetsMDCCount);
@@ -408,6 +451,112 @@ export async function loadDatasets(override) {
     console.log("Update Completed at "+Date())
     return "Update completed";
 };
+
+function populateV2datasetObject (v2Data) {
+    let datasetV2List = v2Data.filter((item) => item.namespace === 'org.healthdatagateway')
+
+    let datasetv2Object = {};
+    if (datasetV2List.length > 0) {
+        datasetv2Object = {
+            identifier: datasetV2List.find(x => x.key === 'properties/identifier') ? datasetV2List.find(x => x.key === 'properties/identifier').value : '',
+            version: datasetV2List.find(x => x.key === 'properties/version') ? datasetV2List.find(x => x.key === 'properties/version').value : '',
+            issued: datasetV2List.find(x => x.key === 'properties/issued') ? datasetV2List.find(x => x.key === 'properties/issued').value : '',
+            modified: datasetV2List.find(x => x.key === 'properties/modified') ? datasetV2List.find(x => x.key === 'properties/modified').value : '',
+            revisions: [],
+            summary: {
+                title: datasetV2List.find(x => x.key === 'properties/summary/title') ? datasetV2List.find(x => x.key === 'properties/summary/title').value : '',
+                abstract: datasetV2List.find(x => x.key === 'properties/summary/abstract') ? datasetV2List.find(x => x.key === 'properties/summary/abstract').value : '',
+                publisher: {
+                    identifier: datasetV2List.find(x => x.key === 'properties/summary/publisher/identifier') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/identifier').value : '',
+                    name: datasetV2List.find(x => x.key === 'properties/summary/publisher/name') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/name').value : '',
+                    logo: datasetV2List.find(x => x.key === 'properties/summary/publisher/logo') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/logo').value : '',
+                    description: datasetV2List.find(x => x.key === 'properties/summary/publisher/description') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/description').value : '',
+                    contactPoint: checkForArray(datasetV2List.find(x => x.key === 'properties/summary/publisher/contactPoint') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/contactPoint').value : []),
+                    memberOf: datasetV2List.find(x => x.key === 'properties/summary/publisher/memberOf') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/memberOf').value : '',
+                    accessRights: checkForArray(datasetV2List.find(x => x.key === 'properties/summary/publisher/accessRights') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/accessRights').value : []),
+                    deliveryLeadTime: datasetV2List.find(x => x.key === 'properties/summary/publisher/deliveryLeadTime') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/deliveryLeadTime').value : '',
+                    accessService: datasetV2List.find(x => x.key === 'properties/summary/publisher/accessService') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/accessService').value : '',
+                    accessRequestCost: datasetV2List.find(x => x.key === 'properties/summary/publisher/accessRequestCost') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/accessRequestCost').value : '',
+                    dataUseLimitation: checkForArray(datasetV2List.find(x => x.key === 'properties/summary/publisher/dataUseLimitation') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/dataUseLimitation').value : []),
+                    dataUseRequirements: checkForArray(datasetV2List.find(x => x.key === 'properties/summary/publisher/dataUseRequirements') ? datasetV2List.find(x => x.key === 'properties/summary/publisher/dataUseRequirements').value : [])
+                },
+                contactPoint: datasetV2List.find(x => x.key === 'properties/summary/contactPoint') ? datasetV2List.find(x => x.key === 'properties/summary/contactPoint').value : '',
+                keywords: checkForArray(datasetV2List.find(x => x.key === 'properties/summary/keywords') ? datasetV2List.find(x => x.key === 'properties/summary/keywords').value : []),
+                alternateIdentifiers: checkForArray(datasetV2List.find(x => x.key === 'properties/summary/alternateIdentifiers') ? datasetV2List.find(x => x.key === 'properties/summary/alternateIdentifiers').value : []),
+                doiName: datasetV2List.find(x => x.key === 'properties/summary/doiName') ? datasetV2List.find(x => x.key === 'properties/summary/doiName').value : ''
+            },
+            documentation: {
+                description: datasetV2List.find(x => x.key === 'properties/documentation/description') ? datasetV2List.find(x => x.key === 'properties/documentation/description').value : '',
+                associatedMedia: checkForArray(datasetV2List.find(x => x.key === 'properties/documentation/associatedMedia') ? datasetV2List.find(x => x.key === 'properties/documentation/associatedMedia').value : []),
+                isPartOf: checkForArray(datasetV2List.find(x => x.key === 'properties/documentation/isPartOf') ? datasetV2List.find(x => x.key === 'properties/documentation/isPartOf').value : [])
+            },   
+            coverage: {
+                spatial: datasetV2List.find(x => x.key === 'properties/coverage/spatial') ? datasetV2List.find(x => x.key === 'properties/coverage/spatial').value : '',
+                typicalAgeRange: datasetV2List.find(x => x.key === 'properties/coverage/typicalAgeRange') ? datasetV2List.find(x => x.key === 'properties/coverage/typicalAgeRange').value : '',
+                physicalSampleAvailability: checkForArray(datasetV2List.find(x => x.key === 'properties/coverage/physicalSampleAvailability') ? datasetV2List.find(x => x.key === 'properties/coverage/physicalSampleAvailability').value : []),
+                followup: datasetV2List.find(x => x.key === 'properties/coverage/followup') ? datasetV2List.find(x => x.key === 'properties/coverage/followup').value : '',
+                pathway: datasetV2List.find(x => x.key === 'properties/coverage/pathway') ? datasetV2List.find(x => x.key === 'properties/coverage/pathway').value : ''
+            },
+            provenance: {
+                origin : {
+                    purpose: checkForArray(datasetV2List.find(x => x.key === 'properties/provenance/origin/purpose') ? datasetV2List.find(x => x.key === 'properties/provenance/origin/purpose').value : []),
+                    source: checkForArray(datasetV2List.find(x => x.key === 'properties/provenance/origin/source') ? datasetV2List.find(x => x.key === 'properties/provenance/origin/source').value : []),
+                    collectionSituation: checkForArray(datasetV2List.find(x => x.key === 'properties/provenance/origin/collectionSituation') ? datasetV2List.find(x => x.key === 'properties/provenance/origin/collectionSituation').value : [])
+                },
+                temporal:{
+                    accrualPeriodicity: datasetV2List.find(x => x.key === 'properties/provenance/temporal/accrualPeriodicity') ? datasetV2List.find(x => x.key === 'properties/provenance/temporal/accrualPeriodicity').value : '',
+                    distributionReleaseDate: datasetV2List.find(x => x.key === 'properties/provenance/temporal/distributionReleaseDate') ? datasetV2List.find(x => x.key === 'properties/provenance/temporal/distributionReleaseDate').value : '',
+                    startDate: datasetV2List.find(x => x.key === 'properties/provenance/temporal/startDate') ? datasetV2List.find(x => x.key === 'properties/provenance/temporal/startDate').value : '',
+                    endDate: datasetV2List.find(x => x.key === 'properties/provenance/temporal/endDate') ? datasetV2List.find(x => x.key === 'properties/provenance/temporal/endDate').value : '',
+                    timeLag: datasetV2List.find(x => x.key === 'properties/provenance/temporal/timeLag') ? datasetV2List.find(x => x.key === 'properties/provenance/temporal/timeLag').value : ''
+                }
+            },
+            accessibility : {
+                usage: {
+                    dataUseLimitation: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/usage/dataUseLimitation') ? datasetV2List.find(x => x.key === 'properties/accessibility/usage/dataUseLimitation').value : []),
+                    dataUseRequirements: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/usage/dataUseRequirements') ? datasetV2List.find(x => x.key === 'properties/accessibility/usage/dataUseRequirements').value : []),
+                    resourceCreator: datasetV2List.find(x => x.key === 'properties/accessibility/usage/resourceCreator') ? datasetV2List.find(x => x.key === 'properties/accessibility/usage/resourceCreator').value : '',
+                    investigations: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/usage/investigations') ? datasetV2List.find(x => x.key === 'properties/accessibility/usage/investigations').value : []),
+                    isReferencedBy: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/usage/isReferencedBy') ? datasetV2List.find(x => x.key === 'properties/accessibility/usage/isReferencedBy').value : [])
+                },
+                access: {
+                    accessRights: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/access/accessRights') ? datasetV2List.find(x => x.key === 'properties/accessibility/access/accessRights').value : []),
+                    accessService: datasetV2List.find(x => x.key === 'properties/accessibility/access/accessService') ? datasetV2List.find(x => x.key === 'properties/accessibility/access/accessService').value : '',
+                    accessRequestCost: datasetV2List.find(x => x.key === 'properties/accessibility/access/accessRequestCost') ? datasetV2List.find(x => x.key === 'properties/accessibility/access/accessRequestCost').value : '',
+                    deliveryLeadTime: datasetV2List.find(x => x.key === 'properties/accessibility/access/deliveryLeadTime') ? datasetV2List.find(x => x.key === 'properties/accessibility/access/deliveryLeadTime').value : '',
+                    jurisdiction: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/access/jurisdiction') ? datasetV2List.find(x => x.key === 'properties/accessibility/access/jurisdiction').value : []),
+                    dataProcessor: datasetV2List.find(x => x.key === 'properties/accessibility/access/dataProcessor') ? datasetV2List.find(x => x.key === 'properties/accessibility/access/dataProcessor').value : '',
+                    dataController: datasetV2List.find(x => x.key === 'properties/accessibility/access/dataController') ? datasetV2List.find(x => x.key === 'properties/accessibility/access/dataController').value : ''
+                },
+                formatAndStandards: {
+                    vocabularyEncodingScheme: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/formatAndStandards/vocabularyEncodingScheme') ? datasetV2List.find(x => x.key === 'properties/accessibility/formatAndStandards/vocabularyEncodingScheme').value : []),
+                    conformsTo: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/formatAndStandards/conformsTo') ? datasetV2List.find(x => x.key === 'properties/accessibility/formatAndStandards/conformsTo').value : []),
+                    language: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/formatAndStandards/language') ? datasetV2List.find(x => x.key === 'properties/accessibility/formatAndStandards/language').value : []),
+                    format: checkForArray(datasetV2List.find(x => x.key === 'properties/accessibility/formatAndStandards/format') ? datasetV2List.find(x => x.key === 'properties/accessibility/formatAndStandards/format').value : [])
+                }
+
+            },
+            enrichmentAndLinkage: {
+                qualifiedRelation: checkForArray(datasetV2List.find(x => x.key === 'properties/enrichmentAndLinkage/qualifiedRelation') ? datasetV2List.find(x => x.key === 'properties/enrichmentAndLinkage/qualifiedRelation').value : []),
+                derivation: checkForArray(datasetV2List.find(x => x.key === 'properties/enrichmentAndLinkage/derivation') ? datasetV2List.find(x => x.key === 'properties/enrichmentAndLinkage/derivation').value : []),
+                tools: checkForArray(datasetV2List.find(x => x.key === 'properties/enrichmentAndLinkage/tools') ? datasetV2List.find(x => x.key === 'properties/enrichmentAndLinkage/tools').value : [])
+            },
+            observations: []
+        }
+    }
+
+    return datasetv2Object;
+}
+
+function checkForArray(value) {
+    if (typeof value !== 'string') return value;
+    try {
+        const type = Object.prototype.toString.call(JSON.parse(value));
+        if (type === '[object Object]' || type === '[object Array]') return JSON.parse(value)
+    } catch (err) {
+        return value;
+    }
+}
 
 function splitString (array) {
     var returnArray = [];
