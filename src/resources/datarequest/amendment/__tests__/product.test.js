@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
-const dbHandler = require('./db-handler');
-const productService = require('./product.service');
-const productModel = require('./product');
+const dbHandler = require('../../../../config/in-memory-db');
+const productService = require('../product.service');
+const productModel = require('../product');
 
 /**
  * Connect to a new in-memory database before running any tests.
