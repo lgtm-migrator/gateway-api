@@ -1416,7 +1416,7 @@ module.exports = {
 			accessRecord.applicationStatus = applicationStatuses.SUBMITTED;
 			// Check if workflow/5 Safes based application, set final status date if status will never change again
 			let workflowEnabled = false;
-			if (_.has(accessRecord.datasets[0].toObject(), 'publisher')) {
+			if (_.has(accessRecord.datasets[0].toObject(), 'publisher') && !_.isNull(accessRecord.datasets[0].publisher)) {
 				if (!accessRecord.datasets[0].publisher.workflowEnabled) {
 					accessRecord.dateFinalStatus = new Date();
 				} else {
