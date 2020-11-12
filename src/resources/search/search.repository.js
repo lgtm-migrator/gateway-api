@@ -54,6 +54,7 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                     "type": 1,
                     "description": 1,
                     "bio": 1,
+                    "showBio": 1,
                     "categories.category": 1,
                     "categories.programmingLanguage": 1,
                     "programmingLanguage.programmingLanguage": 1,
