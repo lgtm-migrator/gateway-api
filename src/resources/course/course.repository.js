@@ -323,7 +323,7 @@ const editCourse = async (req, res) => {
       }
 
     if(adminCanUnsubscribe){
-      // 3. Find the creator of the course if they have opted in to email updates
+      // 3. Find the creator of the course and admins if they have opted in to email updates
       var q = UserModel.aggregate([
         // Find the creator of the course and Admins
         { $match: { $or: [{ role: 'Admin' }, { id: tool.creator }] } },
