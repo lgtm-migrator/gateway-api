@@ -1,13 +1,12 @@
+import _ from 'lodash';
 import { PublisherModel } from './publisher.model';
 import { Data } from '../tool/data.model';
-import _ from 'lodash';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
 import constants from '../utilities/constants.util';
-import helper from '../utilities/helper.util';
+import teamController from '../team/team.controller';
 
 const datarequestController = require('../datarequest/datarequest.controller');
-const teamController = require('../team/team.controller');
 
 module.exports = {
 	// GET api/v1/publishers/:id

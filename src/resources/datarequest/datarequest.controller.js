@@ -1,21 +1,24 @@
-import emailGenerator from '../utilities/emailGenerator.util';
 import { DataRequestModel } from './datarequest.model';
 import { WorkflowModel } from '../workflow/workflow.model';
 import { Data as ToolModel } from '../tool/data.model';
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
+import { UserModel } from '../user/user.model';
+
+import teamController from '../team/team.controller';
 import workflowController from '../workflow/workflow.controller';
+
+import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import constants from '../utilities/constants.util';
 import {processFile, getFile, fileStatus} from '../utilities/cloudStorage.util';
 import _ from 'lodash';
-import { UserModel } from '../user/user.model';
 import inputSanitizer from '../utilities/inputSanitizer';
+
 import moment from 'moment';
 import mongoose from 'mongoose';
 
 const amendmentController = require('./amendment/amendment.controller');
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
-const teamController = require('../team/team.controller');
 const notificationBuilder = require('../utilities/notificationBuilder');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
@@ -65,7 +68,12 @@ module.exports = {
 			// 6. Return payload
 			return res
 				.status(200)
-				.json({ success: true, data: modifiedApplications, avgDecisionTime, canViewSubmitted: true });
+				.json({
+					success: true,
+					data: modifiedApplications,
+					avgDecisionTime,
+					canViewSubmitted: true,
+				});
 		} catch (error) {
 			console.error(error);
 			return res.status(500).json({
@@ -1322,7 +1330,7 @@ module.exports = {
 						relevantNotificationType = constants.notificationTypes.REVIEWSTEPSTART;
 					}
 					// Get the email context only if required
-					if(relevantStepIndex !== activeStepIndex) {
+					if (relevantStepIndex !== activeStepIndex) {
 						emailContext = workflowController.getWorkflowEmailContext(
 							accessRecord,
 							workflow,
@@ -1486,12 +1494,26 @@ module.exports = {
 			return step.active === true;
 		});
 		// 3. Determine email context if deadline has elapsed or is approaching
-		const emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
+		const emailContext = workflowController.getWorkflowEmailContext(
+			accessRecord,
+			workflow,
+			activeStepIndex
+		);
 		// 4. Send emails based on deadline elapsed or approaching
-		if(emailContext.deadlineElapsed) {
-			module.exports.createNotifications(constants.notificationTypes.DEADLINEPASSED, emailContext, accessRecord, req.user);
+		if (emailContext.deadlineElapsed) {
+			module.exports.createNotifications(
+				notificationTypes.DEADLINEPASSED,
+				emailContext,
+				accessRecord,
+				req.user
+			);
 		} else {
-			module.exports.createNotifications(constants.notificationTypes.DEADLINEWARNING, emailContext, accessRecord, req.user);
+			module.exports.createNotifications(
+				notificationTypes.DEADLINEWARNING,
+				emailContext,
+				accessRecord,
+				req.user
+			);
 		}
 		return res.status(200).json({ status: 'success' });
 	},
@@ -1967,6 +1989,7 @@ module.exports = {
 					html,
 					false
 				);
+				break;
 		}
 	},
 

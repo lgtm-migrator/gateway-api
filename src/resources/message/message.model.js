@@ -21,6 +21,8 @@ const MessageSchema = new Schema({
            'review',
            'data access request',
            'data access request unlinked',
+           'team',
+           'team unlinked',
            'edit'
           ]
   },

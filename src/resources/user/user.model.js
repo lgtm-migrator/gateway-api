@@ -28,7 +28,7 @@ UserSchema.virtual('additionalInfo', {
   foreignField: 'id',
   localField: 'id',
   justOne: true,
-  options: { select: 'bio link orcid activeflag emailNotifications terms -id -_id' }
+  options: { select: 'bio link orcid activeflag organisation emailNotifications terms -id -_id' }
 });
 
 UserSchema.virtual('teams', {

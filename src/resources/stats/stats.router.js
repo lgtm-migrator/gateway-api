@@ -250,6 +250,17 @@ router.get('', async (req, res) => {
           });
       break;
 
+      case 'Courses':
+        req.entity = "course";
+        await getUnmetSearches(req)
+          .then((data) =>{
+            return res.json({ success: true, data: data });
+          })
+          .catch((err) => {
+            return res.json({ success: false, error: err });
+          });
+      break;
+
       case 'Papers':
         req.entity = "paper";
         await getUnmetSearches(req)
@@ -326,13 +337,15 @@ router.get('', async (req, res) => {
               getObjectResult('dataset', searchQuery),
               getObjectResult('tool', searchQuery),
               getObjectResult('project', searchQuery),
-              getObjectResult('paper', searchQuery)
+              getObjectResult('paper', searchQuery),
+              getObjectResult('course', searchQuery)
 
             ]).then((resources) => { 
-              topSearch.datasets = resources[0][0] !== undefined ? resources[0][0].count : 0;
-              topSearch.tools = resources[1][0] !== undefined ? resources[0][0].count : 0;
-              topSearch.projects = resources[2][0] !== undefined ? resources[0][0].count : 0;
-              topSearch.papers = resources[3][0] !== undefined ? resources[0][0].count : 0;
+              topSearch.datasets = resources[0][0] !== undefined && resources[0][0].count !== undefined ? resources[0][0].count : 0;
+              topSearch.tools = resources[1][0] !== undefined && resources[1][0].count !== undefined ? resources[1][0].count : 0;
+              topSearch.projects = resources[2][0] !== undefined && resources[2][0].count !== undefined ? resources[2][0].count : 0;
+              topSearch.papers = resources[3][0] !== undefined && resources[3][0].count !== undefined ? resources[3][0].count : 0;
+              topSearch.course = resources[4][0] !== undefined && resources[4][0].count !== undefined ? resources[4][0].count : 0;
             })
             return topSearch;
           }))
@@ -399,6 +412,7 @@ router.get('', async (req, res) => {
             maxProjects: { $max: "$returned.project"  },
             maxTools: {  $max: "$returned.tool" },
             maxPapers: {  $max: "$returned.paper" },
+            maxCourses: {  $max: "$returned.course" },
             maxPeople: {  $max: "$returned.people" },
             entity: { $max: req.entity}
           }
