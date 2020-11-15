@@ -10,7 +10,11 @@ import workflowController from '../workflow/workflow.controller';
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import constants from '../utilities/constants.util';
-import {processFile, getFile, fileStatus} from '../utilities/cloudStorage.util';
+import {
+	processFile,
+	getFile,
+	fileStatus,
+} from '../utilities/cloudStorage.util';
 import _ from 'lodash';
 import inputSanitizer from '../utilities/inputSanitizer';
 
@@ -66,14 +70,12 @@ module.exports = {
 			);
 
 			// 6. Return payload
-			return res
-				.status(200)
-				.json({
-					success: true,
-					data: modifiedApplications,
-					avgDecisionTime,
-					canViewSubmitted: true,
-				});
+			return res.status(200).json({
+				success: true,
+				data: modifiedApplications,
+				avgDecisionTime,
+				canViewSubmitted: true,
+			});
 		} catch (error) {
 			console.error(error);
 			return res.status(500).json({
@@ -130,7 +132,8 @@ module.exports = {
 			// 6. Set edit mode for applicants who have not yet submitted
 			if (
 				userType === constants.userTypes.APPLICANT &&
-				accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS
+				accessRecord.applicationStatus ===
+					constants.applicationStatuses.INPROGRESS
 			) {
 				readOnly = false;
 			}
@@ -166,7 +169,10 @@ module.exports = {
 					...accessRecord.toObject(),
 					jsonSchema: JSON.parse(accessRecord.jsonSchema),
 					questionAnswers: JSON.parse(accessRecord.questionAnswers),
-					aboutApplication: typeof accessRecord.aboutApplication === 'string' ? JSON.parse(accessRecord.aboutApplication) : accessRecord.aboutApplication,
+					aboutApplication:
+						typeof accessRecord.aboutApplication === 'string'
+							? JSON.parse(accessRecord.aboutApplication)
+							: accessRecord.aboutApplication,
 					datasets: accessRecord.datasets,
 					readOnly,
 					userType,
@@ -177,7 +183,7 @@ module.exports = {
 					reviewSections,
 					hasRecommended,
 					workflow,
-					files: accessRecord.files || []
+					files: accessRecord.files || [],
 				},
 			});
 		} catch (err) {
@@ -270,13 +276,16 @@ module.exports = {
 					...data,
 					jsonSchema: JSON.parse(data.jsonSchema),
 					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
+					aboutApplication:
+						typeof data.aboutApplication === 'string'
+							? JSON.parse(data.aboutApplication)
+							: data.aboutApplication,
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: constants.userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
-					files: data.files || []
+					files: data.files || [],
 				},
 			});
 		} catch (err) {
@@ -304,11 +313,13 @@ module.exports = {
 				userId,
 				applicationStatus: constants.applicationStatuses.INPROGRESS,
 			})
-				.populate([{
-					path: 'mainApplicant',
-					select: 'firstname lastname -id -_id',
-				},
-				{ path: 'files.owner', select: 'firstname lastname' }])
+				.populate([
+					{
+						path: 'mainApplicant',
+						select: 'firstname lastname -id -_id',
+					},
+					{ path: 'files.owner', select: 'firstname lastname' },
+				])
 				.sort({ createdAt: 1 });
 			// 4. Get datasets
 			datasets = await ToolModel.find({
@@ -371,13 +382,16 @@ module.exports = {
 					...data,
 					jsonSchema: JSON.parse(data.jsonSchema),
 					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
+					aboutApplication:
+						typeof data.aboutApplication === 'string'
+							? JSON.parse(data.aboutApplication)
+							: data.aboutApplication,
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: constants.userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
-					files: data.files || []
+					files: data.files || [],
 				},
 			});
 		} catch (err) {
@@ -392,40 +406,29 @@ module.exports = {
 			// 1. Id is the _id object in mongoo.db not the generated id or dataset Id
 			const {
 				params: { id },
+				body: data,
 			} = req;
 			// 2. Destructure body and update only specific fields by building a segregated non-user specified update object
-			let updateObj;
-			let { aboutApplication, questionAnswers, jsonSchema = '' } = req.body;
-			if (aboutApplication) {
-				if(typeof aboutApplication === 'string') {
-					aboutApplication = JSON.parse(aboutApplication)
-				}
-				let updatedDatasetIds = aboutApplication.selectedDatasets.map(
-					(dataset) => dataset.datasetId
-				);
-				updateObj = { aboutApplication, datasetIds: updatedDatasetIds };
-			}
-			if (questionAnswers) {
-				updateObj = { ...updateObj, questionAnswers };
-			}
-
-			if (!_.isEmpty(jsonSchema)) {
-				updateObj = { ...updateObj, jsonSchema };
-			}
-
-			// 3. Find data request by _id and update via body
-			let accessRequestRecord = await DataRequestModel.findByIdAndUpdate(
-				id,
-				updateObj,
-				{ new: true }
-			);
+			let updateObj = module.exports.buildUpdateObject({
+				...data,
+				user: req.user,
+			});
+			// 3. Find data request by _id to determine current status
+			let accessRequestRecord = await DataRequestModel.findOne({
+				_id: id,
+			});
 			// 4. Check access record
 			if (!accessRequestRecord) {
 				return res
-					.status(400)
+					.status(404)
 					.json({ status: 'error', message: 'Data Access Request not found.' });
 			}
-			// 5. Return new data object
+			// 5. Update record object
+			accessRequestRecord = await module.exports.updateApplication(
+				accessRequestRecord,
+				updateObj
+			);
+			// 6. Return new data object
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -437,6 +440,63 @@ module.exports = {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err });
 		}
+	},
+
+	buildUpdateObject: (data) => {
+		let updateObj = {};
+		let {
+			aboutApplication,
+			questionAnswers,
+			updatedQuestionId,
+			user,
+			jsonSchema = '',
+		} = data;
+		if (aboutApplication) {
+			if (typeof aboutApplication === 'string') {
+				aboutApplication = JSON.parse(aboutApplication);
+			}
+			let updatedDatasetIds = aboutApplication.selectedDatasets.map(
+				(dataset) => dataset.datasetId
+			);
+			updateObj = { aboutApplication, datasetIds: updatedDatasetIds };
+		}
+		if (questionAnswers) {
+			updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user };
+		}
+
+		if (!_.isEmpty(jsonSchema)) {
+			updateObj = { ...updateObj, jsonSchema };
+		}
+
+		return updateObj;
+	},
+
+	updateApplication: async (accessRecord, updateObj) => {
+		// 1. Extract properties
+		let { applicationStatus, _id } = accessRecord;
+		let { updatedQuestionId = '', user } = updateObj;
+		// 2. If application is in progress, update initial question answers
+		if (applicationStatus === constants.applicationStatuses.INPROGRESS) {
+			accessRecord = await DataRequestModel.findByIdAndUpdate(
+				_id,
+				updateObj,
+				{ new: true });
+		// 3. Else if application has already been submitted make amendment
+		} else if (
+			applicationStatus === constants.applicationStatuses.INREVIEW ||
+			applicationStatus === constants.applicationStatuses.SUBMITTED
+		) {
+			let updatedAnswer = JSON.parse(updateObj.questionAnswers)[updatedQuestionId];
+			accessRecord = amendmentController.handleApplicantAmendment(accessRecord, updatedQuestionId, '', updatedAnswer, user);
+			accessRecord.save();
+			// Perform amendment
+			// need question set id?
+
+			// need to check if amendment was requested in the last iteration version and update existing amendment
+
+			// update access request with new answer
+		}
+		return accessRequestRecord;
 	},
 
 	//PUT api/v1/data-access-request/:id
@@ -600,7 +660,7 @@ module.exports = {
 				await accessRecord.save(async (err) => {
 					if (err) {
 						console.error(err);
-						res.status(500).json({ status: 'error', message: err });
+						return res.status(500).json({ status: 'error', message: err });
 					} else {
 						// If save has succeeded - send notifications
 						// Send notifications to added/removed contributors
@@ -901,17 +961,19 @@ module.exports = {
 	uploadFiles: async (req, res) => {
 		try {
 			// 1. get DAR ID
-			const { params: { id }} = req;
+			const {
+				params: { id },
+			} = req;
 			// 2. get files
-			let files  = req.files;
+			let files = req.files;
 			// 3. descriptions and uniqueIds file from FE
 			let { descriptions, ids } = req.body;
 			// 4. get access record
 			let accessRecord = await DataRequestModel.findOne({ _id: id });
-			if(!accessRecord) {
+			if (!accessRecord) {
 				return res
-				.status(404)
-				.json({ status: 'error', message: 'Application not found.' });
+					.status(404)
+					.json({ status: 'error', message: 'Application not found.' });
 			}
 			// 5. Check if requesting user is custodian member or applicant/contributor
 			// let { authorised } = module.exports.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
@@ -922,15 +984,15 @@ module.exports = {
 			// 		.json({ status: 'failure', message: 'Unauthorised' });
 			// }
 			// 7. check files
-			if(_.isEmpty(files)) {
+			if (_.isEmpty(files)) {
 				return res
 					.status(400)
-					.json({status: 'error', message: 'No files to upload'});
+					.json({ status: 'error', message: 'No files to upload' });
 			}
 			let fileArr = [];
 			// check and see if descriptions and ids are an array
-			let descriptionArray = Array.isArray(descriptions);  
-			let idArray = Array.isArray(ids);  
+			let descriptionArray = Array.isArray(descriptions);
+			let idArray = Array.isArray(ids);
 			// 8. process the files for scanning
 			for (let i = 0; i < files.length; i++) {
 				// get description information
@@ -938,7 +1000,7 @@ module.exports = {
 				// get uniqueId
 				let generatedId = idArray ? ids[i] : ids;
 				// remove - from uuidV4
-				let uniqueId = generatedId.replace(/-/gmi, '');
+				let uniqueId = generatedId.replace(/-/gim, '');
 				// send to db
 				const response = await processFile(files[i], id, uniqueId);
 				// deconstruct response
@@ -951,7 +1013,10 @@ module.exports = {
 					size: files[i].size,
 					name: files[i].originalname,
 					owner: req.user._id,
-					error: status === fileStatus.ERROR ? 'Could not upload. Unknown error. Please try again.' : ''
+					error:
+						status === fileStatus.ERROR
+							? 'Could not upload. Unknown error. Please try again.'
+							: '',
 				};
 				// update local for post back to FE
 				fileArr.push(newFile);
@@ -965,17 +1030,17 @@ module.exports = {
 				{
 					path: 'files.owner',
 					select: 'firstname lastname id',
-				}]);
+				},
+			]);
 
 			// 11. process access record into object
 			let record = updatedRecord._doc;
 			// 12. fet files
-			let mediaFiles = record.files.map((f)=> {
-				return f._doc
+			let mediaFiles = record.files.map((f) => {
+				return f._doc;
 			});
 			// 10. return response
 			return res.status(200).json({ status: 'success', mediaFiles });
-
 		} catch (err) {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err });
@@ -983,41 +1048,47 @@ module.exports = {
 	},
 
 	//GET api/v1/data-access-request/:id/file/:fileId
-	getFile: async(req, res) => {
+	getFile: async (req, res) => {
 		try {
 			// 1. get params
-			const { params: { id, fileId }} = req;
+			const {
+				params: { id, fileId },
+			} = req;
 
 			// 2. get AccessRecord
 			let accessRecord = await DataRequestModel.findOne({ _id: id });
-			if(!accessRecord) {
+			if (!accessRecord) {
 				return res
-				.status(404)
-				.json({ status: 'error', message: 'Application not found.' });
+					.status(404)
+					.json({ status: 'error', message: 'Application not found.' });
 			}
 			// 3. process access record into object
 			let record = accessRecord._doc;
 			// 4. find the file in the files array from db
-			let mediaFile = record.files.find((f)=> {
-				let {fileId: dbFileId} = f._doc;
-				return dbFileId === fileId
-			}) || {};
+			let mediaFile =
+				record.files.find((f) => {
+					let { fileId: dbFileId } = f._doc;
+					return dbFileId === fileId;
+				}) || {};
 			// 5. no file return
-			if(_.isEmpty(mediaFile)) {
-				return res
-					.status(400)
-					.json({status: 'error', message: 'No file to download, please try again later'});
+			if (_.isEmpty(mediaFile)) {
+				return res.status(400).json({
+					status: 'error',
+					message: 'No file to download, please try again later',
+				});
 			}
 			// 6. get the name of the file
 			let { name, fileId: dbFileId } = mediaFile._doc;
 			// 7. get the file
 			await getFile(name, dbFileId, id);
 			// 8. send file back to user
-			return res.status(200).sendFile(`${process.env.TMPDIR}${id}/${dbFileId}_${name}`);
-		} catch(err) {
+			return res
+				.status(200)
+				.sendFile(`${process.env.TMPDIR}${id}/${dbFileId}_${name}`);
+		} catch (err) {
 			console.log(err);
 			res.status(500).json({ status: 'error', message: err });
-		}  
+		}
 	},
 
 	//PUT api/v1/data-access-request/:id/vote
@@ -1168,11 +1239,13 @@ module.exports = {
 					if (bpmContext.stepComplete && !bpmContext.finalPhaseApproved) {
 						// Create notifications to reviewers of the next step that has been activated
 						relevantStepIndex = activeStepIndex + 1;
-						relevantNotificationType = constants.notificationTypes.REVIEWSTEPSTART;
+						relevantNotificationType =
+							constants.notificationTypes.REVIEWSTEPSTART;
 					} else if (bpmContext.stepComplete && bpmContext.finalPhaseApproved) {
 						// Create notifications to managers that the application is awaiting final approval
 						relevantStepIndex = activeStepIndex;
-						relevantNotificationType = constants.notificationTypes.FINALDECISIONREQUIRED;
+						relevantNotificationType =
+							constants.notificationTypes.FINALDECISIONREQUIRED;
 					}
 					// Continue only if notification required
 					if (!_.isEmpty(relevantNotificationType)) {
@@ -1323,11 +1396,13 @@ module.exports = {
 					if (bpmContext.finalPhaseApproved) {
 						// Create notifications to managers that the application is awaiting final approval
 						relevantStepIndex = activeStepIndex;
-						relevantNotificationType = constants.notificationTypes.FINALDECISIONREQUIRED;
+						relevantNotificationType =
+							constants.notificationTypes.FINALDECISIONREQUIRED;
 					} else {
 						// Create notifications to reviewers of the next step that has been activated
 						relevantStepIndex = activeStepIndex + 1;
-						relevantNotificationType = constants.notificationTypes.REVIEWSTEPSTART;
+						relevantNotificationType =
+							constants.notificationTypes.REVIEWSTEPSTART;
 					}
 					// Get the email context only if required
 					if (relevantStepIndex !== activeStepIndex) {
@@ -1403,7 +1478,10 @@ module.exports = {
 			accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
 			// Check if workflow/5 Safes based application, set final status date if status will never change again
 			let workflowEnabled = false;
-			if (_.has(accessRecord.datasets[0].toObject(), 'publisher') && !_.isNull(accessRecord.datasets[0].publisher)) {
+			if (
+				_.has(accessRecord.datasets[0].toObject(), 'publisher') &&
+				!_.isNull(accessRecord.datasets[0].publisher)
+			) {
 				if (!accessRecord.datasets[0].publisher.workflowEnabled) {
 					accessRecord.dateFinalStatus = new Date();
 				} else {
@@ -1486,9 +1564,10 @@ module.exports = {
 		}
 		let { workflow } = accessRecord;
 		if (_.isEmpty(workflow)) {
-			return res
-				.status(400)
-				.json({ status: 'error', message: 'There is no workflow attached to this application.' });
+			return res.status(400).json({
+				status: 'error',
+				message: 'There is no workflow attached to this application.',
+			});
 		}
 		let activeStepIndex = workflow.steps.findIndex((step) => {
 			return step.active === true;
@@ -1521,9 +1600,9 @@ module.exports = {
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
 		let { aboutApplication } = accessRecord;
-		if(typeof aboutApplication === 'string') {
+		if (typeof aboutApplication === 'string') {
 			aboutApplication = JSON.parse(accessRecord.aboutApplication);
-		} 
+		}
 		let { projectName } = aboutApplication;
 		let { projectId, _id, workflow = {}, dateSubmitted = '' } = accessRecord;
 		if (_.isEmpty(projectId)) {
@@ -1550,7 +1629,7 @@ module.exports = {
 			emailRecipients = [],
 			options = {},
 			html = '',
-			authors = []
+			authors = [];
 		// Get applicants from 5 Safes form, using main applicant as fall back for single dataset applications
 		let answers = JSON.parse(accessRecord.questionAnswers);
 		let applicants = module.exports.extractApplicantNames(answers).join(', ');
@@ -1577,7 +1656,7 @@ module.exports = {
 			currentDeadline = '',
 			remainingReviewers = [],
 			remainingReviewerUserIds = [],
-			dateDeadline
+			dateDeadline,
 		} = context;
 
 		switch (type) {
@@ -1936,7 +2015,7 @@ module.exports = {
 					reviewSections,
 					reviewerNames,
 					nextStepName,
-					dateDeadline
+					dateDeadline,
 				};
 				html = await emailGenerator.generateReviewDeadlineWarning(options);
 				await emailGenerator.sendEmail(
@@ -1955,7 +2034,10 @@ module.exports = {
 				);
 				managerUserIds = custodianManagers.map((user) => user.id);
 				// 2. Combine managers and reviewers remaining
-				let deadlinePassedUserIds = [...remainingReviewerUserIds, ...managerUserIds];
+				let deadlinePassedUserIds = [
+					...remainingReviewerUserIds,
+					...managerUserIds,
+				];
 				let deadlinePassedUsers = [...remainingReviewers, ...custodianManagers];
 
 				// 3. Create notifications
@@ -1979,7 +2061,7 @@ module.exports = {
 					reviewSections,
 					reviewerNames,
 					nextStepName,
-					dateDeadline
+					dateDeadline,
 				};
 				html = await emailGenerator.generateReviewDeadlinePassed(options);
 				await emailGenerator.sendEmail(
@@ -2015,7 +2097,8 @@ module.exports = {
 			}
 			// If user is not authenticated as a custodian, check if they are an author or the main applicant
 			if (
-				application.applicationStatus === constants.applicationStatuses.INPROGRESS ||
+				application.applicationStatus ===
+					constants.applicationStatuses.INPROGRESS ||
 				_.isEmpty(userType)
 			) {
 				if (
@@ -2180,7 +2263,7 @@ module.exports = {
 		let { aboutApplication, questionAnswers } = app;
 
 		if (aboutApplication) {
-			if(typeof aboutApplication === 'string') {
+			if (typeof aboutApplication === 'string') {
 				aboutApplication = JSON.parse(aboutApplication);
 			}
 			({ projectName } = aboutApplication);
@@ -2244,5 +2327,5 @@ module.exports = {
 				return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
-	}
+	},
 };

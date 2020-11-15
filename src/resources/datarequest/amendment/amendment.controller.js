@@ -14,7 +14,7 @@ const setAmendment = async (req, res) => {
 			params: { id },
 		} = req;
 		let { _id: userId } = req.user;
-		let { questionId = '', questionSetId = '', mode = '', reason = '' } = req.body;
+		let { questionId = '', questionSetId = '', mode = '', reason = '', answer = '' } = req.body;
 		if (_.isEmpty(questionId) || _.isEmpty(questionSetId)) {
 			return res.status(400).json({
 				success: false,
@@ -71,7 +71,7 @@ const setAmendment = async (req, res) => {
 		// 6. Add or remove amendment depending on mode
 		switch (mode) {
 			case constants.amendmentModes.ADDED:
-				addAmendment(accessRecord, questionId, questionSetId, reason, req.user);
+				addAmendment(accessRecord, questionId, questionSetId, answer, reason, req.user, true);
 				break;
 			case constants.amendmentModes.REMOVED:
 				removeAmendment(accessRecord, questionId);
@@ -97,16 +97,20 @@ const setAmendment = async (req, res) => {
 	}
 };
 
-const addAmendment = (accessRecord, questionId, questionSetId, reason, user) => {
+const addAmendment = (accessRecord, questionId, questionSetId, answer, reason, user, requested) => {
 	// 1. Create new amendment object with key representing the questionId
 	let amendment = {
 		[`${questionId}`]: new AmendmentModel({
 			questionSetId,
-			requested: true,
+			requested,
 			reason,
-			requestedBy: `${user.firstname} ${user.lastname}`,
-			requestedByUser: user._id,
-			dateRequested: Date.now(),
+			answer,
+			requestedBy: requested ? `${user.firstname} ${user.lastname}` : '',
+			requestedByUser: requested ? user._id : '',
+			dateRequested: requested ? Date.now() : '',
+			updatedBy: requested ? '' : `${user.firstname} ${user.lastname}`,
+			updatedByUser: requested ? '' : user._id,
+          	dateUpdated: requested ? '' : Date.now(),
 		}),
 	};
 	// 2. Find the index of the latest amendment iteration of the DAR
@@ -130,6 +134,25 @@ const addAmendment = (accessRecord, questionId, questionSetId, reason, user) => 
 	}
 };
 
+const updateAmendment = (accessRecord, questionId, answer, user) => {
+	// 1. Locate amendment in current iteration
+	const currentIterationIndex = getLatestAmendmentIterationIndex(accessRecord);
+	// 2. Return unmoodified record if invalid update
+	if(currentIterationIndex === -1 || _.isUndefined(accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[questionId])) {
+		return accessRecord;
+	}
+	// 3. Find and update the question with the new answer
+	accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[questionId] = {
+		...accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[questionId],
+		answer,
+		updatedBy: `${user.firstname} ${user.lastname}`,
+		updatedByUser: user._id,
+		dateUpdated: Date.now()
+	};
+	// 4. Return updated access record
+	return accessRecord;
+};
+
 const removeAmendment = (accessRecord, questionId) => {
 	// 1. Find the index of the latest amendment amendmentIteration of the DAR
 	let index = getLatestAmendmentIterationIndex(accessRecord);
@@ -142,8 +165,28 @@ const removeAmendment = (accessRecord, questionId) => {
 	}
 };
 
+const doesAmendmentExist = (accessRecord, questionId) => {
+	// 1. Get current amendment iteration
+	const latestIteration = getLatestAmendmentIteration(accessRecord.amendmentIterations);
+	if(_.isUndefined(latestIteration)) {
+		return false;
+	}
+	// 2. Check if questionId has been added by Custodian for amendment
+	return latestIteration.questionAnswers.hasOwnProperty(questionId);
+}
+
+const handleApplicantAmendment = (accessRecord, questionId, questionSetId, answer, user) => {
+	let isExisting = doesAmendmentExist(accessRecord, questionId);
+	if(isExisting) {
+		accessRecord = updateAmendment(accessRecord, questionId, answer, user);
+	} else {
+		addAmendment(accessRecord, questionId, questionSetId, answer, '', user, false);
+	}
+	return accessRecord;
+};
+
 const getLatestAmendmentIterationIndex = (accessRecord) => {
-	// 1. Find and return index of latest amendment amendmentIteration that has not been returned to applicants
+	// 1. Find and return index of latest amendment iteration
 	let index = -1;
 	if (!_.isUndefined(accessRecord.amendmentIterations)) {
 		index = accessRecord.amendmentIterations.findIndex((v) =>
@@ -179,7 +222,7 @@ const injectAmendments = (accessRecord, userType) => {
 		// Custodian should only see amendment answers that have been submitted by the applicants
 		amendmentIterations = amendmentIterations.map((iteration) => {
 			if(_.isUndefined(iteration.dateSubmitted)) {
-				iteration = removeAmendmentAnswers(iteration);
+				iteration = removeIterationAnswers(iteration);
 			}
 			return iteration;
 		});
@@ -210,36 +253,47 @@ const formatQuestionAnswers = (questionAnswers, amendmentIterations) => {
 };
 
 const getLatestAmendmentIteration = (amendmentIterations) => {
-	// 1. Find the latest date created in the amendment iterations array
+	// 1. Guard for incorrect type passed
+	if(_.isEmpty(amendmentIterations) || _.isNull(amendmentIterations) || _.isUndefined(amendmentIterations)) {
+		return undefined;
+	}
+	// 2. Find the latest date created in the amendment iterations array
 	let mostRecentDate = new Date(Math.max.apply(null, amendmentIterations.map(iteration => {
 		return new Date(iteration.dateCreated);
 	 })));
-	 // 2. Pull out the related object using a filter to find the object with the latest date
+	 // 3. Pull out the related object using a filter to find the object with the latest date
 	 let mostRecentObject = amendmentIterations.filter(iteration => { 
 		 let date = new Date(iteration.dateCreated); 
 		 return date.getTime() == mostRecentDate.getTime();
 	 })[0];
-	 // 3. Return the correct object
+	 // 4. Return the correct object
 	return mostRecentObject;
 };
 
-const removeAmendmentAnswers = (iteration) => {
-	// 1. Loop through each question answer by key (questionId)
+const removeIterationAnswers = (iteration) => {
+	// 1. Guard for invalid object passed
+	if(!iteration || !iteration.questionAnswers){
+		return undefined;
+	}
+	// 2. Loop through each question answer by key (questionId)
 	Object.keys(iteration.questionAnswers).forEach((key) => {
-		// 2. If the key object has an answer, remove it
+		// 3. If the key object has an answer, remove it
 		if(iteration.questionAnswers[key].hasOwnProperty('answer')) {
 			delete iteration.questionAnswers[key].answer;
 		}
 	});
-	// 3. Return answer stripped iteration object
+	// 4. Return answer stripped iteration object
 	return iteration;
 };
 
 module.exports = {
+	handleApplicantAmendment: handleApplicantAmendment,
+	doesAmendmentExist: doesAmendmentExist,
+	updateAmendment: updateAmendment,
 	setAmendment: setAmendment,
 	addAmendment: addAmendment,
 	removeAmendment: removeAmendment,
-	removeAmendmentAnswers: removeAmendmentAnswers,
+	removeIterationAnswers: removeIterationAnswers,
 	getLatestAmendmentIteration: getLatestAmendmentIteration,
 	getLatestAmendmentIterationIndex: getLatestAmendmentIterationIndex,
 	getAmendmentIterationParty: getAmendmentIterationParty,

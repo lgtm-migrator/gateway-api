@@ -6,7 +6,11 @@ const AmendmentSchema = new Schema({
   reason: String,
   requestedBy: String,
   requestedByUser: { type : Schema.Types.ObjectId, ref: 'User' },
-  dateRequested: Date
+  dateRequested: Date,
+  answer: String,
+  updatedBy: String,
+  updatedByUser: { type : Schema.Types.ObjectId, ref: 'User' },
+  dateUpdated: Date,
 });
 
 export const AmendmentModel = model('amendment', AmendmentSchema)
