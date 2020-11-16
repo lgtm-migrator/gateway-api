@@ -1570,7 +1570,9 @@ module.exports = {
 			emailRecipients = [],
 			options = {},
 			html = '',
-			authors = []
+			jsonContent = {},
+			authors = [],
+			attachments = []
 		// Get applicants from 5 Safes form, using main applicant as fall back for single dataset applications
 		let answers = JSON.parse(accessRecord.questionAnswers);
 		let applicants = module.exports.extractApplicantNames(answers).join(', ');
@@ -1735,9 +1737,23 @@ module.exports = {
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of emailRecipientTypes) {
+					// Establish email context object
+					options = { ...options, userType: emailRecipientType };
+					// Build email template
+					({ html, jsonContent } = await emailGenerator.generateEmail(
+						questions,
+						pages,
+						questionPanels,
+						answers,
+						options
+					));
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
+						// Generate json attachment for external system integration
+						const attachmentContent = Buffer.from(JSON.stringify({id: accessRecord._id, ...jsonContent})).toString('base64');
+						const filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
+						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [
@@ -1745,16 +1761,6 @@ module.exports = {
 							...accessRecord.authors,
 						];
 					}
-					// Establish email context object
-					options = { ...options, userType: emailRecipientType };
-					// Build email template
-					html = await emailGenerator.generateEmail(
-						questions,
-						pages,
-						questionPanels,
-						answers,
-						options
-					);
 					// Send email
 					if (!_.isEmpty(emailRecipients)) {
 						await emailGenerator.sendEmail(
@@ -1762,7 +1768,8 @@ module.exports = {
 							hdrukEmail,
 							`Data Access Request has been submitted to ${publisher} for ${datasetTitles}`,
 							html,
-							false
+							false,
+							attachments
 						);
 					}
 				}
