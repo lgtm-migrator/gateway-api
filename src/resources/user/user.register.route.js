@@ -95,10 +95,7 @@ router.post('/',
     //Build event object for user registered and log it to DB
     let eventObj = {
         userId: req.user.id, 
-        email: email, 
-        event: 'user_registered', 
-        provider: req.user.provider, 
-        providerId: req.user.providerId,
+        event: `user_registered_${req.user.provider}`, 
         timestamp: Date.now()
     }
     await eventLogController.logEvent(eventObj);
