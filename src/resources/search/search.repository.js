@@ -53,7 +53,13 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                     "name": 1,
                     "type": 1,
                     "description": 1,
-                    "bio": 1,
+                    "bio": {
+                            $cond: {
+                            if: { $eq: [ false, "$showBio" ] },
+                            then: "$$REMOVE",
+                            else: "$bio"
+                        }
+                    },
                     "categories.category": 1,
                     "categories.programmingLanguage": 1,
                     "programmingLanguage.programmingLanguage": 1,
