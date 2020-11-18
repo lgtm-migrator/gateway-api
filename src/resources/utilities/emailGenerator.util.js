@@ -223,6 +223,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                 cellpadding="0"
                 cellspacing="40"
                 width="700"
+                word-break="break-all"
                 style="font-family: Arial, sans-serif">
                 <thead>
                   <tr>
@@ -236,8 +237,8 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                <tr>
+                <tbody style="overflow-y: auto; overflow-x: hidden;">
+                <tr style="width: 100%; text-align: left;">
                   <td bgcolor="#fff" style="padding: 0; border: 0;">
                     <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
@@ -310,7 +311,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
 				let answer = answers[question.questionId] || `-`;
 				table += `<tr>
                     <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${question.question}</td>
-                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${answer}</td>
+                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4; word-break: break-all;">${answer}</td>
                   </tr>`;
 			}
 		}
