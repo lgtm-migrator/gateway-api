@@ -109,6 +109,8 @@ module.exports = {
 				return res
 					.status(404)
 					.json({ status: 'error', message: 'Application not found.' });
+			} else {
+				accessRecord = accessRecord.toObject();
 			}
 			// 4. Ensure single datasets are mapped correctly into array
 			if (_.isEmpty(accessRecord.datasets)) {
@@ -129,11 +131,16 @@ module.exports = {
 					.status(401)
 					.json({ status: 'failure', message: 'Unauthorised' });
 			}
-			// 6. Set edit mode for applicants who have not yet submitted
+			// 6. Set edit mode for applicants who have not yet submitted or are in the process of fixing amendments
+			let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(
+				accessRecord
+			);
 			if (
 				userType === constants.userTypes.APPLICANT &&
-				accessRecord.applicationStatus ===
-					constants.applicationStatuses.INPROGRESS
+				(accessRecord.applicationStatus ===
+					constants.applicationStatuses.INPROGRESS ||
+					countUnsubmittedAmendments.unansweredAmendments > 0 ||
+					countUnsubmittedAmendments.answeredAmendments > 0)
 			) {
 				readOnly = false;
 			}
@@ -144,14 +151,12 @@ module.exports = {
 				hasRecommended,
 			} = workflowController.getReviewStatus(accessRecord, req.user._id);
 			// 8. Get the workflow/voting status
-			let workflow = workflowController.getWorkflowStatus(
-				accessRecord.toObject()
-			);
+			let workflow = workflowController.getWorkflowStatus(accessRecord);
 			// 9. Check if the current user can override the current step
-			if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team')) {
+			if (_.has(accessRecord.datasets[0], 'publisher.team')) {
 				let isManager = teamController.checkTeamPermissions(
 					constants.roleTypes.MANAGER,
-					accessRecord.datasets[0].publisher.team.toObject(),
+					accessRecord.datasets[0].publisher.team,
 					req.user._id
 				);
 				// Set the workflow override capability if there is an active step and user is a manager
@@ -160,21 +165,24 @@ module.exports = {
 				}
 			}
 			// 10. Update json schema and question answers with modifications since original submission
-			accessRecord = amendmentController.injectAmendments(accessRecord);
-
+			accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
+			accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
+			accessRecord = amendmentController.injectAmendments(
+				accessRecord,
+				userType
+			);
 			// 11. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
-					...accessRecord.toObject(),
-					jsonSchema: JSON.parse(accessRecord.jsonSchema),
-					questionAnswers: JSON.parse(accessRecord.questionAnswers),
+					...accessRecord,
 					aboutApplication:
 						typeof accessRecord.aboutApplication === 'string'
 							? JSON.parse(accessRecord.aboutApplication)
 							: accessRecord.aboutApplication,
 					datasets: accessRecord.datasets,
 					readOnly,
+					...countUnsubmittedAmendments,
 					userType,
 					projectId:
 						accessRecord.projectId ||
@@ -424,18 +432,14 @@ module.exports = {
 					.json({ status: 'error', message: 'Data Access Request not found.' });
 			}
 			// 5. Update record object
-			accessRequestRecord = await module.exports.updateApplication(
-				accessRequestRecord,
-				updateObj
-			);
-			// 6. Return new data object
-			return res.status(200).json({
-				status: 'success',
-				data: {
-					...accessRequestRecord._doc,
-					questionAnswers: JSON.parse(accessRequestRecord.questionAnswers),
-				},
-			});
+			module.exports
+				.updateApplication(accessRequestRecord, updateObj)
+				.then(() => {
+					// 6. Return new data object
+					return res.status(204).json({
+						status: 'success',
+					});
+				});
 		} catch (err) {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err });
@@ -477,26 +481,39 @@ module.exports = {
 		let { updatedQuestionId = '', user } = updateObj;
 		// 2. If application is in progress, update initial question answers
 		if (applicationStatus === constants.applicationStatuses.INPROGRESS) {
-			accessRecord = await DataRequestModel.findByIdAndUpdate(
+			await DataRequestModel.findByIdAndUpdate(
 				_id,
 				updateObj,
-				{ new: true });
-		// 3. Else if application has already been submitted make amendment
+				{ new: true },
+				(err) => {
+					if (err) {
+						console.error(err);
+						throw err;
+					}
+				}
+			);
+			// 3. Else if application has already been submitted make amendment
 		} else if (
 			applicationStatus === constants.applicationStatuses.INREVIEW ||
 			applicationStatus === constants.applicationStatuses.SUBMITTED
 		) {
-			let updatedAnswer = JSON.parse(updateObj.questionAnswers)[updatedQuestionId];
-			accessRecord = amendmentController.handleApplicantAmendment(accessRecord, updatedQuestionId, '', updatedAnswer, user);
-			accessRecord.save();
-			// Perform amendment
-			// need question set id?
-
-			// need to check if amendment was requested in the last iteration version and update existing amendment
-
-			// update access request with new answer
+			let updatedAnswer = JSON.parse(updateObj.questionAnswers)[
+				updatedQuestionId
+			];
+			accessRecord = amendmentController.handleApplicantAmendment(
+				accessRecord.toObject(),
+				updatedQuestionId,
+				'',
+				updatedAnswer,
+				user
+			);
+			await DataRequestModel.replaceOne({ _id }, accessRecord, (err) => {
+				if (err) {
+					console.error(err);
+					throw err;
+				}
+			});
 		}
-		return accessRequestRecord;
 	},
 
 	//PUT api/v1/data-access-request/:id
@@ -557,7 +574,7 @@ module.exports = {
 				authorised,
 				userType,
 			} = module.exports.getUserPermissionsForApplication(
-				accessRecord,
+				accessRecord.toObject(),
 				userId,
 				_id
 			);
@@ -1469,57 +1486,103 @@ module.exports = {
 					.status(404)
 					.json({ status: 'error', message: 'Application not found.' });
 			}
-			// 3. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
+			// 3. Check user type and authentication to submit application
+			let {
+				authorised,
+				userType,
+			} = module.exports.getUserPermissionsForApplication(
+				accessRecord,
+				req.user.id,
+				req.user._id
+			);
+			if (!authorised) {
+				return res
+					.status(401)
+					.json({ status: 'failure', message: 'Unauthorised' });
+			}
+			// 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
 			if (_.isEmpty(accessRecord.datasets)) {
 				accessRecord.datasets = [accessRecord.dataset];
 			}
-
-			// 4. Update application to submitted status
-			accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
-			// Check if workflow/5 Safes based application, set final status date if status will never change again
-			let workflowEnabled = false;
+			// 5. Perform either initial submission or resubmission depending on application status
 			if (
-				_.has(accessRecord.datasets[0].toObject(), 'publisher') &&
-				!_.isNull(accessRecord.datasets[0].publisher)
+				accessRecord.applicationStatus ===
+				constants.applicationStatuses.INPROGRESS
 			) {
-				if (!accessRecord.datasets[0].publisher.workflowEnabled) {
-					accessRecord.dateFinalStatus = new Date();
-				} else {
-					workflowEnabled = true;
-				}
+				accessRecord = module.exports.doInitialSubmission(accessRecord);
+			} else if (
+				accessRecord.applicationStatus ===
+					constants.applicationStatuses.INREVIEW ||
+				accessRecord.applicationStatus ===
+					constants.applicationStatuses.SUBMITTED
+			) {
+				accessRecord = amendmentController.doResubmission(
+					accessRecord.toObject(),
+					req.user._id.toString()
+				);
 			}
-			let dateSubmitted = new Date();
-			accessRecord.dateSubmitted = dateSubmitted;
-			await accessRecord.save(async (err) => {
-				if (err) {
-					console.error(err);
-					res.status(500).json({ status: 'error', message: err });
-				} else {
-					// If save has succeeded - send notifications
-					// Send notifications and emails to custodian team and main applicant
-					await module.exports.createNotifications(
-						constants.notificationTypes.SUBMITTED,
-						{},
-						accessRecord,
-						req.user
-					);
-					// Start workflow process if publisher requires it
-					if (workflowEnabled) {
-						// Call Camunda controller to start workflow for submitted application
-						let {
-							publisherObj: { name: publisher },
-						} = accessRecord;
-						let bpmContext = {
-							dateSubmitted,
-							applicationStatus: constants.applicationStatuses.SUBMITTED,
-							publisher,
-							businessKey: id,
-						};
-						bpmController.postStartPreReview(bpmContext);
+			// 6. Ensure a valid submission is taking place
+			if (_.isNil(accessRecord.submissionType)) {
+				return res
+					.status(400)
+					.json({
+						status: 'error',
+						message:
+							'Application cannot be submitted as it has reached a final decision status.',
+					});
+			}
+			// 7. Save changes to db
+			await DataRequestModel.replaceOne(
+				{ _id: id },
+				accessRecord,
+				async (err) => {
+					if (err) {
+						console.error(err);
+						return res
+							.status(500)
+							.json({
+								status: 'error',
+								message: 'An error occurred saving the changes',
+							});
+					} else {
+						// 8. Send notifications and emails with amendments
+						accessRecord.questionAnswers = JSON.parse(
+							accessRecord.questionAnswers
+						);
+						accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
+						accessRecord = amendmentController.injectAmendments(
+							accessRecord,
+							userType
+						);
+						await module.exports.createNotifications(
+							accessRecord.submissionType === constants.submissionTypes.INITIAL
+								? constants.notificationTypes.SUBMITTED
+								: constants.notificationTypes.RESUBMITTED,
+							{},
+							accessRecord,
+							req.user
+						);
+						// 8. Start workflow process in Camunda if publisher requires it and it is the first submission
+						if (
+							accessRecord.workflowEnabled &&
+							accessRecord.submissionType === constants.submissionTypes.INITIAL
+						) {
+							let {
+								publisherObj: { name: publisher },
+								dateSubmitted,
+							} = accessRecord;
+							let bpmContext = {
+								dateSubmitted,
+								applicationStatus: constants.applicationStatuses.SUBMITTED,
+								publisher,
+								businessKey: id,
+							};
+							bpmController.postStartPreReview(bpmContext);
+						}
 					}
 				}
-			});
-			// 6. Return aplication and successful response
+			);
+			// 9. Return aplication and successful response
 			return res
 				.status(200)
 				.json({ status: 'success', data: accessRecord._doc });
@@ -1527,6 +1590,28 @@ module.exports = {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err });
 		}
+	},
+
+	doInitialSubmission: async (accessRecord) => {
+		// 1. Update application to submitted status
+		accessRecord.submissionType = constants.submissionTypes.INITIAL;
+		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
+		// 2. Check if workflow/5 Safes based application, set final status date if status will never change again
+		if (
+			_.has(accessRecord.datasets[0].toObject(), 'publisher') &&
+			!_.isNull(accessRecord.datasets[0].publisher)
+		) {
+			if (!accessRecord.datasets[0].publisher.workflowEnabled) {
+				accessRecord.dateFinalStatus = new Date();
+				accessRecord.workflowEnabled = false;
+			} else {
+				accessRecord.workflowEnabled = true;
+			}
+		}
+		let dateSubmitted = new Date();
+		accessRecord.dateSubmitted = dateSubmitted;
+		// 3. Return updated access record for saving
+		return accessRecord;
 	},
 
 	//POST api/v1/data-access-request/:id/notify
@@ -1604,10 +1689,25 @@ module.exports = {
 			aboutApplication = JSON.parse(accessRecord.aboutApplication);
 		}
 		let { projectName } = aboutApplication;
-		let { projectId, _id, workflow = {}, dateSubmitted = '' } = accessRecord;
+		let {
+			projectId,
+			_id,
+			workflow = {},
+			dateSubmitted = '',
+			jsonSchema,
+			questionAnswers,
+		} = accessRecord;
 		if (_.isEmpty(projectId)) {
 			projectId = _id;
 		}
+		// Parse the schema
+		if (typeof jsonSchema === 'string') {
+			jsonSchema = JSON.parse(accessRecord.jsonSchema);
+		}
+		if (typeof questionAnswers === 'string') {
+			questionAnswers = JSON.parse(accessRecord.questionAnswers);
+		}
+		let { pages, questionPanels, questionSets: questions } = jsonSchema;
 		// Publisher details from single dataset
 		let {
 			datasetfields: { contactPoint, publisher },
@@ -1625,14 +1725,15 @@ module.exports = {
 		let { firstname, lastname } = user;
 		// Instantiate default params
 		let custodianManagers = [],
+			custodianUserIds = [],
 			managerUserIds = [],
 			emailRecipients = [],
 			options = {},
 			html = '',
 			authors = [];
-		// Get applicants from 5 Safes form, using main applicant as fall back for single dataset applications
-		let answers = JSON.parse(accessRecord.questionAnswers);
-		let applicants = module.exports.extractApplicantNames(answers).join(', ');
+		let applicants = module.exports
+			.extractApplicantNames(questionAnswers)
+			.join(', ');
 		// Fall back for single applicant on short application form
 		if (_.isEmpty(applicants)) {
 			applicants = `${appFirstName} ${appLastName}`;
@@ -1736,16 +1837,7 @@ module.exports = {
 				);
 				break;
 			case constants.notificationTypes.SUBMITTED:
-				// 1. Prepare data for notifications
-				const emailRecipientTypes = ['applicant', 'dataCustodian'];
-				// Destructure the application
-				let { jsonSchema } = accessRecord;
-				// Parse the schema
-				let { pages, questionPanels, questionSets: questions } = JSON.parse(
-					jsonSchema
-				);
-
-				// 2. Create notifications
+				// 1. Create notifications
 				// Custodian notification
 				if (
 					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')
@@ -1755,7 +1847,7 @@ module.exports = {
 						accessRecord.datasets[0].publisher.team,
 						constants.roleTypes.MANAGER
 					);
-					let custodianUserIds = custodianManagers.map((user) => user.id);
+					custodianUserIds = custodianManagers.map((user) => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
 						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
@@ -1783,7 +1875,7 @@ module.exports = {
 						accessRecord._id
 					);
 				}
-				// 3. Send emails to custodian and applicant
+				// 2. Send emails to custodian and applicant
 				// Create object to pass to email generator
 				options = {
 					userType: '',
@@ -1793,7 +1885,7 @@ module.exports = {
 					userName: `${appFirstName} ${appLastName}`,
 				};
 				// Iterate through the recipient types
-				for (let emailRecipientType of emailRecipientTypes) {
+				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
@@ -1805,13 +1897,17 @@ module.exports = {
 						];
 					}
 					// Establish email context object
-					options = { ...options, userType: emailRecipientType };
+					options = {
+						...options,
+						userType: emailRecipientType,
+						submissionType: constants.submissionTypes.INITIAL,
+					};
 					// Build email template
 					html = await emailGenerator.generateEmail(
 						questions,
 						pages,
 						questionPanels,
-						answers,
+						questionAnswers,
 						options
 					);
 					// Send email
@@ -1820,6 +1916,90 @@ module.exports = {
 							emailRecipients,
 							hdrukEmail,
 							`Data Access Request has been submitted to ${publisher} for ${datasetTitles}`,
+							html,
+							false
+						);
+					}
+				}
+				break;
+			case constants.notificationTypes.RESUBMITTED:
+				// 1. Create notifications
+				// Custodian notification
+				if (_.has(accessRecord.datasets[0], 'publisher.team.users')) {
+					// Retrieve all custodian user Ids to generate notifications
+					custodianManagers = teamController.getTeamMembersByRole(
+						accessRecord.datasets[0].publisher.team,
+						constants.roleTypes.MANAGER
+					);
+					custodianUserIds = custodianManagers.map((user) => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						custodianUserIds,
+						`A Data Access Request has been resubmitted with updates to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
+						'data access request',
+						accessRecord._id
+					);
+				} else {
+					const dataCustodianEmail =
+						process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
+					custodianManagers = [{ email: dataCustodianEmail }];
+				}
+				// Applicant notification
+				await notificationBuilder.triggerNotificationMessage(
+					[accessRecord.userId],
+					`Your Data Access Request for ${datasetTitles} was successfully resubmitted with updates to ${publisher}`,
+					'data access request',
+					accessRecord._id
+				);
+				// Contributors/authors notification
+				if (!_.isEmpty(authors)) {
+					await notificationBuilder.triggerNotificationMessage(
+						accessRecord.authors.map((author) => author.id),
+						`A Data Access Request you are contributing to for ${datasetTitles} was successfully resubmitted with updates to ${publisher} by ${firstname} ${lastname}`,
+						'data access request',
+						accessRecord._id
+					);
+				}
+				// 2. Send emails to custodian and applicant
+				// Create object to pass to email generator
+				options = {
+					userType: '',
+					userEmail: appEmail,
+					publisher,
+					datasetTitles,
+					userName: `${appFirstName} ${appLastName}`,
+				};
+				// Iterate through the recipient types
+				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
+					// Send emails to custodian team members who have opted in to email notifications
+					if (emailRecipientType === 'dataCustodian') {
+						emailRecipients = [...custodianManagers];
+					} else {
+						// Send email to main applicant and contributors if they have opted in to email notifications
+						emailRecipients = [
+							accessRecord.mainApplicant,
+							...accessRecord.authors,
+						];
+					}
+					// Establish email context object
+					options = {
+						...options,
+						userType: emailRecipientType,
+						submissionType: constants.submissionTypes.RESUBMISSION,
+					};
+					// Build email template
+					html = await emailGenerator.generateEmail(
+						questions,
+						pages,
+						questionPanels,
+						questionAnswers,
+						options
+					);
+					// Send email
+					if (!_.isEmpty(emailRecipients)) {
+						await emailGenerator.sendEmail(
+							emailRecipients,
+							hdrukEmail,
+							`Data Access Request to ${publisher} for ${datasetTitles} has been updated with updates`,
 							html,
 							false
 						);
@@ -2084,10 +2264,10 @@ module.exports = {
 				return { authorised, userType };
 			}
 			// Check if the user is a custodian team member and assign permissions if so
-			if (_.has(application.datasets[0].toObject(), 'publisher.team')) {
+			if (_.has(application.datasets[0], 'publisher.team')) {
 				let isTeamMember = teamController.checkTeamPermissions(
 					'',
-					application.datasets[0].publisher.team.toObject(),
+					application.datasets[0].publisher.team,
 					_id
 				);
 				if (isTeamMember) {

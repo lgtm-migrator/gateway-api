@@ -141,7 +141,7 @@ describe('addAmendment', () => {
 	});
 });
 
-describe('getLatestAmendmentIteration', () => {
+describe('getCurrentAmendmentIteration', () => {
     test('extracts most recent iteration object by created date', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
@@ -160,7 +160,7 @@ describe('getLatestAmendmentIteration', () => {
 			},
 		};
 		// Act
-		const result = amendmentController.getLatestAmendmentIteration(data.amendmentIterations);
+		const result = amendmentController.getCurrentAmendmentIteration(data.amendmentIterations);
 		// Assert
 		expect(result).toEqual(expected);
 	});
@@ -213,7 +213,10 @@ describe('removeIterationAnswers', () => {
 				reason: 'test reason',
 				requestedBy: 'Robin Kavanagh',
 				requestedByUser: '5f03530178e28143d7af2eb1',
-				dateRequested: '2020-11-03T11:14:01.840+00:00'
+				dateRequested: '2020-11-03T11:14:01.840+00:00',
+				updatedBy: 'James Smyth',
+				updatedByUser: '5f03530178e28143d7af2eb1',
+				dateUpdated: '2020-11-03T12:14:01.840+00:00'
 			},
 			lastName: {
 				questionSetId: 'applicant',
@@ -221,7 +224,10 @@ describe('removeIterationAnswers', () => {
 				reason: 'test reason',
 				requestedBy: 'Robin Kavanagh',
 				requestedByUser: '5f03530178e28143d7af2eb1',
-				dateRequested: '2020-11-03T11:14:01.840+00:00'
+				dateRequested: '2020-11-03T11:14:01.840+00:00',
+				updatedBy: 'James Smyth',
+				updatedByUser: '5f03530178e28143d7af2eb1',
+				dateUpdated: '2020-11-03T12:14:01.840+00:00'
 			},
 		},
 	};
@@ -359,5 +365,152 @@ describe('updateAmendment', () => {
 		// Assert
 		expect(data.amendmentIterations.length).toBeFalsy();
 		expect(data).toEqual(dataRequest[1]);
+	});
+});
+
+describe('formatQuestionAnswers', () => {
+	test('given an access record with a number of amendments made post submissions, then the access record is updated with the latest answers', () => {
+		// Arrange
+		const data = _.cloneDeep(dataRequest[0]);
+		// Act
+		data.questionAnswers = amendmentController.formatQuestionAnswers(data.questionAnswers, data.amendmentIterations);
+		// Assert
+		expect(dataRequest[0].questionAnswers['firstName']).toBe('ra');
+		expect(dataRequest[0].questionAnswers['lastName']).toBe('adsf');
+		expect(data.questionAnswers['firstName']).toBe('James');
+		expect(data.questionAnswers['lastName']).toBe('Smyth');
+	});
+	test('given an access record with a number of amendments made through multiple re-submissions, then the access record is updated with the latest answers', () => {
+		// Arrange
+		const data = _.cloneDeep(dataRequest[3]);
+		// Act
+		data.questionAnswers = amendmentController.formatQuestionAnswers(data.questionAnswers, data.amendmentIterations);
+		// Assert
+		expect(data.questionAnswers['firstName']).toBe('Mark');
+		expect(data.questionAnswers['lastName']).toBe('Connolly');
+	});
+});
+
+describe('filterAmendments', () => {
+	test('given an access record with an amendment iteration that has not been returned to the applicants, then the amendment iteration is filtered out for the applicant', () => {
+		// Arrange
+		const data = _.cloneDeep(dataRequest[3]);
+		// Act
+		const result = amendmentController.filterAmendments(data.amendmentIterations, constants.userTypes.APPLICANT);
+		// Assert
+		expect(result.length).toBe(2);
+		expect(result[result.length - 1].dateReturned).not.toBeFalsy();
+	});
+	test('given an access record with an amendment iteration that has not been returned to the applicants, then the amendment iteration is still visible to the custodian', () => {
+		// Arrange
+		const data = _.cloneDeep(dataRequest[3]);
+		// Act
+		const result = amendmentController.filterAmendments(data.amendmentIterations, constants.userTypes.CUSTODIAN);
+		// Assert
+		expect(result.length).toBe(3);
+		expect(result[result.length - 1].dateCreated).not.toBeFalsy();
+		expect(result[result.length - 1].dateReturned).toBeFalsy();
+	});
+	test('given an access record with an amendment iteration that has not been resubmitted to the custodian, then the latest amendment iteration answers are not visible to the custodian', () => {
+		// Arrange
+		const data = _.cloneDeep(dataRequest[4]);
+		// Act
+		const result = amendmentController.filterAmendments(data.amendmentIterations, constants.userTypes.CUSTODIAN);
+		// Assert
+		expect(result.length).toBe(3);
+		expect(result[result.length - 1].questionAnswers['country']).not.toHaveProperty('answer');
+		expect(result[result.length - 1].dateCreated).not.toBeFalsy();
+		expect(result[result.length - 1].dateReturned).not.toBeFalsy();
+		expect(result[result.length - 1].dateSubmitted).toBeFalsy();
+	});
+	test('given an access record with an amendment iteration that has not been resubmitted to the custodian, then the latest amendment iteration answers are still visible to the applicant', () => {
+		// Arrange
+		const data = _.cloneDeep(dataRequest[4]);
+		// Act
+		const result = amendmentController.filterAmendments(data.amendmentIterations, constants.userTypes.APPLICANT);
+		// Assert
+		expect(result.length).toBe(3);
+		expect(result[result.length - 1].questionAnswers['country']).toHaveProperty('answer');
+		expect(result[result.length - 1].dateCreated).not.toBeFalsy();
+		expect(result[result.length - 1].dateReturned).not.toBeFalsy();
+		expect(result[result.length - 1].dateSubmitted).toBeFalsy();
+	});
+});
+
+describe('injectAmendments', () => {
+	test('given an access record containing an amendment iteration that has not yet been resubmitted, the custodian receives the previous answers', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[5]);
+		// Act
+		data = amendmentController.injectAmendments(data, constants.userTypes.CUSTODIAN);
+		// Assert
+		expect(data.questionAnswers['firstName']).toBe('Mark');
+		expect(data.questionAnswers['lastName']).toBe('Connolly');
+		expect(data.questionAnswers['country']).toBeFalsy();
+	});
+	test('given an access record containing an amendment iteration that has not yet been resubmitted, the applicant receives the latest answers', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[5]);
+		// Act
+		data = amendmentController.injectAmendments(data, constants.userTypes.APPLICANT);
+		// Assert
+		expect(data.questionAnswers['firstName']).toBe('Mark');
+		expect(data.questionAnswers['lastName']).toBe('Connolly');
+		expect(data.questionAnswers['country']).toBe('United Kingdom');
+	});
+	test('given an access record has no amendment iterations, the record is returned unmodified for an applicant', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[6]);
+		// Act
+		data = amendmentController.injectAmendments(data, constants.userTypes.APPLICANT);
+		// Assert
+		expect(data).toEqual(dataRequest[6]);
+	});
+	test('given an access record has no amendment iterations, the record is returned unmodified for a custodian', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[6]);
+		// Act
+		data = amendmentController.injectAmendments(data, constants.userTypes.CUSTODIAN);
+		// Assert
+		expect(data).toEqual(dataRequest[6]);
+	});
+});
+
+describe('doResubmission', () => {
+	test('given a data access record is resubmitted with a valid amendment iteration, then the iteration is updated to submitted', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[4]);
+		// Act
+		data = amendmentController.doResubmission(data, users.applicant._id);
+		// Assert
+		expect(dataRequest[4].amendmentIterations[2].dateSubmitted).toBeFalsy();
+		expect(dataRequest[4].amendmentIterations[2].submittedBy).toBeFalsy();
+		expect(data.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
+		expect(data.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
+		expect(data.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
+		expect(data.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
+		expect(data.amendmentIterations[2]).toHaveProperty('dateSubmitted');
+		expect(data.amendmentIterations[2].submittedBy).toBe(users.applicant._id);
+	});
+});
+
+describe('countUnsubmittedAmendments', () => {
+	test('given a data access record with unsubmitted amendments, the correct number of answered and unanswered amendments in returned', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[5]);
+		// Act
+		const result = amendmentController.countUnsubmittedAmendments(data);
+		// Assert
+		expect(result.unansweredAmendments).toBe(2);
+		expect(result.answeredAmendments).toBe(1);
+	});
+	test('given a data access record with no amendments, the correct number of answered and unanswered amendments in returned', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[6]);
+		// Act
+		const result = amendmentController.countUnsubmittedAmendments(data);
+		// Assert
+		expect(result.unansweredAmendments).toBe(0);
+		expect(result.answeredAmendments).toBe(0);
 	});
 });

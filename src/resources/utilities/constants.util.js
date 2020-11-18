@@ -4,9 +4,15 @@ const _userTypes = {
 	APPLICANT: 'applicant',
 };
 
+const _submissionEmailRecipientTypes = [
+	'applicant', 
+	'dataCustodian'
+];
+
 const _notificationTypes = {
 	STATUSCHANGE: 'StatusChange',
 	SUBMITTED: 'Submitted',
+	RESUBMITTED: 'Resubmitted',
 	CONTRIBUTORCHANGE: 'ContributorChange',
 	STEPOVERRIDE: 'StepOverride',
 	REVIEWSTEPSTART: 'ReviewStepStart',
@@ -28,6 +34,11 @@ const _applicationStatuses = {
 const _amendmentModes = {
 	ADDED: 'added',
 	REMOVED: 'removed'
+};
+
+const _submissionTypes = {
+	INITIAL: 'initial',
+	RESUBMISSION: 'resubmission'
 };
 
 const _darPanelMapper = {
@@ -54,6 +65,8 @@ export default {
 	notificationTypes: _notificationTypes,
 	applicationStatuses: _applicationStatuses,
 	amendmentModes: _amendmentModes,
+	submissionTypes: _submissionTypes,
 	roleTypes: _roleTypes,
-	darPanelMapper: _darPanelMapper
+	darPanelMapper: _darPanelMapper,
+	submissionEmailRecipientTypes: _submissionEmailRecipientTypes
 };

@@ -3,6 +3,7 @@ import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
 import teamController from '../team/team.controller';
+import constants from '../utilities/constants.util';
 
 const sgMail = require('@sendgrid/mail');
 let parent, qsId;
@@ -192,12 +193,18 @@ const _formatSectionTitle = (value) => {
 	return _.capitalize(questionId);
 };
 
-const _buildSubjectTitle = (user, title) => {
+const _buildSubjectTitle = (user, title, submissionType) => {
+  let subject = '';
 	if (user.toUpperCase() === 'DATACUSTODIAN') {
-		return `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
+		subject = `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
 	} else {
-		return `You have requested access to ${title}. The custodian will be in contact about the application.`;
-	}
+    if(submissionType === constants.submissionTypes.INITIAL) {
+      subject = `You have requested access to ${title}. The custodian will be in contact about the application.`;
+    } else {
+      subject = `You have made updates to your Data Access Request for ${title}. The custodian will be in contact about the application.`;
+    }
+  }
+  return subject;
 };
 
 /**
@@ -211,8 +218,9 @@ const _buildSubjectTitle = (user, title) => {
  */
 const _buildEmail = (fullQuestions, questionAnswers, options) => {
 	let parent;
-	let { userType, userName, userEmail, datasetTitles } = options;
-	let subject = _buildSubjectTitle(userType, datasetTitles);
+  let { userType, userName, userEmail, datasetTitles, submissionType } = options;
+  let heading = submissionType === constants.submissionTypes.INITIAL ? `New data access request application` : `Existing data access request application with new updates`;
+	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
@@ -227,7 +235,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                      New data access request application
+                     ${heading}
                     </th>
                   </tr>
                   <tr>

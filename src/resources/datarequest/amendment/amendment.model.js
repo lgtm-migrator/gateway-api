@@ -7,7 +7,7 @@ const AmendmentSchema = new Schema({
   requestedBy: String,
   requestedByUser: { type : Schema.Types.ObjectId, ref: 'User' },
   dateRequested: Date,
-  answer: String,
+  answer: { type: Schema.Types.Mixed },
   updatedBy: String,
   updatedByUser: { type : Schema.Types.ObjectId, ref: 'User' },
   dateUpdated: Date,
