@@ -64,7 +64,7 @@ const DataRequestSchema = new Schema({
     returnedBy: { type : Schema.Types.ObjectId, ref: 'User' },
     dateSubmitted: { type: Date },
     submittedBy: { type : Schema.Types.ObjectId, ref: 'User' },
-    questionAnswers: { type: Object }
+    questionAnswers: { type: Object, default: {} }
   }],
 }, {
     timestamps: true,

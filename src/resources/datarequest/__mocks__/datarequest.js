@@ -823,7 +823,7 @@ module.exports = [
 						answer: 'Conolly',
 						updatedBy: 'test applicant 1',
 						updatedByUser: '5f03530178e28143d7af2eb1',
-						dateUpdated: '2020-10-03T11:14:01.843+00:00',
+						dateUpdated: '2020-10-30T11:14:01.843+00:00',
 					},
 				},
 			}
@@ -1080,6 +1080,7 @@ module.exports = [
 			principleInvestigator: 'true',
 			regICONumber: '333',
 			lastName: 'Connilly',
+			country: ''
 		},
 		dateSubmitted: '2020-10-23T10:55:47.231+00:00',
 		amendmentIterations: [
@@ -1097,7 +1098,7 @@ module.exports = [
 						answer: 'Conollyy',
 						updatedBy: 'test applicant 1',
 						updatedByUser: '5f03530178e28143d7af2eb1',
-						dateUpdated: '2020-10-03T11:14:01.843+00:00',
+						dateUpdated: '2020-10-24T11:14:01.843+00:00',
 					},
 				},
 			},
@@ -1115,7 +1116,7 @@ module.exports = [
 						answer: 'Mark',
 						updatedBy: 'test applicant 1',
 						updatedByUser: '5f03530178e28143d7af2eb1',
-						dateUpdated: '2020-10-04T11:14:01.843+00:00',
+						dateUpdated: '2020-10-25T11:14:01.843+00:00',
 					},
 					lastName: {
 						questionSetId: 'applicant',
@@ -1123,7 +1124,7 @@ module.exports = [
 						answer: 'Connolly',
 						updatedBy: 'test applicant 1',
 						updatedByUser: '5f03530178e28143d7af2eb1',
-						dateUpdated: '2020-10-04T11:14:01.843+00:00',
+						dateUpdated: '2020-10-25T11:14:01.843+00:00',
 					},
 				},
 			},
@@ -1137,7 +1138,7 @@ module.exports = [
 						reason: 'country selection is invalid',
 						requestedBy: 'Robin Kavanagh',
 						requestedByUser: '5f03530178e28143d7af2eb1',
-						dateRequested: '2020-10-04T17:14:01.843+00:00'
+						dateRequested: '2020-10-26T17:14:01.843+00:00'
 					}
 				},
 			}

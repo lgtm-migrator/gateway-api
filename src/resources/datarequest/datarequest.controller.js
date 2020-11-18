@@ -434,10 +434,13 @@ module.exports = {
 			// 5. Update record object
 			module.exports
 				.updateApplication(accessRequestRecord, updateObj)
-				.then(() => {
+				.then((accessRequestRecord) => {
+					const { unansweredAmendments, answeredAmendments } = accessRequestRecord;
 					// 6. Return new data object
-					return res.status(204).json({
+					return res.status(200).json({
 						status: 'success',
+						unansweredAmendments,
+						answeredAmendments
 					});
 				});
 		} catch (err) {
@@ -492,6 +495,7 @@ module.exports = {
 					}
 				}
 			);
+			return accessRecord;
 			// 3. Else if application has already been submitted make amendment
 		} else if (
 			applicationStatus === constants.applicationStatuses.INREVIEW ||
@@ -512,7 +516,8 @@ module.exports = {
 					console.error(err);
 					throw err;
 				}
-			});
+			})
+			return accessRecord;
 		}
 	},
 

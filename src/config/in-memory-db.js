@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-
 const mongod = new MongoMemoryServer();
 
 /**
@@ -11,10 +10,22 @@ module.exports.connect = async () => {
 
     const mongooseOpts = {
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
+        useCreateIndex: true
     };
 
     await mongoose.connect(uri, mongooseOpts);
+}
+
+/**
+ * Load data into the database.
+ */
+module.exports.loadData = async (data) => {
+    const queries = Object.keys(data).map(col => {
+      const collection = mongoose.connection.collection(col);
+      return collection.insertMany(data[col])
+    })
+    return Promise.all(queries);
 }
 
 /**
@@ -22,7 +33,7 @@ module.exports.connect = async () => {
  */
 module.exports.closeDatabase = async () => {
     await mongoose.connection.dropDatabase();
-    await mongoose.connection.close();
+    await mongoose.connection.close(true);
     await mongod.stop();
 }
 

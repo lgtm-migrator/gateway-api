@@ -514,3 +514,18 @@ describe('countUnsubmittedAmendments', () => {
 		expect(result.answeredAmendments).toBe(0);
 	});
 });
+
+describe('getLatestQuestionAnswer', () => {
+	// Arrange
+	let data = _.cloneDeep(dataRequest);
+	const cases = [[data[0], 'firstName', 'James'], [data[0], 'lastName', 'Smyth'], [data[2], 'lastName', 'Connilly'], [data[3], 'country', ''], [data[3], 'firstName', 'Mark']];
+	test.each(cases)(
+		"given a data access record with multiple amendment versions, the latest previous answer is returned",
+		(accessRecord, questionId, expectedResult) => {
+		// Act
+		const result = amendmentController.getLatestQuestionAnswer(accessRecord, questionId);
+		// Assert
+		expect(result).toBe(expectedResult);
+		}
+	);
+});

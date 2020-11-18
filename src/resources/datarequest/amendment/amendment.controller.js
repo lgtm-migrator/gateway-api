@@ -1,6 +1,7 @@
 import { DataRequestModel } from '../datarequest.model';
 import { AmendmentModel } from './amendment.model';
 import constants from '../../utilities/constants.util';
+import helperUtil from '../../utilities/helper.util';
 import _ from 'lodash';
 
 const teamController = require('../../team/team.controller');
@@ -160,7 +161,7 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 	// 2. Return unmoodified record if invalid update
 	if (
 		currentIterationIndex === -1 ||
-		_.isUndefined(
+		_.isNil(
 			accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
 				questionId
 			]
@@ -168,7 +169,17 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 	) {
 		return accessRecord;
 	}
-	// 3. Find and update the question with the new answer
+	// 3. Check if the update amendment reflects a change since the last version of the answer
+	if (currentIterationIndex > -1) {
+		const latestAnswer = getLatestQuestionAnswer(accessRecord, questionId);
+		if (!_.isNil(latestAnswer)) {
+			if (answer === latestAnswer || helperUtil.arraysEqual(answer, latestAnswer)) {
+				removeAmendment(accessRecord, questionId);
+				return accessRecord;
+			}
+		}
+	}
+	// 4. Find and update the question with the new answer
 	accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
 		questionId
 	] = {
@@ -180,7 +191,7 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 		updatedByUser: user._id,
 		dateUpdated: Date.now(),
 	};
-	// 4. Return updated access record
+	// 5. Return updated access record
 	return accessRecord;
 };
 
@@ -201,7 +212,7 @@ const doesAmendmentExist = (accessRecord, questionId) => {
 	const latestIteration = getCurrentAmendmentIteration(
 		accessRecord.amendmentIterations
 	);
-	if (_.isUndefined(latestIteration)) {
+	if (_.isNil(latestIteration) || _.isNil(latestIteration.questionAnswers)) {
 		return false;
 	}
 	// 2. Check if questionId has been added by Custodian for amendment
@@ -232,7 +243,14 @@ const handleApplicantAmendment = (
 			false
 		);
 	}
-	// 4. Return updated access record
+	// 4. Update the amendment count
+	let {
+		unansweredAmendments = 0,
+		answeredAmendments = 0,
+	} = countUnsubmittedAmendments(accessRecord);
+	accessRecord.unansweredAmendments = unansweredAmendments;
+	accessRecord.answeredAmendments = answeredAmendments;
+	// 5. Return updated access record
 	return accessRecord;
 };
 
@@ -243,7 +261,16 @@ const getLatestAmendmentIterationIndex = (accessRecord) => {
 		return -1;
 	}
 	// 2. Find the latest unsubmitted date created in the amendment iterations array
-	let mostRecentDate = new Date(Math.max.apply(null, amendmentIterations.map((iteration) => _.isUndefined(iteration.dateSubmitted) ? new Date(iteration.dateCreated) : '')));
+	let mostRecentDate = new Date(
+		Math.max.apply(
+			null,
+			amendmentIterations.map((iteration) =>
+				_.isUndefined(iteration.dateSubmitted)
+					? new Date(iteration.dateCreated)
+					: ''
+			)
+		)
+	);
 	// 3. Pull out the related object using a filter to find the object with the latest date
 	return amendmentIterations.findIndex((iteration) => {
 		let date = new Date(iteration.dateCreated);
@@ -312,9 +339,59 @@ const injectAmendments = (accessRecord, userType) => {
 //return jsonSchema;
 //};
 
+const getLatestQuestionAnswer = (accessRecord, questionId) => {
+	// 1. Include original submission of question answer
+	if(typeof accessRecord.questionAnswers === 'string') {
+		accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
+	};
+	let initialSubmission = {
+		questionAnswers: {
+			[`${questionId}`]: {
+				answer: accessRecord.questionAnswers[questionId],
+				dateUpdated: accessRecord.dateSubmitted,
+			},
+		},
+	};
+	let relevantVersions = [initialSubmission, ...accessRecord.amendmentIterations];
+	if(relevantVersions.length > 1) {
+		relevantVersions = _.slice(relevantVersions, 0, relevantVersions.length -1);
+	};
+	// 2. Reduce all versions to find latest instance of question answer
+	const latestAnswers = relevantVersions.reduce((arr, version) => {
+		// 3. Move to next version if the question was not modified in this one
+		if(_.isNil(version.questionAnswers[questionId])){
+			return arr;	
+		}
+		let { answer, dateUpdated } = version.questionAnswers[questionId];
+		let foundIndex = arr.findIndex(
+			(amendment) => amendment.questionId === questionId
+		);
+		// 4. If the amendment does not exist in our array of latest answers, add it
+		if (foundIndex === -1) {
+			arr.push({ questionId, answer, dateUpdated });
+			// 5. Otherwise update the amendment if this amendment was made more recently
+		} else if (
+			new Date(dateUpdated).getTime() >
+			new Date(arr[foundIndex].dateUpdated).getTime()
+		) {
+			arr[foundIndex] = { questionId, answer, dateUpdated };
+		}
+		return arr;
+	}, []);
+
+	if (_.isEmpty(latestAnswers)) {
+		return undefined;
+	} else {
+		return latestAnswers[0].answer;
+	}
+};
+
 const formatQuestionAnswers = (questionAnswers, amendmentIterations) => {
 	// 1. Reduce all amendment iterations to find latest answers
 	const latestAnswers = amendmentIterations.reduce((arr, iteration) => {
+		if(_.isNil(iteration.questionAnswers)) {
+			return arr;
+		}
 		// 2. Loop through each amendment key per iteration
 		Object.keys(iteration.questionAnswers).forEach((questionId) => {
 			let { answer, dateUpdated } = iteration.questionAnswers[questionId];
@@ -353,7 +430,16 @@ const getCurrentAmendmentIteration = (amendmentIterations) => {
 		return undefined;
 	}
 	// 2. Find the latest unsubmitted date created in the amendment iterations array
-	let mostRecentDate = new Date(Math.max.apply(null, amendmentIterations.map((iteration) => _.isUndefined(iteration.dateSubmitted) ? new Date(iteration.dateCreated) : '')));
+	let mostRecentDate = new Date(
+		Math.max.apply(
+			null,
+			amendmentIterations.map((iteration) =>
+				_.isUndefined(iteration.dateSubmitted)
+					? new Date(iteration.dateCreated)
+					: ''
+			)
+		)
+	);
 	// 3. Pull out the related object using a filter to find the object with the latest date
 	let mostRecentObject = amendmentIterations.filter((iteration) => {
 		let date = new Date(iteration.dateCreated);
@@ -401,17 +487,24 @@ const countUnsubmittedAmendments = (accessRecord) => {
 	let unansweredAmendments = 0;
 	let answeredAmendments = 0;
 	let index = getLatestAmendmentIterationIndex(accessRecord);
-	if (index === -1) {
+	if (index === -1 || _.isNil(accessRecord.amendmentIterations[index].questionAnswers)) {
 		return { unansweredAmendments: 0, answeredAmendments: 0 };
 	}
 	// 2. Count answered and unanswered amendments in unsubmitted iteration
-	Object.keys(accessRecord.amendmentIterations[index].questionAnswers).forEach((questionId) => {
-		if(_.isNil(accessRecord.amendmentIterations[index].questionAnswers[questionId].answer)) {
-			unansweredAmendments++;
-		} else {
-			answeredAmendments++;
+	Object.keys(accessRecord.amendmentIterations[index].questionAnswers).forEach(
+		(questionId) => {
+			if (
+				_.isNil(
+					accessRecord.amendmentIterations[index].questionAnswers[questionId]
+						.answer
+				)
+			) {
+				unansweredAmendments++;
+			} else {
+				answeredAmendments++;
+			}
 		}
-	});
+	);
 	// 3. Return counts
 	return { unansweredAmendments, answeredAmendments };
 };
@@ -431,5 +524,6 @@ module.exports = {
 	getAmendmentIterationParty: getAmendmentIterationParty,
 	injectAmendments: injectAmendments,
 	formatQuestionAnswers: formatQuestionAnswers,
-	countUnsubmittedAmendments: countUnsubmittedAmendments
+	countUnsubmittedAmendments: countUnsubmittedAmendments,
+	getLatestQuestionAnswer: getLatestQuestionAnswer
 };
