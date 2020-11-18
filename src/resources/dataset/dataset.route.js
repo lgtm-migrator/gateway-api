@@ -66,8 +66,11 @@ router.get('/:datasetID', async (req, res) => {
     
     // Search for a dataset based on pid
     let data = await Data.aggregate([
-        { $match: { $and: [{ pid: req.params.datasetID }, {activeflag: 'active'}] } }
+        { $match: { $and: [{ pid: datasetId }, {activeflag: 'active'}] } }
     ]).exec();
+   
+    // Pull a dataset version from MDC if it doesn't exist on our DB
+    if (data.length === 0) data[0] = await loadDataset(datasetId)
     
     if(data && data.length > 0){
         // Set the actual datasetId value based on pid provided
@@ -76,12 +79,10 @@ router.get('/:datasetID', async (req, res) => {
     else{
         // Search for a dataset based on datasetID
         data = await Data.aggregate([
-            { $match: { $and: [{ datasetid: req.params.datasetID }] } }
+            { $match: { $and: [{ datasetid: datasetId }] } }
         ]).exec();
         isLatestVersion = (data[0].activeflag === 'active');
     }
-
-    if (data.length === 0) data[0] = await loadDataset(datasetId)
 
     let p = Data.aggregate([
         { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": datasetId } } }] } },
