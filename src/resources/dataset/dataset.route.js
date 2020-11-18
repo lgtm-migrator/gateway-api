@@ -59,36 +59,48 @@ router.get(
     }
 );
 
-
-
-
 router.get('/:datasetID', async (req, res) => {
-    var q = Data.aggregate([
-        { $match: { $and: [{ datasetid: req.params.datasetID }] } }
+
+    let datasetId = req.params.datasetID;
+    let isLatestVersion = true;
+    
+    // Search for a dataset based on pid
+    let data = await Data.aggregate([
+        { $match: { $and: [{ pid: req.params.datasetID }, {activeflag: 'active'}] } }
+    ]).exec();
+    
+    if(data && data.length > 0){
+        // Set the actual datasetId value based on pid provided
+        datasetId = data[0].datasetid;
+    }
+    else{
+        // Search for a dataset based on datasetID
+        data = await Data.aggregate([
+            { $match: { $and: [{ datasetid: req.params.datasetID }] } }
+        ]).exec();
+        isLatestVersion = (data[0].activeflag === 'active');
+    }
+
+    if (data.length === 0) data[0] = await loadDataset(datasetId)
+
+    let p = Data.aggregate([
+        { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": datasetId } } }] } },
     ]);
-     q.exec(async (err, data) => {
-        if (data.length === 0) data[0] = await loadDataset(req.params.datasetID)
 
-        var p = Data.aggregate([
-            { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.datasetID } } }] } },
-        ]);
-
-        p.exec( async (err, relatedData) => {
-            relatedData.forEach((dat) => {
-                dat.relatedObjects.forEach((x) => {
-                    if (x.objectId === req.params.datasetID && dat.id !== req.params.datasetID) {
-                        if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
-                        data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type, user: x.user, updated: x.updated })
-                    }
-                })
-            });
-
-            if (err) return res.json({ success: false, error: err });
-            return res.json({ success: true, data: data });
+    p.exec( async (err, relatedData) => {
+        relatedData.forEach((dat) => {
+            dat.relatedObjects.forEach((x) => {
+                if (x.objectId === datasetId && dat.id !== datasetId) {
+                    if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
+                    data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type, user: x.user, updated: x.updated })
+                }
+            })
         });
+
+        if (err) return res.json({ success: false, error: err });
+        return res.json({ success: true, isLatestVersion: isLatestVersion, data: data });
     });
 });
-
 
 // @router   GET /api/v1/
 // @desc     Returns List of Dataset Objects No auth
