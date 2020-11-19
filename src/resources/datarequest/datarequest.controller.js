@@ -133,7 +133,8 @@ module.exports = {
 			}
 			// 6. Set edit mode for applicants who have not yet submitted or are in the process of fixing amendments
 			let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(
-				accessRecord
+				accessRecord,
+				userType
 			);
 			if (
 				userType === constants.userTypes.APPLICANT &&
