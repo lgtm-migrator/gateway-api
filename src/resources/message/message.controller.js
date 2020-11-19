@@ -12,7 +12,7 @@ module.exports = {
     // POST /api/v1/messages
     createMessage: async (req, res) => {
         try {
-            let { _id: createdBy, firstname, lastname } = req.user
+            const { _id: createdBy, firstname, lastname } = req.user
             let { messageType = 'message', topic = '', messageDescription, relatedObjectIds } = req.body;
             let topicObj = {};
             // 1. If the message type is 'message' and topic id is empty
@@ -26,7 +26,6 @@ module.exports = {
                     // 4. Pass new topic Id
                     topic = topicObj._id;
                 }  else {
-                    ({ createdBy } = topic);
                     // 2. Find the existing topic
                     topicObj = await topicController.findTopic(topic, createdBy);
                     // 3. Return not found if it was not found
@@ -50,7 +49,7 @@ module.exports = {
                         console.error(`No team associated to publisher, cannot message`);
                         return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
                     }
-                    topicObj.recipients = await topicController.buildRecipients(team, createdBy);
+                    topicObj.recipients = await topicController.buildRecipients(team, topicObj.createdBy);
                     await topicObj.save();
                 }
             }
