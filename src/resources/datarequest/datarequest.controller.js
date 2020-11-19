@@ -1671,14 +1671,14 @@ module.exports = {
 		// 4. Send emails based on deadline elapsed or approaching
 		if (emailContext.deadlineElapsed) {
 			module.exports.createNotifications(
-				notificationTypes.DEADLINEPASSED,
+				constants.notificationTypes.DEADLINEPASSED,
 				emailContext,
 				accessRecord,
 				req.user
 			);
 		} else {
 			module.exports.createNotifications(
-				notificationTypes.DEADLINEWARNING,
+				constants.notificationTypes.DEADLINEWARNING,
 				emailContext,
 				accessRecord,
 				req.user
@@ -2192,7 +2192,7 @@ module.exports = {
 					false
 				);
 				break;
-			case notificationTypes.DEADLINEWARNING:
+			case constants.notificationTypes.DEADLINEWARNING:
 				// 1. Create reviewer notifications
 				await notificationBuilder.triggerNotificationMessage(
 					remainingReviewerUserIds,
@@ -2225,7 +2225,7 @@ module.exports = {
 					false
 				);
 				break;
-			case notificationTypes.DEADLINEPASSED:
+			case constants.notificationTypes.DEADLINEPASSED:
 				// 1. Get all managers
 				custodianManagers = teamController.getTeamMembersByRole(
 					accessRecord.publisherObj.team,
