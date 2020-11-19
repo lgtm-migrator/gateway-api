@@ -259,7 +259,7 @@ const handleApplicantAmendment = (
 	let {
 		unansweredAmendments = 0,
 		answeredAmendments = 0,
-	} = countUnsubmittedAmendments(accessRecord);
+	} = countUnsubmittedAmendments(accessRecord, constants.userTypes.APPLICANT);
 	accessRecord.unansweredAmendments = unansweredAmendments;
 	accessRecord.answeredAmendments = answeredAmendments;
 	// 6. Return updated access record
@@ -507,14 +507,15 @@ const doResubmission = (accessRecord, userId) => {
 	return accessRecord;
 };
 
-const countUnsubmittedAmendments = (accessRecord) => {
+const countUnsubmittedAmendments = (accessRecord, userType) => {
 	// 1. Find latest iteration and if not found, return 0
 	let unansweredAmendments = 0;
 	let answeredAmendments = 0;
 	let index = getLatestAmendmentIterationIndex(accessRecord);
 	if (
 		index === -1 ||
-		_.isNil(accessRecord.amendmentIterations[index].questionAnswers)
+		_.isNil(accessRecord.amendmentIterations[index].questionAnswers) ||
+		(_.isNil(accessRecord.amendmentIterations[index].dateSubmitted) && userType === constants.userTypes.CUSTODIAN)
 	) {
 		return { unansweredAmendments: 0, answeredAmendments: 0 };
 	}

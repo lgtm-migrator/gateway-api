@@ -484,7 +484,7 @@ describe('countUnsubmittedAmendments', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[5]);
 		// Act
-		const result = amendmentController.countUnsubmittedAmendments(data);
+		const result = amendmentController.countUnsubmittedAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.unansweredAmendments).toBe(2);
 		expect(result.answeredAmendments).toBe(1);
@@ -493,7 +493,7 @@ describe('countUnsubmittedAmendments', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[6]);
 		// Act
-		const result = amendmentController.countUnsubmittedAmendments(data);
+		const result = amendmentController.countUnsubmittedAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.unansweredAmendments).toBe(0);
 		expect(result.answeredAmendments).toBe(0);
