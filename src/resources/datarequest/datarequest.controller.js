@@ -1688,11 +1688,11 @@ module.exports = {
 
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
-		let { aboutApplication } = accessRecord;
+		let { aboutApplication = {} } = accessRecord;
 		if (typeof aboutApplication === 'string') {
 			aboutApplication = JSON.parse(accessRecord.aboutApplication);
 		}
-		let { projectName } = aboutApplication;
+		let { projectName = 'No project name set' } = aboutApplication;
 		let {
 			projectId,
 			_id,
@@ -1734,7 +1734,11 @@ module.exports = {
 			emailRecipients = [],
 			options = {},
 			html = '',
-			authors = [];
+			attachmentContent = '',
+			filename = '',
+			jsonContent = {},
+			authors = [],
+			attachments = [];
 		let applicants = module.exports
 			.extractApplicantNames(questionAnswers)
 			.join(', ');
@@ -1890,12 +1894,26 @@ module.exports = {
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
+					// Establish email context object
+					options = {
+						...options,
+						userType: emailRecipientType,
+						submissionType: constants.submissionTypes.INITIAL,
+					};
+					// Build email template
+					({ html, jsonContent } = await emailGenerator.generateEmail(
+						questions,
+						pages,
+						questionPanels,
+						questionAnswers,
+						options
+					));
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
 						// Generate json attachment for external system integration
-						const attachmentContent = Buffer.from(JSON.stringify({id: accessRecord._id, ...jsonContent})).toString('base64');
-						const filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
+						attachmentContent = Buffer.from(JSON.stringify({id: accessRecord._id, ...jsonContent})).toString('base64');
+						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
 						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
@@ -1904,20 +1922,6 @@ module.exports = {
 							...accessRecord.authors,
 						];
 					}
-					// Establish email context object
-					options = {
-						...options,
-						userType: emailRecipientType,
-						submissionType: constants.submissionTypes.INITIAL,
-					};
-					// Build email template
-					html = await emailGenerator.generateEmail(
-						questions,
-						pages,
-						questionPanels,
-						questionAnswers,
-						options
-					);
 					// Send email
 					if (!_.isEmpty(emailRecipients)) {
 						await emailGenerator.sendEmail(
@@ -1979,16 +1983,6 @@ module.exports = {
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
-					// Send emails to custodian team members who have opted in to email notifications
-					if (emailRecipientType === 'dataCustodian') {
-						emailRecipients = [...custodianManagers];
-					} else {
-						// Send email to main applicant and contributors if they have opted in to email notifications
-						emailRecipients = [
-							accessRecord.mainApplicant,
-							...accessRecord.authors,
-						];
-					}
 					// Establish email context object
 					options = {
 						...options,
@@ -1996,13 +1990,27 @@ module.exports = {
 						submissionType: constants.submissionTypes.RESUBMISSION,
 					};
 					// Build email template
-					html = await emailGenerator.generateEmail(
+					({ html, jsonContent } = await emailGenerator.generateEmail(
 						questions,
 						pages,
 						questionPanels,
 						questionAnswers,
 						options
-					);
+					));
+					// Send emails to custodian team members who have opted in to email notifications
+					if (emailRecipientType === 'dataCustodian') {
+						emailRecipients = [...custodianManagers];
+						// Generate json attachment for external system integration
+						attachmentContent = Buffer.from(JSON.stringify({id: accessRecord._id, ...jsonContent})).toString('base64');
+						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
+						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+					} else {
+						// Send email to main applicant and contributors if they have opted in to email notifications
+						emailRecipients = [
+							accessRecord.mainApplicant,
+							...accessRecord.authors,
+						];
+					}
 					// Send email
 					if (!_.isEmpty(emailRecipients)) {
 						await emailGenerator.sendEmail(
@@ -2010,7 +2018,8 @@ module.exports = {
 							hdrukEmail,
 							`Data Access Request to ${publisher} for ${datasetTitles} has been updated with updates`,
 							html,
-							false
+							false,
+							attachments
 						);
 					}
 				}
