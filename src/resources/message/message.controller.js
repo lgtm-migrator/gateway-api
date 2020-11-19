@@ -12,7 +12,7 @@ module.exports = {
     // POST /api/v1/messages
     createMessage: async (req, res) => {
         try {
-            const { _id: createdBy, firstname, lastname } = req.user
+            let { _id: createdBy, firstname, lastname } = req.user
             let { messageType = 'message', topic = '', messageDescription, relatedObjectIds } = req.body;
             let topicObj = {};
             // 1. If the message type is 'message' and topic id is empty
@@ -26,6 +26,7 @@ module.exports = {
                     // 4. Pass new topic Id
                     topic = topicObj._id;
                 }  else {
+                    ({ createdBy } = topic);
                     // 2. Find the existing topic
                     topicObj = await topicController.findTopic(topic, createdBy);
                     // 3. Return not found if it was not found
@@ -124,7 +125,6 @@ module.exports = {
             return res.status(500).json(err);
         }
     },
-    
     // PUT /api/v1/messages
     updateMessage: async(req, res) => {
         try {
@@ -157,7 +157,6 @@ module.exports = {
             return res.status(500).json(err);
         }
     },
-
     // GET api/v1/messages/unread/count
     getUnreadMessageCount: async(req, res) => {
         try {
