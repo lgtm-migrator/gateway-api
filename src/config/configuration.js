@@ -25,7 +25,7 @@ export const clients = [
         //response_types: ['code id_token'],
         redirect_uris: process.env.MDWRedirectURI.split(",") || [''],
         id_token_signed_response_alg: 'HS256',
-        post_logout_redirect_uris: ['https://hdr.auth.metadata.works/logout','https://hdr.auth.metadata.works/auth/logout','http://localhost:8080/logout','http://localhost:8080/auth/logout']
+        post_logout_redirect_uris: ['https://hdr.auth.metadata.works/logout','https://hdr.auth.metadata.works/auth/logout','https://hdruk-preprod-auth.metadata.works/auth/logout','http://localhost:8080/logout','http://localhost:8080/auth/logout']
     },
     {
         //BC Platforms

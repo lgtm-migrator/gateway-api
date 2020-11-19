@@ -270,6 +270,12 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                 </tr>
                `;
 
+	// Create json content payload for attaching to email
+	const jsonContent = {
+		questions: { ...fullQuestions },
+		answers: { ...questionAnswers },
+	};
+
 	let pageCount = 0;
 	// render page [Safe People, SafeProject]
 	for (let page of pages) {
@@ -320,7 +326,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
 	}
 	table += ` </tbody></table></div>`;
 
-	return table;
+	return { html: table, jsonContent };
 };
 
 /**
@@ -456,9 +462,13 @@ const _generateEmail = async (
 	// fullQuestions [SafePeople: {Applicant: {}, Applicant_aca: {}}, SafeProject:{}]
 	let fullQuestions = _groupByPageSection([...questionList]);
 	// build up  email with  values
-	let email = _buildEmail(fullQuestions, flatQuestionAnswers, options);
+	let { html, jsonContent } = _buildEmail(
+		fullQuestions,
+		flatQuestionAnswers,
+		options
+	);
 	// return email
-	return email;
+	return { html, jsonContent };
 };
 
 const _displayConditionalStatusDesc = (
@@ -716,7 +726,9 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								dateSubmitted
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Workflow</td>
@@ -735,11 +747,15 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase commenced</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(startDateTime).format('D MMM YYYY')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								startDateTime
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase completed</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(endDateTime).format('D MMM YYYY')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								endDateTime
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase duration</td>
@@ -908,8 +924,8 @@ const _generateReviewDeadlineWarning = (options) => {
 		stepName,
 		reviewSections,
 		reviewerNames,
-    dateSubmitted,
-    dateDeadline
+		dateSubmitted,
+		dateDeadline,
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -928,8 +944,8 @@ const _generateReviewDeadlineWarning = (options) => {
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
                      The following data access request application is approaching the review deadline of ${moment(
-                      dateDeadline
-                    ).format('D MMM YYYY')}.
+												dateDeadline
+											).format('D MMM YYYY')}.
                     </th>
                   </tr>
                 </thead>
@@ -1004,8 +1020,8 @@ const _generateReviewDeadlinePassed = (options) => {
 		stepName,
 		reviewSections,
 		reviewerNames,
-    dateSubmitted,
-    dateDeadline
+		dateSubmitted,
+		dateDeadline,
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -1145,7 +1161,9 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								dateSubmitted
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Workflow</td>
@@ -1164,11 +1182,15 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase commenced</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(startDateTime).format('D MMM YYYY')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								startDateTime
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase completed</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(endDateTime).format('D MMM YYYY')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								endDateTime
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase duration</td>
@@ -1251,14 +1273,14 @@ const _generateRemovedFromTeam = (options) => {
 };
 
 const _generateAddedToTeam = (options) => {
-  let { teamName, role } = options;
+	let { teamName, role } = options;
 	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
 	let subheader = ``;
-  if(role === teamController.roleTypes.MANAGER) {
-    subheader = `You will now be able to create and manage Data Access Request workflows, process applications, send messages, and manage the profile area relating to this team, including the ability to add and remove new members.`;
-  } else if (role === teamController.roleTypes.REVIEWER) {
-    subheader = `You will now be able to review assigned Data Access Requests, send messages and visit the profile area relating to this team.`;
-  }
+	if (role === teamController.roleTypes.MANAGER) {
+		subheader = `You will now be able to create and manage Data Access Request workflows, process applications, send messages, and manage the profile area relating to this team, including the ability to add and remove new members.`;
+	} else if (role === teamController.roleTypes.REVIEWER) {
+		subheader = `You will now be able to review assigned Data Access Requests, send messages and visit the profile area relating to this team.`;
+	}
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -1304,7 +1326,14 @@ const _generateAddedToTeam = (options) => {
  * @desc    Send an email to an array of users using Twilio SendGrid
  * @param   {Object}  context
  */
-const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true) => {
+const _sendEmail = async (
+	to,
+	from,
+	subject,
+	html,
+	allowUnsubscribe = true,
+	attachments = []
+) => {
 	// 1. Apply SendGrid API key from environment variable
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -1321,6 +1350,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true) => {
 			from: from,
 			subject: subject,
 			html: body,
+			attachments,
 		};
 
 		// 4. Send email using SendGrid
@@ -1373,6 +1403,15 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
           </div>`;
 };
 
+const _generateAttachment = (filename, content, type) => {
+  return {
+		content,
+		filename,
+		type,
+		disposition: 'attachment',
+	};
+};
+
 export default {
 	generateEmail: _generateEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
@@ -1382,8 +1421,9 @@ export default {
 	generateReviewDeadlineWarning: _generateReviewDeadlineWarning,
 	generateReviewDeadlinePassed: _generateReviewDeadlinePassed,
 	generateFinalDecisionRequiredEmail: _generateFinalDecisionRequiredEmail,
-  generateRemovedFromTeam: _generateRemovedFromTeam,
-  generateAddedToTeam: _generateAddedToTeam,
+	generateRemovedFromTeam: _generateRemovedFromTeam,
+	generateAddedToTeam: _generateAddedToTeam,
 	sendEmail: _sendEmail,
 	generateEmailFooter: _generateEmailFooter,
+	generateAttachment: _generateAttachment,
 };

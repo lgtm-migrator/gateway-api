@@ -1893,6 +1893,10 @@ module.exports = {
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
+						// Generate json attachment for external system integration
+						const attachmentContent = Buffer.from(JSON.stringify({id: accessRecord._id, ...jsonContent})).toString('base64');
+						const filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
+						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [
@@ -1921,7 +1925,8 @@ module.exports = {
 							hdrukEmail,
 							`Data Access Request has been submitted to ${publisher} for ${datasetTitles}`,
 							html,
-							false
+							false,
+							attachments
 						);
 					}
 				}
