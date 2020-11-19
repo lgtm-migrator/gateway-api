@@ -304,7 +304,11 @@ const getAmendmentIterationParty = (accessRecord) => {
 	}
 };
 
-const filterAmendments = (amendmentIterations = [], userType) => {
+const filterAmendments = (accessRecord = {}, userType) => {
+	if(_.isEmpty(accessRecord)) {
+		return {};
+	}
+	let { amendmentIterations = [] } = accessRecord;
 	// 1. Extract all revelant iteration objects and answers based on the user type
 	// Applicant should only see requested amendments that have been returned by the custodian
 	if (userType === constants.userTypes.APPLICANT) {
@@ -315,19 +319,20 @@ const filterAmendments = (amendmentIterations = [], userType) => {
 		// Custodian should only see amendment answers that have been submitted by the applicants
 		amendmentIterations = [...amendmentIterations].map((iteration) => {
 			if (_.isUndefined(iteration.dateSubmitted)) {
-				iteration = removeIterationAnswers(iteration);
+				iteration = removeIterationAnswers(accessRecord, iteration);
 			}
 			return iteration;
 		});
 	}
 	// 2. Return relevant iteratiions
 	return amendmentIterations;
+
 };
 
 const injectAmendments = (accessRecord, userType) => {
 	// 1. Filter out amendments that have not yet been exposed to the opposite party
 	let amendmentIterations = filterAmendments(
-		[...accessRecord.amendmentIterations],
+		accessRecord,
 		userType
 	);
 	// 2. Update the question answers to reflect all the changes that have been made in later iterations
@@ -471,17 +476,15 @@ const getCurrentAmendmentIteration = (amendmentIterations) => {
 	return mostRecentObject;
 };
 
-const removeIterationAnswers = (iteration) => {
+const removeIterationAnswers = (accessRecord = {}, iteration) => {
 	// 1. Guard for invalid object passed
-	if (!iteration || !iteration.questionAnswers) {
+	if (!iteration || !iteration.questionAnswers || _.isEmpty(accessRecord)) {
 		return undefined;
 	}
 	// 2. Loop through each question answer by key (questionId)
 	Object.keys(iteration.questionAnswers).forEach((key) => {
-		// 3. If the key object has an answer, remove it
-		if (iteration.questionAnswers[key].hasOwnProperty('answer')) {
-			delete iteration.questionAnswers[key].answer;
-		}
+		// 3. Fetch the previous answer
+		iteration.questionAnswers[key]['answer'] = getLatestQuestionAnswer(accessRecord, iteration.questionAnswers[key]);
 	});
 	// 4. Return answer stripped iteration object
 	return iteration;
