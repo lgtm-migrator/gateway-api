@@ -173,7 +173,10 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 	if (currentIterationIndex > -1) {
 		const latestAnswer = getLatestQuestionAnswer(accessRecord, questionId);
 		if (!_.isNil(latestAnswer)) {
-			if (answer === latestAnswer || helperUtil.arraysEqual(answer, latestAnswer)) {
+			if (
+				answer === latestAnswer ||
+				helperUtil.arraysEqual(answer, latestAnswer)
+			) {
 				removeAmendment(accessRecord, questionId);
 				return accessRecord;
 			}
@@ -232,25 +235,34 @@ const handleApplicantAmendment = (
 	if (isExisting) {
 		accessRecord = updateAmendment(accessRecord, questionId, answer, user);
 	} else {
-		// 3. Add new amendment otherwise
-		addAmendment(
-			accessRecord,
-			questionId,
-			questionSetId,
-			answer,
-			'',
-			user,
-			false
-		);
+		// 3. Ensure the new amendment is different from the previous value
+		const latestAnswer = getLatestQuestionAnswer(accessRecord, questionId);
+		if (!_.isNil(latestAnswer)) {
+			if (
+				answer !== latestAnswer ||
+				!helperUtil.arraysEqual(answer, latestAnswer)
+			) {
+				// 4. Add new amendment otherwise
+				addAmendment(
+					accessRecord,
+					questionId,
+					questionSetId,
+					answer,
+					'',
+					user,
+					false
+				);
+			}
+		}
 	}
-	// 4. Update the amendment count
+	// 5. Update the amendment count
 	let {
 		unansweredAmendments = 0,
 		answeredAmendments = 0,
 	} = countUnsubmittedAmendments(accessRecord);
 	accessRecord.unansweredAmendments = unansweredAmendments;
 	accessRecord.answeredAmendments = answeredAmendments;
-	// 5. Return updated access record
+	// 6. Return updated access record
 	return accessRecord;
 };
 
@@ -341,26 +353,36 @@ const injectAmendments = (accessRecord, userType) => {
 
 const getLatestQuestionAnswer = (accessRecord, questionId) => {
 	// 1. Include original submission of question answer
-	if(typeof accessRecord.questionAnswers === 'string') {
-		accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
-	};
+	let parsedQuestionAnwsers = {};
+	if (typeof accessRecord.questionAnswers === 'string') {
+		parsedQuestionAnwsers = JSON.parse(accessRecord.questionAnswers);
+	} else {
+		parsedQuestionAnwsers = _.cloneDeep(accessRecord.questionAnswers);
+	}
 	let initialSubmission = {
 		questionAnswers: {
 			[`${questionId}`]: {
-				answer: accessRecord.questionAnswers[questionId],
+				answer: parsedQuestionAnwsers[questionId],
 				dateUpdated: accessRecord.dateSubmitted,
 			},
 		},
 	};
-	let relevantVersions = [initialSubmission, ...accessRecord.amendmentIterations];
-	if(relevantVersions.length > 1) {
-		relevantVersions = _.slice(relevantVersions, 0, relevantVersions.length -1);
-	};
+	let relevantVersions = [
+		initialSubmission,
+		...accessRecord.amendmentIterations,
+	];
+	if (relevantVersions.length > 1) {
+		relevantVersions = _.slice(
+			relevantVersions,
+			0,
+			relevantVersions.length - 1
+		);
+	}
 	// 2. Reduce all versions to find latest instance of question answer
 	const latestAnswers = relevantVersions.reduce((arr, version) => {
 		// 3. Move to next version if the question was not modified in this one
-		if(_.isNil(version.questionAnswers[questionId])){
-			return arr;	
+		if (_.isNil(version.questionAnswers[questionId])) {
+			return arr;
 		}
 		let { answer, dateUpdated } = version.questionAnswers[questionId];
 		let foundIndex = arr.findIndex(
@@ -389,7 +411,7 @@ const getLatestQuestionAnswer = (accessRecord, questionId) => {
 const formatQuestionAnswers = (questionAnswers, amendmentIterations) => {
 	// 1. Reduce all amendment iterations to find latest answers
 	const latestAnswers = amendmentIterations.reduce((arr, iteration) => {
-		if(_.isNil(iteration.questionAnswers)) {
+		if (_.isNil(iteration.questionAnswers)) {
 			return arr;
 		}
 		// 2. Loop through each amendment key per iteration
@@ -487,7 +509,10 @@ const countUnsubmittedAmendments = (accessRecord) => {
 	let unansweredAmendments = 0;
 	let answeredAmendments = 0;
 	let index = getLatestAmendmentIterationIndex(accessRecord);
-	if (index === -1 || _.isNil(accessRecord.amendmentIterations[index].questionAnswers)) {
+	if (
+		index === -1 ||
+		_.isNil(accessRecord.amendmentIterations[index].questionAnswers)
+	) {
 		return { unansweredAmendments: 0, answeredAmendments: 0 };
 	}
 	// 2. Count answered and unanswered amendments in unsubmitted iteration
@@ -525,5 +550,5 @@ module.exports = {
 	injectAmendments: injectAmendments,
 	formatQuestionAnswers: formatQuestionAnswers,
 	countUnsubmittedAmendments: countUnsubmittedAmendments,
-	getLatestQuestionAnswer: getLatestQuestionAnswer
+	getLatestQuestionAnswer: getLatestQuestionAnswer,
 };

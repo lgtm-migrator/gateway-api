@@ -260,7 +260,7 @@ module.exports = {
 					publisher,
 					questionAnswers: '{}',
 					aboutApplication: {},
-					applicationStatus: applicationStatuses.INPROGRESS,
+					applicationStatus: constants.applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
 				const newApplication = await record.save();
@@ -367,7 +367,7 @@ module.exports = {
 					publisher,
 					questionAnswers: '{}',
 					aboutApplication: {},
-					applicationStatus: applicationStatuses.INPROGRESS,
+					applicationStatus: constants.applicationStatuses.INPROGRESS,
 				});
 				// 4. save record
 				const newApplication = await record.save();
@@ -435,12 +435,15 @@ module.exports = {
 			module.exports
 				.updateApplication(accessRequestRecord, updateObj)
 				.then((accessRequestRecord) => {
-					const { unansweredAmendments, answeredAmendments } = accessRequestRecord;
+					const {
+						unansweredAmendments,
+						answeredAmendments,
+					} = accessRequestRecord;
 					// 6. Return new data object
 					return res.status(200).json({
 						status: 'success',
 						unansweredAmendments,
-						answeredAmendments
+						answeredAmendments,
 					});
 				});
 		} catch (err) {
@@ -516,7 +519,7 @@ module.exports = {
 					console.error(err);
 					throw err;
 				}
-			})
+			});
 			return accessRecord;
 		}
 	},
@@ -1528,13 +1531,11 @@ module.exports = {
 			}
 			// 6. Ensure a valid submission is taking place
 			if (_.isNil(accessRecord.submissionType)) {
-				return res
-					.status(400)
-					.json({
-						status: 'error',
-						message:
-							'Application cannot be submitted as it has reached a final decision status.',
-					});
+				return res.status(400).json({
+					status: 'error',
+					message:
+						'Application cannot be submitted as it has reached a final decision status.',
+				});
 			}
 			// 7. Save changes to db
 			await DataRequestModel.replaceOne(
@@ -1543,12 +1544,10 @@ module.exports = {
 				async (err) => {
 					if (err) {
 						console.error(err);
-						return res
-							.status(500)
-							.json({
-								status: 'error',
-								message: 'An error occurred saving the changes',
-							});
+						return res.status(500).json({
+							status: 'error',
+							message: 'An error occurred saving the changes',
+						});
 					} else {
 						// 8. Send notifications and emails with amendments
 						accessRecord.questionAnswers = JSON.parse(
@@ -1597,7 +1596,7 @@ module.exports = {
 		}
 	},
 
-	doInitialSubmission: async (accessRecord) => {
+	doInitialSubmission: (accessRecord) => {
 		// 1. Update application to submitted status
 		accessRecord.submissionType = constants.submissionTypes.INITIAL;
 		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
