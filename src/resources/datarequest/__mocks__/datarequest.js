@@ -553,7 +553,7 @@ module.exports = [
 			passportNumber: '223458340957032498570234785',
 			principleInvestigator: 'true',
 			regICONumber: '333',
-			firstName: 'adsf',
+			lastName: 'adsf',
 		},
 		dateSubmitted: '2020-10-23T10:55:47.231+00:00',
 		amendmentIterations: [
@@ -1395,6 +1395,7 @@ module.exports = [
 			principleInvestigator: 'true',
 			regICONumber: '333',
 			lastName: 'Connilly',
+			country: 'UK'
 		},
 		dateSubmitted: '2020-10-23T10:55:47.231+00:00',
 		amendmentIterations: [

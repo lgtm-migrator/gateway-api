@@ -200,44 +200,29 @@ describe('getAmendmentIterationParty', () => {
 describe('removeIterationAnswers', () => {
 	// Arrage
 	const expected = {
-		dateCreated: '2020-10-03T11:14:01.843+00:00',
+		dateCreated: '2020-10-05T11:14:01.843+00:00',
 		createdBy: '5f03530178e28143d7af2eb1',
-		dateReturned: '2020-10-04T11:14:01.843+00:00',
+		dateReturned: '2020-10-05T12:14:01.843+00:00',
 		returnedBy: '5f03530178e28143d7af2eb1',
-		dateSubmitted: '2020-10-05T11:14:01.843+00:00',
-		submittedBy: '5f03530178e28143d7af2eb1',
 		questionAnswers: {
-			firstName: {
+			country: {
 				questionSetId: 'applicant',
 				requested: true,
-				reason: 'test reason',
+				reason: 'country selection is invalid',
 				requestedBy: 'Robin Kavanagh',
 				requestedByUser: '5f03530178e28143d7af2eb1',
-				dateRequested: '2020-11-03T11:14:01.840+00:00',
-				updatedBy: 'James Smyth',
-				updatedByUser: '5f03530178e28143d7af2eb1',
-				dateUpdated: '2020-11-03T12:14:01.840+00:00'
-			},
-			lastName: {
-				questionSetId: 'applicant',
-				requested: true,
-				reason: 'test reason',
-				requestedBy: 'Robin Kavanagh',
-				requestedByUser: '5f03530178e28143d7af2eb1',
-				dateRequested: '2020-11-03T11:14:01.840+00:00',
-				updatedBy: 'James Smyth',
-				updatedByUser: '5f03530178e28143d7af2eb1',
-				dateUpdated: '2020-11-03T12:14:01.840+00:00'
-			},
+				dateRequested: '2020-10-04T17:14:01.843+00:00',
+				answer: 'UK'
+			}
 		},
-	};
+	}
 	const data = _.cloneDeep(dataRequest);
-	const cases = [[data[0].amendmentIterations, expected], [data[1].amendmentIterations, undefined]];
+	const cases = [[data[4], data[4].amendmentIterations[2], expected], [data[1], {}, undefined]];
 	test.each(cases)(
 		"given an amendment iteration which is not resubmitted, it strips answers",
-		(amendmentIterations, expectedResult) => {
+		(accessRecord, iteration, expectedResult) => {
 			// Act
-			const result = amendmentController.removeIterationAnswers(amendmentIterations[0]);
+			const result = amendmentController.removeIterationAnswers(accessRecord, iteration);
 			// Assert
 			expect(result).toEqual(expectedResult);
 		}
@@ -396,7 +381,7 @@ describe('filterAmendments', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[3]);
 		// Act
-		const result = amendmentController.filterAmendments(data.amendmentIterations, constants.userTypes.APPLICANT);
+		const result = amendmentController.filterAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.length).toBe(2);
 		expect(result[result.length - 1].dateReturned).not.toBeFalsy();
@@ -405,7 +390,7 @@ describe('filterAmendments', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[3]);
 		// Act
-		const result = amendmentController.filterAmendments(data.amendmentIterations, constants.userTypes.CUSTODIAN);
+		const result = amendmentController.filterAmendments(data, constants.userTypes.CUSTODIAN);
 		// Assert
 		expect(result.length).toBe(3);
 		expect(result[result.length - 1].dateCreated).not.toBeFalsy();
@@ -415,10 +400,10 @@ describe('filterAmendments', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[4]);
 		// Act
-		const result = amendmentController.filterAmendments(data.amendmentIterations, constants.userTypes.CUSTODIAN);
+		const result = amendmentController.filterAmendments(data, constants.userTypes.CUSTODIAN);
 		// Assert
 		expect(result.length).toBe(3);
-		expect(result[result.length - 1].questionAnswers['country']).not.toHaveProperty('answer');
+		expect(result[result.length - 1].questionAnswers['country']['answer']).toBe('UK');
 		expect(result[result.length - 1].dateCreated).not.toBeFalsy();
 		expect(result[result.length - 1].dateReturned).not.toBeFalsy();
 		expect(result[result.length - 1].dateSubmitted).toBeFalsy();
@@ -427,7 +412,7 @@ describe('filterAmendments', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[4]);
 		// Act
-		const result = amendmentController.filterAmendments(data.amendmentIterations, constants.userTypes.APPLICANT);
+		const result = amendmentController.filterAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.length).toBe(3);
 		expect(result[result.length - 1].questionAnswers['country']).toHaveProperty('answer');
