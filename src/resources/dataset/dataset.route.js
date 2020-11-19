@@ -69,9 +69,6 @@ router.get('/:datasetID', async (req, res) => {
         { $match: { $and: [{ pid: datasetId }, {activeflag: 'active'}] } }
     ]).exec();
    
-    // Pull a dataset version from MDC if it doesn't exist on our DB
-    if (data.length === 0) data[0] = await loadDataset(datasetId)
-    
     if(data && data.length > 0){
         // Set the actual datasetId value based on pid provided
         datasetId = data[0].datasetid;
@@ -81,8 +78,15 @@ router.get('/:datasetID', async (req, res) => {
         data = await Data.aggregate([
             { $match: { $and: [{ datasetid: datasetId }] } }
         ]).exec();
+        
+        // Pull a dataset version from MDC if it doesn't exist on our DB
+        if (data.length === 0) {
+            data[0] = await loadDataset(datasetId)
+        }
+
         isLatestVersion = (data[0].activeflag === 'active');
     }
+
 
     let p = Data.aggregate([
         { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": datasetId } } }] } },

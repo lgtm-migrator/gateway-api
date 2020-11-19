@@ -70,7 +70,7 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                     "firstname": 1,
                     "lastname": 1,
                     "datasetid": 1,
-
+                    "pid": 1,
                     "datasetfields.publisher": 1,
                     "datasetfields.geographicCoverage": 1,
                     "datasetfields.physicalSampleAvailability": 1,
