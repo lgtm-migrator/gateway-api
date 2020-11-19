@@ -484,7 +484,7 @@ const removeIterationAnswers = (accessRecord = {}, iteration) => {
 	// 2. Loop through each question answer by key (questionId)
 	Object.keys(iteration.questionAnswers).forEach((key) => {
 		// 3. Fetch the previous answer
-		iteration.questionAnswers[key]['answer'] = getLatestQuestionAnswer(accessRecord, iteration.questionAnswers[key]);
+		iteration.questionAnswers[key]['answer'] = getLatestQuestionAnswer(accessRecord, key);
 	});
 	// 4. Return answer stripped iteration object
 	return iteration;
