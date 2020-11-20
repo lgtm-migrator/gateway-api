@@ -1,9 +1,9 @@
-const mongoose = require('mongoose');
+//const mongoose = require('mongoose');
 const dbHandler = require('../../../../config/in-memory-db');
 
 const dataRequest = require('../../__mocks__/datarequest');
-const amendmentController = require('../amendment.controller');
-const amendmentModel = require('../amendment.model');
+//const amendmentController = require('../amendment.controller');
+//const amendmentModel = require('../amendment.model');
 
 /**
  * Connect to a new in-memory database before running any tests.

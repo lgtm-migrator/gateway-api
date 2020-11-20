@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import { TeamModel } from './team.model';
-import constants from '../utilities/constants.util';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 

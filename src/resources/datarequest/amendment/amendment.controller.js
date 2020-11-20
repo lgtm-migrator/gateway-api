@@ -5,7 +5,6 @@ import helperUtil from '../../utilities/helper.util';
 import _ from 'lodash';
 
 const teamController = require('../../team/team.controller');
-const mongoose = require('mongoose');
 
 //POST api/v1/data-access-request/:id/amendments
 const setAmendment = async (req, res) => {
