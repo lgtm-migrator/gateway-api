@@ -4,7 +4,7 @@ import _ from 'lodash';
 import moment from 'moment';
 
 export function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort) {
-    let collection = Data;
+    let collection = Data; 
     if (type === 'course') collection = Course;
     var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
     newSearchQuery["$and"].push({ type: type })
@@ -53,7 +53,13 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                     "name": 1,
                     "type": 1,
                     "description": 1,
-                    "bio": 1,
+                    "bio": {
+                            $cond: {
+                            if: { $eq: [ false, "$showBio" ] },
+                            then: "$$REMOVE",
+                            else: "$bio"
+                        }
+                    },
                     "categories.category": 1,
                     "categories.programmingLanguage": 1,
                     "programmingLanguage.programmingLanguage": 1,
@@ -71,6 +77,7 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
                     "datasetfields.abstract": 1,
                     "datasetfields.ageBand": 1,
                     "datasetfields.phenotypes": 1,
+                    "datasetv2": 1,
 
                     "persons.id": 1,
                     "persons.firstname": 1,

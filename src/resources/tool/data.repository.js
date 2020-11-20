@@ -69,12 +69,8 @@ const addTool = async (req, res) => {
       var q = UserModel.aggregate([
         // Find all users who are admins
         { $match: { role: 'Admin' } },
-        // Perform lookup to check opt in/out flag in tools schema
-        { $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
-        // Filter out any user who has opted out of email notifications
-        { $match: { 'tool.emailNotifications': true } },
         // Reduce response payload size to required fields
-        { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } }
+        { $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1 } }
       ]);
 
       // 3. Use the returned array of email recipients to generate and send emails with SendGrid
@@ -86,7 +82,8 @@ const addTool = async (req, res) => {
           emailRecipients,
           `${hdrukEmail}`,
           `A new ${data.type} has been added and is ready for review`,
-          `Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`
+          `Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`,
+          false
         );
       });
 

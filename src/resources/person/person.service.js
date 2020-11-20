@@ -18,7 +18,8 @@ export async function createPerson({
     showBio,
     showLink,
     showOrcid,
-    showDomain 
+    showDomain,
+    profileComplete 
 }){
     var type = "person";
     var activeflag = "active";
@@ -44,7 +45,8 @@ export async function createPerson({
                 showBio,
                 showLink,
                 showOrcid,
-                showDomain
+                showDomain,
+                profileComplete
             })
         )
     })

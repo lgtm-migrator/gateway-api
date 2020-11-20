@@ -6,9 +6,10 @@ const TeamSchema = new Schema({
     unique: true
   },
   members: [{
-      memberid: {type: Schema.Types.ObjectId,
-        ref: 'User'},
-      roles: { type: [String], enum: ['reviewer','manager'] }
+      memberid: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+      roles: { type: [String], enum: ['reviewer','manager'], required: true },
+      dateCreated: Date,
+      dateUpdated: Date
     }],
   type: String,
   active: { 
@@ -17,7 +18,8 @@ const TeamSchema = new Schema({
   },
 }, {
   toJSON:     { virtuals: true },
-  toObject:   { virtuals: true }
+  toObject:   { virtuals: true },
+  timestamps: true
 });
 
 TeamSchema.virtual('publisher', {
