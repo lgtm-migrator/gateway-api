@@ -61,6 +61,7 @@ const DataSchema = new Schema(
     showOrganisation: {type: Boolean, default: false },
     showLink: Boolean,
     showDomain: Boolean,
+    profileComplete: Boolean,
 
     //dataset related fields 
     datasetid: String,
@@ -90,6 +91,7 @@ const DataSchema = new Schema(
         versionLinks: [],
         phenotypes: []
     },
+    datasetv2: {},
 
     //not used
     rating: Number, 

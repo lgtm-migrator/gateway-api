@@ -1,13 +1,13 @@
 import { PublisherModel } from '../publisher/publisher.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from './workflow.model';
+import teamController from '../team/team.controller';
 import helper from '../utilities/helper.util';
+import constants from '../utilities/constants.util';
 
 import moment from 'moment';
 import _ from 'lodash';
 import mongoose from 'mongoose';
-
-const teamController = require('../team/team.controller');
 
 	// GET api/v1/workflows/:id
 	const getWorkflowById = async (req, res) => {
@@ -41,7 +41,7 @@ const teamController = require('../team/team.controller');
 			// 2. Check the requesting user is a manager of the custodian team
 			let { _id: userId } = req.user;
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -125,7 +125,7 @@ const teamController = require('../team/team.controller');
 			}
 			// 3. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				publisherObj.team.toObject(),
 				userId
 			);
@@ -191,7 +191,7 @@ const teamController = require('../team/team.controller');
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -276,7 +276,7 @@ const teamController = require('../team/team.controller');
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -340,10 +340,10 @@ const teamController = require('../team/team.controller');
 			let userMember = members.find(
 				(member) => member.memberid.toString() === reviewer.toString()
 			);
-			// 3. If the user was found check if they are a manager
+			// 4. If the user was found check if they are a manager
 			if (userMember) {
 				let { roles } = userMember;
-				if (roles.includes(roleTypes.MANAGER)) {
+				if (roles.includes(constants.roleTypes.MANAGER)) {
 					managerExists = true;
 				}
 			}
@@ -425,6 +425,24 @@ const teamController = require('../team/team.controller');
 		return stepReviewers;
 	};
 
+	const getRemainingReviewers = (Step = {}, users) => {
+		let { reviewers = [], recommendations = []} = Step;
+		let remainingActioners = reviewers.filter(
+			(reviewer) =>
+				!recommendations.some(
+					(rec) => rec.reviewer.toString() === reviewer._id.toString()
+				)
+		);
+		remainingActioners = [...users]
+			.filter((user) =>
+				remainingActioners.some(
+					(actioner) => actioner._id.toString() === user._id.toString()
+				)
+			);
+
+		return remainingActioners;
+	}
+
 	const getActiveStepStatus = (activeStep, users = [], userId = '') => {
 		let reviewStatus = '',
 			deadlinePassed = false,
@@ -498,7 +516,7 @@ const teamController = require('../team/team.controller');
 		}
 	
 		let reviewPanels = sections
-			.map((section) => helper.darPanelMapper[section])
+			.map((section) => constants.darPanelMapper[section])
 			.join(', ');
 	
 		return {
@@ -543,7 +561,7 @@ const teamController = require('../team/team.controller');
 				let step = {
 					...item,
 					sections: [...item.sections].map(
-						(section) => helper.darPanelMapper[section]
+						(section) => constants.darPanelMapper[section]
 					),
 				};
 				arr.push(step);
@@ -602,31 +620,35 @@ const teamController = require('../team/team.controller');
 		const { stepName, startDateTime = '', endDateTime = '', completed = false, deadline: stepDeadline = 0, reminderOffset = 0 } = steps[relatedStepIndex];
 		const stepReviewers = getStepReviewers(steps[relatedStepIndex]);
 		const reviewerNames = [...stepReviewers].map((reviewer) => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => helper.darPanelMapper[section]).join(', ');
+		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => constants.darPanelMapper[section]).join(', ');
 		const stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 		const currentDeadline = stepDeadline === 0 ? 'No deadline specified' : moment().add(stepDeadline, 'days');
-		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '', deadlineElapsed = false, deadlineApproaching = false, daysToDeadline = 0;
+		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '', dateDeadline = '', deadlineElapsed = false, deadlineApproaching = false, remainingReviewers = [], remainingReviewerUserIds = [];
 
 		// Calculate duration for step if it is completed
-		if(completed)
-		if(!_.isEmpty(startDateTime.toString()) && !_.isEmpty(endDateTime.toString())) {
-			duration = moment(endDateTime).diff(moment(startDateTime), 'days');
-			duration = duration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
+		if(completed) {
+			if(!_.isEmpty(startDateTime.toString()) && !_.isEmpty(endDateTime.toString())) {
+				duration = moment(endDateTime).diff(moment(startDateTime), 'days');
+				duration = duration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
+			}
 		} else {
 			//If related step is not completed, check if deadline has elapsed or is approaching
 			if(!_.isEmpty(startDateTime.toString()) && stepDeadline != 0) {
-				let deadline = moment(startDateTime).add(stepDeadline, 'days');
-				deadlineElapsed = moment().isAfter(deadline, 'second');
+				dateDeadline = moment(startDateTime).add(stepDeadline, 'days');
+				deadlineElapsed = moment().isAfter(dateDeadline, 'second');
 
 				// If deadline is not elapsed, check if it is within SLA period
 				if(!deadlineElapsed && reminderOffset !== 0) {
-					let deadlineReminderDate = deadline.subtract(reminderOffset, 'days');
+					let deadlineReminderDate = moment(dateDeadline).subtract(reminderOffset, 'days');
 					deadlineApproaching = moment().isAfter(deadlineReminderDate, 'second');
 				}
-
-				// Get number of days remaining/passed deadline
-				let daysDiff = deadline.diff(moment(), 'days');
-				daysToDeadline = daysDiff < 0 ? `${Math.abs(daysDiff)} days passed the deadline` : `${daysDiff} days until the deadline`;
+			}
+			// Find reviewers of the current incomplete phase
+			let accessRecordObj = accessRecord.toObject();
+			if(_.has(accessRecordObj, 'publisherObj.team.users')){
+				let { publisherObj: { team: { users = [] } } } = accessRecordObj;
+				remainingReviewers = getRemainingReviewers(steps[relatedStepIndex], users);
+				remainingReviewerUserIds = [...remainingReviewers].map((user) => user.id);
 			}
 		}
 
@@ -644,7 +666,7 @@ const teamController = require('../team/team.controller');
 			({ stepName: nextStepName } = steps[relatedStepIndex + 1]);
 			let nextStepReviewers = getStepReviewers(steps[relatedStepIndex + 1]);
 			nextReviewerNames = [...nextStepReviewers].map((reviewer) => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-			nextReviewSections = [...steps[relatedStepIndex + 1].sections].map((section) => helper.darPanelMapper[section]).join(', ');
+			nextReviewSections = [...steps[relatedStepIndex + 1].sections].map((section) => constants.darPanelMapper[section]).join(', ');
 			let { deadline = 0 } = steps[relatedStepIndex + 1];
 			nextDeadline = deadline === 0 ? 'No deadline specified' : moment().add(deadline, 'days');
 		}
@@ -664,9 +686,11 @@ const teamController = require('../team/team.controller');
 			nextReviewerNames, 
 			nextReviewSections, 
 			nextDeadline, 
+			dateDeadline,
 			deadlineElapsed,
-			deadlineApproaching, 
-			daysToDeadline 
+			deadlineApproaching,
+			remainingReviewers,
+			remainingReviewerUserIds
 		};
 	};
 

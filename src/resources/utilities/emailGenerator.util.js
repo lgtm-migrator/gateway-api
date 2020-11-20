@@ -2,6 +2,8 @@ import _ from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
+import teamController from '../team/team.controller';
+import constants from '../utilities/constants.util';
 
 const sgMail = require('@sendgrid/mail');
 let parent, qsId;
@@ -191,12 +193,18 @@ const _formatSectionTitle = (value) => {
 	return _.capitalize(questionId);
 };
 
-const _buildSubjectTitle = (user, title) => {
+const _buildSubjectTitle = (user, title, submissionType) => {
+  let subject = '';
 	if (user.toUpperCase() === 'DATACUSTODIAN') {
-		return `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
+		subject = `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
 	} else {
-		return `You have requested access to ${title}. The custodian will be in contact about the application.`;
-	}
+    if(submissionType === constants.submissionTypes.INITIAL) {
+      subject = `You have requested access to ${title}. The custodian will be in contact about the application.`;
+    } else {
+      subject = `You have made updates to your Data Access Request for ${title}. The custodian will be in contact about the application.`;
+    }
+  }
+  return subject;
 };
 
 /**
@@ -210,8 +218,9 @@ const _buildSubjectTitle = (user, title) => {
  */
 const _buildEmail = (fullQuestions, questionAnswers, options) => {
 	let parent;
-	let { userType, userName, userEmail, datasetTitles } = options;
-	let subject = _buildSubjectTitle(userType, datasetTitles);
+  let { userType, userName, userEmail, datasetTitles, submissionType } = options;
+  let heading = submissionType === constants.submissionTypes.INITIAL ? `New data access request application` : `Existing data access request application with new updates`;
+	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
@@ -222,11 +231,12 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                 cellpadding="0"
                 cellspacing="40"
                 width="700"
+                word-break="break-all"
                 style="font-family: Arial, sans-serif">
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                      New data access request application
+                     ${heading}
                     </th>
                   </tr>
                   <tr>
@@ -235,8 +245,8 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
-                <tr>
+                <tbody style="overflow-y: auto; overflow-x: hidden;">
+                <tr style="width: 100%; text-align: left;">
                   <td bgcolor="#fff" style="padding: 0; border: 0;">
                     <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
@@ -246,7 +256,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of submission</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment().format(
-													'D MMM YYYY HH:mm'
+													'D MMM YYYY'
 												)}</td>
                       </tr>
                       <tr>
@@ -260,6 +270,12 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                   </td>
                 </tr>
                `;
+
+	// Create json content payload for attaching to email
+	const jsonContent = {
+		questions: { ...fullQuestions },
+		answers: { ...questionAnswers },
+	};
 
 	let pageCount = 0;
 	// render page [Safe People, SafeProject]
@@ -303,7 +319,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
 				let answer = answers[question.questionId] || `-`;
 				table += `<tr>
                     <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${question.question}</td>
-                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${answer}</td>
+                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4; word-break: break-all;">${answer}</td>
                   </tr>`;
 			}
 		}
@@ -311,7 +327,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
 	}
 	table += ` </tbody></table></div>`;
 
-	return table;
+	return { html: table, jsonContent };
 };
 
 /**
@@ -447,9 +463,13 @@ const _generateEmail = async (
 	// fullQuestions [SafePeople: {Applicant: {}, Applicant_aca: {}}, SafeProject:{}]
 	let fullQuestions = _groupByPageSection([...questionList]);
 	// build up  email with  values
-	let email = _buildEmail(fullQuestions, flatQuestionAnswers, options);
+	let { html, jsonContent } = _buildEmail(
+		fullQuestions,
+		flatQuestionAnswers,
+		options
+	);
 	// return email
-	return email;
+	return { html, jsonContent };
 };
 
 const _displayConditionalStatusDesc = (
@@ -545,7 +565,7 @@ const _generateDARStatusChangedEmail = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateSubmitted
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                     </table>
                   </td>
@@ -656,16 +676,16 @@ const _generateStepOverrideEmail = (options) => {
 		applicants,
 		workflowName,
 		stepName,
-    nextStepName,
-    nextReviewSections,
-    nextReviewerNames,
-    nextDeadline,
+		nextStepName,
+		nextReviewSections,
+		nextReviewerNames,
+		nextDeadline,
 		reviewSections,
 		reviewerNames,
-    dateSubmitted,
-    startDateTime,
-    endDateTime,
-    duration
+		dateSubmitted,
+		startDateTime,
+		endDateTime,
+		duration,
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
               <table style="font-family: Arial, sans-serif;" border="0" width="700" cellspacing="40" cellpadding="0" align="center">
@@ -687,11 +707,15 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+								projectName || 'No project name set'
+							}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+								projectId || id
+							}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
@@ -703,7 +727,9 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								dateSubmitted
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Workflow</td>
@@ -722,11 +748,15 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase commenced</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(startDateTime).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								startDateTime
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase completed</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(endDateTime).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								endDateTime
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase duration</td>
@@ -760,7 +790,9 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(nextDeadline).format('D MMM YYYY')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								nextDeadline
+							).format('D MMM YYYY')}</td>
               </tr>
               </tbody>
               </table>
@@ -768,7 +800,9 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               </tbody>
               </table>
-              <div style="padding: 0 40px 40px 40px;">${_displayDARLink(id)}</div>
+              <div style="padding: 0 40px 40px 40px;">${_displayDARLink(
+								id
+							)}</div>
               </div>`;
 	return body;
 };
@@ -781,11 +815,11 @@ const _generateNewReviewPhaseEmail = (options) => {
 		datasetTitles,
 		applicants,
 		workflowName,
-    stepName,
-    currentDeadline,
+		stepName,
+		currentDeadline,
 		reviewSections,
 		reviewerNames,
-    dateSubmitted
+		dateSubmitted,
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -838,7 +872,7 @@ const _generateNewReviewPhaseEmail = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateSubmitted
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Workflow</td>
@@ -864,7 +898,9 @@ const _generateNewReviewPhaseEmail = (options) => {
                       </tr>
                       <tr>
                       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
-                      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(currentDeadline).format('D MMM YYYY')}</td>
+                      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+												currentDeadline
+											).format('D MMM YYYY')}</td>
                       </tr>
                     </table>
                   </td>
@@ -890,6 +926,7 @@ const _generateReviewDeadlineWarning = (options) => {
 		reviewSections,
 		reviewerNames,
 		dateSubmitted,
+		dateDeadline,
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -902,12 +939,14 @@ const _generateReviewDeadlineWarning = (options) => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                      Data access request application review phase approaching deadline in ${days} days
+                      The deadline is approaching for a Data Access Request application you are reviewing
                     </th>
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     The following data access request application is approaching the review deadline.
+                     The following data access request application is approaching the review deadline of ${moment(
+												dateDeadline
+											).format('D MMM YYYY')}.
                     </th>
                   </tr>
                 </thead>
@@ -939,7 +978,7 @@ const _generateReviewDeadlineWarning = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateSubmitted
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review phase</td>
@@ -957,7 +996,7 @@ const _generateReviewDeadlineWarning = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateDeadline
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                     </table>
                   </td>
@@ -983,6 +1022,7 @@ const _generateReviewDeadlinePassed = (options) => {
 		reviewSections,
 		reviewerNames,
 		dateSubmitted,
+		dateDeadline,
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -1032,7 +1072,7 @@ const _generateReviewDeadlinePassed = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateSubmitted
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review phase</td>
@@ -1050,7 +1090,7 @@ const _generateReviewDeadlinePassed = (options) => {
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Deadline</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
 													dateDeadline
-												).format('D MMM YYYY HH:mm')}</td>
+												).format('D MMM YYYY')}</td>
                       </tr>
                     </table>
                   </td>
@@ -1076,11 +1116,11 @@ const _generateFinalDecisionRequiredEmail = (options) => {
 		stepName,
 		reviewSections,
 		reviewerNames,
-    dateSubmitted,
-    startDateTime,
-    endDateTime,
-    duration,
-    totalDuration
+		dateSubmitted,
+		startDateTime,
+		endDateTime,
+		duration,
+		totalDuration,
 	} = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
               <table style="font-family: Arial, sans-serif;" border="0" width="700" cellspacing="40" cellpadding="0" align="center">
@@ -1102,11 +1142,15 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+								projectName || 'No project name set'
+							}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectId || id}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+								projectId || id
+							}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
@@ -1118,7 +1162,9 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(dateSubmitted).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								dateSubmitted
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Workflow</td>
@@ -1137,11 +1183,15 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase commenced</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(startDateTime).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								startDateTime
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase completed</td>
-              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(endDateTime).format('D MMM YYYY HH:mm')}</td>
+              <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+								endDateTime
+							).format('D MMM YYYY')}</td>
               </tr>
               <tr>
               <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Phase duration</td>
@@ -1172,8 +1222,102 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               </tbody>
               </table>
-              <div style="padding: 0 40px 40px 40px;">${_displayDARLink(id)}</div>
+              <div style="padding: 0 40px 40px 40px;">${_displayDARLink(
+								id
+							)}</div>
               </div>`;
+	return body;
+};
+
+const _generateRemovedFromTeam = (options) => {
+	let { teamName } = options;
+	let header = `You've been removed from the ${teamName} team on the HDR Innovation Gateway`;
+	let subheader = `You will no longer be able to access Data Access Requests, messages or the profile area relating to this team.`;
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${header}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${subheader}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Team</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">
+													${teamName}
+												</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+	return body;
+};
+
+const _generateAddedToTeam = (options) => {
+	let { teamName, role } = options;
+	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
+	let subheader = ``;
+	if (role === teamController.roleTypes.MANAGER) {
+		subheader = `You will now be able to create and manage Data Access Request workflows, process applications, send messages, and manage the profile area relating to this team, including the ability to add and remove new members.`;
+	} else if (role === teamController.roleTypes.REVIEWER) {
+		subheader = `You will now be able to review assigned Data Access Requests, send messages and visit the profile area relating to this team.`;
+	}
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${header}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${subheader}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Team</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">
+													${teamName}
+												</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
 	return body;
 };
 
@@ -1183,7 +1327,14 @@ const _generateFinalDecisionRequiredEmail = (options) => {
  * @desc    Send an email to an array of users using Twilio SendGrid
  * @param   {Object}  context
  */
-const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true) => {
+const _sendEmail = async (
+	to,
+	from,
+	subject,
+	html,
+	allowUnsubscribe = true,
+	attachments = []
+) => {
 	// 1. Apply SendGrid API key from environment variable
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -1200,6 +1351,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true) => {
 			from: from,
 			subject: subject,
 			html: body,
+			attachments,
 		};
 
 		// 4. Send email using SendGrid
@@ -1252,6 +1404,15 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
           </div>`;
 };
 
+const _generateAttachment = (filename, content, type) => {
+  return {
+		content,
+		filename,
+		type,
+		disposition: 'attachment',
+	};
+};
+
 export default {
 	generateEmail: _generateEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
@@ -1261,6 +1422,9 @@ export default {
 	generateReviewDeadlineWarning: _generateReviewDeadlineWarning,
 	generateReviewDeadlinePassed: _generateReviewDeadlinePassed,
 	generateFinalDecisionRequiredEmail: _generateFinalDecisionRequiredEmail,
+	generateRemovedFromTeam: _generateRemovedFromTeam,
+	generateAddedToTeam: _generateAddedToTeam,
 	sendEmail: _sendEmail,
 	generateEmailFooter: _generateEmailFooter,
+	generateAttachment: _generateAttachment,
 };
