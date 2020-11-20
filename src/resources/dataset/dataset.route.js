@@ -87,15 +87,16 @@ router.get('/:datasetID', async (req, res) => {
         isLatestVersion = (data[0].activeflag === 'active');
     }
 
+    let pid = data[0].pid;
 
     let p = Data.aggregate([
-        { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": datasetId } } }] } },
+        { $match: {"relatedObjects": { $elemMatch: { "objectId": {$in : [datasetId, pid] } } }} },
     ]);
 
     p.exec( async (err, relatedData) => {
         relatedData.forEach((dat) => {
             dat.relatedObjects.forEach((x) => {
-                if (x.objectId === datasetId && dat.id !== datasetId) {
+                if ((x.objectId === datasetId && dat.id !== datasetId) || (x.objectId === pid && dat.id !== pid)){
                     if (typeof data[0].relatedObjects === "undefined") data[0].relatedObjects=[];
                     data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type, user: x.user, updated: x.updated })
                 }
