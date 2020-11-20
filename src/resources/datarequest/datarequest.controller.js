@@ -505,6 +505,9 @@ module.exports = {
 			applicationStatus === constants.applicationStatuses.INREVIEW ||
 			applicationStatus === constants.applicationStatuses.SUBMITTED
 		) {
+			if(_.isNil(updateObj.questionAnswers)) {
+				return accessRecord;
+			}
 			let updatedAnswer = JSON.parse(updateObj.questionAnswers)[
 				updatedQuestionId
 			];
