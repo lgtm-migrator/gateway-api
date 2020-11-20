@@ -26,36 +26,9 @@ afterEach(async () => {
  */
 afterAll(async () => await dbHandler.closeDatabase());
 
+// Placeholder for integration tests
 describe('', () => {
 	test('', () => {
 		expect(1).toBe(1);
 	});
 });
-
-/**
- * Product test suite.
- */
-// describe('product ', () => {
-//     it('should create new task', async () => {
-// 		return productService
-// 			.create(productComplete)
-// 			.then((product) => {
-// 				expect(product.name).toEqual('iPhone 11');
-// 				expect(product.price).toEqual(699);
-// 			})
-// 			.then(() => productService.getByName('iPhone 11'))
-// 			.then((products) => {
-// 				expect(products.length).toEqual(1);
-// 				expect(products[0].name).toEqual('iPhone 11');
-// 			});
-// 	});
-// });
-
-// /**
-//  * Complete product example.
-//  */
-// const productComplete = {
-//     name: 'iPhone 11',
-//     price: 699,
-//     description: 'A new dual‑camera system captures more of what you see and love. '
-// };
