@@ -3,6 +3,7 @@ import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from './workflow.model';
 import teamController from '../team/team.controller';
 import helper from '../utilities/helper.util';
+import constants from '../utilities/constants.util';
 
 import moment from 'moment';
 import _ from 'lodash';
@@ -40,7 +41,7 @@ import mongoose from 'mongoose';
 			// 2. Check the requesting user is a manager of the custodian team
 			let { _id: userId } = req.user;
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -124,7 +125,7 @@ import mongoose from 'mongoose';
 			}
 			// 3. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				publisherObj.team.toObject(),
 				userId
 			);
@@ -190,7 +191,7 @@ import mongoose from 'mongoose';
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -275,7 +276,7 @@ import mongoose from 'mongoose';
 			}
 			// 2. Check the requesting user is a manager of the custodian team
 			let authorised = teamController.checkTeamPermissions(
-				teamController.roleTypes.MANAGER,
+				constants.roleTypes.MANAGER,
 				workflow.publisher.team.toObject(),
 				userId
 			);
@@ -339,10 +340,10 @@ import mongoose from 'mongoose';
 			let userMember = members.find(
 				(member) => member.memberid.toString() === reviewer.toString()
 			);
-			// 3. If the user was found check if they are a manager
+			// 4. If the user was found check if they are a manager
 			if (userMember) {
 				let { roles } = userMember;
-				if (roles.includes(roleTypes.MANAGER)) {
+				if (roles.includes(constants.roleTypes.MANAGER)) {
 					managerExists = true;
 				}
 			}
@@ -515,7 +516,7 @@ import mongoose from 'mongoose';
 		}
 	
 		let reviewPanels = sections
-			.map((section) => helper.darPanelMapper[section])
+			.map((section) => constants.darPanelMapper[section])
 			.join(', ');
 	
 		return {
@@ -560,7 +561,7 @@ import mongoose from 'mongoose';
 				let step = {
 					...item,
 					sections: [...item.sections].map(
-						(section) => helper.darPanelMapper[section]
+						(section) => constants.darPanelMapper[section]
 					),
 				};
 				arr.push(step);
@@ -619,7 +620,7 @@ import mongoose from 'mongoose';
 		const { stepName, startDateTime = '', endDateTime = '', completed = false, deadline: stepDeadline = 0, reminderOffset = 0 } = steps[relatedStepIndex];
 		const stepReviewers = getStepReviewers(steps[relatedStepIndex]);
 		const reviewerNames = [...stepReviewers].map((reviewer) => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => helper.darPanelMapper[section]).join(', ');
+		const reviewSections = [...steps[relatedStepIndex].sections].map((section) => constants.darPanelMapper[section]).join(', ');
 		const stepReviewerUserIds = [...stepReviewers].map((user) => user.id);
 		const currentDeadline = stepDeadline === 0 ? 'No deadline specified' : moment().add(stepDeadline, 'days');
 		let nextStepName = '', nextReviewerNames = '', nextReviewSections = '', duration = '', totalDuration = '', nextDeadline = '', dateDeadline = '', deadlineElapsed = false, deadlineApproaching = false, remainingReviewers = [], remainingReviewerUserIds = [];
@@ -665,7 +666,7 @@ import mongoose from 'mongoose';
 			({ stepName: nextStepName } = steps[relatedStepIndex + 1]);
 			let nextStepReviewers = getStepReviewers(steps[relatedStepIndex + 1]);
 			nextReviewerNames = [...nextStepReviewers].map((reviewer) => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
-			nextReviewSections = [...steps[relatedStepIndex + 1].sections].map((section) => helper.darPanelMapper[section]).join(', ');
+			nextReviewSections = [...steps[relatedStepIndex + 1].sections].map((section) => constants.darPanelMapper[section]).join(', ');
 			let { deadline = 0 } = steps[relatedStepIndex + 1];
 			nextDeadline = deadline === 0 ? 'No deadline specified' : moment().add(deadline, 'days');
 		}

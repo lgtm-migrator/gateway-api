@@ -1,7 +1,8 @@
+import _ from 'lodash';
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
-import _ from 'lodash';
+
 const notificationBuilder = require('../utilities/notificationBuilder');
 
 const hdrukEmail = `enquiry@healthdatagateway.org`;
