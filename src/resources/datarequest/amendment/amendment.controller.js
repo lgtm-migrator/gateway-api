@@ -179,6 +179,10 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 				removeAmendment(accessRecord, questionId);
 				return accessRecord;
 			}
+		} else if (_.isNil(latestAnswer) && _.isEmpty(answer)) {
+			// Remove the amendment if there was no previous answer and the latest update is empty
+			removeAmendment(accessRecord, questionId);
+			return accessRecord;
 		}
 	}
 	// 4. Find and update the question with the new answer
@@ -225,7 +229,7 @@ const handleApplicantAmendment = (
 	accessRecord,
 	questionId,
 	questionSetId,
-	answer,
+	answer = '',
 	user
 ) => {
 	// 1. Check if an amendment already exists for the question
@@ -234,34 +238,41 @@ const handleApplicantAmendment = (
 	if (isExisting) {
 		accessRecord = updateAmendment(accessRecord, questionId, answer, user);
 	} else {
-		// 3. Ensure the new amendment is different from the previous value
+		// 3. Get the latest/previous answer for this question for comparison to new answer
 		const latestAnswer = getLatestQuestionAnswer(accessRecord, questionId);
-		if (!_.isNil(latestAnswer)) {
-			if (
-				answer !== latestAnswer ||
-				!helperUtil.arraysEqual(answer, latestAnswer)
-			) {
-				// 4. Add new amendment otherwise
-				addAmendment(
-					accessRecord,
-					questionId,
-					questionSetId,
-					answer,
-					'',
-					user,
-					false
-				);
-			}
+		let performAdd = false;
+		// 4. Always add the new amendment if there was no original answer
+		if (_.isNil(latestAnswer)) {
+			performAdd = true;
+			// 5. If a previous answer exists, ensure it is different to the most recent answer before adding
+		} else if (
+			answer !== latestAnswer ||
+			!helperUtil.arraysEqual(answer, latestAnswer)
+		) {
+			performAdd = true;
+		}
+
+		if (performAdd) {
+			// 6. Add new amendment otherwise
+			addAmendment(
+				accessRecord,
+				questionId,
+				questionSetId,
+				answer,
+				'',
+				user,
+				false
+			);
 		}
 	}
-	// 5. Update the amendment count
+	// 7. Update the amendment count
 	let {
 		unansweredAmendments = 0,
 		answeredAmendments = 0,
 	} = countUnsubmittedAmendments(accessRecord, constants.userTypes.APPLICANT);
 	accessRecord.unansweredAmendments = unansweredAmendments;
 	accessRecord.answeredAmendments = answeredAmendments;
-	// 6. Return updated access record
+	// 8. Return updated access record
 	return accessRecord;
 };
 
@@ -304,7 +315,7 @@ const getAmendmentIterationParty = (accessRecord) => {
 };
 
 const filterAmendments = (accessRecord = {}, userType) => {
-	if(_.isEmpty(accessRecord)) {
+	if (_.isEmpty(accessRecord)) {
 		return {};
 	}
 	let { amendmentIterations = [] } = accessRecord;
@@ -325,15 +336,11 @@ const filterAmendments = (accessRecord = {}, userType) => {
 	}
 	// 2. Return relevant iteratiions
 	return amendmentIterations;
-
 };
 
 const injectAmendments = (accessRecord, userType) => {
 	// 1. Filter out amendments that have not yet been exposed to the opposite party
-	let amendmentIterations = filterAmendments(
-		accessRecord,
-		userType
-	);
+	let amendmentIterations = filterAmendments(accessRecord, userType);
 	// 2. Update the question answers to reflect all the changes that have been made in later iterations
 	accessRecord.questionAnswers = formatQuestionAnswers(
 		accessRecord.questionAnswers,
@@ -483,7 +490,10 @@ const removeIterationAnswers = (accessRecord = {}, iteration) => {
 	// 2. Loop through each question answer by key (questionId)
 	Object.keys(iteration.questionAnswers).forEach((key) => {
 		// 3. Fetch the previous answer
-		iteration.questionAnswers[key]['answer'] = getLatestQuestionAnswer(accessRecord, key);
+		iteration.questionAnswers[key]['answer'] = getLatestQuestionAnswer(
+			accessRecord,
+			key
+		);
 	});
 	// 4. Return answer stripped iteration object
 	return iteration;
@@ -514,7 +524,8 @@ const countUnsubmittedAmendments = (accessRecord, userType) => {
 	if (
 		index === -1 ||
 		_.isNil(accessRecord.amendmentIterations[index].questionAnswers) ||
-		(_.isNil(accessRecord.amendmentIterations[index].dateSubmitted) && userType === constants.userTypes.CUSTODIAN)
+		(_.isNil(accessRecord.amendmentIterations[index].dateSubmitted) &&
+			userType === constants.userTypes.CUSTODIAN)
 	) {
 		return { unansweredAmendments: 0, answeredAmendments: 0 };
 	}
