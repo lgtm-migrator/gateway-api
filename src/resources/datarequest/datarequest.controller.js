@@ -197,7 +197,7 @@ module.exports = {
 			});
 		} catch (err) {
 			console.error(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -299,7 +299,7 @@ module.exports = {
 			});
 		} catch (err) {
 			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -405,7 +405,7 @@ module.exports = {
 			});
 		} catch (err) {
 			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -449,7 +449,7 @@ module.exports = {
 				});
 		} catch (err) {
 			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -1596,7 +1596,7 @@ module.exports = {
 				.json({ status: 'success', data: accessRecord._doc });
 		} catch (err) {
 			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
