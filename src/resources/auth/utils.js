@@ -34,7 +34,7 @@ const camundaToken = () => {
         // username: An admin user the exists within the camunda-admin group
         // groupIds: The admin group that has been configured on the camunda portal.
         { username: process.env.BPMN_ADMIN_USER, groupIds: ["camunda-admin"], tenantIds: []},
-        process.env.JWTSecret,  
+        process.env.JWTSecret || "local",  
         { //Here change it so only id
             algorithm: 'HS256',
             expiresIn: 604800
