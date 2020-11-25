@@ -172,7 +172,9 @@ module.exports = {
 				accessRecord,
 				userType
 			);
-			// 11. Return application form
+			// 11. Append question actions depending on user type and application status
+			accessRecord.jsonSchema = module.exports.injectQuestionActions(accessRecord.jsonSchema, userType, accessRecord.applicationStatus);
+			// 12. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -236,7 +238,6 @@ module.exports = {
 				let {
 					datasetfields: { publisher = '' },
 				} = dataset;
-
 				// 1. GET the template from the custodian
 				const accessRequestTemplate = await DataRequestSchemaModel.findOne({
 					$or: [{ dataSetId }, { publisher }, { dataSetId: 'default' }],
@@ -251,7 +252,6 @@ module.exports = {
 				}
 				// 2. Build up the accessModel for the user
 				let { jsonSchema, version } = accessRequestTemplate;
-
 				// 3. create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
@@ -278,12 +278,15 @@ module.exports = {
 			} else {
 				data = { ...accessRecord.toObject() };
 			}
-
+			// 6. Parse json to allow us to modify schema
+			data.jsonSchema = JSON.parse(data.jsonSchema);
+			// 7. Append question actions depending on user type and application status
+			data.jsonSchema = module.exports.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
 				data: {
 					...data,
-					jsonSchema: JSON.parse(data.jsonSchema),
 					questionAnswers: JSON.parse(data.questionAnswers),
 					aboutApplication:
 						typeof data.aboutApplication === 'string'
@@ -384,12 +387,15 @@ module.exports = {
 			} else {
 				data = { ...accessRecord.toObject() };
 			}
-
+			// 6. Parse json to allow us to modify schema
+			data.jsonSchema = JSON.parse(data.jsonSchema);
+			// 7. Append question actions depending on user type and application status
+			data.jsonSchema = module.exports.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
 				data: {
 					...data,
-					jsonSchema: JSON.parse(data.jsonSchema),
 					questionAnswers: JSON.parse(data.questionAnswers),
 					aboutApplication:
 						typeof data.aboutApplication === 'string'
@@ -2530,4 +2536,9 @@ module.exports = {
 		}
 		return 0;
 	},
+
+	injectQuestionActions: (jsonSchema, userType, applicationStatus) => {
+		let formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][applicationStatus] };
+		return formattedSchema;
+	}
 };
