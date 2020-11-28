@@ -6,26 +6,48 @@ const _userTypes = {
 
 const _userQuestionActions = {
 	custodian: {
-		submitted: [
-			{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 },
-			{ key: 'requestAmendment', icon: 'fas fa-exclamation-circle', color: '#F0BB24', toolTip: 'Request applicant updates answer', order: 2 }
-		],
-		inReview: [
-			{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 },
-			{ key: 'requestAmendment', icon: 'fas fa-exclamation-circle', color: '#F0BB24', toolTip: 'Request applicant updates answer', order: 2 }
-		],
-		approved: [
-			{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
-		],
-		['approved with conditions']: [
-			{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
-		],
-		rejected: [
-			{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
-		],
-		withdrawn: [
-			{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
-		],
+		reviewer: {
+			submitted: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+			inReview: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+			approved: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+			['approved with conditions']: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+			rejected: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+			withdrawn: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+		},
+		manager: {
+			submitted: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 },
+				{ key: 'requestAmendment', icon: 'fas fa-exclamation-circle', color: '#F0BB24', toolTip: 'Request applicant updates answer', order: 2 }
+			],
+			inReview: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 },
+				{ key: 'requestAmendment', icon: 'fas fa-exclamation-circle', color: '#F0BB24', toolTip: 'Request applicant updates answer', order: 2 }
+			],
+			approved: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+			['approved with conditions']: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+			rejected: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+			withdrawn: [
+				{ key: 'guidance', icon: 'far fa-question-circle', color:'#475da7', toolTip: 'Guidance', order: 1 }
+			],
+		}
 	},
 	applicant: {
 		inProgress: [
@@ -67,6 +89,7 @@ const _notificationTypes = {
 	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
 	DEADLINEWARNING: 'DeadlineWarning',
 	DEADLINEPASSED: 'DeadlinePassed',
+	RETURNED: 'Returned'
 };
 
 const _applicationStatuses = {
@@ -81,7 +104,8 @@ const _applicationStatuses = {
 
 const _amendmentModes = {
 	ADDED: 'added',
-	REMOVED: 'removed'
+	REMOVED: 'removed',
+	REVERTED: 'reverted'
 };
 
 const _submissionTypes = {

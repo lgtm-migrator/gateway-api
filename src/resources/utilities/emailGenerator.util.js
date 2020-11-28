@@ -583,6 +583,70 @@ const _generateDARStatusChangedEmail = (options) => {
 	return body;
 };
 
+const _generateDARReturnedEmail = (options) => {
+  let {
+		projectName,
+		publisher,
+		datasetTitles,
+		dateSubmitted,
+		applicants,
+	} = options;
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      You’ve been requested to update a data access request application 
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${publisher} has requested you update answers provided in a submitted data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													projectName || 'No project name set'
+												}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+													dateSubmitted
+												).format('D MMM YYYY')}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayDARLink(id)}
+            </div>
+          </div>`;
+	return body;
+};
+
 const _generateContributorEmail = (options) => {
 	let {
 		id,
@@ -1414,7 +1478,8 @@ const _generateAttachment = (filename, content, type) => {
 };
 
 export default {
-	generateEmail: _generateEmail,
+  generateEmail: _generateEmail,
+  generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
 	generateContributorEmail: _generateContributorEmail,
 	generateStepOverrideEmail: _generateStepOverrideEmail,

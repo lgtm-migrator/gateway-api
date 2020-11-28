@@ -84,6 +84,11 @@ router.post('/:id/upload', passport.authenticate('jwt'), multerMid.array('assets
 // @access  Private - Custodian Reviewer/Manager
 router.post('/:id/amendments', passport.authenticate('jwt'), amendmentController.setAmendment);
 
+// @route   POST api/v1/data-access-request/:id/requestAmendments
+// @desc    Submit a batch of requested amendments back to the form applicant(s)
+// @access  Private - Manager
+router.post('/:id/requestAmendments', passport.authenticate('jwt'), amendmentController.requestAmendments);
+
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record
 // @access  Private - Applicant (Gateway User)

@@ -213,6 +213,14 @@ describe('removeIterationAnswers', () => {
 				requestedByUser: '5f03530178e28143d7af2eb1',
 				dateRequested: '2020-10-04T17:14:01.843+00:00',
 				answer: 'UK'
+			},
+			reasonforaccess: {
+				questionSetId: 'reasons',
+				requested: true,
+				reason: 'reason for access is not accepted',
+				requestedBy: 'Robin Kavanagh',
+				requestedByUser: '5f03530178e28143d7af2eb1',
+				dateRequested: '2020-10-04T17:14:01.843+00:00'
 			}
 		},
 	}
@@ -280,8 +288,8 @@ describe('removeAmendment', () => {
 		amendmentController.removeAmendment(data, questionId);
 		//Assert
 		expect(initialLastName).toEqual(expected);
-		expect(Object.keys(data.amendmentIterations[1].questionAnswers).length).toBe(0);
-		expect(data.amendmentIterations[1].questionAnswers[questionId]).toBeFalsy();
+		expect(dataRequest[0].amendmentIterations[1]).not.toBeFalsy();
+		expect(data.amendmentIterations[1]).toBeFalsy();
 	});
 });
 
@@ -513,4 +521,35 @@ describe('getLatestQuestionAnswer', () => {
 		expect(result).toBe(expectedResult);
 		}
 	);
+});
+
+describe('revertAmendmentAnswer', () => {
+	test('given a data access record with an unsubmitted amendment, and the applicant reverts the amendment answer, then the updated answer is removed from the current iteration', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[4]);
+		let questionId = 'country';
+		// Act
+		amendmentController.revertAmendmentAnswer(data, questionId);
+		// Assert
+		expect(dataRequest[4].amendmentIterations[2].questionAnswers[questionId].answer).not.toBeFalsy();
+		expect(data.amendmentIterations[2].questionAnswers[questionId].answer).toBeFalsy();
+	});
+	test('given an invalid revert amendment operation occurs for an existing question with no answer to remove, then the access record remains unchanged', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[4]);
+		let questionId = 'reasonforaccess';
+		// Act
+		amendmentController.revertAmendmentAnswer(data, questionId);
+		// Assert
+		expect(dataRequest[4]).toEqual(data);
+	});
+	test('given an invalid revert amendment operation occurs on a data access record, then the access record remains unchanged', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[4]);
+		let questionId = 'firstname';
+		// Act
+		amendmentController.revertAmendmentAnswer(data, questionId);
+		// Assert
+		expect(dataRequest[4]).toEqual(data);
+	});
 });

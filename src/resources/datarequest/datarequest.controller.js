@@ -6,6 +6,7 @@ import { UserModel } from '../user/user.model';
 
 import teamController from '../team/team.controller';
 import workflowController from '../workflow/workflow.controller';
+import datarequestUtil from './utils/datarequest.util';
 
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
@@ -120,7 +121,7 @@ module.exports = {
 			let {
 				authorised,
 				userType,
-			} = module.exports.getUserPermissionsForApplication(
+			} = datarequestUtil.getUserPermissionsForApplication(
 				accessRecord,
 				req.user.id,
 				req.user._id
@@ -153,9 +154,10 @@ module.exports = {
 			} = workflowController.getReviewStatus(accessRecord, req.user._id);
 			// 8. Get the workflow/voting status
 			let workflow = workflowController.getWorkflowStatus(accessRecord);
+			let isManager = false;
 			// 9. Check if the current user can override the current step
 			if (_.has(accessRecord.datasets[0], 'publisher.team')) {
-				let isManager = teamController.checkTeamPermissions(
+				isManager = teamController.checkTeamPermissions(
 					constants.roleTypes.MANAGER,
 					accessRecord.datasets[0].publisher.team,
 					req.user._id
@@ -172,9 +174,12 @@ module.exports = {
 				accessRecord,
 				userType
 			);
-			// 11. Append question actions depending on user type and application status
-			accessRecord.jsonSchema = module.exports.injectQuestionActions(accessRecord.jsonSchema, userType, accessRecord.applicationStatus);
-			// 12. Return application form
+			// 11. Determine the current active party handling the form
+			let activeParty = amendmentController.getAmendmentIterationParty(accessRecord);
+			// 12. Append question actions depending on user type and application status
+			let userRole = userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
+			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(accessRecord.jsonSchema, userType, accessRecord.applicationStatus, userRole );
+			// 13. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -187,6 +192,7 @@ module.exports = {
 					readOnly,
 					...countUnsubmittedAmendments,
 					userType,
+					activeParty,
 					projectId:
 						accessRecord.projectId ||
 						helper.generateFriendlyId(accessRecord._id),
@@ -281,7 +287,7 @@ module.exports = {
 			// 6. Parse json to allow us to modify schema
 			data.jsonSchema = JSON.parse(data.jsonSchema);
 			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = module.exports.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
 			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -295,6 +301,7 @@ module.exports = {
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: constants.userTypes.APPLICANT,
+					activeParty: constants.userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
 					files: data.files || [],
@@ -390,7 +397,7 @@ module.exports = {
 			// 6. Parse json to allow us to modify schema
 			data.jsonSchema = JSON.parse(data.jsonSchema);
 			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = module.exports.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
 			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -404,6 +411,7 @@ module.exports = {
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: constants.userTypes.APPLICANT,
+					activeParty: constants.userTypes.APPLICANT,
 					inReviewMode: false,
 					reviewSections: [],
 					files: data.files || [],
@@ -591,7 +599,7 @@ module.exports = {
 			let {
 				authorised,
 				userType,
-			} = module.exports.getUserPermissionsForApplication(
+			} = datarequestUtil.getUserPermissionsForApplication(
 				accessRecord.toObject(),
 				userId,
 				_id
@@ -1011,7 +1019,7 @@ module.exports = {
 					.json({ status: 'error', message: 'Application not found.' });
 			}
 			// 5. Check if requesting user is custodian member or applicant/contributor
-			// let { authorised } = module.exports.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+			// let { authorised } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
 			// 6. check authorisation
 			// if (!authorised) {
 			// 	return res
@@ -1345,7 +1353,7 @@ module.exports = {
 					.status(404)
 					.json({ status: 'error', message: 'Application not found.' });
 			}
-			// 3. Check permissions of user is reviewer of associated team
+			// 3. Check permissions of user is manager of associated team
 			let authorised = false;
 			if (_.has(accessRecord.toObject(), 'publisherObj.team')) {
 				let { team } = accessRecord.publisherObj;
@@ -1508,7 +1516,7 @@ module.exports = {
 			let {
 				authorised,
 				userType,
-			} = module.exports.getUserPermissionsForApplication(
+			} = datarequestUtil.getUserPermissionsForApplication(
 				accessRecord,
 				req.user.id,
 				req.user._id
@@ -2283,47 +2291,6 @@ module.exports = {
 		}
 	},
 
-	getUserPermissionsForApplication: (application, userId, _id) => {
-		try {
-			let authorised = false,
-				userType = '';
-			// Return default unauthorised with no user type if incorrect params passed
-			if (!application || !userId || !_id) {
-				return { authorised, userType };
-			}
-			// Check if the user is a custodian team member and assign permissions if so
-			if (_.has(application.datasets[0], 'publisher.team')) {
-				let isTeamMember = teamController.checkTeamPermissions(
-					'',
-					application.datasets[0].publisher.team,
-					_id
-				);
-				if (isTeamMember) {
-					userType = constants.userTypes.CUSTODIAN;
-					authorised = true;
-				}
-			}
-			// If user is not authenticated as a custodian, check if they are an author or the main applicant
-			if (
-				application.applicationStatus ===
-					constants.applicationStatuses.INPROGRESS ||
-				_.isEmpty(userType)
-			) {
-				if (
-					application.authorIds.includes(userId) ||
-					application.userId === userId
-				) {
-					userType = constants.userTypes.APPLICANT;
-					authorised = true;
-				}
-			}
-			return { authorised, userType };
-		} catch (error) {
-			console.error(error);
-			return { authorised: false, userType: '' };
-		}
-	},
-
 	extractApplicantNames: (questionAnswers) => {
 		let fullnames = [],
 			autoCompleteLookups = { fullname: ['email'] };
@@ -2535,10 +2502,5 @@ module.exports = {
 				return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
-	},
-
-	injectQuestionActions: (jsonSchema, userType, applicationStatus) => {
-		let formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][applicationStatus] };
-		return formattedSchema;
 	}
 };
