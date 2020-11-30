@@ -4,6 +4,8 @@ import constants from '../../utilities/constants.util';
 import helperUtil from '../../utilities/helper.util';
 import datarequestUtil from '../utils/datarequest.util';
 import teamController from '../../team/team.controller';
+import notificationBuilder from '../../utilities/notificationBuilder';
+import emailGenerator from '../../utilities/emailGenerator.util';
 
 import _ from 'lodash';
 
@@ -178,21 +180,33 @@ const requestAmendments = async (req, res) => {
 		} = req;
 		// 2. Retrieve DAR from database
 		let accessRecord = await DataRequestModel.findOne({ _id: id })
-			.select({ publisher: 1, amendmentIterations: 1, datasetIds: 1, dataSetId: 1, userId: 1, authorIds: 1, applicationStatus: 1 })
+			.select({
+				_id: 1,
+				publisher: 1,
+				amendmentIterations: 1,
+				datasetIds: 1,
+				dataSetId: 1,
+				userId: 1,
+				authorIds: 1,
+				applicationStatus: 1,
+				aboutApplication: 1,
+				dateSubmitted: 1
+			})
 			.populate([
 				{
 					path: 'datasets dataset mainApplicant authors',
 				},
 				{
-				path: 'publisherObj',
-				select: '_id',
-				populate: {
-					path: 'team',
+					path: 'publisherObj',
+					select: '_id',
 					populate: {
-						path: 'users',
+						path: 'team',
+						populate: {
+							path: 'users',
+						},
 					},
 				},
-			}]);
+			]);
 		if (!accessRecord) {
 			return res
 				.status(404)
@@ -250,9 +264,9 @@ const requestAmendments = async (req, res) => {
 				return res.status(500).json({ status: 'error', message: err });
 			} else {
 				// 10. Send update request notifications
-				createNotifications(constants.notificationTypes.RETURNED, {}, accessRecord, req.user);
+				createNotifications(constants.notificationTypes.RETURNED, accessRecord);
 				return res.status(200).json({
-					success: true
+					success: true,
 				});
 			}
 		});
@@ -330,12 +344,22 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 	// 3. Check if the update amendment reflects a change since the last version of the answer
 	if (currentIterationIndex > -1) {
 		const latestAnswer = getLatestQuestionAnswer(accessRecord, questionId);
+		const requested = accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
+			questionId
+		].requested || false;
 		if (!_.isNil(latestAnswer)) {
 			if (
 				answer === latestAnswer ||
 				helperUtil.arraysEqual(answer, latestAnswer)
 			) {
-				removeAmendment(accessRecord, questionId);
+				if(requested) {
+					// Retain the requested amendment but remove the answer
+					delete accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
+						questionId
+					].answer
+				} else {
+					removeAmendment(accessRecord, questionId);
+				}
 				return accessRecord;
 			}
 		} else if (_.isNil(latestAnswer) && _.isEmpty(answer)) {
@@ -614,7 +638,9 @@ const formatQuestionAnswers = (questionAnswers, amendmentIterations) => {
 	}, []);
 	// 5. Format data correctly for question answers
 	const formattedLatestAnswers = [...latestAnswers].reduce((obj, item) => {
-		obj[item.questionId] = item.answer;
+		if(!_.isNil(item.answer)) {
+			obj[item.questionId] = item.answer;
+		}
 		return obj;
 	}, {});
 	// 6. Return combined object
@@ -729,18 +755,17 @@ const revertAmendmentAnswer = (accessRecord, questionId) => {
 	}
 };
 
-
-
 const createNotifications = async (type, accessRecord) => {
 	// Project details from about application
-	let { aboutApplication = {} } = accessRecord;
+	let { aboutApplication = {}, questionAnswers } = accessRecord;
 	if (typeof aboutApplication === 'string') {
 		aboutApplication = JSON.parse(accessRecord.aboutApplication);
 	}
+	if (typeof questionAnswers === 'string') {
+		questionAnswers = JSON.parse(accessRecord.questionAnswers);
+	}
 	let { projectName = 'No project name set' } = aboutApplication;
-	let {
-		dateSubmitted = ''
-	} = accessRecord;
+	let { dateSubmitted = '' } = accessRecord;
 	// Publisher details from single dataset
 	let {
 		datasetfields: { publisher },
@@ -752,14 +777,14 @@ const createNotifications = async (type, accessRecord) => {
 	// Main applicant (user obj)
 	let {
 		firstname: appFirstName,
-		lastname: appLastName
+		lastname: appLastName,
 	} = accessRecord.mainApplicant;
 	// Instantiate default params
 	let emailRecipients = [],
 		options = {},
 		html = '',
 		authors = [];
-	let applicants = module.exports
+	let applicants = datarequestUtil
 		.extractApplicantNames(questionAnswers)
 		.join(', ');
 	// Fall back for single applicant
@@ -796,12 +821,10 @@ const createNotifications = async (type, accessRecord) => {
 			}
 
 			// 2. Send emails to relevant users
-			emailRecipients = [
-				accessRecord.mainApplicant,
-				...accessRecord.authors,
-			];
+			emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
 			// Create object to pass through email data
 			options = {
+				id: accessRecord._id,
 				publisher,
 				projectName,
 				datasetTitles,
@@ -813,13 +836,43 @@ const createNotifications = async (type, accessRecord) => {
 			// Send email
 			await emailGenerator.sendEmail(
 				emailRecipients,
-				hdrukEmail,
+				constants.hdrukEmail,
 				`Updates have been requested by ${publisher} for your Data Access Request application`,
 				html,
 				false
 			);
 			break;
 	}
+};
+
+const calculateAmendmentStatus = (accessRecord, userType) => {
+	let amendmentStatus = '';
+	const lastAmendmentIteration = _.last(accessRecord.amendmentIterations);
+	const { applicationStatus } = accessRecord;
+	// 1. Amendment status is blank if no amendments have ever been created or the application has had a final decision 
+	if(_.isNil(lastAmendmentIteration) || 
+	applicationStatus === constants.applicationStatuses.APPROVED || 
+	applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS || 
+	applicationStatus === constants.applicationStatuses.REJECTED) { 
+		return '';
+	}
+	// 2a. If the requesting user is the applicant
+	if(userType === constants.userTypes.APPLICANT) {
+		const { dateSubmitted = '', dateReturned = '' } = lastAmendmentIteration;
+		if(!_.isEmpty(dateSubmitted.toString())) {
+			amendmentStatus = constants.amendmentStatuses.UPDATESSUBMITTED;
+		} else if (!_.isEmpty(dateReturned.toString())){
+			amendmentStatus = constants.amendmentStatuses.UPDATESREQUESTED;
+		}
+	// 2b. If the requester user is the custodian
+	} else if (userType === constants.userTypes.CUSTODIAN) {
+		if(!_.isEmpty(dateSubmitted.toString())) {
+			amendmentStatus = constants.amendmentStatuses.UPDATESRECEIVED;
+		} else if (!_.isEmpty(dateReturned.toString())){
+			amendmentStatus = constants.amendmentStatuses.AWAITINGUPDATES;
+		}
+	}
+    return amendmentStatus;
 };
 
 module.exports = {
@@ -841,4 +894,5 @@ module.exports = {
 	countUnsubmittedAmendments: countUnsubmittedAmendments,
 	getLatestQuestionAnswer: getLatestQuestionAnswer,
 	requestAmendments: requestAmendments,
+	calculateAmendmentStatus: calculateAmendmentStatus
 };

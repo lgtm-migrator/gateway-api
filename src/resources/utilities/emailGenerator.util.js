@@ -585,6 +585,7 @@ const _generateDARStatusChangedEmail = (options) => {
 
 const _generateDARReturnedEmail = (options) => {
   let {
+    id,
 		projectName,
 		publisher,
 		datasetTitles,
@@ -1341,9 +1342,9 @@ const _generateAddedToTeam = (options) => {
 	let { teamName, role } = options;
 	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
 	let subheader = ``;
-	if (role === teamController.roleTypes.MANAGER) {
+	if (role === constants.roleTypes.MANAGER) {
 		subheader = `You will now be able to create and manage Data Access Request workflows, process applications, send messages, and manage the profile area relating to this team, including the ability to add and remove new members.`;
-	} else if (role === teamController.roleTypes.REVIEWER) {
+	} else if (role === constants.roleTypes.REVIEWER) {
 		subheader = `You will now be able to review assigned Data Access Requests, send messages and visit the profile area relating to this team.`;
 	}
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">

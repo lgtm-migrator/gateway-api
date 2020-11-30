@@ -7,6 +7,7 @@ import { UserModel } from '../user/user.model';
 import teamController from '../team/team.controller';
 import workflowController from '../workflow/workflow.controller';
 import datarequestUtil from './utils/datarequest.util';
+import notificationBuilder from '../utilities/notificationBuilder';
 
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
@@ -24,8 +25,6 @@ import mongoose from 'mongoose';
 
 const amendmentController = require('./amendment/amendment.controller');
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
-const notificationBuilder = require('../utilities/notificationBuilder');
-const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 module.exports = {
 	//GET api/v1/data-access-request
@@ -62,7 +61,7 @@ module.exports = {
 			// 5. Append project name and applicants
 			let modifiedApplications = [...applications]
 				.map((app) => {
-					return module.exports.createApplicationDTO(app.toObject());
+					return module.exports.createApplicationDTO(app.toObject(), constants.userTypes.APPLICANT);
 				})
 				.sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -175,10 +174,22 @@ module.exports = {
 				userType
 			);
 			// 11. Determine the current active party handling the form
-			let activeParty = amendmentController.getAmendmentIterationParty(accessRecord);
+			let activeParty = amendmentController.getAmendmentIterationParty(
+				accessRecord
+			);
 			// 12. Append question actions depending on user type and application status
-			let userRole = userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
-			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(accessRecord.jsonSchema, userType, accessRecord.applicationStatus, userRole );
+			let userRole =
+				userType === constants.userTypes.APPLICANT
+					? ''
+					: isManager
+					? constants.roleTypes.MANAGER
+					: constants.roleTypes.REVIEWER;
+			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
+				accessRecord.jsonSchema,
+				userType,
+				accessRecord.applicationStatus,
+				userRole
+			);
 			// 13. Return application form
 			return res.status(200).json({
 				status: 'success',
@@ -287,7 +298,11 @@ module.exports = {
 			// 6. Parse json to allow us to modify schema
 			data.jsonSchema = JSON.parse(data.jsonSchema);
 			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(
+				data.jsonSchema,
+				constants.userTypes.APPLICANT,
+				data.applicationStatus
+			);
 			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -397,7 +412,11 @@ module.exports = {
 			// 6. Parse json to allow us to modify schema
 			data.jsonSchema = JSON.parse(data.jsonSchema);
 			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(
+				data.jsonSchema,
+				constants.userTypes.APPLICANT,
+				data.applicationStatus
+			);
 			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -519,7 +538,7 @@ module.exports = {
 			applicationStatus === constants.applicationStatuses.INREVIEW ||
 			applicationStatus === constants.applicationStatuses.SUBMITTED
 		) {
-			if(_.isNil(updateObj.questionAnswers)) {
+			if (_.isNil(updateObj.questionAnswers)) {
 				return accessRecord;
 			}
 			let updatedAnswer = JSON.parse(updateObj.questionAnswers)[
@@ -1757,7 +1776,7 @@ module.exports = {
 			jsonContent = {},
 			authors = [],
 			attachments = [];
-		let applicants = module.exports
+		let applicants = datarequestUtil
 			.extractApplicantNames(questionAnswers)
 			.join(', ');
 		// Fall back for single applicant on short application form
@@ -1856,7 +1875,7 @@ module.exports = {
 				// Send email
 				await emailGenerator.sendEmail(
 					emailRecipients,
-					hdrukEmail,
+					constants.hdrukEmail,
 					`Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
 					html,
 					false
@@ -1930,9 +1949,19 @@ module.exports = {
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
 						// Generate json attachment for external system integration
-						attachmentContent = Buffer.from(JSON.stringify({id: accessRecord._id, ...jsonContent})).toString('base64');
-						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
-						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+						attachmentContent = Buffer.from(
+							JSON.stringify({ id: accessRecord._id, ...jsonContent })
+						).toString('base64');
+						filename = `${helper.generateFriendlyId(
+							accessRecord._id
+						)} ${moment().format().toString()}.json`;
+						attachments = [
+							await emailGenerator.generateAttachment(
+								filename,
+								attachmentContent,
+								'application/json'
+							),
+						];
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [
@@ -1944,7 +1973,7 @@ module.exports = {
 					if (!_.isEmpty(emailRecipients)) {
 						await emailGenerator.sendEmail(
 							emailRecipients,
-							hdrukEmail,
+							constants.hdrukEmail,
 							`Data Access Request has been submitted to ${publisher} for ${datasetTitles}`,
 							html,
 							false,
@@ -2019,9 +2048,19 @@ module.exports = {
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
 						// Generate json attachment for external system integration
-						attachmentContent = Buffer.from(JSON.stringify({id: accessRecord._id, ...jsonContent})).toString('base64');
-						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
-						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+						attachmentContent = Buffer.from(
+							JSON.stringify({ id: accessRecord._id, ...jsonContent })
+						).toString('base64');
+						filename = `${helper.generateFriendlyId(
+							accessRecord._id
+						)} ${moment().format().toString()}.json`;
+						attachments = [
+							await emailGenerator.generateAttachment(
+								filename,
+								attachmentContent,
+								'application/json'
+							),
+						];
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [
@@ -2033,7 +2072,7 @@ module.exports = {
 					if (!_.isEmpty(emailRecipients)) {
 						await emailGenerator.sendEmail(
 							emailRecipients,
-							hdrukEmail,
+							constants.hdrukEmail,
 							`Data Access Request to ${publisher} for ${datasetTitles} has been updated with updates`,
 							html,
 							false,
@@ -2081,7 +2120,7 @@ module.exports = {
 					);
 					await emailGenerator.sendEmail(
 						addedUsers,
-						hdrukEmail,
+						constants.hdrukEmail,
 						`You have been added as a contributor for a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
 						html,
 						false
@@ -2104,7 +2143,7 @@ module.exports = {
 					);
 					await emailGenerator.sendEmail(
 						removedUsers,
-						hdrukEmail,
+						constants.hdrukEmail,
 						`You have been removed as a contributor from a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
 						html,
 						false
@@ -2134,7 +2173,7 @@ module.exports = {
 				html = emailGenerator.generateStepOverrideEmail(options);
 				emailGenerator.sendEmail(
 					stepReviewers,
-					hdrukEmail,
+					constants.hdrukEmail,
 					`${firstname} ${lastname} has approved a Data Access Request application phase that you were assigned to review`,
 					html,
 					false
@@ -2165,7 +2204,7 @@ module.exports = {
 				html = emailGenerator.generateNewReviewPhaseEmail(options);
 				emailGenerator.sendEmail(
 					stepReviewers,
-					hdrukEmail,
+					constants.hdrukEmail,
 					`You are required to review a new Data Access Request application for ${publisher} by ${moment(
 						currentDeadline
 					).format('D MMM YYYY HH:mm')}`,
@@ -2203,7 +2242,7 @@ module.exports = {
 				html = emailGenerator.generateFinalDecisionRequiredEmail(options);
 				emailGenerator.sendEmail(
 					custodianManagers,
-					hdrukEmail,
+					constants.hdrukEmail,
 					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
 					html,
 					false
@@ -2236,7 +2275,7 @@ module.exports = {
 				html = await emailGenerator.generateReviewDeadlineWarning(options);
 				await emailGenerator.sendEmail(
 					remainingReviewers,
-					hdrukEmail,
+					constants.hdrukEmail,
 					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					html,
 					false
@@ -2246,7 +2285,7 @@ module.exports = {
 				// 1. Get all managers
 				custodianManagers = teamController.getTeamMembersByRole(
 					accessRecord.publisherObj.team,
-					teamController.roleTypes.MANAGER
+					constants.roleTypes.MANAGER
 				);
 				managerUserIds = custodianManagers.map((user) => user.id);
 				// 2. Combine managers and reviewers remaining
@@ -2282,7 +2321,7 @@ module.exports = {
 				html = await emailGenerator.generateReviewDeadlinePassed(options);
 				await emailGenerator.sendEmail(
 					deadlinePassedUsers,
-					hdrukEmail,
+					constants.hdrukEmail,
 					`The deadline for a Data Access Request review phase has now elapsed`,
 					html,
 					false
@@ -2291,34 +2330,7 @@ module.exports = {
 		}
 	},
 
-	extractApplicantNames: (questionAnswers) => {
-		let fullnames = [],
-			autoCompleteLookups = { fullname: ['email'] };
-		// spread questionAnswers to new var
-		let qa = { ...questionAnswers };
-		// get object keys of questionAnswers
-		let keys = Object.keys(qa);
-		// loop questionAnswer keys
-		for (const key of keys) {
-			// get value of key
-			let value = qa[key];
-			// split the key up for unique purposes
-			let [qId] = key.split('_');
-			// check if key in lookup
-			let lookup = autoCompleteLookups[`${qId}`];
-			// if key exists and it has an object do relevant data setting
-			if (typeof lookup !== 'undefined' && typeof value === 'object') {
-				switch (qId) {
-					case 'fullname':
-						fullnames.push(value.name);
-						break;
-				}
-			}
-		}
-		return fullnames;
-	},
-
-	createApplicationDTO: (app, userId = '') => {
+	createApplicationDTO: (app, userType, userId = '') => {
 		let projectName = '',
 			applicants = '',
 			workflowName = '',
@@ -2335,7 +2347,8 @@ module.exports = {
 			deadlinePassed = '',
 			reviewStatus = '',
 			isReviewer = false,
-			reviewPanels = [];
+			reviewPanels = [],
+			amendmentStatus = '';
 
 		// Check if the application has a workflow assigned
 		let { workflow = {}, applicationStatus } = app;
@@ -2448,7 +2461,7 @@ module.exports = {
 		}
 		if (questionAnswers) {
 			let questionAnswersObj = JSON.parse(questionAnswers);
-			applicants = module.exports
+			applicants = datarequestUtil
 				.extractApplicantNames(questionAnswersObj)
 				.join(', ');
 		}
@@ -2456,6 +2469,10 @@ module.exports = {
 			let { firstname, lastname } = app.mainApplicant;
 			applicants = `${firstname} ${lastname}`;
 		}
+		amendmentStatus = amendmentController.calculateAmendmentStatus(
+			app,
+			userType
+		);
 		return {
 			...app,
 			projectName,
@@ -2475,6 +2492,7 @@ module.exports = {
 			reviewStatus,
 			isReviewer,
 			reviewPanels,
+			amendmentStatus,
 		};
 	},
 
@@ -2502,5 +2520,5 @@ module.exports = {
 				return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
-	}
+	},
 };

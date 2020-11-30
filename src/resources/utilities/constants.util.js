@@ -79,6 +79,13 @@ const _submissionEmailRecipientTypes = [
 	'dataCustodian'
 ];
 
+const _amendmentStatuses = {
+	AWAITINGUPDATES : 'AWAITINGUPDATES',
+	UPDATESSUBMITTED : 'UPDATESSUBMITTED',
+	UPDATESREQUESTED : 'UPDATESREQUESTED',
+	UPDATESRECEIVED: 'UPDATESRECEIVED' 
+};
+
 const _notificationTypes = {
 	STATUSCHANGE: 'StatusChange',
 	SUBMITTED: 'Submitted',
@@ -89,7 +96,10 @@ const _notificationTypes = {
 	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
 	DEADLINEWARNING: 'DeadlineWarning',
 	DEADLINEPASSED: 'DeadlinePassed',
-	RETURNED: 'Returned'
+	RETURNED: 'Returned',
+	MEMBERADDED: 'MemberAdded',
+	MEMBERREMOVED: 'MemberRemoved',
+	MEMBERROLECHANGED: 'MemberRoleChanged'
 };
 
 const _applicationStatuses = {
@@ -132,14 +142,18 @@ const _roleTypes = {
 
 // </DAR related enums>
 
+const _hdrukEmail = 'enquiry@healthdatagateway.org';
+
 export default {
 	userTypes: _userTypes,
 	userQuestionActions: _userQuestionActions,
+	amendmentStatuses: _amendmentStatuses,
 	notificationTypes: _notificationTypes,
 	applicationStatuses: _applicationStatuses,
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
-	submissionEmailRecipientTypes: _submissionEmailRecipientTypes
+	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
+	hdrukEmail: _hdrukEmail
 };

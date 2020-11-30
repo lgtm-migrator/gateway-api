@@ -53,7 +53,35 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
     }
 };
 
+const extractApplicantNames = (questionAnswers) => {
+    let fullnames = [],
+        autoCompleteLookups = { fullname: ['email'] };
+    // spread questionAnswers to new var
+    let qa = { ...questionAnswers };
+    // get object keys of questionAnswers
+    let keys = Object.keys(qa);
+    // loop questionAnswer keys
+    for (const key of keys) {
+        // get value of key
+        let value = qa[key];
+        // split the key up for unique purposes
+        let [qId] = key.split('_');
+        // check if key in lookup
+        let lookup = autoCompleteLookups[`${qId}`];
+        // if key exists and it has an object do relevant data setting
+        if (typeof lookup !== 'undefined' && typeof value === 'object') {
+            switch (qId) {
+                case 'fullname':
+                    fullnames.push(value.name);
+                    break;
+            }
+        }
+    }
+    return fullnames;
+};
+
 export default {
 	injectQuestionActions: injectQuestionActions,
-	getUserPermissionsForApplication: getUserPermissionsForApplication
+    getUserPermissionsForApplication: getUserPermissionsForApplication,
+    extractApplicantNames: extractApplicantNames
 };

@@ -2,19 +2,8 @@ import _ from 'lodash';
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
-
-const notificationBuilder = require('../utilities/notificationBuilder');
-
-const hdrukEmail = `enquiry@healthdatagateway.org`;
-const notificationTypes = {
-	MEMBERADDED: 'MemberAdded',
-	MEMBERREMOVED: 'MemberRemoved',
-	MEMBERROLECHANGED: 'MemberRoleChanged',
-};
-const roleTypes = {
-	MANAGER: 'manager',
-	REVIEWER: 'reviewer',
-};
+import notificationBuilder from '../utilities/notificationBuilder';
+import constants from '../utilities/constants.util';
 
 // GET api/v1/teams/:id
 const getTeamById = async (req, res) => {
@@ -165,7 +154,7 @@ const addTeamMembers = async (req, res) => {
 				let newMemberIds = newMembers.map((mem) => mem.memberid);
 				let newUsers = await UserModel.find({ _id: newMemberIds });
 				createNotifications(
-					notificationTypes.MEMBERADDED,
+					constants.notificationTypes.MEMBERADDED,
 					{ newUsers },
 					team,
 					req.user
@@ -276,7 +265,7 @@ const deleteTeamMember = async (req, res) => {
 					(user) => user._id.toString() === memberid.toString()
 				);
 				createNotifications(
-					notificationTypes.MEMBERREMOVED,
+					constants.notificationTypes.MEMBERREMOVED,
 					{ removedUser },
 					team,
 					req.user
@@ -317,7 +306,7 @@ const checkTeamPermissions = (role, team, userId) => {
 			let { roles = [] } = userMember;
 			if (
 				roles.includes(role) ||
-				roles.includes(roleTypes.MANAGER) ||
+				roles.includes(constants.roleTypes.MANAGER) ||
 				role === ''
 			) {
 				return true;
@@ -361,7 +350,7 @@ const createNotifications = async (type, context, team, user) => {
 	let html = '';
 
 	switch (type) {
-		case notificationTypes.MEMBERREMOVED:
+		case constants.notificationTypes.MEMBERREMOVED:
 			// 1. Get user removed
 			const { removedUser } = context;
 			// 2. Create user notifications
@@ -378,13 +367,13 @@ const createNotifications = async (type, context, team, user) => {
 			html = emailGenerator.generateRemovedFromTeam(options);
 			emailGenerator.sendEmail(
 				[removedUser],
-				hdrukEmail,
+				constants.hdrukEmail,
 				`You have been removed from the team ${teamName}`,
 				html,
 				false
 			);
 			break;
-		case notificationTypes.MEMBERADDED:
+		case constants.notificationTypes.MEMBERADDED:
 			// 1. Get users added
 			const { newUsers } = context;
 			const newUserIds = newUsers.map((user) => user.id);
@@ -398,12 +387,12 @@ const createNotifications = async (type, context, team, user) => {
 			// 3. Create email for reviewers
 			options = {
 				teamName,
-				role: roleTypes.REVIEWER,
+				role: constants.roleTypes.REVIEWER,
 			};
 			html = emailGenerator.generateAddedToTeam(options);
 			emailGenerator.sendEmail(
 				newUsers,
-				hdrukEmail,
+				constants.hdrukEmail,
 				`You have been added as a reviewer to the team ${teamName} on the HDR UK Innovation Gateway`,
 				html,
 				false
@@ -411,18 +400,18 @@ const createNotifications = async (type, context, team, user) => {
 			// 4. Create email for managers
 			options = {
 				teamName,
-				role: roleTypes.MANAGER,
+				role: constants.roleTypes.MANAGER,
 			};
 			html = emailGenerator.generateAddedToTeam(options);
 			emailGenerator.sendEmail(
 				newUsers,
-				hdrukEmail,
+				constants.hdrukEmail,
 				`You have been added as a manager to the team ${teamName} on the HDR UK Innovation Gateway`,
 				html,
 				false
 			);
 			break;
-		case notificationTypes.MEMBERROLECHANGED:
+		case constants.notificationTypes.MEMBERROLECHANGED:
 			break;
 	}
 };
@@ -435,6 +424,5 @@ export default {
 	deleteTeamMember: deleteTeamMember,
 	checkTeamPermissions: checkTeamPermissions,
 	getTeamMembersByRole: getTeamMembersByRole,
-	createNotifications: createNotifications,
-	roleTypes: roleTypes,
+	createNotifications: createNotifications
 };
