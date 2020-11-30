@@ -49,6 +49,7 @@ router.get(
 			// select fields to use
 			{
 				$project: {
+					_id: '$user._id',
 					id: 1,
 					firstname: 1,
 					lastname: 1,
@@ -66,9 +67,9 @@ router.get(
 
 			const users = [];
 			data.map((dat) => {
-				let { id, firstname, lastname, orcid = '', bio = '', email = '' } = dat;
+				let { _id, id, firstname, lastname, orcid = '', bio = '', email = '' } = dat;
 				if (email.length !== 0) email = helper.censorEmail(email[0]);
-				users.push({ id, orcid, name: `${firstname} ${lastname}`, bio, email });
+				users.push({ _id, id, orcid, name: `${firstname} ${lastname}`, bio, email });
 			});
 
 			return res.json({ success: true, data: users });

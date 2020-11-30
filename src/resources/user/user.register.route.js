@@ -6,7 +6,7 @@ import { createPerson } from '../person/person.service'
 import { getUserByUserId } from '../user/user.repository'
 import { registerDiscourseUser } from '../discourse/discourse.service'
 const urlValidator = require('../utilities/urlValidator');
-
+const eventLogController = require('../eventlog/eventlog.controller');
 const router = express.Router()
 
 // @router   Get /auth/register
@@ -25,7 +25,7 @@ router.get('/:personID',
 // @access   Public
 router.post('/', 
     async (req, res) => {
-    const { id, firstname, lastname, email, bio, showBio, showLink, showOrcid, redirectURL, sector, showSector,  organisation, emailNotifications, terms, tags, showDomain, showOrganisation } = req.body
+    const { id, firstname, lastname, email, bio, showBio, showLink, showOrcid, redirectURL, sector, showSector,  organisation, emailNotifications, terms, tags, showDomain, showOrganisation, profileComplete } = req.body
     let link = urlValidator.validateURL(req.body.link);
     let orcid = urlValidator.validateOrcidURL(req.body.orcid);
     let username = `${firstname.toLowerCase()}.${lastname.toLowerCase()}`;
@@ -67,6 +67,7 @@ router.post('/',
             tags,
             showDomain,
             showOrganisation,
+            profileComplete
         })
     )
 
@@ -90,6 +91,14 @@ router.post('/',
     if (redirectURLis === null || redirectURLis === '') {
         redirectURLis = ''
     }
+
+    //Build event object for user registered and log it to DB
+    let eventObj = {
+        userId: req.user.id, 
+        event: `user_registered_${req.user.provider}`, 
+        timestamp: Date.now()
+    }
+    await eventLogController.logEvent(eventObj);
 
     return res
         .status(200)

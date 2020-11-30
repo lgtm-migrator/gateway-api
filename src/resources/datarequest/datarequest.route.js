@@ -3,6 +3,7 @@ import passport from 'passport';
 import _ from 'lodash';
 import multer from 'multer';
 import { param } from 'express-validator';
+const amendmentController = require('./amendment/amendment.controller');
 const datarequestController = require('./datarequest.controller');
 const fs = require('fs');
 const path = './tmp';
@@ -75,8 +76,13 @@ router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestControl
 
 // @route   POST api/v1/data-access-request/:id/upload
 // @desc    POST application files to scan bucket
-// @access  Private - Applicant (Gateway User / Custoidan Manager)
+// @access  Private - Applicant (Gateway User / Custodian Manager)
 router.post('/:id/upload', passport.authenticate('jwt'), multerMid.array('assets'), datarequestController.uploadFiles);
+
+// @route   POST api/v1/data-access-request/:id/amendments
+// @desc    Create or remove amendments from DAR
+// @access  Private - Custodian Reviewer/Manager
+router.post('/:id/amendments', passport.authenticate('jwt'), amendmentController.setAmendment);
 
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record
@@ -86,6 +92,6 @@ router.post('/:id', passport.authenticate('jwt'), datarequestController.submitAc
 // @route   POST api/v1/data-access-request/:id/notify
 // @desc    External facing endpoint to trigger notifications for Data Access Request workflows
 // @access  Private
-router.post('/:id', passport.authenticate('jwt'), datarequestController.notifyAccessRequestById);
+router.post('/:id/notify', passport.authenticate('jwt'), datarequestController.notifyAccessRequestById);
 
 module.exports = router;
