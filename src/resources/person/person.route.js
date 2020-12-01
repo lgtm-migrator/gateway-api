@@ -133,7 +133,7 @@ router.get('/:id', async (req, res) => {
 // @desc     Get person info for their account
 router.get('/profile/:id', async (req, res) => {
 
-  var profileData = Data.aggregate([
+  let profileData = Data.aggregate([
       { $match: { $and: [{ id: parseInt(req.params.id) }] } },
       { $lookup: { from: "tools", localField: "id", foreignField: "authors", as: "tools" } },
       { $lookup: { from: "reviews", localField: "id", foreignField: "reviewerID", as: "reviews" } }
