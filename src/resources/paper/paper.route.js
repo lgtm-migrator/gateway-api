@@ -4,7 +4,7 @@ import { ROLES } from '../user/user.roles'
 import passport from "passport";
 import { utils } from "../auth";
 import {addTool, editTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository'; 
-
+import helper from '../utilities/helper.util';
 const router = express.Router();
 
 // @router   POST /api/v1/
@@ -141,6 +141,7 @@ router.put('/:id',
  * Return the details on the paper based on the tool ID.
  */
 router.get('/:paperID', async (req, res) => {
+    data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
     var q = Data.aggregate([
         { $match: { $and: [{ id: parseInt(req.params.paperID) }, {type: 'paper'}] } },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
