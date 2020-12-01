@@ -141,7 +141,6 @@ router.put('/:id',
  * Return the details on the paper based on the tool ID.
  */
 router.get('/:paperID', async (req, res) => {
-    data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
     var q = Data.aggregate([
         { $match: { $and: [{ id: parseInt(req.params.paperID) }, {type: 'paper'}] } },
         { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
@@ -162,6 +161,8 @@ router.get('/:paperID', async (req, res) => {
                   })
               });
               if (err) return res.json({ success: false, error: err });
+
+              data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
               return res.json({ success: true, data: data });
           });
     }
