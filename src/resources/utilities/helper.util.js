@@ -30,9 +30,26 @@ const _generatedNumericId = () => {
 	return parseInt(Math.random().toString().replace('0.', ''));
 }
 
+const _hidePrivateProfileDetails = (persons) => {
+
+	return persons.map(person => {	
+		let personWithPrivateDetailsRemoved = person;
+
+		personWithPrivateDetailsRemoved.bio = person.showBio ? person.bio : "";
+		personWithPrivateDetailsRemoved.organisation = person.showOrganisation ? person.organisation : "";
+		personWithPrivateDetailsRemoved.sector = person.showSector ? person.sector : "";
+		personWithPrivateDetailsRemoved.domain = person.showDomain ? person.domain : "";
+		personWithPrivateDetailsRemoved.link = person.showLink ? person.link : "";
+		personWithPrivateDetailsRemoved.orcid = person.showOrcid ? person.orcid : "";
+
+		return personWithPrivateDetailsRemoved;
+	});
+}
+
 export default {
 	censorEmail: _censorEmail,
   	arraysEqual: _arraysEqual,
 	generateFriendlyId: _generateFriendlyId,
-	generatedNumericId: _generatedNumericId
+	generatedNumericId: _generatedNumericId,
+	hidePrivateProfileDetails: _hidePrivateProfileDetails
 };
