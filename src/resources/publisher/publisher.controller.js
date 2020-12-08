@@ -181,8 +181,8 @@ module.exports = {
 				.map((app) => {
 					return datarequestController.createApplicationDTO(
 						app.toObject(),
-						_id.toString(),
-						constants.userTypes.CUSTODIAN
+						constants.userTypes.CUSTODIAN,
+						_id.toString()
 					);
 				})
 				.sort((a, b) => b.updatedAt - a.updatedAt);

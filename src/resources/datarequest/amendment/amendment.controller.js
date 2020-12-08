@@ -69,8 +69,6 @@ const setAmendment = async (req, res) => {
 		// 5. Get the current iteration amendment party
 		let validParty = false;
 		let activeParty = getAmendmentIterationParty(accessRecord);
-		// REMOVE !!!! TO DO
-		userType = constants.userTypes.CUSTODIAN;
 		// 6. Add/remove/revert amendment depending on mode
 		if (authorised) {
 			switch (mode) {
@@ -104,7 +102,7 @@ const setAmendment = async (req, res) => {
 					if (!authorised || !validParty) {
 						break;
 					}
-					revertAmendmentAnswer(accessRecord, questionId);
+					revertAmendmentAnswer(accessRecord, questionId, req.user);
 					break;
 			}
 		}
@@ -126,7 +124,7 @@ const setAmendment = async (req, res) => {
 		await accessRecord.save(async (err) => {
 			if (err) {
 				console.error(err);
-				res.status(500).json({ status: 'error', message: err });
+				return res.status(500).json({ status: 'error', message: err });
 			} else {
 				// 10. Update json schema and question answers with modifications since original submission
 				let accessRecordObj = accessRecord.toObject();
@@ -740,18 +738,25 @@ const countUnsubmittedAmendments = (accessRecord, userType) => {
 	return { unansweredAmendments, answeredAmendments };
 };
 
-const revertAmendmentAnswer = (accessRecord, questionId) => {
+const revertAmendmentAnswer = (accessRecord, questionId, user) => {
 	// 1. Locate the latest amendment iteration
 	let index = getLatestAmendmentIterationIndex(accessRecord);
 	// 2. Verify the amendment was previously requested and a new answer exists
-	let amendment =
-		accessRecord.amendmentIterations[index].questionAnswers[questionId];
+	let amendment = accessRecord.amendmentIterations[index].questionAnswers[questionId];
 	if (_.isNil(amendment) || _.isNil(amendment.answer)) {
 		return;
 	} else {
 		// 3. Remove the updated answer
-		delete accessRecord.amendmentIterations[index].questionAnswers[questionId]
-			.answer;
+		amendment = {
+			[`${questionId}`]: new AmendmentModel({
+				...amendment,
+				updatedBy: `${user.firstname} ${user.lastname}`,
+				updatedByUser: user._id,
+				dateUpdated: new Date(),
+				answer: undefined
+			}),
+		};
+		accessRecord.amendmentIterations[index].questionAnswers = { ...accessRecord.amendmentIterations[index].questionAnswers, ...amendment };
 	}
 };
 
@@ -856,9 +861,9 @@ const calculateAmendmentStatus = (accessRecord, userType) => {
 	applicationStatus === constants.applicationStatuses.REJECTED) { 
 		return '';
 	}
+	const { dateSubmitted = '', dateReturned = '' } = lastAmendmentIteration;
 	// 2a. If the requesting user is the applicant
 	if(userType === constants.userTypes.APPLICANT) {
-		const { dateSubmitted = '', dateReturned = '' } = lastAmendmentIteration;
 		if(!_.isEmpty(dateSubmitted.toString())) {
 			amendmentStatus = constants.amendmentStatuses.UPDATESSUBMITTED;
 		} else if (!_.isEmpty(dateReturned.toString())){
