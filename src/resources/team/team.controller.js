@@ -53,7 +53,7 @@ const getTeamMembers = async (req, res) => {
 			path: 'users',
 			populate: {
 				path: 'additionalInfo',
-				select: 'organisation bio',
+				select: 'organisation bio showOrganisation showBio',
 			},
 		});
 		if (!team) {
@@ -84,7 +84,7 @@ const formatTeamUsers = (team) => {
 				id,
 				_id,
 				email,
-				additionalInfo: { organisation, bio },
+				additionalInfo: { organisation, bio, showOrganisation, showBio },
 			} = user;
 			let userMember = team.members.find(
 				(el) => el.memberid.toString() === user._id.toString()
@@ -97,8 +97,8 @@ const formatTeamUsers = (team) => {
 				_id,
 				email,
 				roles,
-				organisation,
-				bio,
+				organisation: showOrganisation ? organisation : '',
+				bio: showBio ? bio : '',
 			};
 		});
 	return users;
