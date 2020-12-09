@@ -1,7 +1,7 @@
 import express from 'express';
-import { RecordSearchData } from '../search/record.search.model';
+import { RecordSearchData } from '../search/record.search.model'; 
 import { Data } from '../tool/data.model';
-import {DataRequestModel} from '../datarequests/datarequests.model';
+import {DataRequestModel} from '../datarequests/datarequests.model'; 
 
 const router = express.Router()
 
@@ -11,7 +11,7 @@ router.get('', async (req, res) => {
     selectedMonthStart.setMonth(selectedMonthStart.getMonth());
     selectedMonthStart.setDate(1);
     selectedMonthStart.setHours(0,0,0,0);
-
+ 
     var selectedMonthEnd = new Date(req.query.selectedDate);
     selectedMonthEnd.setMonth(selectedMonthEnd.getMonth()+1);
     selectedMonthEnd.setDate(0); 
@@ -128,27 +128,15 @@ router.get('', async (req, res) => {
                       }
                     ] 
                   }
-                },
-                {
-                  $lookup: {
-                    from: "tools",
-                    localField: "dataSetId",
-                    foreignField: "datasetid",
-                    as: "publisher",
-                  },
-                },
-                { $match: { $and: [
-                    {"publisher.datasetfields.publisher": { $ne: "OTHER > HEALTH DATA RESEARCH UK" } }, 
-                    {"publisher.datasetfields.publisher": { $ne: "HDR UK" } } 
-                ]}},
-                { $group: { _id: 'accessRequestsMonth', count: { $sum: 1 } }, }
-              ],
+                }
+              ], 
             }
           }];
 
-          var q = RecordSearchData.aggregate(aggregateQuerySearches);
+          var q = RecordSearchData.aggregate(aggregateQuerySearches); 
 
           var y = DataRequestModel.aggregate(aggregateQuerySearches);
+
 
           q.exec((err, dataSearches) => {
             if (err) return res.json({ success: false, error: err });
@@ -160,20 +148,35 @@ router.get('', async (req, res) => {
               dataSearches[0].noResultsMonth[0] = { count: 0 };
             }
 
-          y.exec((err, accessRequests) => {
+          y.exec(async(err, accessRequests) => {
+            let hdrDatasetID = await getHdrDatasetId()
+            let hdrDatasetIds = [];
+            hdrDatasetID.map((hdrDatasetid) => {hdrDatasetIds.push(hdrDatasetid)})
+            let accessRequestsMonthCount = 0;
+
             if (err) return res.json({ success: false, error: err });
 
-            if (typeof accessRequests[0].accessRequestsMonth[0] === "undefined") {
-              accessRequests[0].accessRequestsMonth[0] = { count: 0 };
-            }
+            accessRequests[0].accessRequestsMonth.map((accessRequest) => {
+              if (accessRequest.dataSetId && accessRequest.dataSetId.length > 0 && hdrDatasetIds.filter(e => e.datasetid !== accessRequest.dataSetId).length > 0) {
+                accessRequestsMonthCount++
+              }
 
+              if(accessRequest.datasetIds && accessRequest.datasetIds.length > 0){
+                accessRequest.datasetIds.map((datasetid) => {
+                  if (hdrDatasetIds.filter(e => e.datasetid !== datasetid).length > 0) {
+                    accessRequestsMonthCount++
+                  }
+                })
+              } 
+            })
+            
               result = res.json(
                 {
                   'success': true, 'data':
                   {
                       'totalMonth': dataSearches[0].totalMonth[0].count,
-                      'noResultsMonth': dataSearches[0].noResultsMonth[0].count,
-                      'accessRequestsMonth': accessRequests[0].accessRequestsMonth[0].count      
+                      'noResultsMonth': dataSearches[0].noResultsMonth[0].count,   
+                      'accessRequestsMonth': accessRequestsMonthCount  
                     }
                   }
               )
@@ -240,14 +243,12 @@ router.get('', async (req, res) => {
       break; 
  
       case 'topdatasets':
-
       let DarInfoMap = new Map()
 
       let hdrDatasetID = await getHdrDatasetId()
 
           await getDarIds(req, selectedMonthStart, selectedMonthEnd)
             .then(async (data) => {
-
               for (let datasetIdObject in data) { 
                 if(data[datasetIdObject].datasetIds && data[datasetIdObject].datasetIds.length > 0){
 
@@ -295,17 +296,17 @@ router.get('', async (req, res) => {
         return res.json({ success: true, data: sortedResults });
 
       break;
-    }
+    } 
   });
 
 module.exports = router
-
-const getHdrDatasetId = async() => {
+ 
+export const getHdrDatasetId = async() => {
   return new Promise(async (resolve, reject) => {
     let hdrDatasetID = Data.find(
       {   
-          "datasetfields.publisher": "OTHER > HEALTH DATA RESEARCH UK" 
-        },
+        "datasetfields.publisher": { "$in": ["HDR UK", "OTHER > HEALTH DATA RESEARCH UK"]}
+      },
         {
           _id: 0,
           datasetid: 1,
@@ -330,7 +331,7 @@ const getDarIds = async(req, selectedMonthStart, selectedMonthEnd) => {
             $or: [
               {
                 createdAt: {
-                  $gte: selectedMonthStart,
+                  $gte: selectedMonthStart, 
                   $lt: selectedMonthEnd
                 }
               },

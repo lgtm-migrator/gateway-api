@@ -2,6 +2,7 @@ import express from 'express';
 import { RecordSearchData } from '../search/record.search.model';
 import { Data } from '../tool/data.model';
 import {DataRequestModel} from '../datarequests/datarequests.model';
+import {getHdrDatasetId} from './kpis.router';
  
 const router = express.Router()
 
@@ -95,23 +96,11 @@ router.get('', async (req, res) => {
 						$or: [
 							{ applicationStatus: "submitted" },
 							{ applicationStatus: "approved" },
-							{ applicationStatus: "rejected" }
+              { applicationStatus: "rejected" },
+              {applicationStatus:"approved with conditions"}
 						],
 					},
-				},
-				{
-					$lookup: {
-						from: "tools",
-						localField: "dataSetId",
-						foreignField: "datasetid",
-						as: "publisher",
-					},
-				},
-				{ $match: { $and: [
-                    {"publisher.datasetfields.publisher": { $ne: "OTHER > HEALTH DATA RESEARCH UK" } }, 
-                    {"publisher.datasetfields.publisher": { $ne: "HDR UK" } } 
-                ]}},
-				{ $group: { _id: "accessRequests", count: { $sum: 1 } } },
+				}
 			];
 
       var y = DataRequestModel.aggregate(aggregateAccessRequests);
@@ -123,20 +112,34 @@ router.get('', async (req, res) => {
         x.exec((errx, dataTypes) => {
           if (errx) return res.json({ success: false, error: errx });
     
-          var counts = {}; //hold the type (i.e. tool, person, project, access requests) counts data
+          var counts = {}; //hold the type (i.e. tool, person, project, access requests) counts data 
           for (var i = 0; i < dataTypes.length; i++) { //format the result in a clear and dynamic way
             counts[dataTypes[i]._id] = dataTypes[i].count;
           }
 
-        y.exec((err, accessRequests) => {
+        y.exec(async(err, accessRequests) => {
+          let hdrDatasetID = await getHdrDatasetId()
+          let hdrDatasetIds = [];
+          hdrDatasetID.map((hdrDatasetid) => {hdrDatasetIds.push(hdrDatasetid)})
+          let accessRequestsMonthCount = 0;
+
           if (err) return res.json({ success: false, error: err });
     
-          if (typeof accessRequests[0] === "undefined") {
-            counts["accessRequests"] = 0;
-          }
-          else if(accessRequests && accessRequests.length){
-            counts[accessRequests[0]._id] = accessRequests[0].count;
-          }
+          accessRequests.map((accessRequest) => {
+            if (accessRequest.dataSetId && accessRequest.dataSetId.length > 0 && hdrDatasetIds.filter(e => e.datasetid !== accessRequest.dataSetId).length > 0) {
+              accessRequestsMonthCount++
+            }
+
+            if(accessRequest.datasetIds && accessRequest.datasetIds.length > 0){
+              accessRequest.datasetIds.map((datasetid) => {
+                if (hdrDatasetIds.filter(e => e.datasetid !== datasetid).length > 0) {
+                  accessRequestsMonthCount++
+                }
+              })
+            } 
+
+            counts["accessRequests"] = accessRequestsMonthCount; 
+          })
     
           if (typeof dataSearches[0].lastDay[0] === "undefined") {
             dataSearches[0].lastDay[0] = { count: 0 };
