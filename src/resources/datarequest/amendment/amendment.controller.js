@@ -69,6 +69,7 @@ const setAmendment = async (req, res) => {
 		// 5. Get the current iteration amendment party
 		let validParty = false;
 		let activeParty = getAmendmentIterationParty(accessRecord);
+		userType = constants.userTypes.CUSTODIAN;
 		// 6. Add/remove/revert amendment depending on mode
 		if (authorised) {
 			switch (mode) {
@@ -504,7 +505,7 @@ const filterAmendments = (accessRecord = {}, userType) => {
 		return {};
 	}
 	let { amendmentIterations = [] } = accessRecord;
-	// 1. Extract all revelant iteration objects and answers based on the user type
+	// 1. Extract all relevant iteration objects and answers based on the user type
 	// Applicant should only see requested amendments that have been returned by the custodian
 	if (userType === constants.userTypes.APPLICANT) {
 		amendmentIterations = [...amendmentIterations].filter((iteration) => {
@@ -524,30 +525,60 @@ const filterAmendments = (accessRecord = {}, userType) => {
 };
 
 const injectAmendments = (accessRecord, userType) => {
-	// 1. Filter out amendments that have not yet been exposed to the opposite party
+	// 1. Get current party and active iteration
+	const latestIndex = getLatestAmendmentIterationIndex(accessRecord);
+	// 2. Update schema
+	accessRecord.jsonSchema = formatSchema(accessRecord.jsonSchema, accessRecord.amendmentIterations[latestIndex], userType);
+	// 3. Filter out amendments that have not yet been exposed to the opposite party
 	let amendmentIterations = filterAmendments(accessRecord, userType);
-	// 2. Update the question answers to reflect all the changes that have been made in later iterations
+	// 4. Update the question answers to reflect all the changes that have been made in later iterations
 	accessRecord.questionAnswers = formatQuestionAnswers(
 		accessRecord.questionAnswers,
 		amendmentIterations
 	);
-	// 3. Add amendment requests from latest iteration and append historic responses
-	//accessRecord.jsonSchema = formatSchema(JSON.parse(accessRecord.jsonSchema), amendmentIterations);
-	// 4. Add the current active party (who the form is now with either applicant(s)/custodian)
-
 	// 5. Return the updated access record
 	return accessRecord;
 };
 
-const formatSchema = (jsonSchema, amendmentIterations) => {
-	// 1. Add history for all questions in previous iterations
-	// TODO for versioning
-	// 2. Get latest iteration to add amendment requests
-	//const latestIteration = getCurrentAmendmentIteration(amendmentIterations);
-	// 3. Loop through each key in the iteration to append review indicator
-	// Version 2 placeholderr
+const formatSchema = (jsonSchema, latestAmendmentIteration, userType) => {
+	// Loop through each amendment
+	const { questionAnswers = {}, dateSubmitted } = latestAmendmentIteration;
+	
+	for (let questionId in questionAnswers) {
+		const { questionSetId, answer } = questionAnswers[questionId];
+		// 1. Update parent/child navigation with flags for amendments
+		const amendmentCompleted = _.isNil(answer) ? 'incomplete' : 'completed';
+		const iterationSubmitted = _.isNil(dateSubmitted) ? 'notSubmitted' : 'submitted';
+		jsonSchema = injectNavigationAmendment(jsonSchema, questionSetId, userType, amendmentCompleted, iterationSubmitted);
+	}
+
+	if (userType === constants.userTypes.APPLICANT) {
+		// 2. Update inputs with readOnly flag false where amendments are requested
+		// 3. Update questions with alerts where requested by Custodian
+	} else if (userType === constants.userTypes.CUSTODIAN) {
+		// nav amendments appended when answer is not nil and latestAmendmentIteration.dateSubmitted is not nil
+		// 3. Update questions with alerts where requested by Custodian
+	}
 	return jsonSchema;
 };
+
+const injectNavigationAmendment = (jsonSchema, questionSetId, userType, completed, iterationSubmitted) => {
+	// 1. Find question in schema
+	const qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
+	const pageIndex = jsonSchema.pages.findIndex(page => page.pageId === jsonSchema.questionPanels[qpIndex].pageId);
+	if(pageIndex === -1 || qpIndex === -1) {
+		return jsonSchema;
+	}
+	// 2. Update child navigation item (panel)
+	jsonSchema.questionPanels[qpIndex].flag = constants.navigationFlags[userType][iterationSubmitted][completed];
+	// 3. Update parent navigation item (page)
+	const { flag: pageFlag = '' } = jsonSchema.pages[pageIndex];
+	if(pageFlag !== 'DANGER' && pageFlag !== 'WARNING') {
+		jsonSchema.pages[pageIndex].flag = constants.navigationFlags[userType][iterationSubmitted][completed];
+	}
+	// 4. Return schema
+	return jsonSchema;
+}
 
 const getLatestQuestionAnswer = (accessRecord, questionId) => {
 	// 1. Include original submission of question answer
