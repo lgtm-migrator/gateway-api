@@ -123,6 +123,7 @@ router.get('', async (req, res) => {
                           {"applicationStatus":"submitted"}, 
                           {"applicationStatus":"approved"}, 
                           {"applicationStatus":"rejected"},
+                          {"applicationStatus": "inReview" },
                           {"applicationStatus":"approved with conditions"}
                         ]
                       }
@@ -151,21 +152,21 @@ router.get('', async (req, res) => {
           y.exec(async(err, accessRequests) => {
             let hdrDatasetID = await getHdrDatasetId()
             let hdrDatasetIds = [];
-            hdrDatasetID.map((hdrDatasetid) => {hdrDatasetIds.push(hdrDatasetid)})
+            hdrDatasetID.map((hdrDatasetid) => {hdrDatasetIds.push(hdrDatasetid.datasetid)})
             let accessRequestsMonthCount = 0;
 
             if (err) return res.json({ success: false, error: err });
 
             accessRequests[0].accessRequestsMonth.map((accessRequest) => {
-              if (accessRequest.dataSetId && accessRequest.dataSetId.length > 0 && hdrDatasetIds.filter(e => e.datasetid !== accessRequest.dataSetId).length > 0) {
+              if (accessRequest.dataSetId && accessRequest.dataSetId.length > 0 && !hdrDatasetIds.includes(accessRequest.dataSetId)) {
                 accessRequestsMonthCount++
               }
 
               if(accessRequest.datasetIds && accessRequest.datasetIds.length > 0){
                 accessRequest.datasetIds.map((datasetid) => {
-                  if (hdrDatasetIds.filter(e => e.datasetid !== datasetid).length > 0) {
-                    accessRequestsMonthCount++
-                  }
+                    if (!hdrDatasetIds.includes(datasetid)) {
+                        accessRequestsMonthCount++
+                    }
                 })
               } 
             })
@@ -243,9 +244,11 @@ router.get('', async (req, res) => {
       break; 
  
       case 'topdatasets':
-      let DarInfoMap = new Map()
+        let DarInfoMap = new Map()
 
-      let hdrDatasetID = await getHdrDatasetId()
+        let hdrDatasetID = await getHdrDatasetId()
+        let hdrDatasetIds = [];
+        hdrDatasetID.map((hdrDatasetid) => {hdrDatasetIds.push(hdrDatasetid.datasetid)})
 
           await getDarIds(req, selectedMonthStart, selectedMonthEnd)
             .then(async (data) => {
@@ -254,8 +257,7 @@ router.get('', async (req, res) => {
 
                   for (let datasetId in data[datasetIdObject].datasetIds) { 
 
-                    if(data[datasetIdObject].datasetIds[datasetId] !== hdrDatasetID[0].datasetid){
-
+                    if(!hdrDatasetIds.includes(data[datasetIdObject].datasetIds[datasetId])){
                       let result = await getDarInfo(data[datasetIdObject].datasetIds[datasetId])
 
                       if(result.length > 0){
@@ -271,7 +273,7 @@ router.get('', async (req, res) => {
                   }
                 } 
                 else 
-                if(data[datasetIdObject].dataSetId && data[datasetIdObject].dataSetId.length > 0 && data[datasetIdObject].dataSetId !== hdrDatasetID[0].datasetid ){
+                if(data[datasetIdObject].dataSetId && data[datasetIdObject].dataSetId.length > 0 && !hdrDatasetIds.includes(data[datasetIdObject].dataSetId) ){
                   let result = await getDarInfo(data[datasetIdObject].dataSetId)
                   if(result.length > 0){
                     if (DarInfoMap.has(data[datasetIdObject].dataSetId)){ 
@@ -348,6 +350,7 @@ const getDarIds = async(req, selectedMonthStart, selectedMonthEnd) => {
               { applicationStatus: "submitted" },
               { applicationStatus: "approved" },
               { applicationStatus: "rejected" },
+              { applicationStatus: "inReview" },
               {applicationStatus: "approved with conditions" }
 
             ]
