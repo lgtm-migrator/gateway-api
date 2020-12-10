@@ -86,7 +86,7 @@ router.get('', async (req, res) => {
 					},
 				},
 				{ $group: { _id: "$type", count: { $sum: 1 } } },
-			];
+			]; 
     
       var q = RecordSearchData.aggregate(aggregateQuerySearches);
 
@@ -122,24 +122,24 @@ router.get('', async (req, res) => {
           let hdrDatasetID = await getHdrDatasetId()
           let hdrDatasetIds = [];
           hdrDatasetID.map((hdrDatasetid) => {hdrDatasetIds.push(hdrDatasetid.datasetid)})
-          let accessRequestsMonthCount = 0;
+          let accessRequestsCount = 0;
 
           if (err) return res.json({ success: false, error: err });
     
           accessRequests.map((accessRequest) => {
             if (accessRequest.dataSetId && accessRequest.dataSetId.length > 0 && !hdrDatasetIds.includes(accessRequest.dataSetId)) {
-              accessRequestsMonthCount++
+              accessRequestsCount++
             }
 
             if(accessRequest.datasetIds && accessRequest.datasetIds.length > 0){
               accessRequest.datasetIds.map((datasetid) => {
                 if (!hdrDatasetIds.includes(datasetid)) {
-                  accessRequestsMonthCount++
+                  accessRequestsCount++
                 }
               })
             } 
 
-            counts["accessRequests"] = accessRequestsMonthCount; 
+            counts["accessRequests"] = accessRequestsCount; 
           })
     
           if (typeof dataSearches[0].lastDay[0] === "undefined") {
