@@ -85,7 +85,11 @@ router.get('/:datasetID', async (req, res) => {
         
         // Pull a dataset version from MDC if it doesn't exist on our DB
         if(_.isNil(dataset)){ 
-            dataset = await loadDataset(datasetID)
+            try {
+                dataset = await loadDataset(datasetID);
+            } catch (err) {
+                return res.json({ success: false, error: err.message, data: {} });
+            }
         }
 
         isLatestVersion = (dataset.activeflag === 'active');
