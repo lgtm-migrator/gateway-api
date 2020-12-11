@@ -9,6 +9,7 @@ import { UserModel } from '../user/user.model'
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
+import escape from 'escape-html';
 const inputSanitizer = require('../utilities/inputSanitizer');
 
 const urlValidator = require('../utilities/urlValidator');
@@ -27,7 +28,7 @@ router.get('/:collectionID', async (req, res) => {
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
 
-    if(_.isEmpty(data)) return res.json({ success: false, data: {}});
+    if(_.isEmpty(data)) return res.status(404).send(`Collection not found for Id: ${escape(req.params.collectionID)}`);
     
     data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
     return res.json({ success: true, data: data });
