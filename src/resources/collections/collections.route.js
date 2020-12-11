@@ -6,8 +6,9 @@ import { utils } from "../auth";
 import { Collections } from '../collections/collections.model'; 
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model'
-import { getObjectById } from '../tool/data.repository';
 import emailGenerator from '../utilities/emailGenerator.util';
+import helper from '../utilities/helper.util';
+import _ from 'lodash';
 const inputSanitizer = require('../utilities/inputSanitizer');
 
 const urlValidator = require('../utilities/urlValidator');
@@ -25,6 +26,10 @@ router.get('/:collectionID', async (req, res) => {
   ]); 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
+
+    if(_.isEmpty(data)) return res.json({ success: false, data: {}});
+    
+    data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
     return res.json({ success: true, data: data });
   });
 });
