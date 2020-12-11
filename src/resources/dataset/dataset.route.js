@@ -88,7 +88,7 @@ router.get('/:datasetID', async (req, res) => {
             try {
                 dataset = await loadDataset(datasetID);
             } catch (err) {
-                return res.json({ success: false, error: err.message, data: {} });
+                return res.status(404).send(`Dataset not found for Id: ${datasetID}`);
             }
         }
 

@@ -27,7 +27,7 @@ router.get('/:collectionID', async (req, res) => {
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
 
-    if(_.isEmpty(data)) return res.json({ success: false, data: {}});
+    if(_.isEmpty(data)) return res.status(404).send(`Collection not found for Id: ${req.params.collectionID}`);
     
     data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
     return res.json({ success: true, data: data });
