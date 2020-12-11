@@ -503,8 +503,11 @@ const injectQuestionAmendment = (jsonSchema, questionId, amendment, userType, co
 const injectNavigationAmendment = (jsonSchema, questionSetId, userType, completed, iterationStatus) => {
 	// 1. Find question in schema
 	const qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
+	if (qpIndex === -1) {
+		return jsonSchema;
+	}
 	const pageIndex = jsonSchema.pages.findIndex(page => page.pageId === jsonSchema.questionPanels[qpIndex].pageId);
-	if (pageIndex === -1 || qpIndex === -1) {
+	if (pageIndex === -1) {
 		return jsonSchema;
 	}
 	// 2. Update child navigation item (panel)
