@@ -590,8 +590,9 @@ describe('revertAmendmentAnswer', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[4]);
 		let questionId = 'country';
+		let user = users.applicant;
 		// Act
-		amendmentController.revertAmendmentAnswer(data, questionId);
+		amendmentController.revertAmendmentAnswer(data, questionId, user);
 		// Assert
 		expect(dataRequest[4].amendmentIterations[2].questionAnswers[questionId].answer).not.toBeFalsy();
 		expect(data.amendmentIterations[2].questionAnswers[questionId].answer).toBeFalsy();
@@ -600,8 +601,9 @@ describe('revertAmendmentAnswer', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[4]);
 		let questionId = 'reasonforaccess';
+		let user = users.applicant;
 		// Act
-		amendmentController.revertAmendmentAnswer(data, questionId);
+		amendmentController.revertAmendmentAnswer(data, questionId, user);
 		// Assert
 		expect(dataRequest[4]).toEqual(data);
 	});
@@ -609,8 +611,9 @@ describe('revertAmendmentAnswer', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[4]);
 		let questionId = 'firstname';
+		let user = users.applicant;
 		// Act
-		amendmentController.revertAmendmentAnswer(data, questionId);
+		amendmentController.revertAmendmentAnswer(data, questionId, user);
 		// Assert
 		expect(dataRequest[4]).toEqual(data);
 	});
