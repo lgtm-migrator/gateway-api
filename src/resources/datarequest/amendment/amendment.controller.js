@@ -20,8 +20,7 @@ const setAmendment = async (req, res) => {
 		if (_.isEmpty(questionId) || _.isEmpty(questionSetId)) {
 			return res.status(400).json({
 				success: false,
-				message:
-					'You must supply the unique identifiers for the question requiring amendment',
+				message: 'You must supply the unique identifiers for the question requiring amendment',
 			});
 		}
 		// 2. Retrieve DAR from database
@@ -41,31 +40,20 @@ const setAmendment = async (req, res) => {
 			},
 		]);
 		if (!accessRecord) {
-			return res
-				.status(404)
-				.json({ status: 'error', message: 'Application not found.' });
+			return res.status(404).json({ status: 'error', message: 'Application not found.' });
 		}
 		// 3. If application is not in review or submitted, amendments cannot be made
 		if (
-			accessRecord.applicationStatus !==
-				constants.applicationStatuses.SUBMITTED &&
+			accessRecord.applicationStatus !== constants.applicationStatuses.SUBMITTED &&
 			accessRecord.applicationStatus !== constants.applicationStatuses.INREVIEW
 		) {
 			return res.status(400).json({
 				success: false,
-				message:
-					'This application is not within a reviewable state and amendments cannot be made or requested at this time.',
+				message: 'This application is not within a reviewable state and amendments cannot be made or requested at this time.',
 			});
 		}
 		// 4. Get the requesting users permission levels
-		let {
-			authorised,
-			userType,
-		} = datarequestUtil.getUserPermissionsForApplication(
-			accessRecord,
-			req.user.id,
-			req.user._id
-		);
+		let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
 		// 5. Get the current iteration amendment party
 		let validParty = false;
 		let activeParty = getAmendmentIterationParty(accessRecord);
@@ -79,15 +67,7 @@ const setAmendment = async (req, res) => {
 					if (!authorised || !validParty) {
 						break;
 					}
-					addAmendment(
-						accessRecord,
-						questionId,
-						questionSetId,
-						answer,
-						reason,
-						req.user,
-						true
-					);
+					addAmendment(accessRecord, questionId, questionSetId, answer, reason, req.user, true);
 					break;
 				case constants.amendmentModes.REMOVED:
 					authorised = userType === constants.userTypes.CUSTODIAN;
@@ -109,36 +89,28 @@ const setAmendment = async (req, res) => {
 		}
 		// 7. Return unauthorised message if the user did not have sufficient access for action requested
 		if (!authorised) {
-			return res
-				.status(401)
-				.json({ status: 'failure', message: 'Unauthorised' });
+			return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 		}
 		// 8. Return bad request if the opposite party is editing the application
 		if (!validParty) {
 			return res.status(400).json({
 				status: 'failure',
-				message:
-					'You cannot make or request amendments to this application as the opposite party are currently responsible for it.',
+				message: 'You cannot make or request amendments to this application as the opposite party are currently responsible for it.',
 			});
 		}
 		// 9. Save changes to database
-		await accessRecord.save(async (err) => {
+		await accessRecord.save(async err => {
 			if (err) {
 				console.error(err);
 				return res.status(500).json({ status: 'error', message: err });
 			} else {
 				// 10. Update json schema and question answers with modifications since original submission
 				let accessRecordObj = accessRecord.toObject();
-				accessRecordObj.questionAnswers = JSON.parse(
-					accessRecordObj.questionAnswers
-				);
+				accessRecordObj.questionAnswers = JSON.parse(accessRecordObj.questionAnswers);
 				accessRecordObj.jsonSchema = JSON.parse(accessRecordObj.jsonSchema);
-				accessRecordObj = injectAmendments(accessRecordObj, userType);
+				accessRecordObj = injectAmendments(accessRecordObj, userType, req.user);
 				// 11. Append question actions depending on user type and application status
-				let userRole =
-					activeParty === constants.userTypes.CUSTODIAN
-						? constants.roleTypes.MANAGER
-						: '';
+				let userRole = activeParty === constants.userTypes.CUSTODIAN ? constants.roleTypes.MANAGER : '';
 				accessRecordObj.jsonSchema = datarequestUtil.injectQuestionActions(
 					accessRecordObj.jsonSchema,
 					userType,
@@ -146,10 +118,7 @@ const setAmendment = async (req, res) => {
 					userRole
 				);
 				// 12. Count the number of answered/unanswered amendments
-				const {
-					answeredAmendments = 0,
-					unansweredAmendments = 0,
-				} = countUnsubmittedAmendments(accessRecord, userType);
+				const { answeredAmendments = 0, unansweredAmendments = 0 } = countUnsubmittedAmendments(accessRecord, userType);
 				return res.status(200).json({
 					success: true,
 					accessRecord: {
@@ -189,7 +158,7 @@ const requestAmendments = async (req, res) => {
 				authorIds: 1,
 				applicationStatus: 1,
 				aboutApplication: 1,
-				dateSubmitted: 1
+				dateSubmitted: 1,
 			})
 			.populate([
 				{
@@ -207,24 +176,16 @@ const requestAmendments = async (req, res) => {
 				},
 			]);
 		if (!accessRecord) {
-			return res
-				.status(404)
-				.json({ status: 'error', message: 'Application not found.' });
+			return res.status(404).json({ status: 'error', message: 'Application not found.' });
 		}
 		// 3. Check permissions of user is manager of associated team
 		let authorised = false;
 		if (_.has(accessRecord.toObject(), 'publisherObj.team')) {
 			const { team } = accessRecord.publisherObj;
-			authorised = teamController.checkTeamPermissions(
-				constants.roleTypes.MANAGER,
-				team.toObject(),
-				req.user._id
-			);
+			authorised = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team.toObject(), req.user._id);
 		}
 		if (!authorised) {
-			return res
-				.status(401)
-				.json({ status: 'failure', message: 'Unauthorised' });
+			return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 		}
 		// 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
 		if (_.isEmpty(accessRecord.datasets)) {
@@ -235,20 +196,15 @@ const requestAmendments = async (req, res) => {
 		if (activeParty !== constants.userTypes.CUSTODIAN) {
 			return res.status(400).json({
 				status: 'failure',
-				message:
-					'You cannot make or request amendments to this application as the applicant(s) are amending the current version.',
+				message: 'You cannot make or request amendments to this application as the applicant(s) are amending the current version.',
 			});
 		}
 		// 6. Check some amendments exist to be submitted to the applicant(s)
-		const { unansweredAmendments } = countUnsubmittedAmendments(
-			accessRecord,
-			constants.userTypes.CUSTODIAN
-		);
+		const { unansweredAmendments } = countUnsubmittedAmendments(accessRecord, constants.userTypes.CUSTODIAN);
 		if (unansweredAmendments === 0) {
 			return res.status(400).json({
 				status: 'failure',
-				message:
-					'You cannot submit requested amendments as none have been requested in the current version',
+				message: 'You cannot submit requested amendments as none have been requested in the current version',
 			});
 		}
 		// 7. Find current amendment iteration index
@@ -257,7 +213,7 @@ const requestAmendments = async (req, res) => {
 		accessRecord.amendmentIterations[index].dateReturned = new Date();
 		accessRecord.amendmentIterations[index].returnedBy = req.user._id;
 		// 9. Save changes to database
-		await accessRecord.save(async (err) => {
+		await accessRecord.save(async err => {
 			if (err) {
 				console.error(err);
 				return res.status(500).json({ status: 'error', message: err });
@@ -278,15 +234,7 @@ const requestAmendments = async (req, res) => {
 	}
 };
 
-const addAmendment = (
-	accessRecord,
-	questionId,
-	questionSetId,
-	answer,
-	reason,
-	user,
-	requested
-) => {
+const addAmendment = (accessRecord, questionId, questionSetId, answer, reason, user, requested) => {
 	// 1. Create new amendment object with key representing the questionId
 	let amendment = {
 		[`${questionId}`]: new AmendmentModel({
@@ -319,10 +267,7 @@ const addAmendment = (
 			createdBy: user._id,
 			questionAnswers: { ...amendment },
 		};
-		accessRecord.amendmentIterations = [
-			...accessRecord.amendmentIterations,
-			amendmentIteration,
-		];
+		accessRecord.amendmentIterations = [...accessRecord.amendmentIterations, amendmentIteration];
 	}
 };
 
@@ -330,32 +275,18 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 	// 1. Locate amendment in current iteration
 	const currentIterationIndex = getLatestAmendmentIterationIndex(accessRecord);
 	// 2. Return unmoodified record if invalid update
-	if (
-		currentIterationIndex === -1 ||
-		_.isNil(
-			accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
-				questionId
-			]
-		)
-	) {
+	if (currentIterationIndex === -1 || _.isNil(accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[questionId])) {
 		return accessRecord;
 	}
 	// 3. Check if the update amendment reflects a change since the last version of the answer
 	if (currentIterationIndex > -1) {
 		const latestAnswer = getLatestQuestionAnswer(accessRecord, questionId);
-		const requested = accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
-			questionId
-		].requested || false;
+		const requested = accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[questionId].requested || false;
 		if (!_.isNil(latestAnswer)) {
-			if (
-				answer === latestAnswer ||
-				helperUtil.arraysEqual(answer, latestAnswer)
-			) {
-				if(requested) {
+			if (answer === latestAnswer || helperUtil.arraysEqual(answer, latestAnswer)) {
+				if (requested) {
 					// Retain the requested amendment but remove the answer
-					delete accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
-						questionId
-					].answer
+					delete accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[questionId].answer;
 				} else {
 					removeAmendment(accessRecord, questionId);
 				}
@@ -368,12 +299,8 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 		}
 	}
 	// 4. Find and update the question with the new answer
-	accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
-		questionId
-	] = {
-		...accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[
-			questionId
-		],
+	accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[questionId] = {
+		...accessRecord.amendmentIterations[currentIterationIndex].questionAnswers[questionId],
 		answer,
 		updatedBy: `${user.firstname} ${user.lastname}`,
 		updatedByUser: user._id,
@@ -388,12 +315,9 @@ const removeAmendment = (accessRecord, questionId) => {
 	let index = getLatestAmendmentIterationIndex(accessRecord);
 	// 2. Remove the key and associated object from the current iteration if it exists
 	if (index !== -1) {
-		accessRecord.amendmentIterations[index].questionAnswers = _.omit(
-			accessRecord.amendmentIterations[index].questionAnswers,
-			questionId
-		);
+		accessRecord.amendmentIterations[index].questionAnswers = _.omit(accessRecord.amendmentIterations[index].questionAnswers, questionId);
 		// 3. If question answers is now empty, remove the iteration
-		_.remove(accessRecord.amendmentIterations, (amendmentIteration) => {
+		_.remove(accessRecord.amendmentIterations, amendmentIteration => {
 			return _.isEmpty(amendmentIteration.questionAnswers);
 		});
 	}
@@ -401,9 +325,7 @@ const removeAmendment = (accessRecord, questionId) => {
 
 const doesAmendmentExist = (accessRecord, questionId) => {
 	// 1. Get current amendment iteration
-	const latestIteration = getCurrentAmendmentIteration(
-		accessRecord.amendmentIterations
-	);
+	const latestIteration = getCurrentAmendmentIteration(accessRecord.amendmentIterations);
 	if (_.isNil(latestIteration) || _.isNil(latestIteration.questionAnswers)) {
 		return false;
 	}
@@ -411,13 +333,7 @@ const doesAmendmentExist = (accessRecord, questionId) => {
 	return latestIteration.questionAnswers.hasOwnProperty(questionId);
 };
 
-const handleApplicantAmendment = (
-	accessRecord,
-	questionId,
-	questionSetId,
-	answer = '',
-	user
-) => {
+const handleApplicantAmendment = (accessRecord, questionId, questionSetId, answer = '', user) => {
 	// 1. Check if an amendment already exists for the question
 	let isExisting = doesAmendmentExist(accessRecord, questionId);
 	// 2. Update existing
@@ -431,38 +347,24 @@ const handleApplicantAmendment = (
 		if (_.isNil(latestAnswer)) {
 			performAdd = true;
 			// 5. If a previous answer exists, ensure it is different to the most recent answer before adding
-		} else if (
-			answer !== latestAnswer ||
-			!helperUtil.arraysEqual(answer, latestAnswer)
-		) {
+		} else if (answer !== latestAnswer || !helperUtil.arraysEqual(answer, latestAnswer)) {
 			performAdd = true;
 		}
 
 		if (performAdd) {
 			// 6. Add new amendment otherwise
-			addAmendment(
-				accessRecord,
-				questionId,
-				questionSetId,
-				answer,
-				'',
-				user,
-				false
-			);
+			addAmendment(accessRecord, questionId, questionSetId, answer, '', user, false);
 		}
 	}
 	// 7. Update the amendment count
-	let {
-		unansweredAmendments = 0,
-		answeredAmendments = 0,
-	} = countUnsubmittedAmendments(accessRecord, constants.userTypes.APPLICANT);
+	let { unansweredAmendments = 0, answeredAmendments = 0 } = countUnsubmittedAmendments(accessRecord, constants.userTypes.APPLICANT);
 	accessRecord.unansweredAmendments = unansweredAmendments;
 	accessRecord.answeredAmendments = answeredAmendments;
 	// 8. Return updated access record
 	return accessRecord;
 };
 
-const getLatestAmendmentIterationIndex = (accessRecord) => {
+const getLatestAmendmentIterationIndex = accessRecord => {
 	// 1. Guard for incorrect type passed
 	let { amendmentIterations = [] } = accessRecord;
 	if (_.isEmpty(amendmentIterations)) {
@@ -472,26 +374,20 @@ const getLatestAmendmentIterationIndex = (accessRecord) => {
 	let mostRecentDate = new Date(
 		Math.max.apply(
 			null,
-			amendmentIterations.map((iteration) =>
-				_.isUndefined(iteration.dateSubmitted)
-					? new Date(iteration.dateCreated)
-					: ''
-			)
+			amendmentIterations.map(iteration => (_.isUndefined(iteration.dateSubmitted) ? new Date(iteration.dateCreated) : ''))
 		)
 	);
 	// 3. Pull out the related object using a filter to find the object with the latest date
-	return amendmentIterations.findIndex((iteration) => {
+	return amendmentIterations.findIndex(iteration => {
 		let date = new Date(iteration.dateCreated);
 		return date.getTime() == mostRecentDate.getTime();
 	});
 };
 
-const getAmendmentIterationParty = (accessRecord) => {
+const getAmendmentIterationParty = accessRecord => {
 	// 1. Look for an amendment iteration that is in flight
 	//    An empty date submitted with populated date returned indicates that the current correction iteration is now with the applicants
-	let index = accessRecord.amendmentIterations.findIndex(
-		(v) => _.isUndefined(v.dateSubmitted) && !_.isUndefined(v.dateReturned)
-	);
+	let index = accessRecord.amendmentIterations.findIndex(v => _.isUndefined(v.dateSubmitted) && !_.isUndefined(v.dateReturned));
 	// 2. Deduce the user type from the current iteration state
 	if (index === -1) {
 		return constants.userTypes.CUSTODIAN;
@@ -508,104 +404,139 @@ const filterAmendments = (accessRecord = {}, userType) => {
 	// 1. Extract all relevant iteration objects and answers based on the user type
 	// Applicant should only see requested amendments that have been returned by the custodian
 	if (userType === constants.userTypes.APPLICANT) {
-		amendmentIterations = [...amendmentIterations].filter((iteration) => {
+		amendmentIterations = [...amendmentIterations].filter(iteration => {
 			return !_.isUndefined(iteration.dateReturned);
 		});
 	} else if (userType === constants.userTypes.CUSTODIAN) {
 		// Custodian should only see amendment answers that have been submitted by the applicants
-		amendmentIterations = [...amendmentIterations].map((iteration) => {
+		amendmentIterations = [...amendmentIterations].map(iteration => {
 			if (_.isUndefined(iteration.dateSubmitted)) {
 				iteration = removeIterationAnswers(accessRecord, iteration);
 			}
 			return iteration;
 		});
 	}
-	// 2. Return relevant iteratiions
+	// 2. Return relevant iterations
 	return amendmentIterations;
 };
 
-const injectAmendments = (accessRecord, userType) => {
-	// 1. Get current party and active iteration
+const injectAmendments = (accessRecord, userType, user) => {
+	// 1. Get latest iteration created by Custodian
 	const latestIndex = getLatestAmendmentIterationIndex(accessRecord);
-	// 2. Update schema
-	accessRecord.jsonSchema = formatSchema(accessRecord.jsonSchema, accessRecord.amendmentIterations[latestIndex], userType);
-	// 3. Filter out amendments that have not yet been exposed to the opposite party
+	if (latestIndex === -1) {
+		return accessRecord;
+	}
+	let latestIteration = accessRecord.amendmentIterations[latestIndex];
+	const { dateReturned } = latestIteration;
+	// 2. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
+	if (latestIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
+		latestIteration = accessRecord.amendmentIterations[latestIndex - 1];
+	} else if (latestIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
+		return accessRecord;
+	}
+	// 3. Update schema
+	accessRecord.jsonSchema = formatSchema(accessRecord.jsonSchema, latestIteration, userType, user);
+	// 4. Filter out amendments that have not yet been exposed to the opposite party
 	let amendmentIterations = filterAmendments(accessRecord, userType);
-	// 4. Update the question answers to reflect all the changes that have been made in later iterations
-	accessRecord.questionAnswers = formatQuestionAnswers(
-		accessRecord.questionAnswers,
-		amendmentIterations
-	);
-	// 5. Return the updated access record
+	// 5. Update the question answers to reflect all the changes that have been made in later iterations
+	accessRecord.questionAnswers = formatQuestionAnswers(accessRecord.questionAnswers, amendmentIterations);
+	// 6. Return the updated access record
 	return accessRecord;
 };
 
-const formatSchema = (jsonSchema, latestAmendmentIteration, userType) => {
+const formatSchema = (jsonSchema, latestAmendmentIteration, userType, user) => {
 	// Loop through each amendment
-	const { questionAnswers = {}, dateSubmitted } = latestAmendmentIteration;
-	
+	const { questionAnswers = {}, dateSubmitted, dateReturned } = latestAmendmentIteration;
 	for (let questionId in questionAnswers) {
 		const { questionSetId, answer } = questionAnswers[questionId];
 		// 1. Update parent/child navigation with flags for amendments
 		const amendmentCompleted = _.isNil(answer) ? 'incomplete' : 'completed';
-		const iterationSubmitted = _.isNil(dateSubmitted) ? 'notSubmitted' : 'submitted';
-		jsonSchema = injectNavigationAmendment(jsonSchema, questionSetId, userType, amendmentCompleted, iterationSubmitted);
-	}
-
-	if (userType === constants.userTypes.APPLICANT) {
-		// 2. Update inputs with readOnly flag false where amendments are requested
-		// 3. Update questions with alerts where requested by Custodian
-	} else if (userType === constants.userTypes.CUSTODIAN) {
-		// nav amendments appended when answer is not nil and latestAmendmentIteration.dateSubmitted is not nil
-		// 3. Update questions with alerts where requested by Custodian
+		const iterationStatus = !_.isNil(dateSubmitted) ? 'submitted' : !_.isNil(dateReturned) ? 'returned' : 'inProgress';
+		jsonSchema = injectNavigationAmendment(jsonSchema, questionSetId, userType, amendmentCompleted, iterationStatus);
+		// 2. Update questions with alerts/actions
+		jsonSchema = injectQuestionAmendment(
+			jsonSchema,
+			questionId,
+			questionAnswers[questionId],
+			userType,
+			amendmentCompleted,
+			iterationStatus,
+			user
+		);
 	}
 	return jsonSchema;
 };
 
-const injectNavigationAmendment = (jsonSchema, questionSetId, userType, completed, iterationSubmitted) => {
+const injectQuestionAmendment = (jsonSchema, questionId, amendment, userType, completed, iterationStatus, user) => {
+	const { questionSetId, updatedBy, requestedBy } = amendment;
+	// 1. Find question set containing question
+	const qsIndex = jsonSchema.questionSets.findIndex(qs => qs.questionSetId === questionSetId);
+	let { questions } = jsonSchema.questionSets[qsIndex];
+	// 2. Find question object
+	let question = datarequestUtil.findQuestion(questions, questionId);
+	if (_.isEmpty(question)) {
+		return jsonSchema;
+	}
+	// 3, Find input object for question
+	const { input = {} } = question;
+	if (_.isEmpty(input)) {
+		return jsonSchema;
+	}
+	// 4. Create question alert object to highlight amendment
+	const questionAlert = datarequestUtil.buildQuestionAlert(userType, iterationStatus, completed, amendment, user);
+	// 5. Update question to contain amendment state
+	const readOnly = userType === constants.userTypes.CUSTODIAN || iterationStatus === 'submitted';
+	question = {
+		...question,
+		input: {
+			...input,
+			questionAlert,
+			readOnly,
+		},
+	};
+	// 6. Update jsonSchema with updated question
+	jsonSchema.questionSets[qsIndex].questions = datarequestUtil.updateQuestion(questions, question);
+	// 7. Return updated schema
+	return jsonSchema;
+};
+
+const injectNavigationAmendment = (jsonSchema, questionSetId, userType, completed, iterationStatus) => {
 	// 1. Find question in schema
 	const qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
 	const pageIndex = jsonSchema.pages.findIndex(page => page.pageId === jsonSchema.questionPanels[qpIndex].pageId);
-	if(pageIndex === -1 || qpIndex === -1) {
+	if (pageIndex === -1 || qpIndex === -1) {
 		return jsonSchema;
 	}
 	// 2. Update child navigation item (panel)
-	jsonSchema.questionPanels[qpIndex].flag = constants.navigationFlags[userType][iterationSubmitted][completed];
+	jsonSchema.questionPanels[qpIndex].flag = constants.navigationFlags[userType][iterationStatus][completed].status;
 	// 3. Update parent navigation item (page)
 	const { flag: pageFlag = '' } = jsonSchema.pages[pageIndex];
-	if(pageFlag !== 'DANGER' && pageFlag !== 'WARNING') {
-		jsonSchema.pages[pageIndex].flag = constants.navigationFlags[userType][iterationSubmitted][completed];
+	if (pageFlag !== 'DANGER' && pageFlag !== 'WARNING') {
+		jsonSchema.pages[pageIndex].flag = constants.navigationFlags[userType][iterationStatus][completed].status;
 	}
 	// 4. Return schema
 	return jsonSchema;
-}
+};
 
 const getLatestQuestionAnswer = (accessRecord, questionId) => {
 	// 1. Include original submission of question answer
-	let parsedQuestionAnwsers = {};
+	let parsedQuestionAnswers = {};
 	if (typeof accessRecord.questionAnswers === 'string') {
-		parsedQuestionAnwsers = JSON.parse(accessRecord.questionAnswers);
+		parsedQuestionAnswers = JSON.parse(accessRecord.questionAnswers);
 	} else {
-		parsedQuestionAnwsers = _.cloneDeep(accessRecord.questionAnswers);
+		parsedQuestionAnswers = _.cloneDeep(accessRecord.questionAnswers);
 	}
 	let initialSubmission = {
 		questionAnswers: {
 			[`${questionId}`]: {
-				answer: parsedQuestionAnwsers[questionId],
+				answer: parsedQuestionAnswers[questionId],
 				dateUpdated: accessRecord.dateSubmitted,
 			},
 		},
 	};
-	let relevantVersions = [
-		initialSubmission,
-		...accessRecord.amendmentIterations,
-	];
+	let relevantVersions = [initialSubmission, ...accessRecord.amendmentIterations];
 	if (relevantVersions.length > 1) {
-		relevantVersions = _.slice(
-			relevantVersions,
-			0,
-			relevantVersions.length - 1
-		);
+		relevantVersions = _.slice(relevantVersions, 0, relevantVersions.length - 1);
 	}
 	// 2. Reduce all versions to find latest instance of question answer
 	const latestAnswers = relevantVersions.reduce((arr, version) => {
@@ -614,17 +545,12 @@ const getLatestQuestionAnswer = (accessRecord, questionId) => {
 			return arr;
 		}
 		let { answer, dateUpdated } = version.questionAnswers[questionId];
-		let foundIndex = arr.findIndex(
-			(amendment) => amendment.questionId === questionId
-		);
+		let foundIndex = arr.findIndex(amendment => amendment.questionId === questionId);
 		// 4. If the amendment does not exist in our array of latest answers, add it
 		if (foundIndex === -1) {
 			arr.push({ questionId, answer, dateUpdated });
 			// 5. Otherwise update the amendment if this amendment was made more recently
-		} else if (
-			new Date(dateUpdated).getTime() >
-			new Date(arr[foundIndex].dateUpdated).getTime()
-		) {
+		} else if (new Date(dateUpdated).getTime() > new Date(arr[foundIndex].dateUpdated).getTime()) {
 			arr[foundIndex] = { questionId, answer, dateUpdated };
 		}
 		return arr;
@@ -647,19 +573,14 @@ const formatQuestionAnswers = (questionAnswers, amendmentIterations) => {
 			return arr;
 		}
 		// 2. Loop through each amendment key per iteration
-		Object.keys(iteration.questionAnswers).forEach((questionId) => {
+		Object.keys(iteration.questionAnswers).forEach(questionId => {
 			let { answer, dateUpdated } = iteration.questionAnswers[questionId];
-			let foundIndex = arr.findIndex(
-				(amendment) => amendment.questionId === questionId
-			);
+			let foundIndex = arr.findIndex(amendment => amendment.questionId === questionId);
 			// 3. If the amendment does not exist in our array of latest answers, add it
 			if (foundIndex === -1) {
 				arr.push({ questionId, answer, dateUpdated });
 				// 4. Otherwise update the amendment if this amendment was made more recently
-			} else if (
-				new Date(dateUpdated).getTime() >
-				new Date(arr[foundIndex].dateUpdated).getTime()
-			) {
+			} else if (new Date(dateUpdated).getTime() > new Date(arr[foundIndex].dateUpdated).getTime()) {
 				arr[foundIndex] = { questionId, answer, dateUpdated };
 			}
 		});
@@ -667,7 +588,7 @@ const formatQuestionAnswers = (questionAnswers, amendmentIterations) => {
 	}, []);
 	// 5. Format data correctly for question answers
 	const formattedLatestAnswers = [...latestAnswers].reduce((obj, item) => {
-		if(!_.isNil(item.answer)) {
+		if (!_.isNil(item.answer)) {
 			obj[item.questionId] = item.answer;
 		}
 		return obj;
@@ -676,28 +597,20 @@ const formatQuestionAnswers = (questionAnswers, amendmentIterations) => {
 	return { ...questionAnswers, ...formattedLatestAnswers };
 };
 
-const getCurrentAmendmentIteration = (amendmentIterations) => {
+const getCurrentAmendmentIteration = amendmentIterations => {
 	// 1. Guard for incorrect type passed
-	if (
-		_.isEmpty(amendmentIterations) ||
-		_.isNull(amendmentIterations) ||
-		_.isUndefined(amendmentIterations)
-	) {
+	if (_.isEmpty(amendmentIterations) || _.isNull(amendmentIterations) || _.isUndefined(amendmentIterations)) {
 		return undefined;
 	}
 	// 2. Find the latest unsubmitted date created in the amendment iterations array
 	let mostRecentDate = new Date(
 		Math.max.apply(
 			null,
-			amendmentIterations.map((iteration) =>
-				_.isUndefined(iteration.dateSubmitted)
-					? new Date(iteration.dateCreated)
-					: ''
-			)
+			amendmentIterations.map(iteration => (_.isUndefined(iteration.dateSubmitted) ? new Date(iteration.dateCreated) : ''))
 		)
 	);
 	// 3. Pull out the related object using a filter to find the object with the latest date
-	let mostRecentObject = amendmentIterations.filter((iteration) => {
+	let mostRecentObject = amendmentIterations.filter(iteration => {
 		let date = new Date(iteration.dateCreated);
 		return date.getTime() == mostRecentDate.getTime();
 	})[0];
@@ -711,12 +624,9 @@ const removeIterationAnswers = (accessRecord = {}, iteration) => {
 		return undefined;
 	}
 	// 2. Loop through each question answer by key (questionId)
-	Object.keys(iteration.questionAnswers).forEach((key) => {
+	Object.keys(iteration.questionAnswers).forEach(key => {
 		// 3. Fetch the previous answer
-		iteration.questionAnswers[key]['answer'] = getLatestQuestionAnswer(
-			accessRecord,
-			key
-		);
+		iteration.questionAnswers[key]['answer'] = getLatestQuestionAnswer(accessRecord, key);
 	});
 	// 4. Return answer stripped iteration object
 	return iteration;
@@ -744,27 +654,17 @@ const countUnsubmittedAmendments = (accessRecord, userType) => {
 	let unansweredAmendments = 0;
 	let answeredAmendments = 0;
 	let index = getLatestAmendmentIterationIndex(accessRecord);
-	if (
-		index === -1 ||
-		_.isNil(accessRecord.amendmentIterations[index].questionAnswers)
-	) {
+	if (index === -1 || _.isNil(accessRecord.amendmentIterations[index].questionAnswers)) {
 		return { unansweredAmendments: 0, answeredAmendments: 0 };
 	}
 	// 2. Count answered and unanswered amendments in unsubmitted iteration
-	Object.keys(accessRecord.amendmentIterations[index].questionAnswers).forEach(
-		(questionId) => {
-			if (
-				_.isNil(
-					accessRecord.amendmentIterations[index].questionAnswers[questionId]
-						.answer
-				)
-			) {
-				unansweredAmendments++;
-			} else {
-				answeredAmendments++;
-			}
+	Object.keys(accessRecord.amendmentIterations[index].questionAnswers).forEach(questionId => {
+		if (_.isNil(accessRecord.amendmentIterations[index].questionAnswers[questionId].answer)) {
+			unansweredAmendments++;
+		} else {
+			answeredAmendments++;
 		}
-	);
+	});
 	// 3. Return counts
 	return { unansweredAmendments, answeredAmendments };
 };
@@ -784,7 +684,7 @@ const revertAmendmentAnswer = (accessRecord, questionId, user) => {
 				updatedBy: `${user.firstname} ${user.lastname}`,
 				updatedByUser: user._id,
 				dateUpdated: new Date(),
-				answer: undefined
+				answer: undefined,
 			}),
 		};
 		accessRecord.amendmentIterations[index].questionAnswers = { ...accessRecord.amendmentIterations[index].questionAnswers, ...amendment };
@@ -807,29 +707,22 @@ const createNotifications = async (type, accessRecord) => {
 		datasetfields: { publisher },
 	} = accessRecord.datasets[0];
 	// Dataset titles
-	let datasetTitles = accessRecord.datasets
-		.map((dataset) => dataset.name)
-		.join(', ');
+	let datasetTitles = accessRecord.datasets.map(dataset => dataset.name).join(', ');
 	// Main applicant (user obj)
-	let {
-		firstname: appFirstName,
-		lastname: appLastName,
-	} = accessRecord.mainApplicant;
+	let { firstname: appFirstName, lastname: appLastName } = accessRecord.mainApplicant;
 	// Instantiate default params
 	let emailRecipients = [],
 		options = {},
 		html = '',
 		authors = [];
-	let applicants = datarequestUtil
-		.extractApplicantNames(questionAnswers)
-		.join(', ');
+	let applicants = datarequestUtil.extractApplicantNames(questionAnswers).join(', ');
 	// Fall back for single applicant
 	if (_.isEmpty(applicants)) {
 		applicants = `${appFirstName} ${appLastName}`;
 	}
 	// Get authors/contributors (user obj)
 	if (!_.isEmpty(accessRecord.authors)) {
-		authors = accessRecord.authors.map((author) => {
+		authors = accessRecord.authors.map(author => {
 			let { firstname, lastname, email, id } = author;
 			return { firstname, lastname, email, id };
 		});
@@ -849,7 +742,7 @@ const createNotifications = async (type, accessRecord) => {
 			// Authors notification
 			if (!_.isEmpty(authors)) {
 				await notificationBuilder.triggerNotificationMessage(
-					authors.map((author) => author.id),
+					authors.map(author => author.id),
 					`Updates have been requested by ${publisher} for a Data Access Request application you are contributing to`,
 					'data access request',
 					accessRecord._id
@@ -885,30 +778,32 @@ const calculateAmendmentStatus = (accessRecord, userType) => {
 	let amendmentStatus = '';
 	const lastAmendmentIteration = _.last(accessRecord.amendmentIterations);
 	const { applicationStatus } = accessRecord;
-	// 1. Amendment status is blank if no amendments have ever been created or the application has had a final decision 
-	if(_.isNil(lastAmendmentIteration) || 
-	applicationStatus === constants.applicationStatuses.APPROVED || 
-	applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS || 
-	applicationStatus === constants.applicationStatuses.REJECTED) { 
+	// 1. Amendment status is blank if no amendments have ever been created or the application has had a final decision
+	if (
+		_.isNil(lastAmendmentIteration) ||
+		applicationStatus === constants.applicationStatuses.APPROVED ||
+		applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS ||
+		applicationStatus === constants.applicationStatuses.REJECTED
+	) {
 		return '';
 	}
 	const { dateSubmitted = '', dateReturned = '' } = lastAmendmentIteration;
 	// 2a. If the requesting user is the applicant
-	if(userType === constants.userTypes.APPLICANT) {
-		if(!_.isEmpty(dateSubmitted.toString())) {
+	if (userType === constants.userTypes.APPLICANT) {
+		if (!_.isEmpty(dateSubmitted.toString())) {
 			amendmentStatus = constants.amendmentStatuses.UPDATESSUBMITTED;
-		} else if (!_.isEmpty(dateReturned.toString())){
+		} else if (!_.isEmpty(dateReturned.toString())) {
 			amendmentStatus = constants.amendmentStatuses.UPDATESREQUESTED;
 		}
-	// 2b. If the requester user is the custodian
+		// 2b. If the requester user is the custodian
 	} else if (userType === constants.userTypes.CUSTODIAN) {
-		if(!_.isEmpty(dateSubmitted.toString())) {
+		if (!_.isEmpty(dateSubmitted.toString())) {
 			amendmentStatus = constants.amendmentStatuses.UPDATESRECEIVED;
-		} else if (!_.isEmpty(dateReturned.toString())){
+		} else if (!_.isEmpty(dateReturned.toString())) {
 			amendmentStatus = constants.amendmentStatuses.AWAITINGUPDATES;
 		}
 	}
-    return amendmentStatus;
+	return amendmentStatus;
 };
 
 module.exports = {
@@ -930,5 +825,5 @@ module.exports = {
 	countUnsubmittedAmendments: countUnsubmittedAmendments,
 	getLatestQuestionAnswer: getLatestQuestionAnswer,
 	requestAmendments: requestAmendments,
-	calculateAmendmentStatus: calculateAmendmentStatus
+	calculateAmendmentStatus: calculateAmendmentStatus,
 };

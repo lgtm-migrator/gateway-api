@@ -6,16 +6,21 @@ const dataRequest = require('../../__mocks__/datarequest');
 const users = require('../../__mocks__/users');
 
 describe('addAmendment', () => {
-    test('given a data request with an existing active amendment iteration, and a custodian triggers an amendment request, then the specified amendment is added to the active iteration', () => {
+	test('given a data request with an existing active amendment iteration, and a custodian triggers an amendment request, then the specified amendment is added to the active iteration', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
-		const questionId = 'title', questionSetId = 'applicant', answer = '', reason = 'the title was incorrectly selected', user = users.custodian, requested = true;
+		const questionId = 'title',
+			questionSetId = 'applicant',
+			answer = '',
+			reason = 'the title was incorrectly selected',
+			user = users.custodian,
+			requested = true;
 		const expected = {
 			questionSetId,
 			requested,
 			reason,
 			requestedBy: `${user.firstname} ${user.lastname}`,
-			requestedByUser: user._id
+			requestedByUser: user._id,
 		};
 		// Act
 		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
@@ -30,14 +35,19 @@ describe('addAmendment', () => {
 	test('given a data request with an existing active iteration, and an applicant makes an unrequested amendment, then the specified amendment including the updated answer is added to the current iteration', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
-		const questionId = 'dateofbirth', questionSetId = 'applicant', answer = '15/01/1982', reason = '', user = users.applicant, requested = false;
+		const questionId = 'dateofbirth',
+			questionSetId = 'applicant',
+			answer = '15/01/1982',
+			reason = '',
+			user = users.applicant,
+			requested = false;
 		const expected = {
 			questionSetId,
 			answer,
 			requested,
 			reason,
 			updatedBy: `${user.firstname} ${user.lastname}`,
-			updatedByUser: user._id
+			updatedByUser: user._id,
 		};
 		// Act
 		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
@@ -55,14 +65,20 @@ describe('addAmendment', () => {
 	test('given a data request with an existing active iteration, and an applicant updates an existing amendment, the new amendment takes precedence', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
-		const questionId = 'dateofbirth', questionSetId = 'applicant', answer = '15/01/1982', secondAnswer = '16/01/1982', reason = '', user = users.applicant, requested = false;
+		const questionId = 'dateofbirth',
+			questionSetId = 'applicant',
+			answer = '15/01/1982',
+			secondAnswer = '16/01/1982',
+			reason = '',
+			user = users.applicant,
+			requested = false;
 		const expected = {
 			questionSetId,
 			answer: secondAnswer,
 			requested,
 			reason,
 			updatedBy: `${user.firstname} ${user.lastname}`,
-			updatedByUser: user._id
+			updatedByUser: user._id,
 		};
 		// Act
 		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
@@ -88,8 +104,13 @@ describe('addAmendment', () => {
 	test('given a data request without an active amendment iteration, and a custodian triggers an amendment request, then the specified amendment is added to a new iteration as the only key', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[1]);
-		const questionId = 'title', questionSetId = 'applicant', answer = '', reason = 'the title was incorrectly selected', user = users.custodian, requested = true;
-		const expected = { 
+		const questionId = 'title',
+			questionSetId = 'applicant',
+			answer = '',
+			reason = 'the title was incorrectly selected',
+			user = users.custodian,
+			requested = true;
+		const expected = {
 			createdBy: user._id,
 			questionAnswers: {
 				title: {
@@ -97,10 +118,10 @@ describe('addAmendment', () => {
 					requested,
 					reason,
 					requestedBy: `${user.firstname} ${user.lastname}`,
-					requestedByUser: user._id
-				}
-			}
-	 	};
+					requestedByUser: user._id,
+				},
+			},
+		};
 		// Act
 		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
 		// Assert
@@ -115,8 +136,13 @@ describe('addAmendment', () => {
 	test('given a data request without an existing active iteration, and an applicant makes an unrequested amendment, then the specified amendment including the updated answer is added to a new iteration as the only key', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[1]);
-		const questionId = 'dateofbirth', questionSetId = 'applicant', answer = '15/01/1982', reason = '', user = users.applicant, requested = false;
-		const expected = { 
+		const questionId = 'dateofbirth',
+			questionSetId = 'applicant',
+			answer = '15/01/1982',
+			reason = '',
+			user = users.applicant,
+			requested = false;
+		const expected = {
 			createdBy: user._id,
 			questionAnswers: {
 				dateofbirth: {
@@ -125,10 +151,10 @@ describe('addAmendment', () => {
 					requested,
 					reason,
 					updatedBy: `${user.firstname} ${user.lastname}`,
-					updatedByUser: user._id
-				}
-			}
-		 };
+					updatedByUser: user._id,
+				},
+			},
+		};
 		// Act
 		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
 		// Assert
@@ -142,10 +168,10 @@ describe('addAmendment', () => {
 });
 
 describe('getCurrentAmendmentIteration', () => {
-    test('extracts most recent iteration object by created date', () => {
+	test('extracts most recent iteration object by created date', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
-        const expected = {
+		const expected = {
 			dateCreated: '2020-11-03T11:14:01.843+00:00',
 			createdBy: '5f03530178e28143d7af2eb1',
 			questionAnswers: {
@@ -173,12 +199,12 @@ describe('getLatestAmendmentIterationIndex', () => {
 		// Act
 		const result = amendmentController.getLatestAmendmentIterationIndex(data);
 		// Assert
-        expect(result).toBe(1);
-    });
+		expect(result).toBe(1);
+	});
 });
 
 describe('getAmendmentIterationParty', () => {
-    test('given a data request application has been submitted by the applicant, the custodian is now the current responsible party until application is returned', () => {
+	test('given a data request application has been submitted by the applicant, the custodian is now the current responsible party until application is returned', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
 		// Act
@@ -186,7 +212,7 @@ describe('getAmendmentIterationParty', () => {
 		// Assert
 		expect(result).toBe(constants.userTypes.CUSTODIAN);
 	});
-	
+
 	test('given a data request application has been returned by the custodian, the applicant is now the current responsible party', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
@@ -212,7 +238,7 @@ describe('removeIterationAnswers', () => {
 				requestedBy: 'Robin Kavanagh',
 				requestedByUser: '5f03530178e28143d7af2eb1',
 				dateRequested: '2020-10-04T17:14:01.843+00:00',
-				answer: 'UK'
+				answer: 'UK',
 			},
 			reasonforaccess: {
 				questionSetId: 'reasons',
@@ -220,14 +246,17 @@ describe('removeIterationAnswers', () => {
 				reason: 'reason for access is not accepted',
 				requestedBy: 'Robin Kavanagh',
 				requestedByUser: '5f03530178e28143d7af2eb1',
-				dateRequested: '2020-10-04T17:14:01.843+00:00'
-			}
+				dateRequested: '2020-10-04T17:14:01.843+00:00',
+			},
 		},
-	}
+	};
 	const data = _.cloneDeep(dataRequest);
-	const cases = [[data[4], data[4].amendmentIterations[2], expected], [data[1], {}, undefined]];
+	const cases = [
+		[data[4], data[4].amendmentIterations[2], expected],
+		[data[1], {}, undefined],
+	];
 	test.each(cases)(
-		"given an amendment iteration which is not resubmitted, it strips answers",
+		'given an amendment iteration which is not resubmitted, it strips answers',
 		(accessRecord, iteration, expectedResult) => {
 			// Act
 			const result = amendmentController.removeIterationAnswers(accessRecord, iteration);
@@ -241,7 +270,10 @@ describe('handleApplicantAmendment', () => {
 	test('given an applicant makes an amendment, then the corresponding amendment is updated or created depending on existance of requested or previous amendment', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[1]);
-		const questionId = 'lastName', questionSetId = 'applicant', answer = 'Smith', user = users.applicant;
+		const questionId = 'lastName',
+			questionSetId = 'applicant',
+			answer = 'Smith',
+			user = users.applicant;
 		// Act
 		data = amendmentController.handleApplicantAmendment(data, questionId, questionSetId, answer, user);
 		// Assert
@@ -256,7 +288,11 @@ describe('handleApplicantAmendment', () => {
 	test('given an applicant makes an amendment, and updates the same question, then the latest answer is correctly stored in the same iteration version', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[1]);
-		const questionId = 'lastName', questionSetId = 'applicant', answer = 'Smyth', secondAnswer = 'Smith', user = users.applicant;
+		const questionId = 'lastName',
+			questionSetId = 'applicant',
+			answer = 'Smyth',
+			secondAnswer = 'Smith',
+			user = users.applicant;
 		data = amendmentController.handleApplicantAmendment(data, questionId, questionSetId, answer, user);
 		// Act
 		data = amendmentController.handleApplicantAmendment(data, questionId, questionSetId, secondAnswer, user);
@@ -276,7 +312,7 @@ describe('removeAmendment', () => {
 		let data = _.cloneDeep(dataRequest[0]);
 		const questionId = 'lastName';
 		const initialLastName = data.amendmentIterations[1].questionAnswers[questionId];
-		const expected =  {
+		const expected = {
 			questionSetId: 'applicant',
 			requested: true,
 			reason: 'test reason',
@@ -296,9 +332,14 @@ describe('removeAmendment', () => {
 describe('doesAmendmentExist', () => {
 	// Arrange
 	const data = _.cloneDeep(dataRequest);
-	const cases = [[data[0], 'lastName', true], [data[0], 'firstName', false], [{}, '', false], [data[1], 'firstName', false]];
+	const cases = [
+		[data[0], 'lastName', true],
+		[data[0], 'firstName', false],
+		[{}, '', false],
+		[data[1], 'firstName', false],
+	];
 	test.each(cases)(
-		"given a data request object %p and %p as the question amended, returns %p for an amendment existing",
+		'given a data request object %p and %p as the question amended, returns %p for an amendment existing',
 		(data, questionId, expectedResult) => {
 			// Act
 			const result = amendmentController.doesAmendmentExist(data, questionId);
@@ -312,12 +353,17 @@ describe('updateAmendment', () => {
 	test('given a data request with an existing active amendment iteration, and an applicant updates their own existing amendment, then the existing amendment is updated', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[2]);
-		const questionId = 'lastName', answer = 'Smith', user = users.applicant, initialUpdatedDate = dataRequest[2].amendmentIterations[0].questionAnswers['lastName'].dateUpdated;
+		const questionId = 'lastName',
+			answer = 'Smith',
+			user = users.applicant,
+			initialUpdatedDate = dataRequest[2].amendmentIterations[0].questionAnswers['lastName'].dateUpdated;
 		// Act
 		data = amendmentController.updateAmendment(data, questionId, answer, user);
 		// Assert
 		expect(Object.keys(data.amendmentIterations[0].questionAnswers).length).toBe(1);
-		expect(new Date(data.amendmentIterations[0].questionAnswers['lastName']['dateUpdated']).getTime()).toBeGreaterThan(new Date(initialUpdatedDate).getTime());
+		expect(new Date(data.amendmentIterations[0].questionAnswers['lastName']['dateUpdated']).getTime()).toBeGreaterThan(
+			new Date(initialUpdatedDate).getTime()
+		);
 		expect(data.amendmentIterations[0].questionAnswers['lastName']['answer']).toBe('Smith');
 		expect(data.amendmentIterations[0].questionAnswers['lastName']['updatedBy']).toBe('test applicant 1');
 		expect(data.amendmentIterations[0].questionAnswers['lastName']['updatedByUser']).toBe(user._id);
@@ -325,14 +371,20 @@ describe('updateAmendment', () => {
 	test('given a data request with an existing active amendment iteration, and a collaborator updates an amendment they did not create, then the existing amendment is updated', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[2]);
-		const questionId = 'lastName', answer = 'Smith', user = users.collaborator;
-		const { dateUpdated: initialUpdatedDate, updatedBy: initialUpdatedBy } = dataRequest[2].amendmentIterations[0].questionAnswers['lastName']
+		const questionId = 'lastName',
+			answer = 'Smith',
+			user = users.collaborator;
+		const { dateUpdated: initialUpdatedDate, updatedBy: initialUpdatedBy } = dataRequest[2].amendmentIterations[0].questionAnswers[
+			'lastName'
+		];
 		// Act
 		data = amendmentController.updateAmendment(data, questionId, answer, user);
 		// Assert
 		expect(initialUpdatedBy).toBe('test applicant 1');
 		expect(Object.keys(data.amendmentIterations[0].questionAnswers).length).toBe(1);
-		expect(new Date(data.amendmentIterations[0].questionAnswers['lastName']['dateUpdated']).getTime()).toBeGreaterThan(new Date(initialUpdatedDate).getTime());
+		expect(new Date(data.amendmentIterations[0].questionAnswers['lastName']['dateUpdated']).getTime()).toBeGreaterThan(
+			new Date(initialUpdatedDate).getTime()
+		);
 		expect(data.amendmentIterations[0].questionAnswers['lastName']['answer']).toBe('Smith');
 		expect(data.amendmentIterations[0].questionAnswers['lastName']['updatedBy']).toBe('test collaborator 1');
 		expect(data.amendmentIterations[0].questionAnswers['lastName']['updatedByUser']).toBe(user._id);
@@ -341,7 +393,9 @@ describe('updateAmendment', () => {
 	test('given a data request with an existing active amendment iteration, and an applicant updates a non-existing amendment which is an invalid operation, then the access record is unchanged', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[2]);
-		const questionId = 'firstName', answer = 'James', user = users.applicant;
+		const questionId = 'firstName',
+			answer = 'James',
+			user = users.applicant;
 		// Act
 		data = amendmentController.updateAmendment(data, questionId, answer, user);
 		// Assert
@@ -352,7 +406,9 @@ describe('updateAmendment', () => {
 	test('given a data request without an active amendment iteration, and an applicant updates an existing amendment which is an invalid operation, then the access record is unchanged', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[1]);
-		const questionId = 'firstName', answer = 'James', user = users.applicant;
+		const questionId = 'firstName',
+			answer = 'James',
+			user = users.applicant;
 		// Act
 		data = amendmentController.updateAmendment(data, questionId, answer, user);
 		// Assert
@@ -511,14 +567,20 @@ describe('countUnsubmittedAmendments', () => {
 describe('getLatestQuestionAnswer', () => {
 	// Arrange
 	let data = _.cloneDeep(dataRequest);
-	const cases = [[data[0], 'firstName', 'James'], [data[0], 'lastName', 'Smyth'], [data[2], 'lastName', 'Connilly'], [data[3], 'country', ''], [data[3], 'firstName', 'Mark']];
+	const cases = [
+		[data[0], 'firstName', 'James'],
+		[data[0], 'lastName', 'Smyth'],
+		[data[2], 'lastName', 'Connilly'],
+		[data[3], 'country', ''],
+		[data[3], 'firstName', 'Mark'],
+	];
 	test.each(cases)(
-		"given a data access record with multiple amendment versions, the latest previous answer is returned",
+		'given a data access record with multiple amendment versions, the latest previous answer is returned',
 		(accessRecord, questionId, expectedResult) => {
-		// Act
-		const result = amendmentController.getLatestQuestionAnswer(accessRecord, questionId);
-		// Assert
-		expect(result).toBe(expectedResult);
+			// Act
+			const result = amendmentController.getLatestQuestionAnswer(accessRecord, questionId);
+			// Assert
+			expect(result).toBe(expectedResult);
 		}
 	);
 });

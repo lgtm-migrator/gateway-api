@@ -76,7 +76,7 @@ router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestControl
 
 // @route   POST api/v1/data-access-request/:id/upload
 // @desc    POST application files to scan bucket
-// @access  Private - Applicant (Gateway User / Custodian Manager)
+// @access  Private - Applicant (Gateway User / Custodian Manager) 
 router.post('/:id/upload', passport.authenticate('jwt'), multerMid.array('assets'), datarequestController.uploadFiles);
 
 // @route   POST api/v1/data-access-request/:id/amendments

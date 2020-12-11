@@ -203,23 +203,47 @@ const _userQuestionActions = {
 const _navigationFlags = {
 	custodian: {
 		submitted: {
-			completed: 'SUCCESS',
-			incomplete: 'WARNING'
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
 		},
-		notSubmitted: {
-			completed: 'WARNING',
-			incomplete: 'WARNING'
-		}
+		returned: {
+			completed: { status: 'WARNING', options: [], text: '#NAME# requested an update on #DATE#' },
+			incomplete: { status: 'WARNING', options: [], text: '#NAME# requested an update on #DATE#' },
+		},
+		inProgress: {
+			incomplete: {
+				status: 'WARNING',
+				options: [
+					{
+						text: 'Cancel request',
+						action: 'cancelRequest',
+						icon: '',
+						displayOrder: 1,
+					},
+				],
+				text: '#NAME# requested an update on #DATE#',
+			},
+		},
 	},
 	applicant: {
 		submitted: {
-			completed: 'SUCCESS',
-			incomplete: 'DANGER'
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
-		notSubmitted: {
-			completed: 'SUCCESS',
-			incomplete: 'DANGER'
-		}
+		returned: {
+			completed: {
+				status: 'SUCCESS',
+				options: [
+					{
+						text: 'Revert to previous answer',
+						action: 'revertToPreviousAnswer',
+						icon: '',
+						displayOrder: 1,
+					},
+				],
+				text: '#NAME# updated this answer on #DATE#',
+			},
+			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
+		},
 	},
 };
 

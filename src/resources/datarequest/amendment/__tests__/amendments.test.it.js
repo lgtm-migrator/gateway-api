@@ -8,17 +8,17 @@ const dataRequest = require('../../__mocks__/datarequest');
 /**
  * Connect to a new in-memory database before running any tests.
  */
-beforeAll(async () => { 
+beforeAll(async () => {
 	await dbHandler.connect();
-	await dbHandler.loadData({ 'data_requests': dataRequest });
+	await dbHandler.loadData({ data_requests: dataRequest });
 });
 
 /**
  * Revert to initial test data after every test.
  */
 afterEach(async () => {
-	await dbHandler.clearDatabase()
-	await dbHandler.loadData({ 'data_requests': dataRequest });
+	await dbHandler.clearDatabase();
+	await dbHandler.loadData({ data_requests: dataRequest });
 });
 
 /**

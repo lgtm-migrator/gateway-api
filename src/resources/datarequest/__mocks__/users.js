@@ -1,19 +1,19 @@
 import mongoose from 'mongoose';
 
 module.exports = {
-	applicant : {
+	applicant: {
 		_id: new mongoose.Types.ObjectId(),
 		firstname: 'test',
-		lastname: 'applicant 1'
+		lastname: 'applicant 1',
 	},
-	collaborator : {
+	collaborator: {
 		_id: new mongoose.Types.ObjectId(),
 		firstname: 'test',
-		lastname: 'collaborator 1'
+		lastname: 'collaborator 1',
 	},
-	custodian : {
+	custodian: {
 		_id: new mongoose.Types.ObjectId(),
 		firstname: 'test',
-		lastname: 'custodian 1'
-	}
-}
+		lastname: 'custodian 1',
+	},
+};
