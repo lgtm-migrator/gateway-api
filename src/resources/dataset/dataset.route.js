@@ -3,6 +3,7 @@ import { Data } from '../tool/data.model'
 import { loadDataset, loadDatasets } from './dataset.service';
 import { getToolsAdmin } from '../tool/data.repository';
 import _ from 'lodash';
+import escape from 'escape-html';
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
 
@@ -85,7 +86,11 @@ router.get('/:datasetID', async (req, res) => {
         
         // Pull a dataset version from MDC if it doesn't exist on our DB
         if(_.isNil(dataset)){ 
-            dataset = await loadDataset(datasetID)
+            try {
+                dataset = await loadDataset(datasetID);
+            } catch (err) {
+                return res.status(404).send(`Dataset not found for Id: ${escape(datasetID)}`);
+            }
         }
 
         isLatestVersion = (dataset.activeflag === 'active');
