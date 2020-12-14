@@ -30,7 +30,6 @@ const setAmendment = async (req, res) => {
 			},
 			{
 				path: 'publisherObj',
-				select: '_id',
 				populate: {
 					path: 'team',
 					populate: {
@@ -57,7 +56,6 @@ const setAmendment = async (req, res) => {
 		// 5. Get the current iteration amendment party
 		let validParty = false;
 		let activeParty = getAmendmentIterationParty(accessRecord);
-		userType = constants.userTypes.CUSTODIAN;
 		// 6. Add/remove/revert amendment depending on mode
 		if (authorised) {
 			switch (mode) {
