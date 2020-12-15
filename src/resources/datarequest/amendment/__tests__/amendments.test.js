@@ -618,3 +618,25 @@ describe('revertAmendmentAnswer', () => {
 		expect(dataRequest[4]).toEqual(data);
 	});
 });
+
+// describe('injectNavigationAmendment', () => {
+// 	// Arrange
+// 	let data = _.cloneDeep(dataRequest);
+// 	const cases = [
+// 		[data[0].jsonSchema, 'applicant', constants.userTypes.APPLICANT, true, '', expectedResult],
+// 		//[data[0].jsonSchema, 'applicant', constants.userTypes.CUSTODIAN, ],
+// 		//[data[2].jsonSchema, 'applicant', constants.userTypes.APPLICANT],
+// 		//[data[2].jsonSchema, 'applicant', constants.userTypes.CUSTODIAN],
+// 		//[data[3].jsonSchema, 'applicant', constants.userTypes.APPLICANT],
+// 		//[data[3].jsonSchema, 'applicant', constants.userTypes.CUSTODIAN]
+// 	];
+// 	test.each(cases)(
+// 		'given a valid json schema, and a requested amendment, then the corresponding navigation panels are highlighted to reflect the amendment status',
+// 		(jsonSchema, questionSetId, userType, completed, iterationStatus, expectedResult) => {
+// 			// Act
+// 			const result = amendmentController.injectNavigationAmendment(jsonSchema, questionSetId, userType, completed, iterationStatus);
+// 			// Assert
+// 			expect(result).toBe(expectedResult);
+// 		}
+// 	);
+// });

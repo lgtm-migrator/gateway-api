@@ -120,10 +120,11 @@ const setAmendment = async (req, res) => {
 				return res.status(200).json({
 					success: true,
 					accessRecord: {
+						amendmentIterations: accessRecordObj.amendmentIterations,
 						questionAnswers: accessRecordObj.questionAnswers,
 						jsonSchema: accessRecordObj.jsonSchema,
 						answeredAmendments,
-						unansweredAmendments,
+						unansweredAmendments
 					},
 				});
 			}
