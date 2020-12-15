@@ -15,19 +15,21 @@ const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '
 
 const getUserPermissionsForApplication = (application, userId, _id) => {
 	try {
-		let authorised = false,
-			userType = '';
+		let authorised = false, isTeamMember = false, userType = '';
 		// Return default unauthorised with no user type if incorrect params passed
 		if (!application || !userId || !_id) {
 			return { authorised, userType };
 		}
 		// Check if the user is a custodian team member and assign permissions if so
 		if (_.has(application.datasets[0], 'publisher.team')) {
-			let isTeamMember = teamController.checkTeamPermissions('', application.datasets[0].publisher.team, _id);
-			if (isTeamMember) {
-				userType = constants.userTypes.CUSTODIAN;
-				authorised = true;
-			}
+			isTeamMember = teamController.checkTeamPermissions('', application.datasets[0].publisher.team, _id);
+		}
+		else if(_.has(application, 'publisher.team')) {
+			isTeamMember = teamController.checkTeamPermissions('', application.publisher.team, _id);
+		}
+		if (isTeamMember) {
+			userType = constants.userTypes.CUSTODIAN;
+			authorised = true;
 		}
 		// If user is not authenticated as a custodian, check if they are an author or the main applicant
 		if (application.applicationStatus === constants.applicationStatuses.INPROGRESS || _.isEmpty(userType)) {
