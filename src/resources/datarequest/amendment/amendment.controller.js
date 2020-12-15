@@ -52,7 +52,7 @@ const setAmendment = async (req, res) => {
 			});
 		}
 		// 4. Get the requesting users permission levels
-		let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+		let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord.toObject(), req.user.id, req.user._id);
 		// 5. Get the current iteration amendment party
 		let validParty = false;
 		let activeParty = getAmendmentIterationParty(accessRecord);
