@@ -828,4 +828,5 @@ module.exports = {
 	getLatestQuestionAnswer: getLatestQuestionAnswer,
 	requestAmendments: requestAmendments,
 	calculateAmendmentStatus: calculateAmendmentStatus,
+	injectNavigationAmendment: injectNavigationAmendment
 };

@@ -619,24 +619,62 @@ describe('revertAmendmentAnswer', () => {
 	});
 });
 
-// describe('injectNavigationAmendment', () => {
-// 	// Arrange
-// 	let data = _.cloneDeep(dataRequest);
-// 	const cases = [
-// 		[data[0].jsonSchema, 'applicant', constants.userTypes.APPLICANT, true, '', expectedResult],
-// 		//[data[0].jsonSchema, 'applicant', constants.userTypes.CUSTODIAN, ],
-// 		//[data[2].jsonSchema, 'applicant', constants.userTypes.APPLICANT],
-// 		//[data[2].jsonSchema, 'applicant', constants.userTypes.CUSTODIAN],
-// 		//[data[3].jsonSchema, 'applicant', constants.userTypes.APPLICANT],
-// 		//[data[3].jsonSchema, 'applicant', constants.userTypes.CUSTODIAN]
-// 	];
-// 	test.each(cases)(
-// 		'given a valid json schema, and a requested amendment, then the corresponding navigation panels are highlighted to reflect the amendment status',
-// 		(jsonSchema, questionSetId, userType, completed, iterationStatus, expectedResult) => {
-// 			// Act
-// 			const result = amendmentController.injectNavigationAmendment(jsonSchema, questionSetId, userType, completed, iterationStatus);
-// 			// Assert
-// 			expect(result).toBe(expectedResult);
-// 		}
-// 	);
-// });
+describe('injectNavigationAmendment', () => {
+	// Arrange
+	const cases = [
+		[_.cloneDeep(dataRequest[0].jsonSchema), 'applicant', 'safePeople', constants.userTypes.CUSTODIAN, 'completed', 'returned', {"flag": "WARNING"}, {}],
+		[_.cloneDeep(dataRequest[0].jsonSchema), 'applicant', 'safePeople', constants.userTypes.CUSTODIAN, 'incomplete', 'returned', {"flag": "WARNING"}, {}],
+		[_.cloneDeep(dataRequest[0].jsonSchema), 'principleInvestigator', 'safePeople', constants.userTypes.CUSTODIAN, 'completed', 'submitted', {"flag": "SUCCESS"}, {}],
+		[_.cloneDeep(dataRequest[0].jsonSchema), 'principleInvestigator', 'safePeople', constants.userTypes.CUSTODIAN, 'incomplete', 'inProgress', {"flag": "WARNING"}, {}],
+		[_.cloneDeep(dataRequest[0].jsonSchema), 'applicant', 'safePeople', constants.userTypes.APPLICANT, 'completed', 'returned', {"flag": "SUCCESS"}, {}],
+		[_.cloneDeep(dataRequest[0].jsonSchema), 'applicant', 'safePeople', constants.userTypes.APPLICANT, 'incomplete', 'returned', {"flag": "DANGER"}, {}],
+		[_.cloneDeep(dataRequest[0].jsonSchema), 'principleInvestigator', 'safePeople', constants.userTypes.APPLICANT, 'completed', 'submitted', {"flag": "SUCCESS"}, {}],
+		[_.cloneDeep(dataRequest[0].jsonSchema), 'principleInvestigator', 'safePeople', constants.userTypes.APPLICANT, 'incomplete', 'submitted', {"flag": "DANGER"}, {}]
+	];
+	test.each(cases)(
+		'given a valid json schema, and a requested amendment, then the corresponding navigation panels are highlighted to reflect the amendment status',
+		(jsonSchema, questionSetId, pageId, userType, completed, iterationStatus, expectedPageResult, expectedPanelResult) => {
+			// Act
+			const result = amendmentController.injectNavigationAmendment(jsonSchema, questionSetId, userType, completed, iterationStatus);
+			// Assert
+			expect(result.pages.find(page => page.pageId === pageId)).toMatchObject(expectedPageResult);
+			expect(result.questionPanels.find(panel => panel.panelId === questionSetId)).toMatchObject(expectedPageResult);
+		}
+	);
+	test('given a valid json schema, containing multiple amendments with differing statuses, then the corresponding navigation panels are highlighted to reflect the amendment status', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[0]);
+		let pageId = 'safePeople';
+		// Act
+		let jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'completed', 'submitted');
+		jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
+		// Assert
+		expect(jsonSchema.pages.find(page => page.pageId === pageId)).toMatchObject({"flag": "DANGER"});
+		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'applicant')).toMatchObject({"flag": "SUCCESS"});
+		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'principleInvestigator')).toMatchObject({"flag": "DANGER"});
+	});
+	test('given a valid json schema, containing multiple amendments with incomplete statuses, then the corresponding navigation panels are highlighted as danger', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[0]);
+		let pageId = 'safePeople';
+		// Act
+		let jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
+		jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
+		// Assert
+		expect(jsonSchema.pages.find(page => page.pageId === pageId)).toMatchObject({"flag": "DANGER"});
+		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'applicant')).toMatchObject({"flag": "DANGER"});
+		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'principleInvestigator')).toMatchObject({"flag": "DANGER"});
+	});
+	test('given a valid json schema, containing multiple amendments with entirely complete statuses, then the corresponding navigation panels are highlighted as success', () => {
+		// Arrange
+		let data = _.cloneDeep(dataRequest[0]);
+		let pageId = 'safePeople';
+		// Act
+		let jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'completed', 'submitted');
+		jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'completed', 'submitted');
+		// Assert
+		expect(jsonSchema.pages.find(page => page.pageId === pageId)).toMatchObject({"flag": "SUCCESS"});
+		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'applicant')).toMatchObject({"flag": "SUCCESS"});
+		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'principleInvestigator')).toMatchObject({"flag": "SUCCESS"});
+	});
+});
