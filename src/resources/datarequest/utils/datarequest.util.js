@@ -24,8 +24,8 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 		if (_.has(application.datasets[0], 'publisher.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.datasets[0].publisher.team, _id);
 		}
-		else if(_.has(application, 'publisher.team')) {
-			isTeamMember = teamController.checkTeamPermissions('', application.publisher.team, _id);
+		else if(_.has(application, 'publisherObj.team')) {
+			isTeamMember = teamController.checkTeamPermissions('', application.publisherObj.team, _id);
 		}
 		if (isTeamMember) {
 			userType = constants.userTypes.CUSTODIAN;
