@@ -14,7 +14,7 @@ const inputSanitizer = require('../utilities/inputSanitizer');
 
 const urlValidator = require('../utilities/urlValidator');
 
-const hdrukEmail = `enquiry@healthdatagateway.org`;
+const hdrukEmail = `enquiry@healthdatagateway.org`; 
 
 const router = express.Router()
 
@@ -35,12 +35,12 @@ router.get('/:collectionID', async (req, res) => {
   });
 });
 
-router.get('/datasetid/:datasetID', async (req, res) => {  
+router.get('/entityid/:entityID', async (req, res) => {  
   var q = Collections.aggregate([
-      { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.datasetID } } }, {publicflag: true}, {activeflag: "active"} ] } },
+      { $match: { $and: [{ "relatedObjects": { $elemMatch: { "objectId": req.params.entityID } } }, {publicflag: true}, {activeflag: "active"} ] } },
       { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } },
       { $project: { _id: 1, id: 1, name: 1, description: 1, imageLink: 1, relatedObjects: 1, 'persons.firstname': 1, 'persons.lastname': 1  }}
-  ]);
+  ]); 
 
   q.exec((err, data) => {
     if (err) return res.json({ success: false, error: err });
@@ -171,7 +171,7 @@ router.post('/add',
         
         if(req.user.role === 'Admin') {
         isAuthorAdmin = true;
-        } 
+        }  
   
         if(isAuthorAdmin){
         Collections.findOneAndRemove({id: req.params.id}, (err) => {
