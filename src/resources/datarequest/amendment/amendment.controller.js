@@ -645,7 +645,7 @@ const countUnsubmittedAmendments = (accessRecord, userType) => {
 	let unansweredAmendments = 0;
 	let answeredAmendments = 0;
 	let index = getLatestAmendmentIterationIndex(accessRecord);
-	if (index === -1 || _.isNil(accessRecord.amendmentIterations[index].questionAnswers)) {
+	if (index === -1 || _.isNil(accessRecord.amendmentIterations[index].questionAnswers) || _.isNil(accessRecord.amendmentIterations[index].dateReturned)) {
 		return { unansweredAmendments: 0, answeredAmendments: 0 };
 	}
 	// 2. Count answered and unanswered amendments in unsubmitted iteration
