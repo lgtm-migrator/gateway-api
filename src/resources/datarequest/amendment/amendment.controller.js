@@ -422,16 +422,16 @@ const filterAmendments = (accessRecord = {}, userType) => {
 
 const injectAmendments = (accessRecord, userType, user) => {
 	// 1. Get latest iteration created by Custodian
-	const latestIndex = getLatestAmendmentIterationIndex(accessRecord);
-	if (latestIndex === -1) {
+	if (accessRecord.amendmentIterations.length === 0) {
 		return accessRecord;
 	}
-	let latestIteration = accessRecord.amendmentIterations[latestIndex];
+	const lastIndex = _.findLastIndex(accessRecord.amendmentIterations);
+	let latestIteration = accessRecord.amendmentIterations[lastIndex];
 	const { dateReturned } = latestIteration;
 	// 2. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
-	if (latestIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
-		latestIteration = accessRecord.amendmentIterations[latestIndex - 1];
-	} else if (latestIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
+	if (lastIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
+		latestIteration = accessRecord.amendmentIterations[lastIndex - 1];
+	} else if (lastIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
 		return accessRecord;
 	}
 	// 3. Update schema
