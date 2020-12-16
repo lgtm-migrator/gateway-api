@@ -683,9 +683,9 @@ const revertAmendmentAnswer = (accessRecord, questionId, user) => {
 		amendment = {
 			[`${questionId}`]: new AmendmentModel({
 				...amendment,
-				updatedBy: `${user.firstname} ${user.lastname}`,
-				updatedByUser: user._id,
-				dateUpdated: new Date(),
+				updatedBy: undefined,
+				updatedByUser: undefined,
+				dateUpdated: undefined,
 				answer: undefined,
 			}),
 		};
