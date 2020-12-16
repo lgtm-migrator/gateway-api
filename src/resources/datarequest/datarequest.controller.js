@@ -115,12 +115,14 @@ module.exports = {
 			if (userType === constants.userTypes.APPLICANT && accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
 				readOnly = false;
 			}
-			// 7. Set the review mode if user is a custodian reviewing the current step
+			// 7. Count unsubmitted amendments
+			let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(accessRecord, userType);
+			// 8. Set the review mode if user is a custodian reviewing the current step
 			let { inReviewMode, reviewSections, hasRecommended } = workflowController.getReviewStatus(accessRecord, req.user._id);
-			// 8. Get the workflow/voting status
+			// 9. Get the workflow/voting status
 			let workflow = workflowController.getWorkflowStatus(accessRecord);
 			let isManager = false;
-			// 9. Check if the current user can override the current step
+			// 10. Check if the current user can override the current step
 			if (_.has(accessRecord.datasets[0], 'publisher.team')) {
 				isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, accessRecord.datasets[0].publisher.team, req.user._id);
 				// Set the workflow override capability if there is an active step and user is a manager
@@ -128,13 +130,13 @@ module.exports = {
 					workflow.canOverrideStep = !workflow.isCompleted && isManager;
 				}
 			}
-			// 10. Update json schema and question answers with modifications since original submission
+			// 11. Update json schema and question answers with modifications since original submission
 			accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
 			accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
 			accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
-			// 11. Determine the current active party handling the form
+			// 12. Determine the current active party handling the form
 			let activeParty = amendmentController.getAmendmentIterationParty(accessRecord);
-			// 12. Append question actions depending on user type and application status
+			// 13. Append question actions depending on user type and application status
 			let userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
@@ -143,8 +145,6 @@ module.exports = {
 				accessRecord.applicationStatus,
 				userRole
 			);
-			// 13. Count unsubmitted amendments
-			let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(accessRecord, userType);
 			// 14. Return application form
 			return res.status(200).json({
 				status: 'success',
