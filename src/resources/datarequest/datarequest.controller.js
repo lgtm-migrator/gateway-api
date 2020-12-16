@@ -392,7 +392,7 @@ module.exports = {
 			}
 			// 5. Update record object
 			module.exports.updateApplication(accessRequestRecord, updateObj).then(accessRequestRecord => {
-				const { unansweredAmendments, answeredAmendments, dirtySchema = false } = accessRequestRecord;
+				const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRequestRecord;
 				let jsonSchema = {};
 				if(dirtySchema) {
 					accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
