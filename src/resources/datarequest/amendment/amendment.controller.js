@@ -611,8 +611,11 @@ const getCurrentAmendmentIteration = amendmentIterations => {
 
 const removeIterationAnswers = (accessRecord = {}, iteration) => {
 	// 1. Guard for invalid object passed
-	if (!iteration || !iteration.questionAnswers || _.isEmpty(accessRecord)) {
+	if (!iteration || _.isEmpty(accessRecord)) {
 		return undefined;
+	}
+	if (_.isNil(iteration.questionAnswers)) {
+		return iteration;
 	}
 	// 2. Loop through each question answer by key (questionId)
 	Object.keys(iteration.questionAnswers).forEach(key => {
