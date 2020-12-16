@@ -393,19 +393,23 @@ module.exports = {
 			// 5. Update record object
 			module.exports.updateApplication(accessRequestRecord, updateObj).then(accessRequestRecord => {
 				const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRequestRecord;
-				let jsonSchema = {};
 				if(dirtySchema) {
 					accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
 					accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
-					({ jsonSchema } = accessRequestRecord);
 				}
-				// 6. Return new data object
-				return res.status(200).json({
+				let data = {
 					status: 'success',
 					unansweredAmendments,
-					answeredAmendments,
-					jsonSchema
-				});
+					answeredAmendments
+				};
+				if(dirtySchema) {
+					data = {
+						...data,
+						jsonSchema: accessRequestRecord.jsonSchema
+					}
+				}
+				// 6. Return new data object
+				return res.status(200).json(data);
 			});
 		} catch (err) {
 			console.log(err.message);
