@@ -477,26 +477,17 @@ const injectQuestionAmendment = (jsonSchema, questionId, amendment, userType, co
 	if (_.isEmpty(question)) {
 		return jsonSchema;
 	}
-	// 3, Find input object for question
-	const { input = {} } = question;
 	if (_.isEmpty(input)) {
 		return jsonSchema;
 	}
-	// 4. Create question alert object to highlight amendment
+	// 3. Create question alert object to highlight amendment
 	const questionAlert = datarequestUtil.buildQuestionAlert(userType, iterationStatus, completed, amendment, user);
-	// 5. Update question to contain amendment state
+	// 4. Update question to contain amendment state
 	const readOnly = userType === constants.userTypes.CUSTODIAN || iterationStatus === 'submitted';
-	question = {
-		...question,
-		input: {
-			...input,
-			questionAlert,
-			readOnly,
-		},
-	};
-	// 6. Update jsonSchema with updated question
+	question = datarequestUtil.setQuestionState(question, questionAlert, readOnly);
+	// 5. Update jsonSchema with updated question
 	jsonSchema.questionSets[qsIndex].questions = datarequestUtil.updateQuestion(questions, question);
-	// 7. Return updated schema
+	// 6. Return updated schema
 	return jsonSchema;
 };
 

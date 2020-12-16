@@ -15,7 +15,9 @@ const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '
 
 const getUserPermissionsForApplication = (application, userId, _id) => {
 	try {
-		let authorised = false, isTeamMember = false, userType = '';
+		let authorised = false,
+			isTeamMember = false,
+			userType = '';
 		// Return default unauthorised with no user type if incorrect params passed
 		if (!application || !userId || !_id) {
 			return { authorised, userType };
@@ -23,8 +25,7 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 		// Check if the user is a custodian team member and assign permissions if so
 		if (_.has(application.datasets[0], 'publisher.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.datasets[0].publisher.team, _id);
-		}
-		else if(_.has(application, 'publisherObj.team')) {
+		} else if (_.has(application, 'publisherObj.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.publisherObj.team, _id);
 		}
 		if (isTeamMember) {
@@ -119,6 +120,48 @@ const updateQuestion = (questionsArr, question) => {
 	return questionsArr;
 };
 
+const setQuestionState = (question, questionAlert, readOnly) => {
+	// 1. Find input object for question
+	const { input = {} } = question;
+	// 2. Assemble question in readOnly true/false mode
+	question = {
+		...question,
+		input: {
+			...input,
+			questionAlert,
+			readOnly,
+		},
+	};
+	// 3. Recursively set readOnly mode for children
+	if (_.has(question, 'input.options')) {
+		let conditionalQuestions = question.input.options.filter(option => {
+			return typeof option.conditionalQuestions !== 'undefined' && option.conditionalQuestions.length > 0;
+		});
+
+		conditionalQuestions.forEach(function iter(currentQuestion, index, currentArray) {
+			currentQuestion = {
+				...currentQuestion,
+				input: {
+					...currentQuestion.input,
+					readOnly,
+				},
+			};
+
+			currentArray[index] = { ...currentQuestion };
+
+			if (_.has(currentQuestion, 'input.options')) {
+				currentQuestion.input.options.forEach(option => {
+					if (_.has(option, 'conditionalQuestions')) {
+						Array.isArray(option.conditionalQuestions) && option.conditionalQuestions.forEach(iter);
+					}
+				});
+			}
+		});
+	}
+
+	return question;
+};
+
 const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user) => {
 	try {
 		const questionAlert = {
@@ -161,4 +204,5 @@ export default {
 	findQuestion: findQuestion,
 	updateQuestion: updateQuestion,
 	buildQuestionAlert: buildQuestionAlert,
+	setQuestionState: setQuestionState,
 };
