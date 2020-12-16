@@ -397,8 +397,7 @@ module.exports = {
 				return res.status(200).json({
 					status: 'success',
 					unansweredAmendments,
-					answeredAmendments,
-					amendmentIterations
+					answeredAmendments
 				});
 			});
 		} catch (err) {
