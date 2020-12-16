@@ -396,7 +396,7 @@ module.exports = {
 				let jsonSchema = {};
 				if(dirtySchema) {
 					accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
-					accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.applicant, req.user);
+					accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
 					({ jsonSchema } = accessRequestRecord);
 				}
 				// 6. Return new data object
