@@ -291,7 +291,7 @@ const updateAmendment = (accessRecord, questionId, answer, user) => {
 				}
 				return accessRecord;
 			}
-		} else if (_.isNil(latestAnswer) && _.isEmpty(answer)) {
+		} else if (_.isNil(latestAnswer) && _.isEmpty(answer) && !requested) {
 			// Remove the amendment if there was no previous answer and the latest update is empty
 			removeAmendment(accessRecord, questionId);
 			return accessRecord;
