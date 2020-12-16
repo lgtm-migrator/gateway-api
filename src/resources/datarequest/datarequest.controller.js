@@ -111,14 +111,8 @@ module.exports = {
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
-			// 6. Set edit mode for applicants who have not yet submitted or are in the process of fixing amendments
-			let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(accessRecord, userType);
-			if (
-				userType === constants.userTypes.APPLICANT &&
-				(accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS ||
-					countUnsubmittedAmendments.unansweredAmendments > 0 ||
-					countUnsubmittedAmendments.answeredAmendments > 0)
-			) {
+			// 6. Set edit mode for applicants who have not yet submitted
+			if (userType === constants.userTypes.APPLICANT && accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
 				readOnly = false;
 			}
 			// 7. Set the review mode if user is a custodian reviewing the current step
@@ -149,7 +143,9 @@ module.exports = {
 				accessRecord.applicationStatus,
 				userRole
 			);
-			// 13. Return application form
+			// 13. Count unsubmitted amendments
+			let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(accessRecord, userType);
+			// 14. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -396,12 +392,13 @@ module.exports = {
 			}
 			// 5. Update record object
 			module.exports.updateApplication(accessRequestRecord, updateObj).then(accessRequestRecord => {
-				const { unansweredAmendments, answeredAmendments } = accessRequestRecord;
+				const { unansweredAmendments, answeredAmendments, amendmentIterations } = accessRequestRecord;
 				// 6. Return new data object
 				return res.status(200).json({
 					status: 'success',
 					unansweredAmendments,
 					answeredAmendments,
+					amendmentIterations
 				});
 			});
 		} catch (err) {
