@@ -124,7 +124,7 @@ const setAmendment = async (req, res) => {
 						questionAnswers: accessRecordObj.questionAnswers,
 						jsonSchema: accessRecordObj.jsonSchema,
 						answeredAmendments,
-						unansweredAmendments
+						unansweredAmendments,
 					},
 				});
 			}
@@ -429,7 +429,10 @@ const injectAmendments = (accessRecord, userType, user) => {
 	let latestIteration = accessRecord.amendmentIterations[lastIndex];
 	const { dateReturned } = latestIteration;
 	// 2. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
-	if (lastIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
+	if (
+		lastIndex > 0 && (userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
+		(userType === constants.userTypes.CUSTODIAN && !_.isNil(latestIteration.questionAnswers))
+	) {
 		latestIteration = accessRecord.amendmentIterations[lastIndex - 1];
 	} else if (lastIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
 		return accessRecord;
@@ -645,7 +648,11 @@ const countUnsubmittedAmendments = (accessRecord, userType) => {
 	let unansweredAmendments = 0;
 	let answeredAmendments = 0;
 	let index = getLatestAmendmentIterationIndex(accessRecord);
-	if (index === -1 || _.isNil(accessRecord.amendmentIterations[index].questionAnswers) || (_.isNil(accessRecord.amendmentIterations[index].dateReturned) && userType == constants.userTypes.APPLICANT)) {
+	if (
+		index === -1 ||
+		_.isNil(accessRecord.amendmentIterations[index].questionAnswers) ||
+		(_.isNil(accessRecord.amendmentIterations[index].dateReturned) && userType == constants.userTypes.APPLICANT)
+	) {
 		return { unansweredAmendments: 0, answeredAmendments: 0 };
 	}
 	// 2. Count answered and unanswered amendments in unsubmitted iteration
@@ -817,5 +824,5 @@ module.exports = {
 	getLatestQuestionAnswer: getLatestQuestionAnswer,
 	requestAmendments: requestAmendments,
 	calculateAmendmentStatus: calculateAmendmentStatus,
-	injectNavigationAmendment: injectNavigationAmendment
+	injectNavigationAmendment: injectNavigationAmendment,
 };
