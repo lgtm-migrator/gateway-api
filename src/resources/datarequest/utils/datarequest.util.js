@@ -74,13 +74,15 @@ const extractApplicantNames = questionAnswers => {
 };
 
 const findQuestion = (questionsArr, questionId) => {
+	// 1. Define child object to allow recursive calls
 	let child;
-
+	// 2. Exit from function if no children are present
 	if (!questionsArr) return {};
-
+	// 3. Iterate through questions in the current level to locate question by Id
 	for (const questionObj of questionsArr) {
+		// 4. Return the question if it is located
 		if (questionObj.questionId === questionId) return questionObj;
-
+		// 5. Recursively call the find question function on child elements to find question Id
 		if (typeof questionObj.input === 'object' && typeof questionObj.input.options !== 'undefined') {
 			questionObj.input.options
 				.filter(option => {
@@ -90,24 +92,28 @@ const findQuestion = (questionsArr, questionId) => {
 					child = findQuestion(option.conditionalQuestions, questionId);
 				});
 		}
-
+		// 6. Return the child question
 		if (child) return child;
 	}
 };
 
 const updateQuestion = (questionsArr, question) => {
+	// 1. Extract question Id
 	let { questionId } = question;
 	let found = false;
-
+	// 2. Recursive function to iterate through each level of questions
 	questionsArr.forEach(function iter(currentQuestion, index, currentArray) {
+		// 3. Prevent unnecessary computation by exiting loop if question was found
 		if (found) {
 			return;
 		}
+		// 4. If the current question matches the target question, replace with updated question
 		if (currentQuestion.questionId === questionId) {
 			currentArray[index] = { ...question };
 			found = true;
 			return;
 		}
+		// 5. If target question has not been identified, recall function with child questions
 		if (_.has(currentQuestion, 'input.options')) {
 			currentQuestion.input.options.forEach(option => {
 				if (_.has(option, 'conditionalQuestions')) {
@@ -116,7 +122,7 @@ const updateQuestion = (questionsArr, question) => {
 			});
 		}
 	});
-
+	// 6. Return the updated question array
 	return questionsArr;
 };
 
@@ -140,30 +146,33 @@ const setQuestionState = (question, questionAlert, readOnly) => {
 				currentQuestion.input.readOnly = readOnly;
 			}
 			// 5. Recall the iteration with each child question
-			if (_.has(currentQuestion, 'input.options')) {
-				currentQuestion.input.options.forEach(option => {
-					if (_.has(option, 'conditionalQuestions')) {
-						Array.isArray(option.conditionalQuestions) && option.conditionalQuestions.forEach(iter);
+			if (_.has(currentQuestion, 'conditionalQuestions')) {
+				currentQuestion.conditionalQuestions.forEach(option => {
+					if (_.has(option, 'input.options')) {
+						Array.isArray(option.input.options) && option.input.options.forEach(iter);
+					} else {
+						option.input.readOnly = readOnly;
 					}
 				});
 			}
 		});
 	}
-
 	return question;
 };
 
 const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user) => {
+	// 1. Use a try catch to prevent conditions where the combination of params lead to no question alert required
 	try {
+		// 2. Static mapping allows us to determine correct flag to show based on scenario (params)
 		const questionAlert = {
 			...constants.navigationFlags[userType][iterationStatus][completed],
 		};
-
+		// 3. Extract data from amendment
 		let { requestedBy, updatedBy, dateRequested, dateUpdated } = amendment;
-
+		// 4. Update audit fields to 'you' if the action was performed by the current user
 		requestedBy = matchCurrentUser(user, requestedBy);
 		updatedBy = matchCurrentUser(user, updatedBy);
-
+		// 5. Update the generic question alerts to match the scenario
 		questionAlert.text = questionAlert.text.replace(
 			'#NAME#',
 			userType === (constants.userTypes.APPLICANT || iterationStatus === 'submitted') && !_.isNil(updatedBy) ? updatedBy : requestedBy
@@ -174,6 +183,7 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 				? moment(dateUpdated).format('Do MMM YYYY')
 				: moment(dateRequested).format('Do MMM YYYY')
 		);
+		// 6. Return the built question alert
 		return questionAlert;
 	} catch (err) {
 		return {};
@@ -181,10 +191,14 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 };
 
 const matchCurrentUser = (user, auditField) => {
+	// 1. Extract the name of the current user
 	const { firstname, lastname } = user;
+	// 2. Compare current user to audit field supplied e.g. 'updated by'
 	if (auditField === `${firstname} ${lastname}`) {
+		// 3. Update audit field value to 'you' if name matches current user
 		return 'You';
 	}
+	// 4. Return updated audit field
 	return auditField;
 };
 
