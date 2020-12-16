@@ -135,19 +135,16 @@ const setQuestionState = (question, questionAlert, readOnly) => {
 	// 3. Recursively set readOnly mode for children
 	if (_.has(question, 'input.options')) {
 		question.input.options.forEach(function iter(currentQuestion, index, currentArray) {
-			if(typeof currentQuestion.conditionalQuestions === 'undefined' || currentQuestion.conditionalQuestions.length === 0) {
-				return;
+			if (_.has(currentQuestion, 'input')) {
+				currentQuestion = {
+					...currentQuestion,
+					input: {
+						...currentQuestion.input,
+						readOnly,
+					},
+				};
+				currentArray[index] = { ...currentQuestion };
 			}
-
-			currentQuestion = {
-				...currentQuestion,
-				input: {
-					...currentQuestion.input,
-					readOnly,
-				},
-			};
-
-			currentArray[index] = { ...currentQuestion };
 
 			if (_.has(currentQuestion, 'input.options')) {
 				currentQuestion.input.options.forEach(option => {
