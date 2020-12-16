@@ -132,11 +132,11 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 
 		questionAlert.text = questionAlert.text.replace(
 			'#NAME#',
-			userType === constants.userTypes.APPLICANT || iterationStatus === 'submitted' ? updatedBy : requestedBy
+			userType === (constants.userTypes.APPLICANT || iterationStatus === 'submitted') && !_.isNil(updatedBy) ? updatedBy : requestedBy
 		);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',
-			userType === constants.userTypes.APPLICANT || iterationStatus === 'submitted'
+			userType === (constants.userTypes.APPLICANT || iterationStatus === 'submitted') && !_.isNil(dateUpdated)
 				? moment(dateUpdated).format('Do MMM YYYY')
 				: moment(dateRequested).format('Do MMM YYYY')
 		);
