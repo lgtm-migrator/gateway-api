@@ -410,7 +410,7 @@ const filterAmendments = (accessRecord = {}, userType) => {
 	} else if (userType === constants.userTypes.CUSTODIAN) {
 		// Custodian should only see amendment answers that have been submitted by the applicants
 		amendmentIterations = [...amendmentIterations].map(iteration => {
-			if (_.isUndefined(iteration.dateSubmitted)) {
+			if (_.isUndefined(iteration.dateSubmitted) && !_.isNil(iteration.questionAnswers)) {
 				iteration = removeIterationAnswers(accessRecord, iteration);
 			}
 			return iteration;
@@ -613,9 +613,6 @@ const removeIterationAnswers = (accessRecord = {}, iteration) => {
 	// 1. Guard for invalid object passed
 	if (!iteration || _.isEmpty(accessRecord)) {
 		return undefined;
-	}
-	if (_.isNil(iteration.questionAnswers)) {
-		return iteration;
 	}
 	// 2. Loop through each question answer by key (questionId)
 	Object.keys(iteration.questionAnswers).forEach(key => {
