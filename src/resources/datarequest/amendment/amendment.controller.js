@@ -431,7 +431,7 @@ const injectAmendments = (accessRecord, userType, user) => {
 	// 2. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
 	if (
 		lastIndex > 0 && (userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
-		(userType === constants.userTypes.CUSTODIAN && !_.isNil(latestIteration.questionAnswers))
+		(userType === constants.userTypes.CUSTODIAN && _.isNil(latestIteration.questionAnswers))
 	) {
 		latestIteration = accessRecord.amendmentIterations[lastIndex - 1];
 	} else if (lastIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
