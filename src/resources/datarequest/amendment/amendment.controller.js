@@ -474,10 +474,7 @@ const injectQuestionAmendment = (jsonSchema, questionId, amendment, userType, co
 	let { questions } = jsonSchema.questionSets[qsIndex];
 	// 2. Find question object
 	let question = datarequestUtil.findQuestion(questions, questionId);
-	if (_.isEmpty(question)) {
-		return jsonSchema;
-	}
-	if (_.isEmpty(input)) {
+	if (_.isEmpty(question) || _.isNil(question.input)) {
 		return jsonSchema;
 	}
 	// 3. Create question alert object to highlight amendment
