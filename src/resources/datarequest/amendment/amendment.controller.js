@@ -359,6 +359,7 @@ const handleApplicantAmendment = (accessRecord, questionId, questionSetId, answe
 	let { unansweredAmendments = 0, answeredAmendments = 0 } = countUnsubmittedAmendments(accessRecord, constants.userTypes.APPLICANT);
 	accessRecord.unansweredAmendments = unansweredAmendments;
 	accessRecord.answeredAmendments = answeredAmendments;
+	accessRecord.dirtySchema = true;
 	// 8. Return updated access record
 	return accessRecord;
 };
