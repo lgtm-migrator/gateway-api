@@ -151,7 +151,7 @@ const matchCurrentUser = (user, auditField) => {
 	if (auditField === `${firstname} ${lastname}`) {
 		return 'You';
 	}
-	return `${firstname} ${lastname}`;
+	return auditField;
 };
 
 export default {
