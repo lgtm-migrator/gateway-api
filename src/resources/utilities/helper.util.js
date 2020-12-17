@@ -46,10 +46,22 @@ const _hidePrivateProfileDetails = (persons) => {
 	});
 }
 
+const _getEnvironment = () => {
+    let environment = 'local';
+
+    if (process.env.environment === 'www') environment = 'prod';
+    else if (process.env.environment === 'uat') environment = 'uat';
+    else if (process.env.environment === 'uatbeta') environment = 'uatbeta';
+    else if (process.env.environment === 'latest') environment = 'latest';
+
+    return environment;
+}
+
 export default {
 	censorEmail: _censorEmail,
   	arraysEqual: _arraysEqual,
 	generateFriendlyId: _generateFriendlyId,
 	generatedNumericId: _generatedNumericId,
-	hidePrivateProfileDetails: _hidePrivateProfileDetails
+    hidePrivateProfileDetails: _hidePrivateProfileDetails,
+    getEnvironment: _getEnvironment
 };
