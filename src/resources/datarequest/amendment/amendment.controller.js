@@ -438,7 +438,8 @@ const injectAmendments = (accessRecord, userType, user) => {
 		return accessRecord;
 	}
 	// 3. Update schema
-	accessRecord.jsonSchema = formatSchema(accessRecord.jsonSchema, latestIteration, userType, user);
+	const { publisher = 'Custodian' } = accessRecord; 
+	accessRecord.jsonSchema = formatSchema(accessRecord.jsonSchema, latestIteration, userType, user, publisher);
 	// 4. Filter out amendments that have not yet been exposed to the opposite party
 	let amendmentIterations = filterAmendments(accessRecord, userType);
 	// 5. Update the question answers to reflect all the changes that have been made in later iterations
@@ -447,7 +448,7 @@ const injectAmendments = (accessRecord, userType, user) => {
 	return accessRecord;
 };
 
-const formatSchema = (jsonSchema, latestAmendmentIteration, userType, user) => {
+const formatSchema = (jsonSchema, latestAmendmentIteration, userType, user, publisher) => {
 	// Loop through each amendment
 	const { questionAnswers = {}, dateSubmitted, dateReturned } = latestAmendmentIteration;
 	for (let questionId in questionAnswers) {
@@ -464,16 +465,20 @@ const formatSchema = (jsonSchema, latestAmendmentIteration, userType, user) => {
 			userType,
 			amendmentCompleted,
 			iterationStatus,
-			user
+			user,
+			publisher
 		);
 	}
 	return jsonSchema;
 };
 
-const injectQuestionAmendment = (jsonSchema, questionId, amendment, userType, completed, iterationStatus, user) => {
-	const { questionSetId, updatedBy, requestedBy } = amendment;
+const injectQuestionAmendment = (jsonSchema, questionId, amendment, userType, completed, iterationStatus, user, publisher) => {
+	const { questionSetId } = amendment;
 	// 1. Find question set containing question
 	const qsIndex = jsonSchema.questionSets.findIndex(qs => qs.questionSetId === questionSetId);
+	if (qsIndex === -1) {
+		return jsonSchema;
+	}
 	let { questions } = jsonSchema.questionSets[qsIndex];
 	// 2. Find question object
 	let question = datarequestUtil.findQuestion(questions, questionId);
@@ -481,7 +486,7 @@ const injectQuestionAmendment = (jsonSchema, questionId, amendment, userType, co
 		return jsonSchema;
 	}
 	// 3. Create question alert object to highlight amendment
-	const questionAlert = datarequestUtil.buildQuestionAlert(userType, iterationStatus, completed, amendment, user);
+	const questionAlert = datarequestUtil.buildQuestionAlert(userType, iterationStatus, completed, amendment, user, publisher);
 	// 4. Update question to contain amendment state
 	const readOnly = userType === constants.userTypes.CUSTODIAN || iterationStatus === 'submitted';
 	question = datarequestUtil.setQuestionState(question, questionAlert, readOnly);

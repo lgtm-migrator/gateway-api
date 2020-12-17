@@ -160,7 +160,7 @@ const setQuestionState = (question, questionAlert, readOnly) => {
 	return question;
 };
 
-const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user) => {
+const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user, publisher) => {
 	// 1. Use a try catch to prevent conditions where the combination of params lead to no question alert required
 	try {
 		// 2. Static mapping allows us to determine correct flag to show based on scenario (params)
@@ -173,13 +173,14 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 		requestedBy = matchCurrentUser(user, requestedBy);
 		updatedBy = matchCurrentUser(user, updatedBy);
 		// 5. Update the generic question alerts to match the scenario
+		let relevantActioner = !_.isNil(updatedBy) ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
 		questionAlert.text = questionAlert.text.replace(
 			'#NAME#',
-			userType === (constants.userTypes.APPLICANT || iterationStatus === 'submitted') && !_.isNil(updatedBy) ? updatedBy : requestedBy
+			relevantActioner
 		);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',
-			userType === (constants.userTypes.APPLICANT || iterationStatus === 'submitted') && !_.isNil(dateUpdated)
+			userType === !_.isNil(dateUpdated)
 				? moment(dateUpdated).format('Do MMM YYYY')
 				: moment(dateRequested).format('Do MMM YYYY')
 		);
