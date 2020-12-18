@@ -12,8 +12,17 @@ import passport from 'passport';
 import cookieParser from 'cookie-parser';
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
+import * as Sentry from '@sentry/node';
+import helper from '../resources/utilities/helper.util';
 
 require('dotenv').config();
+
+if (helper.getEnvironment() !== 'local') {
+    Sentry.init({
+        dsn: 'https://c7c564a153884dc0a6b676943b172121@o444579.ingest.sentry.io/5419637',
+        environment: helper.getEnvironment()
+    });
+}
 
 const Account = require('./account');
 const configuration = require('./configuration');
