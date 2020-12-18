@@ -6,11 +6,12 @@ import { utils } from '../auth';
 import {
 	addTool,
 	editTool,
-	deleteTool,
 	setStatus,
 	getTools,
 	getToolsAdmin,
 } from '../tool/data.repository';
+import helper from '../utilities/helper.util';
+import escape from 'escape-html';
 
 const router = express.Router();
 
@@ -99,6 +100,7 @@ router.get('/:projectID', async (req, res) => {
 	]);
 	q.exec((err, data) => {
 		if (data.length > 0) {
+			data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
 			var p = Data.aggregate([
 				{
 					$match: {
@@ -139,7 +141,7 @@ router.get('/:projectID', async (req, res) => {
 		} else {
 			return res
 				.status(404)
-				.send(`Project not found for Id: ${req.params.projectID}`);
+				.send(`Project not found for Id: ${escape(req.params.projectID)}`);
 		}
 	});
 });

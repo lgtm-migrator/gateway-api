@@ -30,9 +30,38 @@ const _generatedNumericId = () => {
 	return parseInt(Math.random().toString().replace('0.', ''));
 }
 
+const _hidePrivateProfileDetails = (persons) => {
+
+	return persons.map(person => {	
+		let personWithPrivateDetailsRemoved = person;
+
+		personWithPrivateDetailsRemoved.bio = person.showBio ? person.bio : "";
+		personWithPrivateDetailsRemoved.organisation = person.showOrganisation ? person.organisation : "";
+		personWithPrivateDetailsRemoved.sector = person.showSector ? person.sector : "";
+		personWithPrivateDetailsRemoved.domain = person.showDomain ? person.domain : "";
+		personWithPrivateDetailsRemoved.link = person.showLink ? person.link : "";
+		personWithPrivateDetailsRemoved.orcid = person.showOrcid ? person.orcid : "";
+
+		return personWithPrivateDetailsRemoved;
+	});
+}
+
+const _getEnvironment = () => {
+    let environment = 'local';
+
+    if (process.env.environment === 'www') environment = 'prod';
+    else if (process.env.environment === 'uat') environment = 'uat';
+    else if (process.env.environment === 'uatbeta') environment = 'uatbeta';
+    else if (process.env.environment === 'latest') environment = 'latest';
+
+    return environment;
+}
+
 export default {
 	censorEmail: _censorEmail,
   	arraysEqual: _arraysEqual,
 	generateFriendlyId: _generateFriendlyId,
-	generatedNumericId: _generatedNumericId
+	generatedNumericId: _generatedNumericId,
+    hidePrivateProfileDetails: _hidePrivateProfileDetails,
+    getEnvironment: _getEnvironment
 };
