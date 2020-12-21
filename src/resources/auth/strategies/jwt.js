@@ -1,44 +1,44 @@
-import passport from 'passport'
-import passportJWT from 'passport-jwt'
-import { to } from 'await-to-js'
-import { getUserById } from '../../user/user.repository'
-import { signToken } from '../utils'
+import passport from 'passport';
+import passportJWT from 'passport-jwt';
+import { to } from 'await-to-js';
+import { getUserById } from '../../user/user.repository';
+import { signToken } from '../utils';
 
-const JWTStrategy = passportJWT.Strategy
+const JWTStrategy = passportJWT.Strategy;
 
 const strategy = () => {
-    const strategyOptions = {
-        jwtFromRequest: req => req.cookies.jwt,
-        secretOrKey: process.env.JWTSecret,
-        passReqToCallback: true
-    }
+	const strategyOptions = {
+		jwtFromRequest: req => req.cookies.jwt,
+		secretOrKey: process.env.JWTSecret,
+		passReqToCallback: true,
+	};
 
-    const verifyCallback = async (req, jwtPayload, cb) => {
-        if(typeof jwtPayload.data === 'string') {
-            jwtPayload.data = JSON.parse(jwtPayload.data);
-        }
-        const [err, user] = await to(getUserById(jwtPayload.data._id))
+	const verifyCallback = async (req, jwtPayload, cb) => {
+		if (typeof jwtPayload.data === 'string') {
+			jwtPayload.data = JSON.parse(jwtPayload.data);
+		}
+		const [err, user] = await to(getUserById(jwtPayload.data._id));
 
-        if (err) {
-            return cb(err)
-        }
-        req.user = user
-        return cb(null, user)
-    }
+		if (err) {
+			return cb(err);
+		}
+		req.user = user;
+		return cb(null, user);
+	};
 
-    passport.use(new JWTStrategy(strategyOptions, verifyCallback))
-}
+	passport.use(new JWTStrategy(strategyOptions, verifyCallback));
+};
 
 const login = (req, user) => {
-    return new Promise((resolve, reject) => {
-        req.login(user, { session: false }, err => {
-            if (err) {
-                return reject(err)
-            }
+	return new Promise((resolve, reject) => {
+		req.login(user, { session: false }, err => {
+			if (err) {
+				return reject(err);
+			}
 
-            return resolve(signToken(user))
-        })
-    })
-}
+			return resolve(signToken(user));
+		});
+	});
+};
 
-export { strategy, login }
+export { strategy, login };

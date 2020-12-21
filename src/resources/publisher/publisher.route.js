@@ -25,4 +25,4 @@ router.get('/:id/dataaccessrequests', passport.authenticate('jwt'), publisherCon
 // @access  Private
 router.get('/:id/workflows', passport.authenticate('jwt'), publisherController.getPublisherWorkflows);
 
-module.exports = router 
+module.exports = router;

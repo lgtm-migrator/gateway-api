@@ -1,6 +1,6 @@
 'use strict';
 
-import express from 'express'; 
+import express from 'express';
 import Provider from 'oidc-provider';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
@@ -18,15 +18,14 @@ import helper from '../resources/utilities/helper.util';
 require('dotenv').config();
 
 if (helper.getEnvironment() !== 'local') {
-    Sentry.init({
-        dsn: 'https://c7c564a153884dc0a6b676943b172121@o444579.ingest.sentry.io/5419637',
-        environment: helper.getEnvironment()
-    });
+	Sentry.init({
+		dsn: 'https://c7c564a153884dc0a6b676943b172121@o444579.ingest.sentry.io/5419637',
+		environment: helper.getEnvironment(),
+	});
 }
 
 const Account = require('./account');
 const configuration = require('./configuration');
-
 
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
@@ -42,14 +41,14 @@ var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
 
 if (Array.isArray(arr) && arr.length > 0) {
-    domains.push('https://' + arr[2]);
+	domains.push('https://' + arr[2]);
 }
 
 app.use(
-    cors({
-        origin: domains,
-        credentials: true,
-    })
+	cors({
+		origin: domains,
+		credentials: true,
+	})
 );
 
 const router = express.Router();
@@ -66,112 +65,97 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use(
-    session({
-        secret: process.env.JWTSecret,
-        resave: false,
-        saveUninitialized: true,
-    })
+	session({
+		secret: process.env.JWTSecret,
+		resave: false,
+		saveUninitialized: true,
+	})
 );
 
 function setNoCache(req, res, next) {
-    res.set('Pragma', 'no-cache');
-    res.set('Cache-Control', 'no-cache, no-store');
-    next();
+	res.set('Pragma', 'no-cache');
+	res.set('Cache-Control', 'no-cache, no-store');
+	next();
 }
 
 app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
-    passport.authenticate('jwt', async function (err, user, info) {
-        if (err || !user) {
-            return res.status(200).redirect(process.env.homeURL+'/search?search=');
-        }
-        oidc.Session.destory;
-        req.logout();
-	    res.clearCookie('jwt');
+	passport.authenticate('jwt', async function (err, user, info) {
+		if (err || !user) {
+			return res.status(200).redirect(process.env.homeURL + '/search?search=');
+		}
+		oidc.Session.destory;
+		req.logout();
+		res.clearCookie('jwt');
 
-        return res.status(200).redirect(process.env.homeURL+'/search?search=');
-    })(req, res, next);
-})
-
+		return res.status(200).redirect(process.env.homeURL + '/search?search=');
+	})(req, res, next);
+});
 
 app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
-    passport.authenticate('jwt', async function (err, user, info) {
+	passport.authenticate('jwt', async function (err, user, info) {
+		if (err || !user) {
+			//login in user - go to login screen
+			var apiURL = process.env.api_url || 'http://localhost:3001';
+			return res.status(200).redirect(process.env.homeURL + '/search?search=&showLogin=true&loginReferrer=' + apiURL + req.url);
+		} else {
+			try {
+				const { uid, prompt, params, session } = await oidc.interactionDetails(req, res);
 
-        if (err || !user) {
-            //login in user - go to login screen
-            var apiURL = process.env.api_url || 'http://localhost:3001';
-            return res.status(200).redirect(process.env.homeURL+'/search?search=&showLogin=true&loginReferrer='+apiURL+req.url)
-        }
-        else {
-            try {
-                const { uid, prompt, params, session } = await oidc.interactionDetails(req, res);
-        
-                const client = await oidc.Client.find(params.client_id);
-        
+				const client = await oidc.Client.find(params.client_id);
 
-                switch (prompt.name) {
-                    case 'select_account': {
-                        
-                    }
-                    case 'login': {
-                        
+				switch (prompt.name) {
+					case 'select_account': {
+					}
+					case 'login': {
+						const result = {
+							select_account: {}, // make sure its skipped by the interaction policy since we just logged in
+							login: {
+								account: user.id.toString(),
+							},
+						};
 
+						return await oidc.interactionFinished(req, res, result, { mergeWithLastSubmission: false });
+					}
+					case 'consent': {
+						if (!session) {
+							return oidc.interactionFinished(req, res, { select_account: {} }, { mergeWithLastSubmission: false });
+						}
 
-                        const result = {
-                            select_account: {}, // make sure its skipped by the interaction policy since we just logged in
-                            login: {
-                                account: user.id.toString()
-                            },
-                        };
+						const account = await oidc.Account.findAccount(undefined, session.accountId);
+						const { email } = await account.claims('prompt', 'email', { email: null }, []);
 
+						const {
+							prompt: { name, details },
+						} = await oidc.interactionDetails(req, res);
+						//assert.equal(name, 'consent');
 
+						const consent = {};
 
+						// any scopes you do not wish to grant go in here
+						//   otherwise details.scopes.new.concat(details.scopes.accepted) will be granted
+						consent.rejectedScopes = [];
 
+						// any claims you do not wish to grant go in here
+						//   otherwise all claims mapped to granted scopes
+						//   and details.claims.new.concat(details.claims.accepted) will be granted
+						consent.rejectedClaims = [];
 
-                        return await oidc.interactionFinished(req, res, result, { mergeWithLastSubmission: false });
-                    }
-                    case 'consent': {
-                        if (!session) {
-                            return oidc.interactionFinished(req, res, { select_account: {} }, { mergeWithLastSubmission: false });
-                        }
-        
-                        const account = await oidc.Account.findAccount(undefined, session.accountId);
-                        const { email } = await account.claims('prompt', 'email', { email: null }, []);
+						// replace = false means previously rejected scopes and claims remain rejected
+						// changing this to true will remove those rejections in favour of just what you rejected above
+						consent.replace = false;
 
-
-                        const { prompt: { name, details } } = await oidc.interactionDetails(req, res);
-                        //assert.equal(name, 'consent');
-
-                        const consent = {};
-
-                        // any scopes you do not wish to grant go in here
-                        //   otherwise details.scopes.new.concat(details.scopes.accepted) will be granted
-                        consent.rejectedScopes = [];
-
-                        // any claims you do not wish to grant go in here
-                        //   otherwise all claims mapped to granted scopes
-                        //   and details.claims.new.concat(details.claims.accepted) will be granted
-                        consent.rejectedClaims = [];
-
-                        // replace = false means previously rejected scopes and claims remain rejected
-                        // changing this to true will remove those rejections in favour of just what you rejected above
-                        consent.replace = false;
-
-                        const result = { consent };
-                        return await oidc.interactionFinished(req, res, result, { mergeWithLastSubmission: true });
-                    }
-                    default:
-                        return undefined;
-                }
-            } catch (err) {
-                return next(err);
-            }
-        }
-    })(req, res, next);
-})
-
-
-
-
+						const result = { consent };
+						return await oidc.interactionFinished(req, res, result, { mergeWithLastSubmission: true });
+					}
+					default:
+						return undefined;
+				}
+			} catch (err) {
+				return next(err);
+			}
+		}
+	})(req, res, next);
+});
 
 app.use('/api/v1/openid', oidc.callback);
 app.use('/api', router);
@@ -192,14 +176,14 @@ app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedob
 app.use('/api/v1/tools', require('../resources/tool/tool.route'));
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
-app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people 
+app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
 
-app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router')); 
- 
-app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
-app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
+app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router'));
 
-app.use('/api/v1/course', require('../resources/course/course.route')); 
+app.use('/api/v1/stats', require('../resources/stats/stats.router'));
+app.use('/api/v1/kpis', require('../resources/stats/kpis.router'));
+
+app.use('/api/v1/course', require('../resources/course/course.route'));
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
