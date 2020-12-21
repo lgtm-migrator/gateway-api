@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import { Data as ToolModel } from '../tool/data.model';
+import constants from '../utilities/constants.util';
 
 const topicController = require('../topic/topic.controller');
 
@@ -74,11 +75,10 @@ module.exports = {
                 let { additionalInfo: { emailNotifications }, _id} = user;
                     return emailNotifications === true && _id.toString() !== createdBy.toString();
                 });
-                const hdrukEmail = `enquiry@healthdatagateway.org`;
                 // 9. Send email
                 emailGenerator.sendEmail(
                     optedInEmailRecipients,
-                    `${hdrukEmail}`,
+                    constants.hdrukEmail,
                     `You have received a new message on the HDR UK Innovation Gateway`,
                     `You have received a new message on the HDR UK Innovation Gateway. <br> Log in to view your messages here : <a href='${process.env.homeURL}'>HDR UK Innovation Gateway</a>`
                 );

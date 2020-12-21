@@ -6,15 +6,13 @@ module.exports = [
 				{
 					pageId: 'preSubmission',
 					title: 'Pre-submission',
-					description:
-						'Make sure you have everything you need before you start the application process!!',
+					description: 'Make sure you have everything you need before you start the application process!!',
 					active: true,
 				},
 				{
 					pageId: 'safePeople',
 					title: 'Safe People',
-					description:
-						'Please identify any persons or organisations who will have access to the data',
+					description: 'Please identify any persons or organisations who will have access to the data',
 					active: false,
 				},
 				{
@@ -147,8 +145,7 @@ module.exports = [
 									params: [1, 90],
 								},
 							],
-							guidance:
-								'Guidance information for applicant name, please insert your fullname.',
+							guidance: 'Guidance information for applicant name, please insert your fullname.',
 						},
 						{
 							questionId: 'passportNumber',
@@ -190,15 +187,13 @@ module.exports = [
 														params: [18],
 													},
 												],
-												guidance:
-													'A reason for requesting this information, we will use this to monitor.',
+												guidance: 'A reason for requesting this information, we will use this to monitor.',
 											},
 										],
 									},
 								],
 							},
-							guidance:
-								'A reason for requesting this information, we will use this to monitor.',
+							guidance: 'A reason for requesting this information, we will use this to monitor.',
 						},
 					],
 				},
@@ -310,15 +305,13 @@ module.exports = [
 				{
 					pageId: 'preSubmission',
 					title: 'Pre-submission',
-					description:
-						'Make sure you have everything you need before you start the application process!!',
+					description: 'Make sure you have everything you need before you start the application process!!',
 					active: true,
 				},
 				{
 					pageId: 'safePeople',
 					title: 'Safe People',
-					description:
-						'Please identify any persons or organisations who will have access to the data',
+					description: 'Please identify any persons or organisations who will have access to the data',
 					active: false,
 				},
 				{
@@ -451,8 +444,7 @@ module.exports = [
 									params: [1, 90],
 								},
 							],
-							guidance:
-								'Guidance information for applicant name, please insert your fullname.',
+							guidance: 'Guidance information for applicant name, please insert your fullname.',
 						},
 						{
 							questionId: 'passportNumber',
@@ -494,15 +486,13 @@ module.exports = [
 														params: [18],
 													},
 												],
-												guidance:
-													'A reason for requesting this information, we will use this to monitor.',
+												guidance: 'A reason for requesting this information, we will use this to monitor.',
 											},
 										],
 									},
 								],
 							},
-							guidance:
-								'A reason for requesting this information, we will use this to monitor.',
+							guidance: 'A reason for requesting this information, we will use this to monitor.',
 						},
 					],
 				},
@@ -556,8 +546,7 @@ module.exports = [
 			lastName: 'adsf',
 		},
 		dateSubmitted: '2020-10-23T10:55:47.231+00:00',
-		amendmentIterations: [
-		],
+		amendmentIterations: [],
 	},
 	{
 		applicationStatus: 'inReview',
@@ -566,15 +555,13 @@ module.exports = [
 				{
 					pageId: 'preSubmission',
 					title: 'Pre-submission',
-					description:
-						'Make sure you have everything you need before you start the application process!!',
+					description: 'Make sure you have everything you need before you start the application process!!',
 					active: true,
 				},
 				{
 					pageId: 'safePeople',
 					title: 'Safe People',
-					description:
-						'Please identify any persons or organisations who will have access to the data',
+					description: 'Please identify any persons or organisations who will have access to the data',
 					active: false,
 				},
 				{
@@ -707,8 +694,7 @@ module.exports = [
 									params: [1, 90],
 								},
 							],
-							guidance:
-								'Guidance information for applicant name, please insert your fullname.',
+							guidance: 'Guidance information for applicant name, please insert your fullname.',
 						},
 						{
 							questionId: 'passportNumber',
@@ -750,15 +736,13 @@ module.exports = [
 														params: [18],
 													},
 												],
-												guidance:
-													'A reason for requesting this information, we will use this to monitor.',
+												guidance: 'A reason for requesting this information, we will use this to monitor.',
 											},
 										],
 									},
 								],
 							},
-							guidance:
-								'A reason for requesting this information, we will use this to monitor.',
+							guidance: 'A reason for requesting this information, we will use this to monitor.',
 						},
 					],
 				},
@@ -826,7 +810,7 @@ module.exports = [
 						dateUpdated: '2020-10-30T11:14:01.843+00:00',
 					},
 				},
-			}
+			},
 		],
 	},
 	{
@@ -836,15 +820,13 @@ module.exports = [
 				{
 					pageId: 'preSubmission',
 					title: 'Pre-submission',
-					description:
-						'Make sure you have everything you need before you start the application process!!',
+					description: 'Make sure you have everything you need before you start the application process!!',
 					active: true,
 				},
 				{
 					pageId: 'safePeople',
 					title: 'Safe People',
-					description:
-						'Please identify any persons or organisations who will have access to the data',
+					description: 'Please identify any persons or organisations who will have access to the data',
 					active: false,
 				},
 				{
@@ -977,8 +959,7 @@ module.exports = [
 									params: [1, 90],
 								},
 							],
-							guidance:
-								'Guidance information for applicant name, please insert your fullname.',
+							guidance: 'Guidance information for applicant name, please insert your fullname.',
 						},
 						{
 							questionId: 'passportNumber',
@@ -1020,15 +1001,13 @@ module.exports = [
 														params: [18],
 													},
 												],
-												guidance:
-													'A reason for requesting this information, we will use this to monitor.',
+												guidance: 'A reason for requesting this information, we will use this to monitor.',
 											},
 										],
 									},
 								],
 							},
-							guidance:
-								'A reason for requesting this information, we will use this to monitor.',
+							guidance: 'A reason for requesting this information, we will use this to monitor.',
 						},
 					],
 				},
@@ -1080,7 +1059,7 @@ module.exports = [
 			principleInvestigator: 'true',
 			regICONumber: '333',
 			lastName: 'Connilly',
-			country: ''
+			country: '',
 		},
 		dateSubmitted: '2020-10-23T10:55:47.231+00:00',
 		amendmentIterations: [
@@ -1138,10 +1117,10 @@ module.exports = [
 						reason: 'country selection is invalid',
 						requestedBy: 'Robin Kavanagh',
 						requestedByUser: '5f03530178e28143d7af2eb1',
-						dateRequested: '2020-10-26T17:14:01.843+00:00'
-					}
+						dateRequested: '2020-10-26T17:14:01.843+00:00',
+					},
 				},
-			}
+			},
 		],
 	},
 	{
@@ -1151,15 +1130,13 @@ module.exports = [
 				{
 					pageId: 'preSubmission',
 					title: 'Pre-submission',
-					description:
-						'Make sure you have everything you need before you start the application process!!',
+					description: 'Make sure you have everything you need before you start the application process!!',
 					active: true,
 				},
 				{
 					pageId: 'safePeople',
 					title: 'Safe People',
-					description:
-						'Please identify any persons or organisations who will have access to the data',
+					description: 'Please identify any persons or organisations who will have access to the data',
 					active: false,
 				},
 				{
@@ -1292,8 +1269,7 @@ module.exports = [
 									params: [1, 90],
 								},
 							],
-							guidance:
-								'Guidance information for applicant name, please insert your fullname.',
+							guidance: 'Guidance information for applicant name, please insert your fullname.',
 						},
 						{
 							questionId: 'passportNumber',
@@ -1335,15 +1311,13 @@ module.exports = [
 														params: [18],
 													},
 												],
-												guidance:
-													'A reason for requesting this information, we will use this to monitor.',
+												guidance: 'A reason for requesting this information, we will use this to monitor.',
 											},
 										],
 									},
 								],
 							},
-							guidance:
-								'A reason for requesting this information, we will use this to monitor.',
+							guidance: 'A reason for requesting this information, we will use this to monitor.',
 						},
 					],
 				},
@@ -1395,7 +1369,7 @@ module.exports = [
 			principleInvestigator: 'true',
 			regICONumber: '333',
 			lastName: 'Connilly',
-			country: 'UK'
+			country: 'UK',
 		},
 		dateSubmitted: '2020-10-23T10:55:47.231+00:00',
 		amendmentIterations: [
@@ -1456,10 +1430,18 @@ module.exports = [
 						requestedBy: 'Robin Kavanagh',
 						requestedByUser: '5f03530178e28143d7af2eb1',
 						dateRequested: '2020-10-04T17:14:01.843+00:00',
-						answer: 'United Kingdom'
-					}
+						answer: 'United Kingdom',
+					},
+					reasonforaccess: {
+						questionSetId: 'reasons',
+						requested: true,
+						reason: 'reason for access is not accepted',
+						requestedBy: 'Robin Kavanagh',
+						requestedByUser: '5f03530178e28143d7af2eb1',
+						dateRequested: '2020-10-04T17:14:01.843+00:00',
+					},
 				},
-			}
+			},
 		],
 	},
 	{
@@ -1469,15 +1451,13 @@ module.exports = [
 				{
 					pageId: 'preSubmission',
 					title: 'Pre-submission',
-					description:
-						'Make sure you have everything you need before you start the application process!!',
+					description: 'Make sure you have everything you need before you start the application process!!',
 					active: true,
 				},
 				{
 					pageId: 'safePeople',
 					title: 'Safe People',
-					description:
-						'Please identify any persons or organisations who will have access to the data',
+					description: 'Please identify any persons or organisations who will have access to the data',
 					active: false,
 				},
 				{
@@ -1610,8 +1590,7 @@ module.exports = [
 									params: [1, 90],
 								},
 							],
-							guidance:
-								'Guidance information for applicant name, please insert your fullname.',
+							guidance: 'Guidance information for applicant name, please insert your fullname.',
 						},
 						{
 							questionId: 'passportNumber',
@@ -1653,15 +1632,13 @@ module.exports = [
 														params: [18],
 													},
 												],
-												guidance:
-													'A reason for requesting this information, we will use this to monitor.',
+												guidance: 'A reason for requesting this information, we will use this to monitor.',
 											},
 										],
 									},
 								],
 							},
-							guidance:
-								'A reason for requesting this information, we will use this to monitor.',
+							guidance: 'A reason for requesting this information, we will use this to monitor.',
 						},
 					],
 				},
@@ -1707,7 +1684,13 @@ module.exports = [
 				},
 			],
 		},
-		questionAnswers: { firstName:'David', passportNumber: '223458340957032498570234785', principleInvestigator: true, regICONumber: '333', lastName: 'Connilly' },
+		questionAnswers: {
+			firstName: 'David',
+			passportNumber: '223458340957032498570234785',
+			principleInvestigator: true,
+			regICONumber: '333',
+			lastName: 'Connilly',
+		},
 		dateSubmitted: '2020-10-23T10:55:47.231+00:00',
 		amendmentIterations: [
 			{
@@ -1767,7 +1750,7 @@ module.exports = [
 						requestedBy: 'Robin Kavanagh',
 						requestedByUser: '5f03530178e28143d7af2eb1',
 						dateRequested: '2020-10-04T17:14:01.843+00:00',
-						answer: 'United Kingdom'
+						answer: 'United Kingdom',
 					},
 					orcid: {
 						questionSetId: 'applicant',
@@ -1775,7 +1758,7 @@ module.exports = [
 						reason: 'orcid is invalid',
 						requestedBy: 'Robin Kavanagh',
 						requestedByUser: '5f03530178e28143d7af2eb1',
-						dateRequested: '2020-10-04T17:14:01.843+00:00'
+						dateRequested: '2020-10-04T17:14:01.843+00:00',
 					},
 					affiliation: {
 						questionSetId: 'applicant',
@@ -1783,10 +1766,10 @@ module.exports = [
 						reason: 'affiliation is invalid',
 						requestedBy: 'Robin Kavanagh',
 						requestedByUser: '5f03530178e28143d7af2eb1',
-						dateRequested: '2020-10-04T17:14:01.843+00:00'
-					}
+						dateRequested: '2020-10-04T17:14:01.843+00:00',
+					},
 				},
-			}
+			},
 		],
 	},
 	{
@@ -1796,15 +1779,13 @@ module.exports = [
 				{
 					pageId: 'preSubmission',
 					title: 'Pre-submission',
-					description:
-						'Make sure you have everything you need before you start the application process!!',
+					description: 'Make sure you have everything you need before you start the application process!!',
 					active: true,
 				},
 				{
 					pageId: 'safePeople',
 					title: 'Safe People',
-					description:
-						'Please identify any persons or organisations who will have access to the data',
+					description: 'Please identify any persons or organisations who will have access to the data',
 					active: false,
 				},
 				{
@@ -1937,8 +1918,7 @@ module.exports = [
 									params: [1, 90],
 								},
 							],
-							guidance:
-								'Guidance information for applicant name, please insert your fullname.',
+							guidance: 'Guidance information for applicant name, please insert your fullname.',
 						},
 						{
 							questionId: 'passportNumber',
@@ -1980,15 +1960,13 @@ module.exports = [
 														params: [18],
 													},
 												],
-												guidance:
-													'A reason for requesting this information, we will use this to monitor.',
+												guidance: 'A reason for requesting this information, we will use this to monitor.',
 											},
 										],
 									},
 								],
 							},
-							guidance:
-								'A reason for requesting this information, we will use this to monitor.',
+							guidance: 'A reason for requesting this information, we will use this to monitor.',
 						},
 					],
 				},
@@ -2034,9 +2012,14 @@ module.exports = [
 				},
 			],
 		},
-		questionAnswers: { firstName:'David', passportNumber: '223458340957032498570234785', principleInvestigator: true, regICONumber: '333', lastName: 'Connilly' },
+		questionAnswers: {
+			firstName: 'David',
+			passportNumber: '223458340957032498570234785',
+			principleInvestigator: true,
+			regICONumber: '333',
+			lastName: 'Connilly',
+		},
 		dateSubmitted: '2020-10-23T10:55:47.231+00:00',
-		amendmentIterations: [
-		],
+		amendmentIterations: [],
 	},
 ];
