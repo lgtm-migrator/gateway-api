@@ -1,12 +1,12 @@
-import * as utils from './utils'
-import * as strategies from './strategies'
+import * as utils from './utils';
+import * as strategies from './strategies';
 
-const pipe = (...functions) => args => functions.reduce((arg, fn) => fn(arg), args)
+const pipe = (...functions) => args => functions.reduce((arg, fn) => fn(arg), args);
 
 const initialiseAuthentication = app => {
-  utils.setup()
+	utils.setup();
 
-  pipe(strategies.OdicStrategy, strategies.LinkedinStrategy, strategies.GoogleStrategy, strategies.JWTStrategy)(app)
-}
+	pipe(strategies.OdicStrategy, strategies.LinkedinStrategy, strategies.GoogleStrategy, strategies.JWTStrategy)(app);
+};
 
-export { utils, initialiseAuthentication, strategies }
+export { utils, initialiseAuthentication, strategies };

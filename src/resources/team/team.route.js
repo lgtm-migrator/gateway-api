@@ -30,4 +30,4 @@ router.put('/:id/members/:memberid', passport.authenticate('jwt'), teamControlle
 // @access  Private
 router.delete('/:id/members/:memberid', passport.authenticate('jwt'), teamController.deleteTeamMember);
 
-module.exports = router 
+module.exports = router;

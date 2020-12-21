@@ -1,9 +1,9 @@
-import express from "express";
-import { Data } from "./data.model";
+import express from 'express';
+import { Data } from './data.model';
 
 const router = express.Router();
 
-router.post("/update", async (req, res) => {
+router.post('/update', async (req, res) => {
 	const { id, counter } = req.body;
 
 	if (isNaN(id)) {
