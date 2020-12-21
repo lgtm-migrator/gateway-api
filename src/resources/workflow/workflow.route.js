@@ -24,4 +24,4 @@ router.put('/:id', passport.authenticate('jwt'), workflowController.updateWorkfl
 // @access  Private
 router.delete('/:id', passport.authenticate('jwt'), workflowController.deleteWorkflow);
 
-module.exports = router 
+module.exports = router;

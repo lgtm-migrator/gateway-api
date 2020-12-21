@@ -8,8 +8,8 @@ const router = express.Router();
 // @router   GET /api/v1/auth/sso/discourse
 // @desc     Single Sign On for Discourse forum
 // @access   Private
-router.get("/", function(req, res, next) {
-	passport.authenticate("jwt", function(err, user, info) {
+router.get('/', function (req, res, next) {
+	passport.authenticate('jwt', function (err, user, info) {
 		if (err || !user) {
 			return res.status(200).json({ redirectUrl: null });
 		} else {
@@ -20,21 +20,21 @@ router.get("/", function(req, res, next) {
 					redirectUrl = discourseLogin(req.query.sso, req.query.sig, req.user);
 				} catch (err) {
 					console.error(err);
-					return res.status(500).send("Error authenticating the user.");
+					return res.status(500).send('Error authenticating the user.');
 				}
 			}
 
 			return res
 				.status(200)
 				.cookie(
-					"jwt",
+					'jwt',
 					signToken({
 						_id: req.user._id,
 						id: req.user.id,
-						timeStamp: Date.now()
+						timeStamp: Date.now(),
 					}),
 					{
-						httpOnly: true
+						httpOnly: true,
 					}
 				)
 				.json({ redirectUrl: redirectUrl });
