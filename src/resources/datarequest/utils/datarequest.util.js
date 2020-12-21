@@ -89,7 +89,9 @@ const findQuestion = (questionsArr, questionId) => {
 					return typeof option.conditionalQuestions !== 'undefined' && option.conditionalQuestions.length > 0;
 				})
 				.forEach(option => {
-					child = findQuestion(option.conditionalQuestions, questionId);
+					if(!child) {
+						child = findQuestion(option.conditionalQuestions, questionId);
+					}
 				});
 		}
 		// 6. Return the child question

@@ -437,9 +437,11 @@ const injectAmendments = (accessRecord, userType, user) => {
 	} else if (lastIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
 		return accessRecord;
 	}
-	// 3. Update schema
+	// 3. Update schema if there is a new iteration
 	const { publisher = 'Custodian' } = accessRecord; 
-	accessRecord.jsonSchema = formatSchema(accessRecord.jsonSchema, latestIteration, userType, user, publisher);
+	if(!_.isNil(latestIteration)) {
+		accessRecord.jsonSchema = formatSchema(accessRecord.jsonSchema, latestIteration, userType, user, publisher);
+	}
 	// 4. Filter out amendments that have not yet been exposed to the opposite party
 	let amendmentIterations = filterAmendments(accessRecord, userType);
 	// 5. Update the question answers to reflect all the changes that have been made in later iterations
@@ -449,8 +451,11 @@ const injectAmendments = (accessRecord, userType, user) => {
 };
 
 const formatSchema = (jsonSchema, latestAmendmentIteration, userType, user, publisher) => {
-	// Loop through each amendment
 	const { questionAnswers = {}, dateSubmitted, dateReturned } = latestAmendmentIteration;
+	if(_.isEmpty(questionAnswers)) {
+		return jsonSchema;
+	}
+	// Loop through each amendment
 	for (let questionId in questionAnswers) {
 		const { questionSetId, answer } = questionAnswers[questionId];
 		// 1. Update parent/child navigation with flags for amendments
