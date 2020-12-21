@@ -17,6 +17,7 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import inputSanitizer from '../utilities/inputSanitizer';
 import _ from 'lodash';
 import helper from '../utilities/helper.util';
+import escape from 'escape-html';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const router = express.Router();
 
@@ -220,7 +221,7 @@ router.get('/:id', async (req, res) => {
 				});
 			});
 		} else {
-			return res.status(404).send(`Tool not found for Id: ${req.params.id}`);
+			return res.status(404).send(`Tool not found for Id: ${escape(req.params.id)}`);
 		}
 	});
 });

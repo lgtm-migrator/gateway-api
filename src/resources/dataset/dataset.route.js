@@ -3,6 +3,7 @@ import { Data } from '../tool/data.model'
 import { loadDataset, loadDatasets } from './dataset.service';
 import { getToolsAdmin } from '../tool/data.repository';
 import _ from 'lodash';
+import escape from 'escape-html';
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
 
@@ -88,7 +89,7 @@ router.get('/:datasetID', async (req, res) => {
             try {
                 dataset = await loadDataset(datasetID);
             } catch (err) {
-                return res.json({ success: false, error: err.message, data: {} });
+                return res.status(404).send(`Dataset not found for Id: ${escape(datasetID)}`);
             }
         }
 
