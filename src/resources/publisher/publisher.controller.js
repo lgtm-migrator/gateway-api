@@ -265,7 +265,7 @@ module.exports = {
 				}, []);
 
 				applications = applications.map((app) => {
-					let { aboutApplication, _id } = app;
+					let { aboutApplication = {}, _id } = app;
 					if(typeof aboutApplication === 'string') {
 						aboutApplication = JSON.parse(aboutApplication) || {};
 					}
