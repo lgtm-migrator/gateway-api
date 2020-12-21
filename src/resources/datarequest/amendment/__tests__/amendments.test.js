@@ -252,8 +252,7 @@ describe('removeIterationAnswers', () => {
 	};
 	const data = _.cloneDeep(dataRequest);
 	const cases = [
-		[data[4], data[4].amendmentIterations[2], expected],
-		[data[1], {}, undefined],
+		[data[4], data[4].amendmentIterations[2], expected]
 	];
 	test.each(cases)(
 		'given an amendment iteration which is not resubmitted, it strips answers',
