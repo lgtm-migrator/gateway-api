@@ -41,6 +41,7 @@
     "passport-jwt": "^4.0.0",
     "passport-linkedin-oauth2": "^2.0.0",
     "passport-openidconnect": "0.0.2",
+    "prettier": "^2.2.1",
     "query-string": "^6.12.1",
     "snyk": "^1.334.0",
     "swagger-ui-express": "^4.1.4",
@@ -65,7 +66,9 @@
     "test": "jest --runInBand",
     "eject": "",
     "snyk-protect": "snyk protect",
-    "prepublish": "npm run snyk-protect"
+    "prepublish": "npm run snyk-protect",
+    "prettify": "prettier --write \"src/**/*.{scss,js,jsx}\"",
+    "prettify-test": "prettier --write \"test/**/*.js\""
   },
   "proxy": "http://localhost:3001",
   "snyk": true
