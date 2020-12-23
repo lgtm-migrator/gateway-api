@@ -117,4 +117,16 @@ DataSchema.virtual('publisher', {
 	justOne: true,
 });
 
+DataSchema.virtual('reviews', {
+	ref: 'Reviews',
+	foreignField: 'reviewerID',
+	localField: 'id',
+});
+
+DataSchema.virtual('tools', {
+	ref: 'Data',
+	foreignField: 'authors',
+	localField: 'id',
+});
+
 export const Data = model('Data', DataSchema);
