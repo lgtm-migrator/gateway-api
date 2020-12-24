@@ -3,10 +3,10 @@ import { Data } from '../tool/data.model';
 import { utils } from '../auth';
 import passport from 'passport';
 import { ROLES } from '../user/user.roles';
-import { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin } from '../tool/data.repository';
-import emailGenerator from '../utilities/emailGenerator.util';
+import { getToolsAdmin } from '../tool/data.repository';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
+import _ from 'lodash';
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
 
@@ -132,17 +132,21 @@ router.put('/unsubscribe/:userObjectId', async (req, res) => {
 // @router   GET /api/v1/person/:id
 // @desc     Get person info based on personID
 router.get('/:id', async (req, res) => {
-	let person = Data.aggregate([
-		{ $match: { $and: [{ id: parseInt(req.params.id) }] } },
-		{ $lookup: { from: 'tools', localField: 'id', foreignField: 'authors', as: 'tools' } },
-		{ $lookup: { from: 'reviews', localField: 'id', foreignField: 'reviewerID', as: 'reviews' } },
-	]);
-	person.exec((err, data) => {
-		if (err) return res.json({ success: false, error: err });
+	if (req.params.id === 'null') {
+		return res.json({ data: null });
+	}
+	let person = await Data.findOne({ id: parseInt(req.params.id) })
+		.populate([{ path: 'tools' }, { path: 'reviews' }])
+		.catch(err => {
+			return res.json({ success: false, error: err });
+		});
 
-		data = helper.hidePrivateProfileDetails(data);
-		return res.json({ success: true, data: data });
-	});
+	if (_.isEmpty(person)) {
+		return res.status(404).send(`Person not found for Id: ${escape(req.params.id)}`);
+	} else {
+		person = helper.hidePrivateProfileDetails([person])[0];
+		return res.json({ person });
+	}
 });
 
 // @router   GET /api/v1/person/profile/:id

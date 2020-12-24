@@ -51,6 +51,11 @@ app.use(
 	})
 );
 
+// apply rate limiter of 100 requests per minute
+const RateLimit = require('express-rate-limit');
+let limiter = new RateLimit({ windowMs: 60000, max: 100 });
+app.use(limiter);
+
 const router = express.Router();
 
 connectToDatabase();
