@@ -145,7 +145,7 @@ router.get('/:id', async (req, res) => {
 		return res.status(404).send(`Person not found for Id: ${escape(req.params.id)}`);
 	} else {
 		person = helper.hidePrivateProfileDetails([person])[0];
-		return res.json({ data: person });
+		return res.json({ person });
 	}
 });
 
