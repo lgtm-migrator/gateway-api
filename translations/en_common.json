@@ -1,0 +1,10 @@
+{
+    "email": {
+        "sender": "enquiry@icodaresearch.org",
+        "footer" : {
+            "org": "icoda-research.org",
+            "copyright" : "©️ICODA",
+            "url":"https://icoda-research.org"
+        }
+    }
+}

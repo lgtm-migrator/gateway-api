@@ -20,11 +20,12 @@ import inputSanitizer from '../utilities/inputSanitizer';
 
 import moment from 'moment';
 import mongoose from 'mongoose';
+import i18next from '../internationalization/i18next';
 
 const amendmentController = require('./amendment/amendment.controller');
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 const notificationBuilder = require('../utilities/notificationBuilder');
-const hdrukEmail = `enquiry@healthdatagateway.org`;
+
 
 module.exports = {
 	//GET api/v1/data-access-request
@@ -1842,7 +1843,7 @@ module.exports = {
 				// Send email
 				await emailGenerator.sendEmail(
 					emailRecipients,
-					hdrukEmail,
+					`${i18next.t('translation:email.sender')}`,
 					`Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
 					html,
 					false
@@ -1930,7 +1931,7 @@ module.exports = {
 					if (!_.isEmpty(emailRecipients)) {
 						await emailGenerator.sendEmail(
 							emailRecipients,
-							hdrukEmail,
+							`${i18next.t('translation:email.sender')}`,
 							`Data Access Request has been submitted to ${publisher} for ${datasetTitles}`,
 							html,
 							false,
@@ -2019,7 +2020,7 @@ module.exports = {
 					if (!_.isEmpty(emailRecipients)) {
 						await emailGenerator.sendEmail(
 							emailRecipients,
-							hdrukEmail,
+							`${i18next.t('translation:email.sender')}`,
 							`Data Access Request to ${publisher} for ${datasetTitles} has been updated with updates`,
 							html,
 							false,
@@ -2067,7 +2068,7 @@ module.exports = {
 					);
 					await emailGenerator.sendEmail(
 						addedUsers,
-						hdrukEmail,
+						`${i18next.t('translation:email.sender')}`,
 						`You have been added as a contributor for a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
 						html,
 						false
@@ -2090,7 +2091,7 @@ module.exports = {
 					);
 					await emailGenerator.sendEmail(
 						removedUsers,
-						hdrukEmail,
+						`${i18next.t('translation:email.sender')}`,
 						`You have been removed as a contributor from a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
 						html,
 						false
@@ -2120,7 +2121,7 @@ module.exports = {
 				html = emailGenerator.generateStepOverrideEmail(options);
 				emailGenerator.sendEmail(
 					stepReviewers,
-					hdrukEmail,
+					`${i18next.t('translation:email.sender')}`,
 					`${firstname} ${lastname} has approved a Data Access Request application phase that you were assigned to review`,
 					html,
 					false
@@ -2151,7 +2152,7 @@ module.exports = {
 				html = emailGenerator.generateNewReviewPhaseEmail(options);
 				emailGenerator.sendEmail(
 					stepReviewers,
-					hdrukEmail,
+					`${i18next.t('translation:email.sender')}`,
 					`You are required to review a new Data Access Request application for ${publisher} by ${moment(
 						currentDeadline
 					).format('D MMM YYYY HH:mm')}`,
@@ -2189,7 +2190,7 @@ module.exports = {
 				html = emailGenerator.generateFinalDecisionRequiredEmail(options);
 				emailGenerator.sendEmail(
 					custodianManagers,
-					hdrukEmail,
+					`${i18next.t('translation:email.sender')}`,
 					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
 					html,
 					false
@@ -2222,7 +2223,7 @@ module.exports = {
 				html = await emailGenerator.generateReviewDeadlineWarning(options);
 				await emailGenerator.sendEmail(
 					remainingReviewers,
-					hdrukEmail,
+					`${i18next.t('translation:email.sender')}`,
 					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					html,
 					false
@@ -2268,7 +2269,7 @@ module.exports = {
 				html = await emailGenerator.generateReviewDeadlinePassed(options);
 				await emailGenerator.sendEmail(
 					deadlinePassedUsers,
-					hdrukEmail,
+					`${i18next.t('translation:email.sender')}`,
 					`The deadline for a Data Access Request review phase has now elapsed`,
 					html,
 					false
