@@ -4,6 +4,7 @@ import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
 import teamController from '../team/team.controller';
 import constants from '../utilities/constants.util';
+import i18next from '../internationalization/i18next';
 
 const sgMail = require('@sendgrid/mail');
 let parent, qsId;
@@ -1390,13 +1391,13 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
               <tbody>
                 <tr>
                   <td align="center">
-                    <a style="color: #475da7;" href="https://www.healthdatagateway.org">www.healthdatagateway.org</a>
+                  <a style="color: #475da7;" href=${i18next.t('translation:email.footer.url')}>${i18next.t('translation:email.footer.org')}</a>
                   </td>
                 </tr>
                 ${unsubscribeHTML}
                 <tr>
                   <td align="center">
-                    <span>©️HDR UK ${moment().year()}. All rights reserved.<span/>
+                    <span>${i18next.t('translation:email.footer.copyright')} ${moment().year()}. All rights reserved.<span/>
                   </td>
                 </tr>
               </tbody>
