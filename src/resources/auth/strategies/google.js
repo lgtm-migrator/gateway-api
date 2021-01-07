@@ -1,155 +1,146 @@
-import passport from 'passport'
-import passportGoogle from 'passport-google-oauth'
-import { to } from 'await-to-js'
+import passport from 'passport';
+import passportGoogle from 'passport-google-oauth';
+import { to } from 'await-to-js';
 
-import { getUserByProviderId } from '../../user/user.repository'
-import { updateRedirectURL } from '../../user/user.service'
-import { getObjectById } from '../../tool/data.repository'
-import { createUser } from '../../user/user.service'
-import { signToken } from '../utils'
-import { ROLES } from '../../user/user.roles'
-import  queryString from 'query-string';
-import  Url from 'url';
-import { discourseLogin } from '../sso/sso.discourse.service'; 
+import { getUserByProviderId } from '../../user/user.repository';
+import { updateRedirectURL } from '../../user/user.service';
+import { getObjectById } from '../../tool/data.repository';
+import { createUser } from '../../user/user.service';
+import { signToken } from '../utils';
+import { ROLES } from '../../user/user.roles';
+import queryString from 'query-string';
+import Url from 'url';
+import { discourseLogin } from '../sso/sso.discourse.service';
 
 const eventLogController = require('../../eventlog/eventlog.controller');
-const GoogleStrategy = passportGoogle.OAuth2Strategy
+const GoogleStrategy = passportGoogle.OAuth2Strategy;
 
 const strategy = app => {
-    const strategyOptions = {
-        clientID: process.env.googleClientID,
-        clientSecret: process.env.googleClientSecret,
-        callbackURL: `/auth/google/callback`,
-        proxy: true
-    }
+	const strategyOptions = {
+		clientID: process.env.googleClientID,
+		clientSecret: process.env.googleClientSecret,
+		callbackURL: `/auth/google/callback`,
+		proxy: true,
+	};
 
-    const verifyCallback = async (
-        accessToken,
-        refreshToken,
-        profile,
-        done
-    ) => {
-        if (!profile.id || profile.id === '') return done("loginError");
+	const verifyCallback = async (accessToken, refreshToken, profile, done) => {
+		if (!profile.id || profile.id === '') return done('loginError');
 
-        let [err, user] = await to(getUserByProviderId(profile.id))
-        if (err || user) {
-            return done(err, user)
-        }
+		let [err, user] = await to(getUserByProviderId(profile.id));
+		if (err || user) {
+			return done(err, user);
+		}
 
-        const verifiedEmail = profile.emails.find(email => email.verified) || profile.emails[0];
+		const verifiedEmail = profile.emails.find(email => email.verified) || profile.emails[0];
 
-        const [createdError, createdUser] = await to(
-            createUser({
-                provider: profile.provider,
-                providerId: profile.id,
-                firstname: profile.name.givenName,
-                lastname: profile.name.familyName,
-                email: verifiedEmail.value,
-                password: null,
-                role: ROLES.Creator
-            })
-        )
+		const [createdError, createdUser] = await to(
+			createUser({
+				provider: profile.provider,
+				providerId: profile.id,
+				firstname: profile.name.givenName,
+				lastname: profile.name.familyName,
+				email: verifiedEmail.value,
+				password: null,
+				role: ROLES.Creator,
+			})
+		);
 
-        return done(createdError, createdUser)
-    }
+		return done(createdError, createdUser);
+	};
 
-    passport.use(new GoogleStrategy(strategyOptions, verifyCallback))
+	passport.use(new GoogleStrategy(strategyOptions, verifyCallback));
 
-    app.get(
-        `/auth/google`,
-        (req, res, next) => {
-            // Save the url of the user's current page so the app can redirect back to it after authorization
-            if (req.headers.referer) {req.param.returnpage = req.headers.referer;}
-            next();
-        },
-        passport.authenticate('google', {
-            scope: [
-                'https://www.googleapis.com/auth/userinfo.profile',
-                'https://www.googleapis.com/auth/userinfo.email'
-            ]
-        })
-    )
-    
-    app.get('/auth/google/callback', (req, res, next) => {
-        passport.authenticate('google', (err, user, info) => {
-            if (err || !user) {
-                //loginError
-                if (err === 'loginError') return res.status(200).redirect(process.env.homeURL+'/loginerror')
-                
-                // failureRedirect
-                var redirect = '/';
-                let returnPage = null;
+	app.get(
+		`/auth/google`,
+		(req, res, next) => {
+			// Save the url of the user's current page so the app can redirect back to it after authorization
+			if (req.headers.referer) {
+				req.param.returnpage = req.headers.referer;
+			}
+			next();
+		},
+		passport.authenticate('google', {
+			scope: ['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email'],
+		})
+	);
 
-                if (req.param.returnpage) {
-                    returnPage = Url.parse(req.param.returnpage);
-                    redirect = returnPage.path;
-                    delete req.param.returnpage;
-                }
-                
-                let redirectUrl = process.env.homeURL + redirect;
+	app.get('/auth/google/callback', (req, res, next) => {
+		passport.authenticate('google', (err, user, info) => {
+			if (err || !user) {
+				//loginError
+				if (err === 'loginError') return res.status(200).redirect(process.env.homeURL + '/loginerror');
 
-                return res
-                    .status(200)
-                    .redirect(redirectUrl)
-            }
+				// failureRedirect
+				var redirect = '/';
+				let returnPage = null;
 
-            req.login(user, async (err) => {
-                if (err) {
-                    return next(err);
-                }
+				if (req.param.returnpage) {
+					returnPage = Url.parse(req.param.returnpage);
+					redirect = returnPage.path;
+					delete req.param.returnpage;
+				}
 
-                var redirect = '/';
+				let redirectUrl = process.env.homeURL + redirect;
 
-                let returnPage = null;
-                let queryStringParsed = null;
-                if (req.param.returnpage) {
-                    returnPage = Url.parse(req.param.returnpage);
-                    redirect = returnPage.path;
-                    queryStringParsed = queryString.parse(returnPage.query);
-                }
+				return res.status(200).redirect(redirectUrl);
+			}
 
-                let [profileErr, profile] = await to(getObjectById(req.user.id))
+			req.login(user, async err => {
+				if (err) {
+					return next(err);
+				}
 
-                if (!profile) {
-                    await to(updateRedirectURL({ id: req.user.id, redirectURL: redirect }))
-                    return res.redirect(process.env.homeURL + '/completeRegistration/' + req.user.id)
-                }
+				var redirect = '/';
 
-                if (req.param.returnpage) {
-                    delete req.param.returnpage;
-                }
+				let returnPage = null;
+				let queryStringParsed = null;
+				if (req.param.returnpage) {
+					returnPage = Url.parse(req.param.returnpage);
+					redirect = returnPage.path;
+					queryStringParsed = queryString.parse(returnPage.query);
+				}
 
-                let redirectUrl = process.env.homeURL + redirect;
+				let [profileErr, profile] = await to(getObjectById(req.user.id));
 
-                if (queryStringParsed && queryStringParsed.sso && queryStringParsed.sig) {
-                    try {
-                        redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
-                    } catch (err) {
-                        console.error(err);
-                        return res.status(500).send('Error authenticating the user.');
-                    }
-                }
+				if (!profile) {
+					await to(updateRedirectURL({ id: req.user.id, redirectURL: redirect }));
+					return res.redirect(process.env.homeURL + '/completeRegistration/' + req.user.id);
+				}
 
-                //Build event object for user login and log it to DB
-                let eventObj = {
-                    userId: req.user.id, 
-                    event: `user_login_${req.user.provider}`, 
-                    timestamp: Date.now()
-                }
-                await eventLogController.logEvent(eventObj);
+				if (req.param.returnpage) {
+					delete req.param.returnpage;
+				}
 
-                return res
-                .status(200)
-                .cookie('jwt', signToken({_id: req.user._id, id: req.user.id, timeStamp: Date.now()}), {
-                    httpOnly: true
-                })
-                .redirect(redirectUrl)
+				let redirectUrl = process.env.homeURL + redirect;
 
-            });
-        })(req, res, next);
-    });
+				if (queryStringParsed && queryStringParsed.sso && queryStringParsed.sig) {
+					try {
+						redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
+					} catch (err) {
+						console.error(err);
+						return res.status(500).send('Error authenticating the user.');
+					}
+				}
 
-    return app
-}
+				//Build event object for user login and log it to DB
+				let eventObj = {
+					userId: req.user.id,
+					event: `user_login_${req.user.provider}`,
+					timestamp: Date.now(),
+				};
+				await eventLogController.logEvent(eventObj);
 
-export { strategy }
+				return res
+					.status(200)
+					.cookie('jwt', signToken({ _id: req.user._id, id: req.user.id, timeStamp: Date.now() }), {
+						httpOnly: true,
+					})
+					.redirect(redirectUrl);
+			});
+		})(req, res, next);
+	});
+
+	return app;
+};
+
+export { strategy };

@@ -1,3 +1,5 @@
+import constants from './constants.util';
+
 const setMessageProperties = (emailRecipientType, body, user) => {
 
   const {
@@ -14,11 +16,10 @@ const setMessageProperties = (emailRecipientType, body, user) => {
     title,
     custodianEmail
   } = body;
-  const hdrukEmail = `enquiry@healthdatagateway.org`;
   const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || custodianEmail;
 
   let msg = {
-    from: `${hdrukEmail}`,
+    from: `${constants.hdrukEmail}`,
     subject: `Enquires for ${title} dataset healthdatagateway.org`,
     html: `
             An enquiry to access the ${title} dataset has been made. Please see the details of the enquiry below:<br /><br /><br />

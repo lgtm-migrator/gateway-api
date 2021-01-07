@@ -17,9 +17,7 @@ router.post('/login', async (req, res) => {
 	const [err, user] = await to(getUserByEmail(email));
 
 	const authenticationError = () => {
-		return res
-			.status(500)
-			.json({ success: false, data: 'Authentication error!' });
+		return res.status(500).json({ success: false, data: 'Authentication error!' });
 	};
 
 	if (!(await verifyPassword(password, user.password))) {
@@ -49,10 +47,10 @@ router.post('/login', async (req, res) => {
 // @desc     logout user
 // @access   Private
 router.get('/logout', function (req, res) {
-    req.logout();
-    for (var prop in req.cookies) {  
-        res.clearCookie(prop);
-    }
+	req.logout();
+	for (var prop in req.cookies) {
+		res.clearCookie(prop);
+	}
 	return res.json({ success: true });
 });
 
@@ -67,19 +65,19 @@ router.get('/status', function (req, res, next) {
 				data: [{ role: 'Reader', id: null, name: null, loggedIn: false }],
 			});
 		} else {
-            // 1. Reformat teams array for frontend
-            let { teams } = req.user.toObject();
-            if(teams) {
-                teams = teams.map((team) => {
-                    let { publisher, type, members } = team;
-                    let member = members.find(member => {
-                        return member.memberid.toString() === req.user._id.toString();
-                    });
-                    let { roles } = member;
-                    return { ...publisher, type, roles };
-                });
-            }
-            // 2. Return user info
+			// 1. Reformat teams array for frontend
+			let { teams } = req.user.toObject();
+			if (teams) {
+				teams = teams.map(team => {
+					let { publisher, type, members } = team;
+					let member = members.find(member => {
+						return member.memberid.toString() === req.user._id.toString();
+					});
+					let { roles } = member;
+					return { ...publisher, type, roles };
+				});
+			}
+			// 2. Return user info
 			return res.json({
 				success: true,
 				data: [

@@ -20,4 +20,4 @@ const DataRequestSchemas = new Schema({
   timestamps: true 
 });
 
-export const DataRequestSchemaModel = model('data_request_schemas', DataRequestSchemas);
+export const DataRequestSchemaModel = model('data_request_schemas', DataRequestSchemas); 

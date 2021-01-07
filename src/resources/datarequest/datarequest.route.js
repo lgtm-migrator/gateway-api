@@ -76,13 +76,18 @@ router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestControl
 
 // @route   POST api/v1/data-access-request/:id/upload
 // @desc    POST application files to scan bucket
-// @access  Private - Applicant (Gateway User / Custodian Manager)
+// @access  Private - Applicant (Gateway User / Custodian Manager) 
 router.post('/:id/upload', passport.authenticate('jwt'), multerMid.array('assets'), datarequestController.uploadFiles);
 
 // @route   POST api/v1/data-access-request/:id/amendments
 // @desc    Create or remove amendments from DAR
 // @access  Private - Custodian Reviewer/Manager
 router.post('/:id/amendments', passport.authenticate('jwt'), amendmentController.setAmendment);
+
+// @route   POST api/v1/data-access-request/:id/requestAmendments
+// @desc    Submit a batch of requested amendments back to the form applicant(s)
+// @access  Private - Manager
+router.post('/:id/requestAmendments', passport.authenticate('jwt'), amendmentController.requestAmendments);
 
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record

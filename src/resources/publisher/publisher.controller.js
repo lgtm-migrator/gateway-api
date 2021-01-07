@@ -181,6 +181,7 @@ module.exports = {
 				.map((app) => {
 					return datarequestController.createApplicationDTO(
 						app.toObject(),
+						constants.userTypes.CUSTODIAN,
 						_id.toString()
 					);
 				})
@@ -264,7 +265,7 @@ module.exports = {
 				}, []);
 
 				applications = applications.map((app) => {
-					let { aboutApplication, _id } = app;
+					let { aboutApplication = {}, _id } = app;
 					if(typeof aboutApplication === 'string') {
 						aboutApplication = JSON.parse(aboutApplication) || {};
 					}
