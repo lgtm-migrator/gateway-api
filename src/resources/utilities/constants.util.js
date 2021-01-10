@@ -293,6 +293,13 @@ const _submissionTypes = {
 	RESUBMISSION: 'resubmission',
 };
 
+const _formActions = {
+	ADDREPEATABLESECTION: 'addRepeatableSection',
+	REMOVEREPEATABLESECTION: 'removeRepeatableSection',
+	ADDREPEATABLEQUESTIONS: 'addRepeatableQuestions',
+	REMOVEREPEATABLEQUESTIONS: 'removeRepeatableQuestions',
+}
+
 const _darPanelMapper = {
 	safesettings: 'Safe settings',
 	safeproject: 'Safe project',
@@ -322,6 +329,7 @@ export default {
 	applicationStatuses: _applicationStatuses,
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
+	formActions: _formActions,
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,

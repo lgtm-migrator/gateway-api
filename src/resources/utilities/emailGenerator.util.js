@@ -8,7 +8,7 @@ import constants from '../utilities/constants.util';
 const sgMail = require('@sendgrid/mail');
 let parent, qsId;
 let questionList = [];
-let excludedQuestionSetIds = ['addApplicant', 'removeApplicant'];
+let excludedQuestionSetIds = ['addRepeatableSection', 'removeRepeatableSection'];
 let autoCompleteLookups = { fullname: ['email'] };
 
 /**
