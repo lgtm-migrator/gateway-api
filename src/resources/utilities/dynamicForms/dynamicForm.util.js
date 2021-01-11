@@ -1,6 +1,58 @@
 import randomstring from 'randomstring';
 import _ from 'lodash';
 
+let findQuestion = (questionId = '', questionSet = []) => {
+	if (!_.isEmpty(questionId) && !_.isEmpty(questionSet)) {
+		let { questions } = questionSet;
+		if (!_.isEmpty(questions)) {
+			return questions.find(q => q.questionId === questionId) || {};
+		}
+	}
+	return {};
+};
+
+let findQuestionRecursive = (questionsArr, questionId) => {
+	let child;
+
+	if (!questionsArr || _.isEmpty(questionsArr)) return;
+
+	for (const questionObj of questionsArr) {
+        if (questionObj.questionId === questionId) 
+            {
+                return questionObj; 
+            }
+
+		if (typeof questionObj.input === 'object' && typeof questionObj.input.options !== 'undefined') {
+			questionObj.input.options
+				.filter(option => {
+					return typeof option.conditionalQuestions !== 'undefined' && option.conditionalQuestions.length > 0;
+				})
+				.forEach(option => {
+					if(!child) {
+						child = findQuestionRecursive(option.conditionalQuestions, questionId);
+					}
+				});
+		}
+
+		if (child) return child;
+	}
+};
+
+let findQuestionSet = (questionSetId = '', schema = {}) => {
+    if (!_.isEmpty(questionSetId) && !_.isEmpty(schema)) {
+        let { questionSets } = schema;
+        return [...questionSets].find(q => q.questionSetId === questionSetId) || {};
+    }
+    return {};
+};
+
+let findQuestionPanel = (panelId = '', questionPanels = []) => {
+    if (!_.isEmpty(panelId) && !_.isEmpty(questionPanels)) {
+        return [...questionPanels].find(qp => qp.panelId === panelId) || {};
+    }
+    return {};
+};
+
 let duplicateQuestionSet = (questionSetId, schema) => {
     let { questionSets } = schema;
     // 1. find questionSet
@@ -39,14 +91,6 @@ let duplicateQuestions = (questionSetId, questionIdsToDuplicate, separatorText =
     }
     // 6. return array of questions
     return modifiedQuestions;
-};
-
-let findQuestionSet = (questionSetId = '', schema = {}) => {
-    if (!_.isEmpty(questionSetId) && !_.isEmpty(schema)) {
-        let { questionSets } = schema;
-        return [...questionSets].find(q => q.questionSetId === questionSetId);
-    }
-    return {};
 };
 
 let modifyQuestionSetIds = questionSet => {
@@ -124,15 +168,41 @@ let modifyQuestionIds = (questionSetId, questions) => {
     return questionsModified;
 };
 
-let insertQuestionSeparator = (questions, separatorText) => {
-    // 1. guard for empty questions array
-    if(_.isEmpty(questions)) {
-        return [];
+let modifyNestedQuestionIds = (questionsArr, uniqueId) => {
+    let child;
+    let qArr = [...questionsArr];
+
+    if (!questionsArr) return;
+
+    for (let questionObj of qArr) {
+        // 1. test each option obj if have conditionals and a length
+        if (typeof questionObj.conditionalQuestions !== 'undefined' && questionObj.conditionalQuestions.length > 0) {
+            // 2. for each option in conditional questions loop
+            questionObj.conditionalQuestions.forEach(option => {
+                // 3. test if option has a questionId and if so modify
+                if (typeof option.questionId !== undefined) {
+                    option['questionId'] = `${option.questionId.toLowerCase()}_${uniqueId}`;
+                }
+                // 4. test the input for options and if options defined means it is another recursive loop call
+                if (typeof questionObj.input === 'object' && typeof questionObj.input.options !== 'undefined') {
+                    child = modifyNestedQuestionIds(option.conditionalQuestions, uniqueId);
+                }
+            });
+        }
+        // 5. return recursive call
+        if (child) return child;
+    }
+};
+
+let insertQuestionSeparator = (questionsArr = [], separatorText = '') => {
+    // 1. guard for empty questions array and empty separator
+    if(_.isEmpty(questionsArr) || _.isEmpty(separatorText)) {
+        return questionsArr;
     }
     // 2. locate and update the first duplicate question
-    questions[0].question = `\n${separatorText}\n\n${questions[0].question}`;
+    questionsArr[0].question = `\n${separatorText}\n\n${questionsArr[0].question}`;
     // 3 return mutated questions with separator pre-pended
-    return questions;
+    return questionsArr;
 }
 
 let insertQuestionSet = (questionSetId, duplicateQuestionSet, schema) => {
@@ -203,76 +273,6 @@ let insertQuestions = (questionSetId, targetQuestionId, duplicatedQuestions, sch
     });
     // 7. return updated schema
     return schema;
-};
-
-let findQuestionPanel = (panelId = '', questionPanels = []) => {
-    if (!_.isEmpty(panelId) && !_.isEmpty(questionPanels)) {
-        return [...questionPanels].find(qp => qp.panelId === panelId) || {};
-    }
-    return {};
-};
-
-let modifyNestedQuestionIds = (questionsArr, uniqueId) => {
-    let child;
-    let qArr = [...questionsArr];
-
-    if (!questionsArr) return;
-
-    for (let questionObj of qArr) {
-        // 1. test each option obj if have conditionals and a length
-        if (typeof questionObj.conditionalQuestions !== 'undefined' && questionObj.conditionalQuestions.length > 0) {
-            // 2. for each option in conditional questions loop
-            questionObj.conditionalQuestions.forEach(option => {
-                // 3. test if option has a questionId and if so modify
-                if (typeof option.questionId !== undefined) {
-                    option['questionId'] = `${option.questionId.toLowerCase()}_${uniqueId}`;
-                }
-                // 4. test the input for options and if options defined means it is another recursive loop call
-                if (typeof questionObj.input === 'object' && typeof questionObj.input.options !== 'undefined') {
-                    child = modifyNestedQuestionIds(option.conditionalQuestions, uniqueId);
-                }
-            });
-        }
-        // 5. return recursive call
-        if (child) return child;
-    }
-};
-
-let findQuestion = (questionId = '', questionSet = []) => {
-	if (!_.isEmpty(questionId) && !_.isEmpty(questionSet)) {
-		let { questions } = questionSet;
-		if (!_.isEmpty(questions)) {
-			return questions.find(q => q.questionId === questionId);
-		}
-	}
-	return {};
-};
-
-let findQuestionRecursive = (questionsArr, questionId) => {
-	let child;
-
-	if (!questionsArr) return;
-
-	for (const questionObj of questionsArr) {
-        if (questionObj.questionId === questionId) 
-            {
-                return questionObj; 
-            }
-
-		if (typeof questionObj.input === 'object' && typeof questionObj.input.options !== 'undefined') {
-			questionObj.input.options
-				.filter(option => {
-					return typeof option.conditionalQuestions !== 'undefined' && option.conditionalQuestions.length > 0;
-				})
-				.forEach(option => {
-					if(!child) {
-						child = findQuestionRecursive(option.conditionalQuestions, questionId);
-					}
-				});
-		}
-
-		if (child) return child;
-	}
 };
 
 let removeQuestionSetReferences = (questionSetId, questionId, schema) => {
@@ -376,11 +376,16 @@ let removeQuestionAnswers = (questionIds = [], questionAnswers = {}) => {
     return questionAnswers;
 };
 
-export default {
+module.exports = {
+    findQuestion: findQuestion,
+    findQuestionRecursive: findQuestionRecursive,
+    findQuestionSet: findQuestionSet,
+    findQuestionPanel: findQuestionPanel,
     duplicateQuestionSet: duplicateQuestionSet,
     duplicateQuestions: duplicateQuestions,
     insertQuestionSet: insertQuestionSet,
     insertQuestions: insertQuestions,
+    insertQuestionSeparator: insertQuestionSeparator,
     removeQuestionSetReferences: removeQuestionSetReferences,
     removeQuestionSetAnswers: removeQuestionSetAnswers,
     removeQuestionReferences: removeQuestionReferences,
