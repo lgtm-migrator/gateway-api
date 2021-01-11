@@ -4,7 +4,8 @@ import { ROLES } from '../user/user.roles'
 import passport from "passport";
 import { utils } from "../auth";
 import {addTool, editTool, setStatus, getTools, getToolsAdmin} from '../tool/data.repository'; 
-
+import helper from '../utilities/helper.util';
+import escape from 'escape-html';
 const router = express.Router();
 
 // @router   POST /api/v1/
@@ -161,11 +162,13 @@ router.get('/:paperID', async (req, res) => {
                   })
               });
               if (err) return res.json({ success: false, error: err });
+
+              data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
               return res.json({ success: true, data: data });
           });
     }
     else{
-      return res.status(404).send(`Paper not found for Id: ${req.params.paperID}`);
+      return res.status(404).send(`Paper not found for Id: ${escape(req.params.paperID)}`);
     }
     });
 });
