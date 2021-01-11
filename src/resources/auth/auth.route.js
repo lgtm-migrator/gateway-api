@@ -1,10 +1,11 @@
 import express from 'express';
+import _ from 'lodash';
 import { to } from 'await-to-js';
-import { verifyPassword } from '../auth/utils';
-import { login } from '../auth/strategies/jwt';
-import { getUserByEmail } from '../user/user.repository';
-import { getRedirectUrl } from '../auth/utils';
 import passport from 'passport';
+
+import { verifyPassword, getRedirectUrl, signToken } from '../auth/utils';
+import { login } from '../auth/strategies/jwt';
+import { getUserByEmail, getServiceAccount } from '../user/user.repository';
 
 const router = express.Router();
 
@@ -92,6 +93,50 @@ router.get('/status', function (req, res, next) {
 			});
 		}
 	})(req, res, next);
+});
+
+// @router   POST /api/v1/auth/token
+// @desc     Issues a JWT for a valid authentication attempt using client credentials
+// @access   Public
+router.post('/token', async (req, res) => {
+	// 1. Deconstruct grant type
+	const { grant_type = '' } = req.body;
+	// 2. Allow different grant types to be processed
+	switch(grant_type) {
+		case 'client_credentials':
+			// Deconstruct request body to extract client ID, secret
+			const { client_id = '', client_secret = '' } = req.body;
+			// Ensure client credentials have been passed
+			if (_.isEmpty(client_id) || _.isEmpty(client_secret)) {
+				return res.status(400).json({
+					success: false,
+					message: 'Incomplete client credentials were provided for the authorisation attempt',
+				});
+			}
+			// Find an associated service account based on the credentials passed
+			const serviceAccount = await getServiceAccount(client_id, client_secret);
+			if (_.isNil(serviceAccount)) {
+				return res.status(400).json({
+					success: false,
+					message: 'Invalid client credentials were provided for the authorisation attempt',
+				});
+			}
+			// Construct JWT for service account
+			const jwt = signToken({ _id: serviceAccount._id, id: serviceAccount.id, timeStamp: Date.now() });
+			const access_token = `Bearer ${jwt}`;
+			const token_type = 'jwt', expires_in = 604800;
+			// Return payload
+			return res.status(200).json({
+				access_token,
+				token_type,
+				expires_in,
+			});
+	}
+	// Bad request for any other grant type passed
+	return res.status(400).json({
+		success: false,
+		message: 'An invalid grant type has been specified',
+	});
 });
 
 module.exports = router;

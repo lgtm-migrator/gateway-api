@@ -8,7 +8,7 @@ const JWTStrategy = passportJWT.Strategy;
 
 const strategy = () => {
 	const strategyOptions = {
-		jwtFromRequest: req => req.cookies.jwt,
+		jwtFromRequest: req => req.cookies.jwt || req.headers['authorization'],
 		secretOrKey: process.env.JWTSecret,
 		passReqToCallback: true,
 	};

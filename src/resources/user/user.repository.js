@@ -23,3 +23,7 @@ export async function getUserByProviderId(providerId) {
 export async function getUserByUserId(id) {
 	return await UserModel.findOne({ id }).exec();
 }
+
+export async function getServiceAccount(clientId, clientSecret) {
+	return await UserModel.findOne({ clientId, clientSecret });
+}  
