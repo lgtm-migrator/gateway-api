@@ -376,7 +376,7 @@ let removeQuestionAnswers = (questionIds = [], questionAnswers = {}) => {
     return questionAnswers;
 };
 
-module.exports = {
+export default {
     findQuestion: findQuestion,
     findQuestionRecursive: findQuestionRecursive,
     findQuestionSet: findQuestionSet,

@@ -1,7 +1,8 @@
 import constants from '../../../utilities/constants.util';
+import dynamicFormUtil from '../dynamicForm.util';
+
 import _ from 'lodash';
 
-const dynamicFormUtil = require('../dynamicForm.util');
 const dataSchema = require('../__mocks__/formSchema');
 
 describe('findQuestionSet', () => {
