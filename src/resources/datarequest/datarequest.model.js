@@ -20,6 +20,7 @@ const DataRequestSchema = new Schema({
     default: false 
   },
   applicationStatusDesc : String,
+  schemaId: { type : Schema.Types.ObjectId, ref: 'data_request_schemas' },
   jsonSchema: {
     type: String,
     default: "{}"
