@@ -43,6 +43,7 @@
     "passport-openidconnect": "0.0.2",
     "prettier": "^2.2.1",
     "query-string": "^6.12.1",
+    "randomstring": "^1.1.5",
     "snyk": "^1.334.0",
     "swagger-ui-express": "^4.1.4",
     "test": "^0.6.0",
