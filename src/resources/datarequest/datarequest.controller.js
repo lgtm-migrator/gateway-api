@@ -250,7 +250,7 @@ module.exports = {
 					});
 				}
 				// 2. Build up the accessModel for the user
-				let { jsonSchema, version } = accessRequestTemplate;
+				let { jsonSchema, version, _id:schemaId } = accessRequestTemplate;
 
 				// 3. create new DataRequestModel
 				let record = new DataRequestModel({
@@ -258,6 +258,7 @@ module.exports = {
 					userId,
 					dataSetId,
 					jsonSchema,
+					schemaId,
 					publisher,
 					questionAnswers: '{}',
 					aboutApplication: {},
@@ -358,13 +359,14 @@ module.exports = {
 					});
 				}
 				// 3. Build up the accessModel for the user
-				let { jsonSchema, version } = accessRequestTemplate;
+				let { jsonSchema, version, _id:schemaId } = accessRequestTemplate;
 				// 4. Create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
 					userId,
 					datasetIds: arrDatasetIds,
 					jsonSchema,
+					schemaId,
 					publisher,
 					questionAnswers: '{}',
 					aboutApplication: {},
