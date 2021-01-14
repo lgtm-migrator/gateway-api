@@ -120,6 +120,14 @@ router.get('/:id', async (req, res) => {
 				as: 'uploaderIs',
 			},
 		},
+		{ $addFields: {
+			"uploader": {
+				$concat: [ 
+					{	$arrayElemAt: [ "$uploaderIs.firstname", 0]}, 
+					" ",
+					{ $arrayElemAt: [ "$uploaderIs.lastname", 0 ]}
+			]}
+		}}
 	]);
 	query.exec((err, data) => {
 		if (data.length > 0) {

@@ -81,6 +81,15 @@ router.get('/:projectID', async (req, res) => {
 				as: 'persons',
 			},
 		},
+		{ $lookup: { from: 'tools', localField: 'uploader', foreignField: 'id', as: 'uploaderIs' } },
+		{ $addFields: {
+			"uploader": {
+				$concat: [ 
+					{	$arrayElemAt: [ "$uploaderIs.firstname", 0]}, 
+					" ",
+				{ $arrayElemAt: [ "$uploaderIs.lastname", 0 ]}
+			]}
+		}}
 	]);
 	q.exec((err, data) => {
 		if (data.length > 0) {
@@ -96,7 +105,7 @@ router.get('/:projectID', async (req, res) => {
 							},
 						],
 					},
-				},
+				}
 			]);
 
 			p.exec(async (err, relatedData) => {

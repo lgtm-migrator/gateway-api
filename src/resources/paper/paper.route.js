@@ -123,6 +123,14 @@ router.get('/:paperID', async (req, res) => {
 		{ $match: { $and: [{ id: parseInt(req.params.paperID) }, { type: 'paper' }] } },
 		{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 		{ $lookup: { from: 'tools', localField: 'uploader', foreignField: 'id', as: 'uploaderIs' } },
+		{ $addFields: {
+			"uploader": {
+				$concat: [ 
+					{	$arrayElemAt: [ "$uploaderIs.firstname", 0]}, 
+					" ",
+					{ $arrayElemAt: [ "$uploaderIs.lastname", 0 ]}
+			]}
+		}}
 	]);
 	q.exec((err, data) => {
 		if (data.length > 0) {
