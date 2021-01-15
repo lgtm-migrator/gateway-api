@@ -257,6 +257,8 @@ module.exports = {
 					version,
 					userId,
 					dataSetId,
+					datasetIds: [dataSetId],
+					datasetTitles: [dataset.name],
 					jsonSchema,
 					schemaId,
 					publisher,
