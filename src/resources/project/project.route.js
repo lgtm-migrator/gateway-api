@@ -82,14 +82,13 @@ router.get('/:projectID', async (req, res) => {
 			},
 		},
 		{ $lookup: { from: 'tools', localField: 'uploader', foreignField: 'id', as: 'uploaderIs' } },
-		{ $addFields: {
-			"uploader": {
-				$concat: [ 
-					{	$arrayElemAt: [ "$uploaderIs.firstname", 0]}, 
-					" ",
-				{ $arrayElemAt: [ "$uploaderIs.lastname", 0 ]}
-			]}
-		}}
+		{
+			$addFields: {
+				uploader: {
+					$concat: [{ $arrayElemAt: ['$uploaderIs.firstname', 0] }, ' ', { $arrayElemAt: ['$uploaderIs.lastname', 0] }],
+				},
+			},
+		},
 	]);
 	q.exec((err, data) => {
 		if (data.length > 0) {
@@ -105,7 +104,7 @@ router.get('/:projectID', async (req, res) => {
 							},
 						],
 					},
-				}
+				},
 			]);
 
 			p.exec(async (err, relatedData) => {
@@ -136,7 +135,7 @@ router.get('/:projectID', async (req, res) => {
 // @router   PATCH /api/v1/status
 // @desc     Set project status
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });

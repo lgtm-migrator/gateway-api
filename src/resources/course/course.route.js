@@ -76,7 +76,7 @@ router.get('/', async (req, res) => {
 // @router   PATCH /api/v1/status
 // @desc     Set course status
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });
