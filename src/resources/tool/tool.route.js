@@ -6,7 +6,7 @@ import passport from 'passport';
 import { utils } from '../auth';
 import { UserModel } from '../user/user.model';
 import { MessagesModel } from '../message/message.model';
-import { addTool, editTool, setStatus, getTools, getToolsAdmin } from '../tool/data.repository';
+import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools } from '../tool/data.repository';
 import emailGenerator from '../utilities/emailGenerator.util';
 import inputSanitizer from '../utilities/inputSanitizer';
 import _ from 'lodash';
@@ -43,15 +43,15 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
 });
 
 // @router   GET /api/v1/get/admin
-// @desc     Returns List of Tool objects
+// @desc     Returns List of Tool objects 
 // @access   Private
 router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	req.params.type = 'tool';
 	let role = req.user.role;
 
 	if (role === ROLES.Admin) {
-		await getToolsAdmin(req)
-			.then(data => {
+		await getToolsAdmin(req) 
+			.then(data => { 
 				return res.json({ success: true, data });
 			})
 			.catch(err => {
@@ -68,13 +68,13 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/ 
 // @desc     Returns List of Tool Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
 router.get('/', async (req, res) => {
 	req.params.type = 'tool';
-	await getToolsAdmin(req)
+	await getAllTools(req)
 		.then(data => {
 			return res.json({ success: true, data });
 		})
@@ -83,18 +83,18 @@ router.get('/', async (req, res) => {
 		});
 });
 
-// @router   PATCH /api/v1/status
-// @desc     Set tool status
-// @access   Private
+// @router   PATCH /api/v1/status  
+// @desc     Set tool status 
+// @access   Private 
 router.patch('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
-	await setStatus(req)
-		.then(response => {
+	await setStatus(req) 
+		.then(response => { 
 			return res.json({ success: true, response });
 		})
 		.catch(err => {
 			return res.json({ success: false, error: err.message });
 		});
-});
+}); 
 
 /**
  * {get} /tool/:id Tool

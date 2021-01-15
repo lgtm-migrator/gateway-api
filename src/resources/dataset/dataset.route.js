@@ -1,7 +1,7 @@
 import express from 'express';
 import { Data } from '../tool/data.model';
 import { loadDataset, loadDatasets } from './dataset.service';
-import { getToolsAdmin } from '../tool/data.repository';
+import { getAllTools } from '../tool/data.repository';
 import _ from 'lodash';
 import escape from 'escape-html';
 const router = express.Router();
@@ -88,7 +88,7 @@ router.get('/:datasetID', async (req, res) => {
 	let pid = dataset.pid;
 	let relatedData = await Data.find({ relatedObjects: { $elemMatch: { objectId: { $in: [datasetID, pid] } } } });
 
-	relatedData.forEach(dat => {
+	relatedData.forEach(dat => { 
 		dat.relatedObjects.forEach(relatedObject => {
 			if ((relatedObject.objectId === datasetID && dat.id !== datasetID) || (relatedObject.objectId === pid && dat.id !== pid)) {
 				if (typeof dataset.relatedObjects === 'undefined') dataset.relatedObjects = [];
@@ -112,7 +112,7 @@ router.get('/:datasetID', async (req, res) => {
 // @access   Public
 router.get('/', async (req, res) => {
 	req.params.type = 'dataset';
-	await getToolsAdmin(req)
+	await getAllTools(req)
 		.then(data => {
 			return res.json({ success: true, data });
 		})

@@ -154,7 +154,7 @@ const deleteCourse = async (req, res) => {
 	});
 };
 
-const getCourseAdmin = async (req, res) => {
+const getAllCourses = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
 		let startIndex = 0;
 		let limit = 1000;
@@ -162,11 +162,11 @@ const getCourseAdmin = async (req, res) => {
 		let searchString = '';
 
 		if (req.query.offset) {
-			startIndex = req.query.offset;
+			startIndex = req.query.offset; 
 		}
 		if (req.query.limit) {
 			limit = req.query.limit;
-		}
+		} 
 		if (req.query.q) {
 			searchString = req.query.q || '';
 		}
@@ -185,35 +185,97 @@ const getCourseAdmin = async (req, res) => {
 	});
 };
 
+const getCourseAdmin = async (req, res) => {
+	return new Promise(async (resolve, reject) => {
+		let startIndex = 0;
+		let limit = 40;
+		let typeString = '';
+		let searchString = '';
+		let status = 'all';
+
+		if (req.query.offset) {
+			startIndex = req.query.offset;
+		}
+		if (req.query.limit) {
+			limit = req.query.limit;
+		}
+		if (req.query.q) {
+			searchString = req.query.q || '';
+		}
+		if (req.query.status) {
+			status = req.query.status
+		}
+
+		let searchQuery;
+		if(status === 'all'){ 
+			searchQuery = { $and: [{ type: 'course' }] };
+		} else {
+			searchQuery = { $and: [{ type: 'course' }, { activeflag: status }] };
+		}
+
+		let searchAll = false;
+
+		if (searchString.length > 0) {
+			searchQuery['$and'].push({ $text: { $search: searchString } });
+		} else {
+			searchAll = true;
+		}
+		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit, status), getCountsByStatus()]).then(values => {
+			resolve(values);
+		});
+	});
+};
+
 const getCourse = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
-		//let startIndex = 0;
-		//let limit = 1000;
+		let startIndex = 0;
+		let limit = 40;
 		let idString = req.user.id;
+		let status = 'all';
 
-		/* if (req.query.startIndex) {
-        startIndex = req.query.startIndex;
+	  if (req.query.offset) {
+        startIndex = req.query.offset;
       }
       if (req.query.limit) {
         limit = req.query.limit;
-      } */
-		if (req.query.id) {
+      } 
+	  if (req.query.id) {
 			idString = req.query.id;
-		}
+	  }
 
+	let searchQuery;
+	if(status === 'all'){ 
+		searchQuery = [{ type: 'course' }, { creator: parseInt(idString) }] 
+	  } else {
+		searchQuery = [{ type: 'course' }, { creator: parseInt(idString) }, { activeflag: status }] 
+	  }
+		  
 		let query = Course.aggregate([
-			{ $match: { $and: [{ type: 'course' }, { creator: parseInt(idString) }] } },
+			{ $match: { $and: searchQuery} },
 			{ $lookup: { from: 'tools', localField: 'creator', foreignField: 'id', as: 'persons' } },
 			{ $sort: { updatedAt: -1 } },
-		]); //.skip(parseInt(startIndex)).limit(parseInt(maxResults));
-		query.exec((err, data) => {
-			if (err) reject({ success: false, error: err });
+		])
+		.skip(parseInt(startIndex))
+		.limit(parseInt(limit));
 
-			data.map(dat => {
-				dat.persons = helper.hidePrivateProfileDetails(dat.persons);
-			});
-			resolve(data);
+		await Promise.all([getUserCourses(query), getCountsByStatusCreator(idString)]).then(values => {
+			resolve(values);
 		});
+
+		function getUserCourses(query) { 
+			return new Promise((resolve, reject) => {
+				query.exec((err, data) => {
+					if (err) reject({ success: false, error: err });
+
+					data.map(dat => {
+						dat.persons = helper.hidePrivateProfileDetails(dat.persons);
+					});
+
+					if (typeof data === 'undefined') resolve([]);
+					else resolve(data);
+				});
+			});
+		}
 	});
 };
 
@@ -458,4 +520,48 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 	});
 }
 
-export { addCourse, editCourse, deleteCourse, setStatus, getCourse, getCourseAdmin };
+function getCountsByStatus() { 
+
+	let q = Course.find({ }, { id: 1, title: 1, activeflag: 1 });
+  
+	return new Promise((resolve, reject) => {
+		q.exec((err, data) => {
+			const activeCount = data.filter(dat => dat.activeflag === 'active').length
+			const reviewCount = data.filter(dat => dat.activeflag === 'review').length
+			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length
+			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length
+
+			let countSummary = {'activeCount': activeCount,
+								'reviewCount': reviewCount,
+								'rejectedCount': rejectedCount,
+								'archiveCount': archiveCount
+								}
+
+			resolve(countSummary);
+		})
+	});
+}
+
+function getCountsByStatusCreator(idString) { 
+
+	let q = Course.find({ $and: [{ type: 'course' }, { creator: parseInt(idString) }] }, { id: 1, title: 1, activeflag: 1 });
+  
+	return new Promise((resolve, reject) => {
+		q.exec((err, data) => {
+			const activeCount = data.filter(dat => dat.activeflag === 'active').length
+			const reviewCount = data.filter(dat => dat.activeflag === 'review').length
+			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length
+			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length
+
+			let countSummary = {'activeCount': activeCount,
+								'reviewCount': reviewCount,
+								'rejectedCount': rejectedCount,
+								'archiveCount': archiveCount
+								}
+
+			resolve(countSummary);
+		})
+	});
+}
+
+export { addCourse, editCourse, deleteCourse, setStatus, getCourse, getCourseAdmin, getAllCourses };

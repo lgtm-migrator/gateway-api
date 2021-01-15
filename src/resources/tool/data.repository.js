@@ -4,7 +4,7 @@ import { UserModel } from '../user/user.model';
 import { createDiscourseTopic } from '../discourse/discourse.service';
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
-const asyncModule = require('async');
+const asyncModule = require('async'); 
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
@@ -204,8 +204,8 @@ const deleteTool = async (req, res) => {
 		});
 	});
 };
-
-const getToolsAdmin = async (req, res) => {
+ 
+const getAllTools = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
 		let startIndex = 0;
 		let limit = 1000;
@@ -231,10 +231,56 @@ const getToolsAdmin = async (req, res) => {
 		if (searchString.length > 0) {
 			searchQuery['$and'].push({ $text: { $search: searchString } });
 		} else {
-			searchAll = true;
+			searchAll = true; 
 		}
 		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit)]).then(values => {
 			resolve(values[0]);
+		});
+	});
+}; 
+ 
+const getToolsAdmin = async (req, res) => {
+
+	return new Promise(async (resolve, reject) => {
+		let startIndex = 0;
+		let limit = 40; 
+		let typeString = '';
+		let searchString = '';
+		let status = 'all';
+
+		if (req.query.offset) {
+			startIndex = req.query.offset;
+		}
+		if (req.query.limit) {
+			limit = req.query.limit;
+		}
+		if (req.params.type) {
+			typeString = req.params.type;
+		}
+		if (req.query.q) {
+			searchString = req.query.q || '';
+		}
+		if (req.query.status) {
+			status = req.query.status
+		}
+
+		let searchQuery;
+		if(status === 'all'){ 
+			searchQuery = { $and: [{ type: typeString }] };
+		} else {
+			searchQuery = { $and: [{ type: typeString }, { activeflag: status }] };
+		}
+ 
+		let searchAll = false;
+
+		if (searchString.length > 0) {
+			searchQuery['$and'].push({ $text: { $search: searchString } }); 
+		} else {
+			searchAll = true;
+		}
+
+		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit), getCountsByStatus(typeString)]).then(values => {
+		resolve(values);
 		});
 	});
 };
@@ -242,12 +288,13 @@ const getToolsAdmin = async (req, res) => {
 const getTools = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
 		let startIndex = 0;
-		let limit = 1000;
+		let limit = 40;
 		let typeString = '';
 		let idString = req.user.id;
+		let status = 'all';
 
-		if (req.query.startIndex) {
-			startIndex = req.query.startIndex;
+		if (req.query.offset) {
+			startIndex = req.query.offset;
 		}
 		if (req.query.limit) {
 			limit = req.query.limit;
@@ -258,19 +305,41 @@ const getTools = async (req, res) => {
 		if (req.query.id) {
 			idString = req.query.id;
 		}
+		if (req.query.status) {
+			status = req.query.status
+		}
+
+		let searchQuery;
+		if(status === 'all'){ 
+			searchQuery = [{ type: typeString }, { authors: parseInt(idString) }] 
+		  } else {
+			searchQuery = [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: status }] 
+		  }
 
 		let query = Data.aggregate([
-			{ $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
+			{ $match: { $and: searchQuery } },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 			{ $sort: { updatedAt: -1 } },
-		]); //.skip(parseInt(startIndex)).limit(parseInt(maxResults));
-		query.exec((err, data) => {
-			data.map(dat => {
-				dat.persons = helper.hidePrivateProfileDetails(dat.persons);
-			});
-			if (err) reject({ success: false, error: err });
-			resolve(data);
+		])
+		.skip(parseInt(startIndex))
+		.limit(parseInt(limit));
+
+		await Promise.all([getUserTools(query), getCountsByStatusCreator(typeString, idString)]).then(values => {
+			resolve(values);
 		});
+		
+		function getUserTools(query) { 
+			return new Promise((resolve, reject) => {
+				query.exec((err, data) => {
+					data && data.map(dat => {
+						dat.persons = helper.hidePrivateProfileDetails(dat.persons);
+					});
+					if (typeof data === 'undefined') resolve([]);
+					else resolve(data);
+				});
+			});
+		}
+
 	});
 };
 
@@ -411,7 +480,7 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
 	toolCopy.authors.push(0);
 	asyncModule.eachSeries(toolCopy.authors, async author => {
 		let message = new MessagesModel();
-		message.messageType = 'author';
+		message.messageType = 'author'; 
 		message.messageSent = Date.now();
 		message.messageDescription = `${toolOwner.name} added you as an author of the ${toolCopy.type} ${toolCopy.name}`;
 		message.isRead = false;
@@ -464,4 +533,46 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 	});
 }
 
-export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin };
+function getCountsByStatus(type) { 
+	let q = Data.find({ type: type}, { id: 1, name: 1, activeflag: 1 });
+  
+	return new Promise((resolve, reject) => {
+		q.exec((err, data) => {
+			const activeCount = data.filter(dat => dat.activeflag === 'active').length
+			const reviewCount = data.filter(dat => dat.activeflag === 'review').length
+			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length
+			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length
+
+			let countSummary = {'activeCount': activeCount,
+								'reviewCount': reviewCount,
+								'rejectedCount': rejectedCount,
+								'archiveCount': archiveCount
+								}
+
+			resolve(countSummary);
+		})
+	});
+}
+
+function getCountsByStatusCreator(type, idString) { 
+	let q = Data.find({ $and: [{ type: type }, { authors: parseInt(idString) }] }, { id: 1, name: 1, activeflag: 1 });
+  
+	return new Promise((resolve, reject) => {
+		q.exec((err, data) => {
+			const activeCount = data.filter(dat => dat.activeflag === 'active').length
+			const reviewCount = data.filter(dat => dat.activeflag === 'review').length
+			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length
+			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length
+
+			let countSummary = {'activeCount': activeCount,
+								'reviewCount': reviewCount,
+								'rejectedCount': rejectedCount,
+								'archiveCount': archiveCount
+								}
+ 
+			resolve(countSummary);
+		})
+	});
+}
+
+export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin, getAllTools };
