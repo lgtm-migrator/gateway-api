@@ -83,12 +83,12 @@ router.get('/', async (req, res) => {
 		});
 });
 
-// @router   PATCH /api/v1/status  
-// @desc     Set tool status 
-// @access   Private 
-router.patch('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
-	await setStatus(req) 
-		.then(response => { 
+// @router   PATCH /api/v1/status
+// @desc     Set tool status
+// @access   Private
+router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
+	await setStatus(req)
+		.then(response => {
 			return res.json({ success: true, response });
 		})
 		.catch(err => {
@@ -120,14 +120,13 @@ router.get('/:id', async (req, res) => {
 				as: 'uploaderIs',
 			},
 		},
-		{ $addFields: {
-			"uploader": {
-				$concat: [ 
-					{	$arrayElemAt: [ "$uploaderIs.firstname", 0]}, 
-					" ",
-					{ $arrayElemAt: [ "$uploaderIs.lastname", 0 ]}
-			]}
-		}}
+		{
+			$addFields: {
+				uploader: {
+					$concat: [{ $arrayElemAt: ['$uploaderIs.firstname', 0] }, ' ', { $arrayElemAt: ['$uploaderIs.lastname', 0] }],
+				},
+			},
+		},
 	]);
 	query.exec((err, data) => {
 		if (data.length > 0) {

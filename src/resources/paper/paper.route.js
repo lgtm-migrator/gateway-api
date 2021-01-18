@@ -91,7 +91,7 @@ router.get('/', async (req, res) => {
 // @router   PATCH /api/v1/
 // @desc     Change status of the Paper object.
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -123,14 +123,13 @@ router.get('/:paperID', async (req, res) => {
 		{ $match: { $and: [{ id: parseInt(req.params.paperID) }, { type: 'paper' }] } },
 		{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 		{ $lookup: { from: 'tools', localField: 'uploader', foreignField: 'id', as: 'uploaderIs' } },
-		{ $addFields: {
-			"uploader": {
-				$concat: [ 
-					{	$arrayElemAt: [ "$uploaderIs.firstname", 0]}, 
-					" ",
-					{ $arrayElemAt: [ "$uploaderIs.lastname", 0 ]}
-			]}
-		}}
+		{
+			$addFields: {
+				uploader: {
+					$concat: [{ $arrayElemAt: ['$uploaderIs.firstname', 0] }, ' ', { $arrayElemAt: ['$uploaderIs.lastname', 0] }],
+				},
+			},
+		},
 	]);
 	q.exec((err, data) => {
 		if (data.length > 0) {
