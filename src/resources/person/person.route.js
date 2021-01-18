@@ -3,7 +3,7 @@ import { Data } from '../tool/data.model';
 import { utils } from '../auth';
 import passport from 'passport';
 import { ROLES } from '../user/user.roles';
-import { getToolsAdmin } from '../tool/data.repository';
+import { getAllTools } from '../tool/data.repository';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
@@ -91,7 +91,7 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			profileComplete,
 		},
 		{ new: true }
-	);
+	); 
 	await UserModel.findOneAndUpdate({ id: id }, { $set: { firstname: firstname, lastname: lastname, email: email } })
 		.then(person => {
 			return res.json({ success: true, data: person });
@@ -163,13 +163,13 @@ router.get('/profile/:id', async (req, res) => {
 	});
 });
 
-// @router   GET /api/v1/person
+// @router   GET /api/v1/person 
 // @desc     Get paper for an author
 // @access   Private
 router.get('/', async (req, res) => {
 	let personArray = [];
-	req.params.type = 'person';
-	await getToolsAdmin(req)
+	req.params.type = 'person'; 
+	await getAllTools(req) 
 		.then(data => {
 			data.map(personObj => {
 				personArray.push({

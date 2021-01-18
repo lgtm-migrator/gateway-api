@@ -3,7 +3,7 @@ import { Data } from '../tool/data.model';
 import { ROLES } from '../user/user.roles';
 import passport from 'passport';
 import { utils } from '../auth';
-import { addTool, editTool, setStatus, getTools, getToolsAdmin } from '../tool/data.repository';
+import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools } from '../tool/data.repository';
 import helper from '../utilities/helper.util';
 import escape from 'escape-html';
 
@@ -26,7 +26,7 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 // @desc     Returns List of Project Objects Authenticated
 // @access   Private
 router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	req.params.type = 'project';
+	req.params.type = 'project'; 
 	let role = req.user.role;
 
 	if (role === ROLES.Admin) {
@@ -54,7 +54,7 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 // @access   Public
 router.get('/', async (req, res) => {
 	req.params.type = 'project';
-	await getToolsAdmin(req)
+	await getAllTools(req)
 		.then(data => {
 			return res.json({ success: true, data });
 		})
