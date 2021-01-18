@@ -1,4 +1,5 @@
 {
+    "environment": "ICODA",
     "email": {
         "sender": "enquiry@icodaresearch.org",
         "footer" : {

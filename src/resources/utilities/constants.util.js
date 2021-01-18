@@ -311,7 +311,7 @@ const _roleTypes = {
 
 // </DAR related enums>
 
-const _hdrukEmail = 'enquiry@healthdatagateway.org';
+const _hdrukEmail = 'enquiry@icodaresearch.org';
 
 export default {
 	userTypes: _userTypes,

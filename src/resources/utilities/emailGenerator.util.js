@@ -503,7 +503,7 @@ const _displayDARLink = (accessId) => {
 	if (!accessId) return '';
 
 	let darLink = `${process.env.homeURL}/data-access-request/${accessId}`;
-	return `<a style="color: #475da7;" href="${darLink}">View application</a>`;
+	return `<a style="color: #475da7; font-size: 18px;" href="${darLink}">View application</a>`;
 };
 
 const _generateDARStatusChangedEmail = (options) => {
@@ -1297,7 +1297,7 @@ const _generateFinalDecisionRequiredEmail = (options) => {
 
 const _generateRemovedFromTeam = (options) => {
 	let { teamName } = options;
-	let header = `You've been removed from the ${teamName} team on the HDR Innovation Gateway`;
+	let header = `You've been removed from the ${teamName} team on the ${i18next.t('translation:environment')} Gateway`;
 	let subheader = `You will no longer be able to access Data Access Requests, messages or the profile area relating to this team.`;
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -1341,7 +1341,7 @@ const _generateRemovedFromTeam = (options) => {
 
 const _generateAddedToTeam = (options) => {
 	let { teamName, role } = options;
-	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
+	let header = `You've been added to the ${teamName} team as a ${role} on the ${i18next.t('translation:environment')} Gateway`;
 	let subheader = ``;
 	if (role === constants.roleTypes.MANAGER) {
 		subheader = `You will now be able to create and manage Data Access Request workflows, process applications, send messages, and manage the profile area relating to this team, including the ability to add and remove new members.`;
@@ -1437,7 +1437,7 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 		let unsubscribeLink = baseURL + unsubscribeRoute + userObjectId;
 		unsubscribeHTML = `<tr>
                         <td align="center">
-                          <p>You're receiving this message because you have an account in the Innovation Gateway.</p>
+                          <p>You're receiving this message because you have an account in the ICODA Gateway.</p>
                           <p><a style="color: #475da7;" href="${unsubscribeLink}">Unsubscribe</a> if you want to stop receiving these.</p>
                         </td>
                       </tr>`;
