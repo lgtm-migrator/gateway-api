@@ -79,8 +79,8 @@ module.exports = {
                 emailGenerator.sendEmail(
                     optedInEmailRecipients,
                     constants.hdrukEmail,
-                    `You have received a new message on the HDR UK Innovation Gateway`,
-                    `You have received a new message on the HDR UK Innovation Gateway. <br> Log in to view your messages here : <a href='${process.env.homeURL}'>HDR UK Innovation Gateway</a>`
+                    `You have received a new message on the ICODA Gateway`,
+                    `You have received a new message on the ICODA Innovation Gateway. <br> Log in to view your messages here : <a href='${process.env.homeURL}'>ICODA Gateway</a>`
                 );
             }
             // 10. Return successful response with message data

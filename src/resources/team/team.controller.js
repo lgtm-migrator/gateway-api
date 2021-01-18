@@ -4,6 +4,7 @@ import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import notificationBuilder from '../utilities/notificationBuilder';
 import constants from '../utilities/constants.util';
+import i18next from '../internationalization/i18next';
 
 // GET api/v1/teams/:id
 const getTeamById = async (req, res) => {
@@ -367,7 +368,7 @@ const createNotifications = async (type, context, team, user) => {
 			html = emailGenerator.generateRemovedFromTeam(options);
 			emailGenerator.sendEmail(
 				[removedUser],
-				constants.hdrukEmail,
+				`${i18next.t('translation:email.sender')}`,
 				`You have been removed from the team ${teamName}`,
 				html,
 				false
@@ -380,7 +381,7 @@ const createNotifications = async (type, context, team, user) => {
 			// 2. Create user notifications
 			notificationBuilder.triggerNotificationMessage(
 				newUserIds,
-				`You have been added to the team ${teamName} on the HDR UK Innovation Gateway`,
+				`You have been added to the team ${teamName} on the ${i18next.t('translation:environment')} Gateway`,
 				'team',
 				teamName
 			);
@@ -392,8 +393,8 @@ const createNotifications = async (type, context, team, user) => {
 			html = emailGenerator.generateAddedToTeam(options);
 			emailGenerator.sendEmail(
 				newUsers,
-				constants.hdrukEmail,
-				`You have been added as a reviewer to the team ${teamName} on the HDR UK Innovation Gateway`,
+				`${i18next.t('translation:email.sender')}`,
+				`You have been added as a reviewer to the team ${teamName} on the ${i18next.t('translation:environment')} Gateway`,
 				html,
 				false
 			);
@@ -405,8 +406,8 @@ const createNotifications = async (type, context, team, user) => {
 			html = emailGenerator.generateAddedToTeam(options);
 			emailGenerator.sendEmail(
 				newUsers,
-				constants.hdrukEmail,
-				`You have been added as a manager to the team ${teamName} on the HDR UK Innovation Gateway`,
+				`${i18next.t('translation:email.sender')}`,
+				`You have been added as a manager to the team ${teamName} on the ${i18next.t('translation:environment')} Gateway`,
 				html,
 				false
 			);
