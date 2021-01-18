@@ -4,6 +4,8 @@ import { UserModel } from '../user/user.model';
 import { createDiscourseTopic } from '../discourse/discourse.service';
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
+import { utils } from '../auth';
+import { ROLES } from '../user/user.roles';
 const asyncModule = require('async');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const urlValidator = require('../utilities/urlValidator');
@@ -279,10 +281,21 @@ const setStatus = async (req, res) => {
 		try {
 			const { activeflag, rejectionReason } = req.body;
 			const id = req.params.id;
+			const userId = req.user.id;
+			let tool;
 
-			let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
-			if (!tool) {
-				reject(new Error('Tool not found'));
+			if (utils.whatIsRole(req) === ROLES.Admin) {
+				tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
+				if (!tool) {
+					reject(new Error('Tool not found'));
+				}
+			} else if (activeflag === 'archive') {
+				tool = await Data.findOneAndUpdate({ $and: [{ id: id }, { authors: userId }] }, { $set: { activeflag: activeflag } });
+				if (!tool) {
+					reject(new Error('Tool not found or user not authorised to change Tool status'));
+				}
+			} else {
+				reject(new Error('Not authorised to change the status of this Tool'));
 			}
 
 			if (tool.authors) {
