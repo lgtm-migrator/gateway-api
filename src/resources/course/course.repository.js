@@ -220,7 +220,7 @@ const getCourseAdmin = async (req, res) => {
 		} else {
 			searchAll = true;
 		}
-		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit, status), getCountsByStatus()]).then(values => {
+		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit), getCountsByStatus()]).then(values => {
 			resolve(values);
 		});
 	});
