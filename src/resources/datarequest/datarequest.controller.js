@@ -1615,6 +1615,7 @@ module.exports = {
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
+					id: accessRecord._id,
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -1691,6 +1692,7 @@ module.exports = {
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
+					id: accessRecord._id,
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
