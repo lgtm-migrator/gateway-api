@@ -219,7 +219,7 @@ const _buildSubjectTitle = (user, title, submissionType) => {
  */
 const _buildEmail = (fullQuestions, questionAnswers, options) => {
 	let parent;
-  let { userType, userName, userEmail, datasetTitles, submissionType } = options;
+  let { userType, userName, userEmail, datasetTitles, submissionType, id } = options;
   let heading = submissionType === constants.submissionTypes.INITIAL ? `New data access request application` : `Existing data access request application with new updates`;
 	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
@@ -326,7 +326,9 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
 		}
 		table += `</table></td></tr>`;
 	}
-	table += ` </tbody></table></div>`;
+	table += ` </tbody></table>   <div style="padding: 0 40px 40px 40px;">
+  ${_displayDARLink(id)}
+  </div></div>`;
 
 	return { html: table, jsonContent };
 };
