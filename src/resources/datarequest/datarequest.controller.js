@@ -1910,6 +1910,7 @@ module.exports = {
 					};
 					// Build email template
 					({ html, jsonContent } = await emailGenerator.generateEmail(
+						aboutApplication,
 						questions,
 						pages,
 						questionPanels,
@@ -1999,6 +2000,7 @@ module.exports = {
 					};
 					// Build email template
 					({ html, jsonContent } = await emailGenerator.generateEmail(
+						aboutApplication,
 						questions,
 						pages,
 						questionPanels,
