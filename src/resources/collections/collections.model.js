@@ -14,7 +14,8 @@ const CollectionSchema = new Schema(
 		relatedObjects: [
 			{
 				objectId: String,
-				reason: String,
+                reason: String,
+                pid: String,
 				objectType: String,
 				user: String,
 				updated: String,

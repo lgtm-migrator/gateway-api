@@ -13,7 +13,8 @@ const CourseSchema = new Schema(
 			{
 				objectId: String,
 				reason: String,
-				objectType: String,
+                objectType: String,
+                pid: String,
 				user: String,
 				updated: String,
 			},
