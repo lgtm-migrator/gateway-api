@@ -223,6 +223,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
   let { userType, userName, userEmail, datasetTitles, submissionType } = options;
   let dateSubmitted = moment().format('D MMM YYYY');
   let { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
+  let linkNationalCoreStudies = nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
   let heading = submissionType === constants.submissionTypes.INITIAL ? `New data access request application` : `Existing data access request application with new updates`;
 	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
@@ -258,8 +259,8 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
                       </tr>
                       <tr>
-                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">NCS project</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${isNationalCoreStudies ? `${_displayNCSProjectLink(nationalCoreStudiesProjectId)}` : 'no'}</td>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Related NCS project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${isNationalCoreStudies ? `<a style="color: #475da7;" href="${linkNationalCoreStudies}">View NCS project</a>` : 'no'}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
@@ -283,7 +284,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 
 	// Create json content payload for attaching to email
 	const jsonContent = {
-    applicationDetails: { projectName, isNationalCoreStudies, datasetTitles, dateSubmitted, applicantName: userName },
+    applicationDetails: { projectName, linkNationalCoreStudies, datasetTitles, dateSubmitted, applicantName: userName },
 		questions: { ...fullQuestions },
 		answers: { ...questionAnswers },
 	};
@@ -517,13 +518,6 @@ const _displayDARLink = (accessId) => {
 	let darLink = `${process.env.homeURL}/data-access-request/${accessId}`;
 	return `<a style="color: #475da7;" href="${darLink}">View application</a>`;
 };
-
-const _displayNCSProjectLink = (nationalCoreStudiesProjectId) => {
-  if (!nationalCoreStudiesProjectId) return '';
-
-  let entityLink = `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
-	return `<a style="color: #475da7;" href="${entityLink}">View NCS project</a>`;
-}
 
 const _generateDARStatusChangedEmail = (options) => {
 	let {
