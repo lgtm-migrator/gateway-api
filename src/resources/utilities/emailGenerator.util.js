@@ -99,25 +99,27 @@ const _initalQuestionSpread = (questions, pages, questionPanels) => {
 
 				// pass in questionPanels
 				let questionPanel = [...questionPanels].find((i) => i.panelId === qSId);
-				// find page it belongs too
-				let page = [...pages].find((i) => i.pageId === questionPanel.pageId);
+        // find page it belongs too
+        if(questionPanel) {
+          let page = [...pages].find((i) => i.pageId === questionPanel.pageId);
 
-				// if page not found skip and the questionId isnt excluded
-				if (
-					typeof page !== 'undefined' &&
-					!excludedQuestionSetIds.includes(qId)
-				) {
-					// if it is a generated field ie ui driven add back on uniqueId
-					let obj = {
-						page: page.title,
-						section: questionPanel.navHeader,
-						questionSetId: qsFullId,
-						questionSetHeader,
-						...question,
-					};
-					// update flatQuestionList array, spread previous add new object
-					flatQuestionList = [...flatQuestionList, obj];
-				}
+          // if page not found skip and the questionId isnt excluded
+          if (
+            typeof page !== 'undefined' &&
+            !excludedQuestionSetIds.includes(qId)
+          ) {
+            // if it is a generated field ie ui driven add back on uniqueId
+            let obj = {
+              page: page.title,
+              section: questionPanel.navHeader,
+              questionSetId: qsFullId,
+              questionSetHeader,
+              ...question,
+            };
+            // update flatQuestionList array, spread previous add new object
+            flatQuestionList = [...flatQuestionList, obj];
+          }
+        }
 			}
 		}
 	}
@@ -216,9 +218,12 @@ const _buildSubjectTitle = (user, title, submissionType) => {
  * @param   {Object}  options
  * @return  {String} Questions Answered
  */
-const _buildEmail = (fullQuestions, questionAnswers, options) => {
+const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) => {
 	let parent;
   let { userType, userName, userEmail, datasetTitles, submissionType } = options;
+  let dateSubmitted = moment().format('D MMM YYYY');
+  let { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
+  let linkNationalCoreStudies = nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
   let heading = submissionType === constants.submissionTypes.INITIAL ? `New data access request application` : `Existing data access request application with new updates`;
 	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
@@ -250,14 +255,20 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
                   <td bgcolor="#fff" style="padding: 0; border: 0;">
                     <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Related NCS project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${isNationalCoreStudies ? `<a style="color: #475da7;" href="${linkNationalCoreStudies}">View NCS project</a>` : 'no'}</td>
+                      </tr>
+                      <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of submission</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment().format(
-													'D MMM YYYY'
-												)}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateSubmitted}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicant</td>
@@ -273,6 +284,7 @@ const _buildEmail = (fullQuestions, questionAnswers, options) => {
 
 	// Create json content payload for attaching to email
 	const jsonContent = {
+    applicationDetails: { projectName, linkNationalCoreStudies, datasetTitles, dateSubmitted, applicantName: userName },
 		questions: { ...fullQuestions },
 		answers: { ...questionAnswers },
 	};
@@ -437,6 +449,7 @@ const _getUserDetails = async (userObj) => {
 };
 
 const _generateEmail = async (
+  aboutApplication,
 	questions,
 	pages,
 	questionPanels,
@@ -464,6 +477,7 @@ const _generateEmail = async (
 	let fullQuestions = _groupByPageSection([...questionList]);
 	// build up  email with  values
 	let { html, jsonContent } = _buildEmail(
+    aboutApplication,
 		fullQuestions,
 		flatQuestionAnswers,
 		options
