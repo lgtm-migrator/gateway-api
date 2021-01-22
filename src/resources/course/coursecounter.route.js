@@ -5,8 +5,8 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 
 const datasetLimiter = rateLimit({
-	windowMs: 60 * 60 * 1000, // 1 hour window
-	max: 10, // start blocking after 10 requests
+	windowMs: 60 * 1000, // 1 minute window
+	max: 50, // start blocking after 50 requests
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
 });
 

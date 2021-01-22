@@ -89,6 +89,11 @@ router.post('/:id/amendments', passport.authenticate('jwt'), amendmentController
 // @access  Private - Manager
 router.post('/:id/requestAmendments', passport.authenticate('jwt'), amendmentController.requestAmendments);
 
+// @route   POST api/v1/data-access-request/:id/actions
+// @desc    Perform an action on a presubmitted application form e.g. add/remove repeatable section
+// @access  Private - Applicant
+router.post('/:id/actions', passport.authenticate('jwt'), datarequestController.performAction);
+
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record
 // @access  Private - Applicant (Gateway User)
