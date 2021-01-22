@@ -123,9 +123,10 @@ router.post('/token', async (req, res) => {
 				});
 			}
 			// Construct JWT for service account
-			const jwt = signToken({ _id: serviceAccount._id, id: serviceAccount.id, timeStamp: Date.now() });
+			const token_type = 'jwt', expires_in = 900;
+			const jwt = signToken({ _id: serviceAccount._id, id: serviceAccount.id, timeStamp: Date.now() }, expires_in);
 			const access_token = `Bearer ${jwt}`;
-			const token_type = 'jwt', expires_in = 604800;
+			
 			// Return payload
 			return res.status(200).json({
 				access_token,

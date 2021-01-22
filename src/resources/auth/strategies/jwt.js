@@ -7,8 +7,22 @@ import { signToken } from '../utils';
 const JWTStrategy = passportJWT.Strategy;
 
 const strategy = () => {
+	const extractJWT = (req) => {
+		// 1. Default extract jwt from request cookie
+		let { cookies: { jwt = '' }} = req;
+		if(!_.isEmpty(jwt)) {
+			// 2. Return jwt if found in cookie
+			return jwt;
+		}
+		// 2. Fallback/external integration extracts jwt from authorization header
+		let { headers: { authorization = '' }} = req;
+		// If token contains a type, strip it and return jwt
+		jwt = authorization;
+		return jwt;
+	}
+
 	const strategyOptions = {
-		jwtFromRequest: req => req.cookies.jwt || req.headers['authorization'],
+		jwtFromRequest: extractJWT,
 		secretOrKey: process.env.JWTSecret,
 		passReqToCallback: true,
 	};
