@@ -38,7 +38,24 @@ router.get('/entityid/:entityID', async (req, res) => {
 	var q = Collections.aggregate([
 		{
 			$match: {
-				$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.entityID } } }, { publicflag: true }, { activeflag: 'active' }],
+				$and: [
+					{
+						relatedObjects: {
+							$elemMatch: {
+								$or: [
+									{
+										objectId: req.params.entityID,
+									},
+									{
+										pid: req.params.entityID,
+									},
+								],
+							},
+						},
+					},
+					{ publicflag: true },
+					{ activeflag: 'active' },
+				],
 			},
 		},
 		{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
