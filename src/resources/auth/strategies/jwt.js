@@ -3,6 +3,7 @@ import passportJWT from 'passport-jwt';
 import { to } from 'await-to-js';
 import { getUserById } from '../../user/user.repository';
 import { signToken } from '../utils';
+import _ from 'lodash';
 
 const JWTStrategy = passportJWT.Strategy;
 
@@ -16,8 +17,10 @@ const strategy = () => {
 		}
 		// 2. Fallback/external integration extracts jwt from authorization header
 		let { headers: { authorization = '' }} = req;
-		// If token contains a type, strip it and return jwt
-		jwt = authorization;
+		// If token contains bearer type, strip it and return jwt
+		if(authorization.split(' ')[0] === 'Bearer') {
+			jwt = authorization.split(' ')[1];
+		}
 		return jwt;
 	}
 
