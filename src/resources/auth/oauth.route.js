@@ -2,12 +2,12 @@ import express from 'express';
 import _ from 'lodash';
 
 import { signToken } from './utils';
-import { getServiceAccount } from '../user/user.repository';
+import { getServiceAccountByClientCredentials } from '../user/user.repository';
 
 const router = express.Router();
 
 // @router   POST /oauth/token
-// @desc     Issues a JWT for a valid authentication attempt using client credentials
+// @desc     Issues a JWT for a valid authentication attempt using a user defined grant type
 // @access   Public
 router.post('/token', async (req, res) => {
 	// 1. Deconstruct grant type
@@ -25,7 +25,7 @@ router.post('/token', async (req, res) => {
 				});
 			}
 			// Find an associated service account based on the credentials passed
-			const serviceAccount = await getServiceAccount(client_id, client_secret);
+			const serviceAccount = await getServiceAccountByClientCredentials(client_id, client_secret);
 			if (_.isNil(serviceAccount)) {
 				return res.status(400).json({
 					success: false,

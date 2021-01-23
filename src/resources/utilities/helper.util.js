@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 const _censorWord = str => {
 	if(str.length === 1) 
 		return '*';
@@ -35,6 +37,10 @@ const _generatedNumericId = () => {
 	return parseInt(Math.random().toString().replace('0.', ''));
 };
 
+const _generateAlphaNumericString = (length) => {
+	return crypto.randomBytes(length).toString('hex').substring(length);
+};
+
 const _hidePrivateProfileDetails = persons => {
 	return persons.map(person => {
 		let personWithPrivateDetailsRemoved = person;
@@ -66,6 +72,7 @@ export default {
 	arraysEqual: _arraysEqual,
 	generateFriendlyId: _generateFriendlyId,
 	generatedNumericId: _generatedNumericId,
+	generateAlphaNumericString: _generateAlphaNumericString,
 	hidePrivateProfileDetails: _hidePrivateProfileDetails,
 	getEnvironment: _getEnvironment,
 };
