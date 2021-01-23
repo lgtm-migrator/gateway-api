@@ -172,9 +172,11 @@ app.use('/api/v1/openid', oidc.callback);
 app.use('/api', router);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+app.use('/oauth', require('../resources/auth/oauth.route'));
 app.use('/api/v1/auth/sso/discourse', require('../resources/auth/sso/sso.discourse.router'));
 app.use('/api/v1/auth', require('../resources/auth/auth.route'));
 app.use('/api/v1/auth/register', require('../resources/user/user.register.route'));
+
 
 app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/topics', require('../resources/topic/topic.route'));
