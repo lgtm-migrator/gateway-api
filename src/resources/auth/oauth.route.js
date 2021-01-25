@@ -25,7 +25,7 @@ router.post('/token', async (req, res) => {
 				});
 			}
 			// Find an associated service account based on the credentials passed
-			const serviceAccount = await getServiceAccountByClientCredentials(client_id, client_secret);
+			const serviceAccount = await getServiceAccountByClientCredentials(client_id.toString(), client_secret.toString());
 			if (_.isNil(serviceAccount)) {
 				return res.status(400).json({
 					success: false,
