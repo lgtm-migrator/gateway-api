@@ -1750,7 +1750,7 @@ module.exports = {
 						submissionType: constants.submissionTypes.INITIAL,
 					};
 					// Build email template
-					({ html, jsonContent } = await emailGenerator.generateEmail(questions, pages, questionPanels, questionAnswers, options));
+					({ html, jsonContent } = await emailGenerator.generateEmail(aboutApplication, questions, pages, questionPanels, questionAnswers, options));
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
@@ -1826,7 +1826,7 @@ module.exports = {
 						submissionType: constants.submissionTypes.RESUBMISSION,
 					};
 					// Build email template
-					({ html, jsonContent } = await emailGenerator.generateEmail(questions, pages, questionPanels, questionAnswers, options));
+					({ html, jsonContent } = await emailGenerator.generateEmail(aboutApplication, questions, pages, questionPanels, questionAnswers, options));
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
