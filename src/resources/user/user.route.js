@@ -100,7 +100,7 @@ router.post('/serviceaccount', passport.authenticate('jwt'), utils.checkIsInRole
 			});
 		}
 		// 2. Create service account
-		const serviceAccount = await createServiceAccount(firstname.toString(), lastname.toString(), email.toString(), teamId.toString());
+		const serviceAccount = await createServiceAccount(firstname, lastname, email, teamId);
 		if(_.isNil(serviceAccount)) {
 			return res.status(400).json({
 				success: false,

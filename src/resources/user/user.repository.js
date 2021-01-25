@@ -31,7 +31,7 @@ export async function getUserByUserId(id) {
 
 export async function getServiceAccountByClientCredentials(clientId, clientSecret) {
 	// 1. Locate service account by clientId, return undefined if no document located
-	const serviceAccount = await UserModel.findOne({ clientId, isServiceAccount: true });
+	const serviceAccount = await UserModel.findOne({ clientId:clientId, isServiceAccount: true });
 	if (_.isNil(serviceAccount)) {
 		return;
 	}
@@ -54,7 +54,7 @@ export async function createServiceAccount(firstname, lastname, email, teamId) {
 		teamRole = 'manager',
 		providerId = 'Service Account';
 	// 2. Ensure team is valid before creating service account
-	const team = await TeamModel.findById(teamId);
+	const team = await TeamModel.findById(teamId:teamId);
 	// 3. Return undefined if no team found
 	if (_.isNil(team)) {
 		return;
