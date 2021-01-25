@@ -86,11 +86,25 @@ router.get('/:datasetID', async (req, res) => {
 	}
 
 	let pid = dataset.pid;
-	let relatedData = await Data.find({ relatedObjects: { $elemMatch: { objectId: { $in: [datasetID, pid] } } } });
 
-	relatedData.forEach(dat => { 
+	let relatedData = await Data.find({
+		relatedObjects: {
+			$elemMatch: {
+				$or: [
+					{
+						objectId: { $in: [datasetID] },
+					},
+					{
+						pid: { $in: [pid] },
+					},
+				],
+			},
+		},
+	});
+
+	relatedData.forEach(dat => {
 		dat.relatedObjects.forEach(relatedObject => {
-			if ((relatedObject.objectId === datasetID && dat.id !== datasetID) || (relatedObject.objectId === pid && dat.id !== pid)) {
+			if ((relatedObject.objectId === datasetID && dat.id !== datasetID) || (relatedObject.pid === pid && dat.id !== pid)) {
 				if (typeof dataset.relatedObjects === 'undefined') dataset.relatedObjects = [];
 				dataset.relatedObjects.push({
 					objectId: dat.id,
