@@ -18,6 +18,9 @@ const UserSchema = new Schema(
 		redirectURL: String,
 		discourseUsername: String,
 		discourseKey: String,
+		isServiceAccount: { type: Boolean, default: false },
+		clientId: String,
+		clientSecret: String
 	},
 	{
 		timestamps: true,

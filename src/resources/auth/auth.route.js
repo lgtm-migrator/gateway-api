@@ -1,10 +1,11 @@
 import express from 'express';
+import _ from 'lodash';
 import { to } from 'await-to-js';
-import { verifyPassword } from '../auth/utils';
+import passport from 'passport';
+
+import { verifyPassword, getRedirectUrl } from '../auth/utils';
 import { login } from '../auth/strategies/jwt';
 import { getUserByEmail } from '../user/user.repository';
-import { getRedirectUrl } from '../auth/utils';
-import passport from 'passport';
 
 const router = express.Router();
 
