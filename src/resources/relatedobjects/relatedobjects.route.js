@@ -1,4 +1,5 @@
 import express from 'express';
+import _ from 'lodash';
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 
@@ -24,23 +25,22 @@ router.get('/:id', async (req, res) => {
 	} else {
 		try {
 			// Get related dataset
-			// 1. Search for a dataset based on pid
-			let data = await Data.aggregate([{ $match: { $and: [{ pid: id }, { activeflag: 'active' }] } }]).exec();
+			let dataVersion = await Data.findOne({ datasetid: id });
 
-			// 2. If dataset not found search for a dataset based on datasetID
-			if (!data || data.length <= 0) {
-				data = await Data.aggregate([{ $match: { datasetid: id } }]).exec();
+            if (!_.isNil(dataVersion)) {
+                id = dataVersion.pid;
+            }
+            
+            let data = await Data.findOne({ pid: id, activeflag: 'active' });
 
-				// 3. Use retrieved dataset's pid to search by pid again
-				data = await Data.aggregate([{ $match: { $and: [{ pid: data[0].pid }, { activeflag: 'active' }] } }]).exec();
+            if (_.isNil(data)) {
+                data = await Data.findOne({ pid: id, activeflag: 'archive'}).sort({createdAt:-1});
+                if (_.isNil(data)) {
+                    data = dataVersion;
+                }
+            }
 
-				// 4. If related dataset is archived, append old datasetid so it can be unlinked later
-				if (id !== data[0].datasetid) {
-					data[0].oldDatasetId = id;
-				}
-			}
-
-			return res.json({ success: true, data: data });
+			return res.json({ success: true, data: [data] });
 		} catch (err) {
 			return res.json({ success: false, error: err });
 		}
