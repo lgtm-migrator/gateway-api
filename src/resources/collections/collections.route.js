@@ -34,7 +34,7 @@ router.get('/:collectionID', async (req, res) => {
         data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
         return res.json({ success: true, data: data });
     });
-
+})
 
     router.get('/entityid/:entityID', async (req, res) => {
         let entityID = req.params.entityID
@@ -315,4 +315,3 @@ router.get('/:collectionID', async (req, res) => {
             );
         });
     }
-
