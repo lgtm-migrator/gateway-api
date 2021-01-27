@@ -38,26 +38,26 @@ router.get(
     datasetLimiter,
     async (req, res) => {
         var q = Data.find(
-            { "type" : "dataset", "pid" : { "$exists" : true } }, 
-            { "pid" : 1, "datasetid" : 1 }
-        ).sort({ "pid" : 1 });
-        
+            { "type": "dataset", "pid": { "$exists": true } },
+            { "pid": 1, "datasetid": 1 }
+        ).sort({ "pid": 1 });
+
         q.exec((err, data) => {
             var listOfPIDs = []
-            
+
             data.forEach((item) => {
                 if (listOfPIDs.find(x => x.pid === item.pid)) {
                     var index = listOfPIDs.findIndex(x => x.pid === item.pid)
                     listOfPIDs[index].datasetIds.push(item.datasetid)
                 }
                 else {
-                    listOfPIDs.push({"pid":item.pid, "datasetIds":[item.datasetid]})
+                    listOfPIDs.push({ "pid": item.pid, "datasetIds": [item.datasetid] })
                 }
-            
+
             })
 
             return res.json({ success: true, data: listOfPIDs });
-        })        
+        })
     }
 );
 
@@ -65,27 +65,25 @@ router.get(
 // @desc     Returns a dataset based on either datasetID or PID provided
 // @access   Public
 router.get('/:datasetID', async (req, res) => {
-
-    let { datasetID = ''} = req.params; 
-    if(_.isEmpty(datasetID)) { 
+    let { datasetID = '' } = req.params;
+    if (_.isEmpty(datasetID)) {
         return res.status(400).json({ success: false })
     };
 
     let isLatestVersion = true;
-    
-    // Search for a dataset based on pid
-    let dataset = await Data.findOne({ pid: datasetID, activeflag: 'active'}); 
 
-    if(!_.isNil(dataset)){ 
-        // Set the actual datasetId value based on pid provided 
-        datasetID = dataset.datasetid; 
-    }
-    else{
+    // Search for a dataset based on pid
+    let dataset = await Data.findOne({ pid: datasetID, activeflag: 'active' });
+
+    if (!_.isNil(dataset)) {
+        // Set the actual datasetId value based on pid provided
+        datasetID = dataset.datasetid;
+    } else {
         // Search for a dataset based on datasetID
-        dataset = await Data.findOne({ datasetid: datasetID}); 
-        
+        dataset = await Data.findOne({ datasetid: datasetID });
+
         // Pull a dataset version from MDC if it doesn't exist on our DB
-        if(_.isNil(dataset)){ 
+        if (_.isNil(dataset)) {
             try {
                 dataset = await loadDataset(datasetID);
             } catch (err) {
@@ -93,19 +91,39 @@ router.get('/:datasetID', async (req, res) => {
             }
         }
 
-        isLatestVersion = (dataset.activeflag === 'active');
+        isLatestVersion = dataset.activeflag === 'active';
     }
 
     let pid = dataset.pid;
-    let relatedData = await Data.find({ "relatedObjects": { $elemMatch: { "objectId": {$in : [datasetID, pid] } } } });
 
-    relatedData.forEach((dat) => {
-        dat.relatedObjects.forEach((relatedObject) => {
-            if ((relatedObject.objectId === datasetID && dat.id !== datasetID) || (relatedObject.objectId === pid && dat.id !== pid)){
-                if (typeof dataset.relatedObjects === "undefined") dataset.relatedObjects=[];
-                dataset.relatedObjects.push({ objectId: dat.id, reason: relatedObject.reason, objectType: dat.type, user: relatedObject.user, updated: relatedObject.updated })
+    let relatedData = await Data.find({
+        relatedObjects: {
+            $elemMatch: {
+                $or: [
+                    {
+                        objectId: { $in: [datasetID] },
+                    },
+                    {
+                        pid: { $in: [pid] },
+                    },
+                ],
+            },
+        },
+    });
+
+    relatedData.forEach(dat => {
+        dat.relatedObjects.forEach(relatedObject => {
+            if ((relatedObject.objectId === datasetID && dat.id !== datasetID) || (relatedObject.pid === pid && dat.id !== pid)) {
+                if (typeof dataset.relatedObjects === 'undefined') dataset.relatedObjects = [];
+                dataset.relatedObjects.push({
+                    objectId: dat.id,
+                    reason: relatedObject.reason,
+                    objectType: dat.type,
+                    user: relatedObject.user,
+                    updated: relatedObject.updated,
+                });
             }
-        })
+        });
     });
 
     return res.json({ success: true, isLatestVersion: isLatestVersion, data: dataset });
@@ -118,15 +136,15 @@ router.get('/:datasetID', async (req, res) => {
 router.get(
     '/',
     async (req, res) => {
-      req.params.type = 'dataset';
+        req.params.type = 'dataset';
         await getToolsAdmin(req)
-          .then((data) => {
-            return res.json({ success: true, data });
-          })
-          .catch((err) => {
-            return res.json({ success: false, err });
-          });
+            .then((data) => {
+                return res.json({ success: true, data });
+            })
+            .catch((err) => {
+                return res.json({ success: false, err });
+            });
     }
-  );
+);
 
 module.exports = router;
