@@ -1,5 +1,5 @@
 import { model, Schema } from 'mongoose';
- 
+
 const CourseSchema = new Schema(
     {
         id: Number,
@@ -9,13 +9,16 @@ const CourseSchema = new Schema(
         //updatedon: Date,
         counter: Number,
         discourseTopicId: Number,
-        relatedObjects: [{
-            objectId: String,
-            reason: String,
-            objectType: String,
-            user: String,
-            updated: String
-        }],
+        relatedObjects: [
+            {
+                objectId: String,
+                reason: String,
+                objectType: String,
+                pid: String,
+                user: String,
+                updated: String,
+            },
+        ],
 
         title: String,
         link: String,
@@ -26,19 +29,19 @@ const CourseSchema = new Schema(
         keywords: [String],
         domains: [String],
         courseOptions: [{
-            flexibleDates: {type: Boolean, default: false },
+            flexibleDates: { type: Boolean, default: false },
             startDate: Date,
             studyMode: String,
             studyDurationNumber: Number,
-            studyDurationMeasure: String, 
-            fees: [{ 
+            studyDurationMeasure: String,
+            fees: [{
                 feeDescription: String,
                 feeAmount: Number,
                 feePer: String
             }],
         }],
         entries: [
-            { 
+            {
                 level: String,
                 subject: String
             }
