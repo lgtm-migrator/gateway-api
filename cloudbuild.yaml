@@ -1,6 +1,9 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/$PROJECT_ID/${_APP_NAME}:latest', '.']
+  entrypoint: 'bash'
+  args: ['-c', 'docker pull gcr.io/$PROJECT_ID/${_APP_NAME}:latest || exit 0']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/${_APP_NAME}:latest', '--cache-from', 'gcr.io/$PROJECT_ID/${_APP_NAME}:latest', '.']
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/$PROJECT_ID/${_APP_NAME}:latest']
 - name: 'gcr.io/cloud-builders/gcloud'
@@ -15,3 +18,5 @@ steps:
   args: ['run', 'deploy', 'uatbeta-api', '--image', 'gcr.io/$PROJECT_ID/${_APP_NAME}:latest', '--platform', 'managed', '--region', '${_REGION}', '--allow-unauthenticated']
 images:
 - gcr.io/$PROJECT_ID/${_APP_NAME}:latest
+options:
+  machineType: 'E2_HIGHCPU_8'
