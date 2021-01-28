@@ -316,7 +316,21 @@ const _roleTypes = {
 	REVIEWER: 'reviewer',
 };
 
-// </DAR related enums>
+// </Team related enums>
+
+// <Dataset onboarding related enums>
+
+const _datatsetStatuses = {
+	DRAFT: 'draft',
+	INPROGRESS: 'inProgress',
+	INREVIEW: 'inReview',
+	APPROVED: 'approved',
+	REJECTED: 'rejected',
+	APPROVEDWITHCONDITIONS: 'approved with conditions',
+	WITHDRAWN: 'withdrawn',
+};
+
+// </Dataset onboarding related enums>
 
 const _hdrukEmail = 'enquiry@healthdatagateway.org';
 
@@ -333,5 +347,6 @@ export default {
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
-	hdrukEmail: _hdrukEmail,
+    hdrukEmail: _hdrukEmail,
+    datatsetStatuses: _datatsetStatuses
 };

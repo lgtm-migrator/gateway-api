@@ -96,7 +96,9 @@ const DataSchema = new Schema(
 			versionLinks: [],
 			phenotypes: [],
 		},
-		datasetv2: {},
+        datasetv2: {},
+        questionAnswers: {},
+        lastActivity: Date,
 
 		//not used
 		rating: Number,

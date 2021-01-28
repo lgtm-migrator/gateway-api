@@ -8,6 +8,8 @@ const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '
 	if (userType === constants.userTypes.CUSTODIAN) {
 		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus] };
 	} else {
+        //let test = JSON.stringify(constants.userQuestionActions[userType][applicationStatus]);
+        //questionActions: [{"key":"guidance","icon":"far fa-question-circle","color":"#475da7","toolTip":"Guidance","order":1}]
 		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][applicationStatus] };
 	}
 	return formattedSchema;

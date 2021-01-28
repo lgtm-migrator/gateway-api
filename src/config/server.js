@@ -208,6 +208,7 @@ app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.rout
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
 app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
+app.use('/api/v1/dataset-onboarding', require('../resources/dataset/datasetonboarding.route'));
 
 app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/datarequest.schemas.route'));
 app.use('/api/v1/data-access-request', require('../resources/datarequest/datarequest.route'));
