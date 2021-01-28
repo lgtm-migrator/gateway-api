@@ -51,6 +51,23 @@ const DataSchema = new Schema(
         journalYear: Number,
         isPreprint: Boolean,
 
+        //person related fields
+        firstname: String,
+        lastname: String,
+        bio: String, //institution
+        showBio: Boolean,
+        orcid: String,
+        showOrcid: Boolean,
+        emailNotifications: Boolean,
+        terms: Boolean,
+        sector: String,
+        showSector: Boolean,
+        organisation: String,
+        showOrganisation: {type: Boolean, default: false },
+        showLink: Boolean,
+        showDomain: Boolean,
+        profileComplete: Boolean,
+
         //dataset related fields 
         datasetid: String,
         pid: String,
