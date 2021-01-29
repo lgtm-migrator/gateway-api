@@ -4,6 +4,8 @@ import { WorkflowModel } from './workflow.model';
 import teamController from '../team/team.controller';
 import helper from '../utilities/helper.util';
 import constants from '../utilities/constants.util';
+import emailGenerator from '../utilities/emailGenerator.util';
+import notificationBuilder from '../utilities/notificationBuilder';
 
 import moment from 'moment';
 import _ from 'lodash';
@@ -86,7 +88,7 @@ const getWorkflowById = async (req, res) => {
 // POST api/v1/workflows
 const createWorkflow = async (req, res) => {
 	try {
-		const { _id: userId } = req.user;
+		const { _id: userId, firstname, lastname } = req.user;
 		// 1. Look at the payload for the publisher passed
 		const { workflowName = '', publisher = '', steps = [] } = req.body;
 		if (_.isEmpty(workflowName.trim()) || _.isEmpty(publisher.trim()) || _.isEmpty(steps)) {
@@ -98,7 +100,14 @@ const createWorkflow = async (req, res) => {
 		// 2. Look up publisher and team
 		const publisherObj = await PublisherModel.findOne({
 			_id: publisher,
-		}).populate('team', 'members');
+		}).populate({
+			path: 'team members',
+			populate: {
+				path: 'users',
+				select: '_id id email firstname lastname',
+			},
+		});
+
 		if (!publisherObj) {
 			return res.status(400).json({
 				success: false,
@@ -114,6 +123,7 @@ const createWorkflow = async (req, res) => {
 		}
 		// 5. Create new workflow model
 		const id = helper.generatedNumericId();
+		// 6. set workflow obj for saving
 		let workflow = new WorkflowModel({
 			id,
 			workflowName,
@@ -121,21 +131,43 @@ const createWorkflow = async (req, res) => {
 			steps,
 			createdBy: new mongoose.Types.ObjectId(userId),
 		});
-		// 6. Submit save
+		// 7. save new workflow to db
 		workflow.save(function (err) {
 			if (err) {
-				console.error(err);
 				return res.status(400).json({
 					success: false,
 					message: err.message,
 				});
-			} else {
-				// 7. Return workflow payload
-				return res.status(201).json({
-					success: true,
-					workflow,
-				});
 			}
+			// 8. populate the workflow with the needed fiedls for our new notification and email
+			workflow.populate(
+				{
+					path: 'steps.reviewers',
+					select: 'firstname lastname email -_id',
+				},
+				(err, doc) => {
+					if (err) {
+						// 9. if issue
+						return res.status(400).json({
+							success: false,
+							message: err.message,
+						});
+					}
+					// 10. set context
+					let context = {
+						publisherObj: publisherObj.team.toObject(),
+						actioner: `${firstname} ${lastname}`,
+						workflow: doc.toObject(),
+					};
+					// 11. Generate new notifications / emails for managers of the team only on creation of a workflow
+					createNotifications(context, constants.notificationTypes.WORKFLOWCREATED);
+					// 12. full complete return
+					return res.status(201).json({
+						success: true,
+						workflow,
+					});
+				}
+			);
 		});
 	} catch (err) {
 		console.error(err.message);
@@ -281,6 +313,50 @@ const deleteWorkflow = async (req, res) => {
 			success: false,
 			message: 'An error occurred deleting the workflow',
 		});
+	}
+};
+
+const createNotifications = async (context, type = '') => {
+	if (!_.isEmpty(type)) {
+		// local variables set here
+		let custodianManagers = [],
+			managerUserIds = [],
+			options = {},
+			html = '';
+
+		// deconstruct context
+		let { publisherObj, workflow = {}, actioner = '' } = context;
+
+		// switch over types
+		switch (type) {
+			case constants.notificationTypes.WORKFLOWCREATED:
+				// 1. Get managers for publisher
+				custodianManagers = teamController.getTeamMembersByRole(publisherObj, constants.roleTypes.MANAGER);
+				// 2. Get managerIds for notifications
+				managerUserIds = custodianManagers.map(user => user.id);
+				// 3. deconstruct workflow
+				let { workflowName = 'Workflow Title', _id, steps, createdAt } = workflow;
+				// 4. setup options
+				options = {
+					actioner,
+					workflowName,
+					_id,
+					steps,
+					createdAt,
+				};
+				// 4. Create notifications for the managers only
+				await notificationBuilder.triggerNotificationMessage(
+					managerUserIds,
+					`A new workflow of ${workflowName} has been created`,
+					'workflow',
+					_id
+				);
+				// 5. Generate the email
+				html = await emailGenerator.generateWorkflowCreated(options);
+				// 6. Send email to custodian managers only within the team
+				await emailGenerator.sendEmail(custodianManagers, constants.hdrukEmail, `A Workflow has been created`, html, false);
+				break;
+		}
 	}
 };
 
@@ -599,6 +675,7 @@ const getWorkflowEmailContext = (accessRecord, workflow, relatedStepIndex) => {
 	}
 	return {
 		workflowName,
+		steps,
 		stepName,
 		startDateTime,
 		endDateTime,
@@ -636,4 +713,5 @@ export default {
 	getWorkflowStatus: getWorkflowStatus,
 	getReviewStatus: getReviewStatus,
 	getWorkflowEmailContext: getWorkflowEmailContext,
+	createNotifications: createNotifications,
 };

@@ -270,6 +270,8 @@ const _notificationTypes = {
 	MEMBERADDED: 'MemberAdded',
 	MEMBERREMOVED: 'MemberRemoved',
 	MEMBERROLECHANGED: 'MemberRoleChanged',
+	WORKFLOWASSIGNED: 'WorkflowAssigned',
+	WORKFLOWCREATED: 'WorkflowCreated'
 };
 
 const _applicationStatuses = {
