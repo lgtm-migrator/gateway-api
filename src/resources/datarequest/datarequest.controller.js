@@ -25,57 +25,39 @@ const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 module.exports = {
 	//GET api/v1/data-access-request
-	getAccessRequestsByUser: async (req, res) => {
-		try {
-			// 1. Deconstruct the
-			let { id: userId } = req.user;
-			// 2. Find all data access request applications created with single dataset version
-			let singleDatasetApplications = await DataRequestModel.find({
-				$and: [
-					{
-						$or: [{ userId: parseInt(userId) }, { authorIds: userId }],
-					},
-					{ dataSetId: { $ne: null } },
-				],
-			}).populate('dataset mainApplicant');
-			// 3. Find all data access request applications created with multi dataset version
-			let multiDatasetApplications = await DataRequestModel.find({
-				$and: [
-					{
-						$or: [{ userId: parseInt(userId) }, { authorIds: userId }],
-					},
-					{
-						$and: [{ datasetIds: { $ne: [] } }, { datasetIds: { $ne: null } }],
-					},
-				],
-			}).populate('datasets mainApplicant');
-			// 4. Return all users applications combined
-			const applications = [...singleDatasetApplications, ...multiDatasetApplications];
+getAccessRequestsByUser: async (req, res) => {
+    try {
+        // 1. Deconstruct the
+        let { id: userId } = req.user;
 
-			// 5. Append project name and applicants
-			let modifiedApplications = [...applications]
-				.map(app => {
-					return module.exports.createApplicationDTO(app.toObject(), constants.userTypes.APPLICANT);
-				})
-				.sort((a, b) => b.updatedAt - a.updatedAt);
+        // 2. Find all data access request applications created with multi dataset version
+        let applications = await DataRequestModel.find({ $or: [{ userId: parseInt(userId) }, { authorIds: userId }] }).populate('datasets mainApplicant');
 
-			let avgDecisionTime = module.exports.calculateAvgDecisionTime(applications);
+        // 3. Append project name and applicants
+        let modifiedApplications = [...applications]
+            .map(app => {
+                return module.exports.createApplicationDTO(app.toObject(), constants.userTypes.APPLICANT);
+            })
+            .sort((a, b) => b.updatedAt - a.updatedAt);
 
-			// 6. Return payload
-			return res.status(200).json({
-				success: true,
-				data: modifiedApplications,
-				avgDecisionTime,
-				canViewSubmitted: true,
-			});
-		} catch (error) {
-			console.error(error);
-			return res.status(500).json({
-				success: false,
-				message: 'An error occurred searching for user applications',
-			});
-		}
-	},
+        // 4. Calculate average decision time across submitted applications
+        let avgDecisionTime = module.exports.calculateAvgDecisionTime(applications);
+
+        // 5. Return payload
+        return res.status(200).json({
+            success: true,
+            data: modifiedApplications,
+            avgDecisionTime,
+            canViewSubmitted: true,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred searching for user applications',
+        });
+    }
+},
 
 	//GET api/v1/data-access-request/:requestId
 	getAccessRequestById: async (req, res) => {
