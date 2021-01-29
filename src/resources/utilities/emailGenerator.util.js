@@ -11,6 +11,18 @@ let questionList = [];
 let excludedQuestionSetIds = ['addRepeatableSection', 'removeRepeatableSection'];
 let autoCompleteLookups = { fullname: ['email'] };
 
+const _getStepReviewers = (reviewers = []) => {
+	if (!_.isEmpty(reviewers)) return [...reviewers].map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+
+	return '';
+};
+
+const _getStepSections = (sections = []) => {
+	if (!_.isEmpty(sections)) return [...sections].map(section => constants.darPanelMapper[section]).join(', ');
+
+	return '';
+};
+
 /**
  * [_unNestQuestionPanels]
  *
@@ -18,25 +30,19 @@ let autoCompleteLookups = { fullname: ['email'] };
  * @param   {Array<Object>} [{panelId, pageId, questionSets, ...}]
  * @return  {Array<Object>} [{panel}, {}]
  */
-const _unNestQuestionPanels = (panels) => {
+const _unNestQuestionPanels = panels => {
 	return [...panels].reduce((arr, panel) => {
 		// deconstruct questionPanel:[{panel}]
-		let {
-			panelId,
-			pageId,
-			questionSets,
-			questionPanelHeaderText,
-			navHeader,
-		} = panel;
+		let { panelId, pageId, questionSets, questionPanelHeaderText, navHeader } = panel;
 		if (typeof questionSets !== 'undefined') {
 			if (questionSets.length > 1) {
 				// filters excluded questionSetIds
-				let filtered = [...questionSets].filter((item) => {
+				let filtered = [...questionSets].filter(item => {
 					let [questionId, uniqueId] = item.questionSetId.split('_');
 					return !excludedQuestionSetIds.includes(questionId);
 				});
 				// builds new array of [{panelId, pageId, etc}]
-				let newPanels = filtered.map((set) => {
+				let newPanels = filtered.map(set => {
 					return {
 						panelId,
 						pageId,
@@ -83,13 +89,9 @@ const _initalQuestionSpread = (questions, pages, questionPanels) => {
 		let [qSId, uniqueQsId] = questionSetId.split('_');
 
 		// question set full Id ie: applicant_hUad8
-		let qsFullId =
-			typeof uniqueQsId !== 'undefined' ? `${qSId}_${uniqueQsId}` : qSId;
+		let qsFullId = typeof uniqueQsId !== 'undefined' ? `${qSId}_${uniqueQsId}` : qSId;
 		// remove out unwanted buttons or elements
-		if (
-			!excludedQuestionSetIds.includes(qSId) &&
-			questionSet.hasOwnProperty('questions')
-		) {
+		if (!excludedQuestionSetIds.includes(qSId) && questionSet.hasOwnProperty('questions')) {
 			for (let question of questionSet.questions) {
 				//deconstruct quesitonId from question
 				let { questionId } = question;
@@ -98,28 +100,25 @@ const _initalQuestionSpread = (questions, pages, questionPanels) => {
 				let [qId, uniqueQId] = questionId.split('_');
 
 				// pass in questionPanels
-				let questionPanel = [...questionPanels].find((i) => i.panelId === qSId);
-        // find page it belongs too
-        if(questionPanel) {
-          let page = [...pages].find((i) => i.pageId === questionPanel.pageId);
+				let questionPanel = [...questionPanels].find(i => i.panelId === qSId);
+				// find page it belongs too
+				if (questionPanel) {
+					let page = [...pages].find(i => i.pageId === questionPanel.pageId);
 
-          // if page not found skip and the questionId isnt excluded
-          if (
-            typeof page !== 'undefined' &&
-            !excludedQuestionSetIds.includes(qId)
-          ) {
-            // if it is a generated field ie ui driven add back on uniqueId
-            let obj = {
-              page: page.title,
-              section: questionPanel.navHeader,
-              questionSetId: qsFullId,
-              questionSetHeader,
-              ...question,
-            };
-            // update flatQuestionList array, spread previous add new object
-            flatQuestionList = [...flatQuestionList, obj];
-          }
-        }
+					// if page not found skip and the questionId isnt excluded
+					if (typeof page !== 'undefined' && !excludedQuestionSetIds.includes(qId)) {
+						// if it is a generated field ie ui driven add back on uniqueId
+						let obj = {
+							page: page.title,
+							section: questionPanel.navHeader,
+							questionSetId: qsFullId,
+							questionSetHeader,
+							...question,
+						};
+						// update flatQuestionList array, spread previous add new object
+						flatQuestionList = [...flatQuestionList, obj];
+					}
+				}
 			}
 		}
 	}
@@ -131,16 +130,13 @@ const _initalQuestionSpread = (questions, pages, questionPanels) => {
  *
  * @return  {Array<Object>} [{questionId, question}]
  */
-const _getAllQuestionsFlattened = (allQuestions) => {
+const _getAllQuestionsFlattened = allQuestions => {
 	let child;
 	if (!allQuestions) return;
 
 	for (let questionObj of allQuestions) {
 		if (questionObj.hasOwnProperty('questionId')) {
-			if (
-				questionObj.hasOwnProperty('page') &&
-				questionObj.hasOwnProperty('section')
-			) {
+			if (questionObj.hasOwnProperty('page') && questionObj.hasOwnProperty('section')) {
 				let { page, section, questionSetId, questionSetHeader } = questionObj;
 				if (typeof questionSetId !== 'undefined') qsId = questionSetId;
 				// set the parent page and parent section as nested wont have reference to its parent
@@ -150,8 +146,7 @@ const _getAllQuestionsFlattened = (allQuestions) => {
 			// split up questionId
 			let [qId, uniqueId] = questionId.split('_');
 			// actual quesitonId
-			let questionTitle =
-				typeof uniqueId !== 'undefined' ? `${qId}_${uniqueId}` : qId;
+			let questionTitle = typeof uniqueId !== 'undefined' ? `${qId}_${uniqueId}` : qId;
 			// if not in exclude list
 			if (!excludedQuestionSetIds.includes(questionTitle)) {
 				questionList = [
@@ -168,18 +163,12 @@ const _getAllQuestionsFlattened = (allQuestions) => {
 			}
 		}
 
-		if (
-			typeof questionObj.input === 'object' &&
-			typeof questionObj.input.options !== 'undefined'
-		) {
+		if (typeof questionObj.input === 'object' && typeof questionObj.input.options !== 'undefined') {
 			questionObj.input.options
-				.filter((option) => {
-					return (
-						typeof option.conditionalQuestions !== 'undefined' &&
-						option.conditionalQuestions.length > 0
-					);
+				.filter(option => {
+					return typeof option.conditionalQuestions !== 'undefined' && option.conditionalQuestions.length > 0;
 				})
-				.forEach((option) => {
+				.forEach(option => {
 					child = _getAllQuestionsFlattened(option.conditionalQuestions);
 				});
 		}
@@ -190,23 +179,23 @@ const _getAllQuestionsFlattened = (allQuestions) => {
 	}
 };
 
-const _formatSectionTitle = (value) => {
+const _formatSectionTitle = value => {
 	let [questionId] = value.split('_');
 	return _.capitalize(questionId);
 };
 
 const _buildSubjectTitle = (user, title, submissionType) => {
-  let subject = '';
+	let subject = '';
 	if (user.toUpperCase() === 'DATACUSTODIAN') {
 		subject = `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
 	} else {
-    if(submissionType === constants.submissionTypes.INITIAL) {
-      subject = `You have requested access to ${title}. The custodian will be in contact about the application.`;
-    } else {
-      subject = `You have made updates to your Data Access Request for ${title}. The custodian will be in contact about the application.`;
-    }
-  }
-  return subject;
+		if (submissionType === constants.submissionTypes.INITIAL) {
+			subject = `You have requested access to ${title}. The custodian will be in contact about the application.`;
+		} else {
+			subject = `You have made updates to your Data Access Request for ${title}. The custodian will be in contact about the application.`;
+		}
+	}
+	return subject;
 };
 
 /**
@@ -220,11 +209,14 @@ const _buildSubjectTitle = (user, title, submissionType) => {
  */
 const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) => {
 	let parent;
-  let { userType, userName, userEmail, datasetTitles, submissionType } = options;
-  let dateSubmitted = moment().format('D MMM YYYY');
-  let { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
-  let linkNationalCoreStudies = nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
-  let heading = submissionType === constants.submissionTypes.INITIAL ? `New data access request application` : `Existing data access request application with new updates`;
+	let { userType, userName, userEmail, datasetTitles, submissionType } = options;
+	let dateSubmitted = moment().format('D MMM YYYY');
+	let { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
+	let linkNationalCoreStudies = nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
+	let heading =
+		submissionType === constants.submissionTypes.INITIAL
+			? `New data access request application`
+			: `Existing data access request application with new updates`;
 	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
@@ -260,7 +252,9 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Related NCS project</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${isNationalCoreStudies ? `<a style="color: #475da7;" href="${linkNationalCoreStudies}">View NCS project</a>` : 'no'}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													isNationalCoreStudies ? `<a style="color: #475da7;" href="${linkNationalCoreStudies}">View NCS project</a>` : 'no'
+												}</td>
                     </tr>  
                     <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
@@ -284,7 +278,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 
 	// Create json content payload for attaching to email
 	const jsonContent = {
-    applicationDetails: { projectName, linkNationalCoreStudies, datasetTitles, dateSubmitted, applicantName: userName },
+		applicationDetails: { projectName, linkNationalCoreStudies, datasetTitles, dateSubmitted, applicantName: userName },
 		questions: { ...fullQuestions },
 		answers: { ...questionAnswers },
 	};
@@ -308,8 +302,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		// Safe People = [Applicant, Principle Investigator, ...]
 		// Safe People to order array for applicant
 		let sectionKeys;
-		if (page.toUpperCase() === 'SAFE PEOPLE')
-			sectionKeys = Object.keys({ ...parent }).sort();
+		if (page.toUpperCase() === 'SAFE PEOPLE') sectionKeys = Object.keys({ ...parent }).sort();
 		else sectionKeys = Object.keys({ ...parent });
 
 		// styling for last child
@@ -348,15 +341,15 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
  * @desc    This function will group all the  questions into the correct format for emailBuilder
  * @return  {Object} {Safe People: {Applicant: [], Applicant_U8ad: []}, Safe Project: {}}
  */
-const _groupByPageSection = (allQuestions) => {
+const _groupByPageSection = allQuestions => {
 	// group by page [Safe People, Safe Project]
-	let groupedByPage = _.groupBy(allQuestions, (item) => {
+	let groupedByPage = _.groupBy(allQuestions, item => {
 		return item.page;
 	});
 
 	// within grouped [Safe People: {Applicant, Applicant1, Something}]
 	let grouped = _.forEach(groupedByPage, (value, key) => {
-		groupedByPage[key] = _.groupBy(groupedByPage[key], (item) => {
+		groupedByPage[key] = _.groupBy(groupedByPage[key], item => {
 			return item.questionSetId;
 		});
 	});
@@ -401,9 +394,7 @@ const _actualQuestionAnswers = async (questionAnswers, options) => {
 					// show  full email for custodian or redacted for non custodians
 					let validEmail = _displayCorrectEmailAddress(email, userType);
 					// check  if uniqueId and set email field
-					typeof uniqueId !== 'undefined'
-						? (obj[`email_${uniqueId}`] = validEmail)
-						: (obj[`email`] = validEmail);
+					typeof uniqueId !== 'undefined' ? (obj[`email_${uniqueId}`] = validEmail) : (obj[`email`] = validEmail);
 					break;
 				default:
 					obj[key] = value;
@@ -423,9 +414,7 @@ const _actualQuestionAnswers = async (questionAnswers, options) => {
  * @return  {String}  'r********@**********m'
  */
 const _displayCorrectEmailAddress = (email, userType) => {
-	return userType.toUpperCase() === 'DATACUSTODIAN'
-		? email
-		: helper.censorEmail(email);
+	return userType.toUpperCase() === 'DATACUSTODIAN' ? email : helper.censorEmail(email);
 };
 
 /**
@@ -435,7 +424,7 @@ const _displayCorrectEmailAddress = (email, userType) => {
  * @param   {Int}  98767876
  * @return  {Object} {fullname: 'James Swallow', email: 'james@gmail.com'}
  */
-const _getUserDetails = async (userObj) => {
+const _getUserDetails = async userObj => {
 	return new Promise(async (resolve, reject) => {
 		try {
 			let { id } = userObj;
@@ -448,53 +437,27 @@ const _getUserDetails = async (userObj) => {
 	});
 };
 
-const _generateEmail = async (
-  aboutApplication,
-	questions,
-	pages,
-	questionPanels,
-	questionAnswers,
-	options
-) => {
+const _generateEmail = async (aboutApplication, questions, pages, questionPanels, questionAnswers, options) => {
 	// reset questionList arr
 	questionList = [];
 	// set questionAnswers
-	let flatQuestionAnswers = await _actualQuestionAnswers(
-		questionAnswers,
-		options
-	);
+	let flatQuestionAnswers = await _actualQuestionAnswers(questionAnswers, options);
 	// unnest each questionPanel if questionSets
 	let flatQuestionPanels = _unNestQuestionPanels(questionPanels);
 	// unnest question flat
-	let unNestedQuestions = _initalQuestionSpread(
-		questions,
-		pages,
-		flatQuestionPanels
-	);
+	let unNestedQuestions = _initalQuestionSpread(questions, pages, flatQuestionPanels);
 	// assigns to questionList
 	let fullQuestionSet = _getAllQuestionsFlattened(unNestedQuestions);
 	// fullQuestions [SafePeople: {Applicant: {}, Applicant_aca: {}}, SafeProject:{}]
 	let fullQuestions = _groupByPageSection([...questionList]);
 	// build up  email with  values
-	let { html, jsonContent } = _buildEmail(
-    aboutApplication,
-		fullQuestions,
-		flatQuestionAnswers,
-		options
-	);
+	let { html, jsonContent } = _buildEmail(aboutApplication, fullQuestions, flatQuestionAnswers, options);
 	// return email
 	return { html, jsonContent };
 };
 
-const _displayConditionalStatusDesc = (
-	applicationStatus,
-	applicationStatusDesc
-) => {
-	if (
-		(applicationStatusDesc &&
-			applicationStatus === 'approved with conditions') ||
-		applicationStatus === 'rejected'
-	) {
+const _displayConditionalStatusDesc = (applicationStatus, applicationStatusDesc) => {
+	if ((applicationStatusDesc && applicationStatus === 'approved with conditions') || applicationStatus === 'rejected') {
 		let conditionalTitle = '';
 		switch (applicationStatus) {
 			case 'approved with conditions':
@@ -512,14 +475,14 @@ const _displayConditionalStatusDesc = (
 	return '';
 };
 
-const _displayDARLink = (accessId) => {
+const _displayDARLink = accessId => {
 	if (!accessId) return '';
 
 	let darLink = `${process.env.homeURL}/data-access-request/${accessId}`;
 	return `<a style="color: #475da7;" href="${darLink}">View application</a>`;
 };
 
-const _generateDARStatusChangedEmail = (options) => {
+const _generateDARStatusChangedEmail = options => {
 	let {
 		id,
 		applicationStatus,
@@ -587,25 +550,15 @@ const _generateDARStatusChangedEmail = (options) => {
               </tbody>
             </table>
             <div style="padding: 0 40px 40px 40px;">
-            ${_displayConditionalStatusDesc(
-							applicationStatus,
-							applicationStatusDesc
-						)}
+            ${_displayConditionalStatusDesc(applicationStatus, applicationStatusDesc)}
             ${_displayDARLink(id)}
             </div>
           </div>`;
 	return body;
 };
 
-const _generateDARReturnedEmail = (options) => {
-  let {
-    id,
-		projectName,
-		publisher,
-		datasetTitles,
-		dateSubmitted,
-		applicants,
-	} = options;
+const _generateDARReturnedEmail = options => {
+	let { id, projectName, publisher, datasetTitles, dateSubmitted, applicants } = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -662,25 +615,11 @@ const _generateDARReturnedEmail = (options) => {
 	return body;
 };
 
-const _generateContributorEmail = (options) => {
-	let {
-		id,
-		datasetTitles,
-		projectName,
-		projectId,
-		change,
-		actioner,
-		applicants,
-	} = options;
-	let header = `You've been ${
-		change === 'added' ? 'added to' : 'removed from'
-	} a data access request application`;
-	let subheader = `${actioner} ${change} you as a contributor ${
-		change === 'added' ? 'to' : 'from'
-	} a data access request application. ${
-		change == 'added'
-			? 'Contributors can exchange private notes, make edits, invite others and submit the application.'
-			: ''
+const _generateContributorEmail = options => {
+	let { id, datasetTitles, projectName, projectId, change, actioner, applicants } = options;
+	let header = `You've been ${change === 'added' ? 'added to' : 'removed from'} a data access request application`;
+	let subheader = `${actioner} ${change} you as a contributor ${change === 'added' ? 'to' : 'from'} a data access request application. ${
+		change == 'added' ? 'Contributors can exchange private notes, make edits, invite others and submit the application.' : ''
 	}`;
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -745,7 +684,7 @@ const _generateContributorEmail = (options) => {
 	return body;
 };
 
-const _generateStepOverrideEmail = (options) => {
+const _generateStepOverrideEmail = options => {
 	let {
 		id,
 		projectName,
@@ -879,14 +818,12 @@ const _generateStepOverrideEmail = (options) => {
               </tr>
               </tbody>
               </table>
-              <div style="padding: 0 40px 40px 40px;">${_displayDARLink(
-								id
-							)}</div>
+              <div style="padding: 0 40px 40px 40px;">${_displayDARLink(id)}</div>
               </div>`;
 	return body;
 };
 
-const _generateNewReviewPhaseEmail = (options) => {
+const _generateNewReviewPhaseEmail = options => {
 	let {
 		id,
 		projectName,
@@ -941,7 +878,9 @@ const _generateNewReviewPhaseEmail = (options) => {
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													datasetTitles || 'No dataset titles'
+												}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
@@ -993,7 +932,163 @@ const _generateNewReviewPhaseEmail = (options) => {
 	return body;
 };
 
-const _generateReviewDeadlineWarning = (options) => {
+const _generateWorkflowCreated = options => {
+	let { workflowName, steps, createdAt, actioner } = options;
+
+	let table = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      A new Workflow has been created.
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      ${actioner} has created ${workflowName} on ${moment(createdAt).format('D MMM YYYY')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>`;
+
+	for (let step of steps) {
+		let { reviewers = [], sections = [], stepName = '' } = step;
+		let stepReviewers = _getStepReviewers(reviewers);
+		let stepSections = _getStepSections(sections);
+		table += `<tr>
+                            <td bgcolor="#fff" style="padding: 10px 0 10px 0; border:0;">
+                              <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                  <td>
+                                    <h2 style="font-size: 16px; color :#29235c; margin:'10px 0 15px 0'">${stepName}</h2>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review Sections</td>
+                                  <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${stepSections}</td>
+                                </tr>
+                                <tr>
+                                  <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Reviewers</td>
+                                  <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${stepReviewers}</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>`;
+	}
+
+	table += `</tbody>
+                        </table>
+                        </div>`;
+
+	return table;
+};
+
+const _generateWorkflowAssigned = options => {
+	let { id, projectId, workflowName, projectName, applicants, steps, actioner, datasetTitles, dateSubmitted } = options;
+
+	let table = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                  <table
+                  align="center"
+                  border="0"
+                  cellpadding="0"
+                  cellspacing="40"
+                  width="700"
+                  style="font-family: Arial, sans-serif">
+                  <thead>
+                    <tr>
+                      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                        Workflow has been assigned.
+                      </th>
+                    </tr>
+                    <tr>
+                      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                        ${actioner} has assigned ${workflowName} to a Data Access Request
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  <tr>
+                    <td bgcolor="#fff" style="padding: 10px 0 10px 0; border:0;">
+                      <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                          <td>
+                            <h2 style="font-size: 16px; color :#29235c; margin:'10px 0 15px 0'">Application Details</h2>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+														projectName || 'No project name'
+													} </td>
+                        </tr>
+                        <tr>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project Id</td>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+														projectId || id
+													}</td>
+                        </tr>
+                        <tr>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset Titles</td>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+														datasetTitles || 'No dataset titles'
+													} </td>
+                        </tr>
+                        <tr>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants} </td>
+                        </tr>
+                        <tr>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
+                          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment(
+														dateSubmitted
+													).format('D MMM YYYY')}</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>`;
+
+	for (let step of steps) {
+		let { reviewers = [], sections = [], stepName = '' } = step;
+		let stepReviewers = _getStepReviewers(reviewers);
+		let stepSections = _getStepSections(sections);
+		table += `<tr>
+                              <td bgcolor="#fff" style="padding: 10px 0 10px 0; border:0;">
+                                <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                                  <tr>
+                                    <td>
+                                      <h2 style="font-size: 16px; color :#29235c; margin:'10px 0 15px 0'">${stepName}</h2>
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Review Sections</td>
+                                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${stepSections}</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Reviewers</td>
+                                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${stepReviewers}</td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>`;
+	}
+
+	table += `</tbody>
+                            </table>
+                            <div style="padding: 0 40px 40px 40px;">
+                              ${_displayDARLink(id)}
+                            </div>
+                          </div>`;
+
+	return table;
+};
+
+const _generateReviewDeadlineWarning = options => {
 	let {
 		id,
 		projectName,
@@ -1023,9 +1118,9 @@ const _generateReviewDeadlineWarning = (options) => {
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     The following data access request application is approaching the review deadline of ${moment(
-												dateDeadline
-											).format('D MMM YYYY')}.
+                     The following data access request application is approaching the review deadline of ${moment(dateDeadline).format(
+												'D MMM YYYY'
+											)}.
                     </th>
                   </tr>
                 </thead>
@@ -1089,7 +1184,7 @@ const _generateReviewDeadlineWarning = (options) => {
 	return body;
 };
 
-const _generateReviewDeadlinePassed = (options) => {
+const _generateReviewDeadlinePassed = options => {
 	let {
 		id,
 		projectName,
@@ -1183,7 +1278,7 @@ const _generateReviewDeadlinePassed = (options) => {
 	return body;
 };
 
-const _generateFinalDecisionRequiredEmail = (options) => {
+const _generateFinalDecisionRequiredEmail = options => {
 	let {
 		id,
 		projectName,
@@ -1301,14 +1396,12 @@ const _generateFinalDecisionRequiredEmail = (options) => {
               </tr>
               </tbody>
               </table>
-              <div style="padding: 0 40px 40px 40px;">${_displayDARLink(
-								id
-							)}</div>
+              <div style="padding: 0 40px 40px 40px;">${_displayDARLink(id)}</div>
               </div>`;
 	return body;
 };
 
-const _generateRemovedFromTeam = (options) => {
+const _generateRemovedFromTeam = options => {
 	let { teamName } = options;
 	let header = `You've been removed from the ${teamName} team on the HDR Innovation Gateway`;
 	let subheader = `You will no longer be able to access Data Access Requests, messages or the profile area relating to this team.`;
@@ -1352,7 +1445,7 @@ const _generateRemovedFromTeam = (options) => {
 	return body;
 };
 
-const _generateAddedToTeam = (options) => {
+const _generateAddedToTeam = options => {
 	let { teamName, role } = options;
 	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
 	let subheader = ``;
@@ -1406,21 +1499,12 @@ const _generateAddedToTeam = (options) => {
  * @desc    Send an email to an array of users using Twilio SendGrid
  * @param   {Object}  context
  */
-const _sendEmail = async (
-	to,
-	from,
-	subject,
-	html,
-	allowUnsubscribe = true,
-	attachments = []
-) => {
+const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, attachments = []) => {
 	// 1. Apply SendGrid API key from environment variable
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 	// 2. Ensure any duplicates recieve only a single email
-	const recipients = [
-		...new Map(to.map((item) => [item['email'], item])).values(),
-	];
+	const recipients = [...new Map(to.map(item => [item['email'], item])).values()];
 
 	// 3. Build each email object for SendGrid extracting email addresses from user object with unique unsubscribe link (to)
 	for (let recipient of recipients) {
@@ -1484,7 +1568,7 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 };
 
 const _generateAttachment = (filename, content, type) => {
-  return {
+	return {
 		content,
 		filename,
 		type,
@@ -1493,8 +1577,8 @@ const _generateAttachment = (filename, content, type) => {
 };
 
 export default {
-  generateEmail: _generateEmail,
-  generateDARReturnedEmail: _generateDARReturnedEmail,
+	generateEmail: _generateEmail,
+	generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
 	generateContributorEmail: _generateContributorEmail,
 	generateStepOverrideEmail: _generateStepOverrideEmail,
@@ -1507,4 +1591,6 @@ export default {
 	sendEmail: _sendEmail,
 	generateEmailFooter: _generateEmailFooter,
 	generateAttachment: _generateAttachment,
+	generateWorkflowAssigned: _generateWorkflowAssigned,
+	generateWorkflowCreated: _generateWorkflowCreated,
 };
