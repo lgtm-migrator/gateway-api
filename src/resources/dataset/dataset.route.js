@@ -99,6 +99,7 @@ router.get('/:datasetID', async (req, res) => {
     let dataVersionsArray = dataVersions.map(a => a.datasetid);
     dataVersionsArray.push(pid);
 
+
     // find the related resources using the pid or datasetids for legacy entries
     let relatedData = await Data.find({
         relatedObjects: {
