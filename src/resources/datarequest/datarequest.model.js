@@ -7,6 +7,7 @@ const DataRequestSchema = new Schema({
   authorIds: [Number],
   dataSetId: String,
   datasetIds: [{ type: String}],
+  datasetTitles: [{ type: String}],
   projectId: String,
   workflowId: { type : Schema.Types.ObjectId, ref: 'Workflow' },
   workflow: { type: WorkflowSchema },
@@ -20,6 +21,7 @@ const DataRequestSchema = new Schema({
     default: false 
   },
   applicationStatusDesc : String,
+  schemaId: { type : Schema.Types.ObjectId, ref: 'data_request_schemas' },
   jsonSchema: {
     type: String,
     default: "{}"
@@ -62,7 +64,7 @@ const DataRequestSchema = new Schema({
     createdBy: { type : Schema.Types.ObjectId, ref: 'User' },
     dateReturned: { type: Date },
     returnedBy: { type : Schema.Types.ObjectId, ref: 'User' },
-    dateSubmitted: { type: Date },
+    dateSubmitted: { type: Date }, 
     submittedBy: { type : Schema.Types.ObjectId, ref: 'User' },
     questionAnswers: { type: Object, default: {} }
   }],

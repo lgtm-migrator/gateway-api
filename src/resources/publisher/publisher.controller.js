@@ -34,6 +34,7 @@ module.exports = {
 			// 1. Get the datasets for the publisher from the database
 			let datasets = await Data.find({
 				type: 'dataset',
+				activeflag: 'active',
 				'datasetfields.publisher': req.params.id,
 			})
 				.populate('publisher')
@@ -181,6 +182,7 @@ module.exports = {
 				.map((app) => {
 					return datarequestController.createApplicationDTO(
 						app.toObject(),
+						constants.userTypes.CUSTODIAN,
 						_id.toString()
 					);
 				})
@@ -264,7 +266,7 @@ module.exports = {
 				}, []);
 
 				applications = applications.map((app) => {
-					let { aboutApplication, _id } = app;
+					let { aboutApplication = {}, _id } = app;
 					if(typeof aboutApplication === 'string') {
 						aboutApplication = JSON.parse(aboutApplication) || {};
 					}

@@ -6,13 +6,7 @@ import passport from 'passport';
 import { utils } from '../auth';
 import { UserModel } from '../user/user.model';
 import { MessagesModel } from '../message/message.model';
-import {
-	addTool,
-	editTool,
-	setStatus,
-	getTools,
-	getToolsAdmin,
-} from '../tool/data.repository';
+import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools } from '../tool/data.repository';
 import emailGenerator from '../utilities/emailGenerator.util';
 import inputSanitizer from '../utilities/inputSanitizer';
 import _ from 'lodash';
@@ -24,82 +18,67 @@ const router = express.Router();
 // @router   POST /api/v1/add
 // @desc     Add tools user
 // @access   Private
-router.post(
-	'/',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-	async (req, res) => {
-		await addTool(req)
-			.then((response) => {
-				return res.json({ success: true, response });
-			})
-			.catch((err) => {
-				return res.json({ success: false, err });
-			});
-	}
-);
+router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	await addTool(req)
+		.then(response => {
+			return res.json({ success: true, response });
+		})
+		.catch(err => {
+			return res.json({ success: false, err });
+		});
+});
 
 // @router   PUT /api/v1/{id}
 // @desc     Edit tools user
 // @access   Private
 // router.put('/{id}',
-router.put(
-	'/:id',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-	async (req, res) => {
-		await editTool(req)
-			.then((response) => {
-				return res.json({ success: true, response });
-			})
-			.catch((err) => {
-				return res.json({ success: false, error: err.message });
-			});
-	}
-);
+router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	await editTool(req)
+		.then(response => {
+			return res.json({ success: true, response });
+		})
+		.catch(err => {
+			return res.json({ success: false, error: err.message });
+		});
+});
 
 // @router   GET /api/v1/get/admin
-// @desc     Returns List of Tool objects
+// @desc     Returns List of Tool objects 
 // @access   Private
-router.get(
-	'/getList',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-	async (req, res) => {
-		req.params.type = 'tool';
-		let role = req.user.role;
+router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	req.params.type = 'tool';
+	let role = req.user.role;
 
-		if (role === ROLES.Admin) {
-			await getToolsAdmin(req)
-				.then((data) => {
-					return res.json({ success: true, data });
-				})
-				.catch((err) => {
-					return res.json({ success: false, err });
-				});
-		} else if (role === ROLES.Creator) {
-			await getTools(req)
-				.then((data) => {
-					return res.json({ success: true, data });
-				})
-				.catch((err) => {
-					return res.json({ success: false, err });
-				});
-		}
+	if (role === ROLES.Admin) {
+		await getToolsAdmin(req) 
+			.then(data => { 
+				return res.json({ success: true, data });
+			})
+			.catch(err => {
+				return res.json({ success: false, err });
+			});
+	} else if (role === ROLES.Creator) {
+		await getTools(req)
+			.then(data => {
+				return res.json({ success: true, data });
+			})
+			.catch(err => {
+				return res.json({ success: false, err });
+			});
 	}
-);
+});
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/ 
 // @desc     Returns List of Tool Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
 router.get('/', async (req, res) => {
 	req.params.type = 'tool';
-	await getToolsAdmin(req)
-		.then((data) => {
+	await getAllTools(req)
+		.then(data => {
 			return res.json({ success: true, data });
 		})
-		.catch((err) => {
+		.catch(err => {
 			return res.json({ success: false, err });
 		});
 });
@@ -107,20 +86,15 @@ router.get('/', async (req, res) => {
 // @router   PATCH /api/v1/status
 // @desc     Set tool status
 // @access   Private
-router.patch(
-	'/:id',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin),
-	async (req, res) => {
-		await setStatus(req)
-			.then((response) => {
-				return res.json({ success: true, response });
-			})
-			.catch((err) => {
-				return res.json({ success: false, error: err.message });
-			});
-	}
-);
+router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
+	await setStatus(req)
+		.then(response => {
+			return res.json({ success: true, response });
+		})
+		.catch(err => {
+			return res.json({ success: false, error: err.message });
+		});
+}); 
 
 /**
  * {get} /tool/:id Tool
@@ -146,6 +120,13 @@ router.get('/:id', async (req, res) => {
 				as: 'uploaderIs',
 			},
 		},
+		{
+			$addFields: {
+				uploader: {
+					$concat: [{ $arrayElemAt: ['$uploaderIs.firstname', 0] }, ' ', { $arrayElemAt: ['$uploaderIs.lastname', 0] }],
+				},
+			},
+		},
 	]);
 	query.exec((err, data) => {
 		if (data.length > 0) {
@@ -153,15 +134,13 @@ router.get('/:id', async (req, res) => {
 			var p = Data.aggregate([
 				{
 					$match: {
-						$and: [
-							{ relatedObjects: { $elemMatch: { objectId: req.params.id } } },
-						],
+						$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }],
 					},
 				},
 			]);
 			p.exec((err, relatedData) => {
-				relatedData.forEach((dat) => {
-					dat.relatedObjects.forEach((x) => {
+				relatedData.forEach(dat => {
+					dat.relatedObjects.forEach(x => {
 						if (x.objectId === req.params.id && dat.id !== req.params.id) {
 							let relatedObject = {
 								objectId: dat.id,
@@ -170,10 +149,7 @@ router.get('/:id', async (req, res) => {
 								user: x.user,
 								updated: x.updated,
 							};
-							data[0].relatedObjects = [
-								relatedObject,
-								...(data[0].relatedObjects || []),
-							];
+							data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
 						}
 					});
 				});
@@ -181,10 +157,7 @@ router.get('/:id', async (req, res) => {
 				var r = Reviews.aggregate([
 					{
 						$match: {
-							$and: [
-								{ toolID: parseInt(req.params.id) },
-								{ activeflag: 'active' },
-							],
+							$and: [{ toolID: parseInt(req.params.id) }, { activeflag: 'active' }],
 						},
 					},
 					{ $sort: { date: -1 } },
@@ -207,10 +180,10 @@ router.get('/:id', async (req, res) => {
 				]);
 				r.exec(async (err, reviewData) => {
 					if (err) return res.json({ success: false, error: err });
-						
+
 					reviewData.map(reviewDat => {
 						reviewDat.person = helper.hidePrivateProfileDetails(reviewDat.person);
-						reviewDat.owner= helper.hidePrivateProfileDetails(reviewDat.owner);
+						reviewDat.owner = helper.hidePrivateProfileDetails(reviewDat.owner);
 					});
 
 					return res.json({
@@ -262,32 +235,27 @@ router.get('/edit/:id', async (req, res) => {
  * When they submit, authenticate the user, validate the data and add review data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
-router.post(
-	'/review/add',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-	async (req, res) => {
-		let reviews = new Reviews();
-		const { toolID, reviewerID, rating, projectName, review } = req.body;
+router.post('/review/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	let reviews = new Reviews();
+	const { toolID, reviewerID, rating, projectName, review } = req.body;
 
-		reviews.reviewID = parseInt(Math.random().toString().replace('0.', ''));
-		reviews.toolID = toolID;
-		reviews.reviewerID = reviewerID;
-		reviews.rating = rating;
-		reviews.projectName = inputSanitizer.removeNonBreakingSpaces(projectName);
-		reviews.review = inputSanitizer.removeNonBreakingSpaces(review);
-		reviews.activeflag = 'review';
-		reviews.date = Date.now();
+	reviews.reviewID = parseInt(Math.random().toString().replace('0.', ''));
+	reviews.toolID = toolID;
+	reviews.reviewerID = reviewerID;
+	reviews.rating = rating;
+	reviews.projectName = inputSanitizer.removeNonBreakingSpaces(projectName);
+	reviews.review = inputSanitizer.removeNonBreakingSpaces(review);
+	reviews.activeflag = 'review';
+	reviews.date = Date.now();
 
-		reviews.save(async (err) => {
-			if (err) {
-				return res.json({ success: false, error: err });
-			} else {
-				return res.json({ success: true, id: reviews.reviewID });
-			}
-		});
-	}
-);
+	reviews.save(async err => {
+		if (err) {
+			return res.json({ success: false, error: err });
+		} else {
+			return res.json({ success: true, id: reviews.reviewID });
+		}
+	});
+});
 
 /**
  * {post} /tool/reply/add Add reply
@@ -296,94 +264,74 @@ router.post(
  * When they submit, authenticate the user, validate the data and add reply data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
-router.post(
-	'/reply',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-	async (req, res) => {
-		const { reviewID, replierID, reply } = req.body;
-		Reviews.findOneAndUpdate(
-			{ reviewID: reviewID },
-			{
-				replierID: replierID,
-				reply: inputSanitizer.removeNonBreakingSpaces(reply),
-				replydate: Date.now(),
-			},
-			(err) => {
-				if (err) return res.json({ success: false, error: err });
-				return res.json({ success: true });
-			}
-		);
-	}
-);
+router.post('/reply', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	const { reviewID, replierID, reply } = req.body;
+	Reviews.findOneAndUpdate(
+		{ reviewID: reviewID },
+		{
+			replierID: replierID,
+			reply: inputSanitizer.removeNonBreakingSpaces(reply),
+			replydate: Date.now(),
+		},
+		err => {
+			if (err) return res.json({ success: false, error: err });
+			return res.json({ success: true });
+		}
+	);
+});
 
 /**
  * {post} /tool/review/approve Approve review
  *
  * Authenticate user to see if user can approve.
  */
-router.put(
-	'/review/approve',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin),
-	async (req, res) => {
-		const { id, activeflag } = req.body;
-		Reviews.findOneAndUpdate(
-			{ reviewID: id },
-			{
-				activeflag: activeflag,
-			},
-			(err) => {
-				if (err) return res.json({ success: false, error: err });
+router.put('/review/approve', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
+	const { id, activeflag } = req.body;
+	Reviews.findOneAndUpdate(
+		{ reviewID: id },
+		{
+			activeflag: activeflag,
+		},
+		err => {
+			if (err) return res.json({ success: false, error: err });
 
-				return res.json({ success: true });
-			}
-		).then(async (res) => {
-			const review = await Reviews.findOne({ reviewID: id });
+			return res.json({ success: true });
+		}
+	).then(async res => {
+		const review = await Reviews.findOne({ reviewID: id });
 
-			await storeNotificationMessages(review);
+		await storeNotificationMessages(review);
 
-			// Send email notififcation of approval to authors and admins who have opted in
-			await sendEmailNotifications(review);
-		});
-	}
-);
+		// Send email notififcation of approval to authors and admins who have opted in
+		await sendEmailNotifications(review);
+	});
+});
 
 /**
  * {delete} /tool/review/reject Reject review
  *
  * Authenticate user to see if user can reject.
  */
-router.delete(
-	'/review/reject',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin),
-	async (req, res) => {
-		const { id } = req.body;
-		Reviews.findOneAndDelete({ reviewID: id }, (err) => {
-			if (err) return res.send(err);
-			return res.json({ success: true });
-		});
-	}
-);
+router.delete('/review/reject', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
+	const { id } = req.body;
+	Reviews.findOneAndDelete({ reviewID: id }, err => {
+		if (err) return res.send(err);
+		return res.json({ success: true });
+	});
+});
 
 /**
  * {delete} /tool/review/delete Delete review
  *
  * When they delete, authenticate the user and remove the review data from the DB.
  */
-router.delete(
-	'/review/delete',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-	async (req, res) => {
-		const { id } = req.body;
-		Data.findOneAndDelete({ id: id }, (err) => {
-			if (err) return res.send(err);
-			return res.json({ success: true });
-		});
-	}
-);
+router.delete('/review/delete', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	const { id } = req.body;
+	Data.findOneAndDelete({ id: id }, err => {
+		if (err) return res.send(err);
+		return res.json({ success: true });
+	});
+});
 
 //Validation required if Delete is to be implemented
 // router.delete('/:id',
@@ -403,41 +351,31 @@ router.delete(
 // @router   GET /api/v1/project/tag/name
 // @desc     Get tools by tag search
 // @access   Private
-router.get(
-	'/:type/tag/:name',
-	passport.authenticate('jwt'),
-	utils.checkIsInRole(ROLES.Admin, ROLES.Creator),
-	async (req, res) => {
-		try {
-			// 1. Destructure tag name parameter passed
-			let { type, name } = req.params;
-			// 2. Check if parameters are empty
-			if (_.isEmpty(name) || _.isEmpty(type)) {
-				return res
-					.status(400)
-					.json({
-						success: false,
-						message: 'Entity type and tag are required',
-					});
-			}
-			// 3. Find matching projects in MongoDb selecting name and id
-			let entities = await Data.find({
-				$and: [
-					{ type },
-					{ $or: [{ 'tags.topics': name }, { 'tags.features': name }] },
-				],
-			}).select('id name');
-			// 4. Return projects
-			return res.status(200).json({ success: true, entities });
-		} catch (err) {
-			console.error(err.message);
-			return res.status(500).json({
+router.get('/:type/tag/:name', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	try {
+		// 1. Destructure tag name parameter passed
+		let { type, name } = req.params;
+		// 2. Check if parameters are empty
+		if (_.isEmpty(name) || _.isEmpty(type)) {
+			return res.status(400).json({
 				success: false,
-				message: 'An error occurred searching for tools by tag',
+				message: 'Entity type and tag are required',
 			});
 		}
+		// 3. Find matching projects in MongoDb selecting name and id
+		let entities = await Data.find({
+			$and: [{ type }, { $or: [{ 'tags.topics': name }, { 'tags.features': name }] }],
+		}).select('id name');
+		// 4. Return projects
+		return res.status(200).json({ success: true, entities });
+	} catch (err) {
+		console.error(err.message);
+		return res.status(500).json({
+			success: false,
+			message: 'An error occurred searching for tools by tag',
+		});
 	}
-);
+});
 
 module.exports = router;
 
@@ -445,8 +383,7 @@ async function storeNotificationMessages(review) {
 	const tool = await Data.findOne({ id: review.toolID });
 	//Get reviewer name
 	const reviewer = await UserModel.findOne({ id: review.reviewerID });
-	const toolLink =
-		process.env.homeURL + '/tool/' + review.toolID + '/' + tool.name;
+	const toolLink = process.env.homeURL + '/tool/' + review.toolID + '/' + tool.name;
 	//admins
 	let message = new MessagesModel();
 	message.messageID = parseInt(Math.random().toString().replace('0.', ''));
@@ -457,16 +394,16 @@ async function storeNotificationMessages(review) {
 	message.isRead = false;
 	message.messageDescription = `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} ${toolLink}`;
 
-	await message.save(async (err) => {
+	await message.save(async err => {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
 	});
 	//authors
 	const authors = tool.authors;
-	authors.forEach(async (author) => {
+	authors.forEach(async author => {
 		message.messageTo = author;
-		await message.save(async (err) => {
+		await message.save(async err => {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}

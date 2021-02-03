@@ -1,29 +1,32 @@
-import { model, Schema } from 'mongoose'
+import { model, Schema } from 'mongoose';
 
-// this will be our data base's data structure 
+// this will be our data base's data structure
 const CollectionSchema = new Schema(
-  {
-    id: Number,
-    name: String,
-    description: String,
-    imageLink: String,
-    authors: [Number],
-    // emailNotifications: Boolean, 
-    counter: Number,
-    discourseTopicId: Number,
-    relatedObjects: [{
-        objectId: String, 
-        reason: String,
-        objectType: String,
-        user: String,
-        updated: String 
-    }],
-    activeflag: String
-  },
-  { 
-    collection: 'collections', //will be created when first posting
-    timestamps: true 
-  }
+	{
+		id: Number,
+		name: String,
+		description: String,
+		imageLink: String,
+		authors: [Number],
+		// emailNotifications: Boolean,
+		counter: Number,
+		discourseTopicId: Number,
+		relatedObjects: [
+			{
+				objectId: String,
+                reason: String,
+                pid: String,
+				objectType: String,
+				user: String,
+				updated: String,
+			},
+		],
+		activeflag: String,
+	},
+	{
+		collection: 'collections', //will be created when first posting
+		timestamps: true,
+	}
 );
 
-export const Collections = model('Collections', CollectionSchema) 
+export const Collections = model('Collections', CollectionSchema);
