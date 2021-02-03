@@ -64,18 +64,23 @@ router.get('/:datasetID', async (req, res) => {
     let isLatestVersion = true;
     let isDatasetArchived = false;
 
+    // try to find the dataset using the datasetid
     let dataVersion = await Data.findOne({ datasetid: datasetID });
 
+    // if found then set the datasetID to the pid of the found dataset
     if (!_.isNil(dataVersion)) {
         datasetID = dataVersion.pid;
     }
 
+    // find the active dataset using the pid
     let dataset = await Data.findOne({ pid: datasetID, activeflag: 'active' });
 
     if (_.isNil(dataset)) {
+        // if no active version found look for the next latest version using the pid and set the isDatasetArchived flag to true
         dataset = await Data.findOne({ pid: datasetID, activeflag: 'archive' }).sort({ createdAt: -1 });
         if (_.isNil(dataset)) {
             try {
+                // if still not found then look up the MDC for the dataset
                 dataset = await loadDataset(datasetID);
             } catch (err) {
                 return res.status(404).send(`Dataset not found for Id: ${escape(datasetID)}`);
@@ -89,24 +94,34 @@ router.get('/:datasetID', async (req, res) => {
 
     let pid = dataset.pid;
 
+    // get a list of all the datasetids connected to a pid
+    let dataVersions = await Data.find({ pid }, { _id: 0, datasetid: 1 });
+    let dataVersionsArray = dataVersions.map(a => a.datasetid);
+    dataVersionsArray.push(pid);
+
+    // find the related resources using the pid or datasetids for legacy entries
     let relatedData = await Data.find({
         relatedObjects: {
             $elemMatch: {
                 $or: [
                     {
-                        objectId: { $in: [datasetID] },
+                        objectId: { $in: dataVersionsArray },
                     },
                     {
-                        pid: { $in: [pid] },
+                        pid: pid,
                     },
                 ],
             },
         },
+        activeflag: 'active'
     });
 
     relatedData.forEach(dat => {
         dat.relatedObjects.forEach(relatedObject => {
-            if ((relatedObject.objectId === datasetID && dat.id !== datasetID) || (relatedObject.pid === pid && dat.id !== pid)) {
+            if (
+                (relatedObject.objectId === dataset.datasetid && dat.id !== dataset.datasetid)
+                || (relatedObject.pid === pid && dat.id !== pid)
+            ) {
                 if (typeof dataset.relatedObjects === 'undefined') dataset.relatedObjects = [];
                 dataset.relatedObjects.push({
                     objectId: dat.id,
