@@ -34,6 +34,7 @@ module.exports = {
 			// 1. Get the datasets for the publisher from the database
 			let datasets = await Data.find({
 				type: 'dataset',
+				activeflag: 'active',
 				'datasetfields.publisher': req.params.id,
 			})
 				.populate('publisher')
