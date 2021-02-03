@@ -414,8 +414,8 @@ module.exports = {
 				aboutApplication = JSON.parse(aboutApplication);
 			}
 			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce((newObj, dataset) => {
-				newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId] || [dataset.datasetId];
-				newObj.datasetTitles = [...newObj.datasetTitles, dataset.name] || [dataset.name];
+				newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
+				newObj.datasetTitles = [...newObj.datasetTitles, dataset.name];
 				return newObj;
 			}, { datasetIds: [], datasetTitles: []});
 
