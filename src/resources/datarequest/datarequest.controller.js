@@ -283,6 +283,7 @@ module.exports = {
 			datasets = await ToolModel.find({
 				datasetid: { $in: arrDatasetIds },
 			}).populate('publisher');
+			const arrDatasetNames = datasets.map(dataset => dataset.name);
 			// 5. If no record create it and pass back
 			if (!accessRecord) {
 				if (_.isEmpty(datasets)) {
@@ -311,6 +312,7 @@ module.exports = {
 					version,
 					userId,
 					datasetIds: arrDatasetIds,
+					datasetTitles: arrDatasetNames,
 					jsonSchema,
 					schemaId,
 					publisher,
@@ -411,8 +413,13 @@ module.exports = {
 			if (typeof aboutApplication === 'string') {
 				aboutApplication = JSON.parse(aboutApplication);
 			}
-			let updatedDatasetIds = aboutApplication.selectedDatasets.map(dataset => dataset.datasetId);
-			updateObj = { aboutApplication, datasetIds: updatedDatasetIds };
+			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce((newObj, dataset) => {
+				newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId] || [dataset.datasetId];
+				newObj.datasetTitles = [...newObj.datasetTitles, dataset.name] || [dataset.name];
+				return newObj;
+			}, { datasetIds: [], datasetTitles: []});
+
+			updateObj = { aboutApplication, datasetIds, datasetTitles };
 		}
 		if (questionAnswers) {
 			updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user };
