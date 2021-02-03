@@ -26,6 +26,7 @@ const MessageSchema = new Schema(
 				'team',
 				'team unlinked',
 				'edit',
+				'workflow'
 			],
 		},
 		createdBy: {
