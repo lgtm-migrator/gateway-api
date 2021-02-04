@@ -4,6 +4,7 @@ import passport from 'passport';
 import { utils } from '../auth';
 // import { UserModel } from '../user/user.model'
 import { Collections } from '../collections/collections.model';
+import { Data } from '../tool/data.model';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
@@ -35,7 +36,12 @@ router.get('/:collectionID', async (req, res) => {
 });
 
 router.get('/entityid/:entityID', async (req, res) => {
-	var q = Collections.aggregate([
+    let entityID = req.params.entityID
+    let dataVersions = await Data.find({ pid: entityID }, {_id: 0, datasetid:1});
+    let dataVersionsArray = dataVersions.map(a => a.datasetid);
+    dataVersionsArray.push(entityID);
+    
+    var q = Collections.aggregate([
 		{
 			$match: {
 				$and: [
@@ -44,11 +50,11 @@ router.get('/entityid/:entityID', async (req, res) => {
 							$elemMatch: {
 								$or: [
 									{
-										objectId: req.params.entityID,
+										objectId: { $in : dataVersionsArray },
 									},
 									{
-										pid: req.params.entityID,
-									},
+										pid: entityID,
+									}
 								],
 							},
 						},
