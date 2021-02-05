@@ -1,10 +1,20 @@
 openapi: 3.0.1
 info:
-  title: defaultTitle
-  description: defaultDescription
-  version: '0.1'
+  title: HDR UK API 
+  description: API for Tools and artefacts repository.
+  version: 1.0.0
 servers:
-  - url: 'https://api.www.healthdatagateway.org'
+  - url: https://api.www.healthdatagateway.org/api
+  - url: http://localhost:3001/api
+  - url: https://api.{environment}.healthdatagateway.org:{port}/api
+    variables:
+      environment:
+        default: latest
+        description: The Environment name.
+      port:
+        enum:
+          - '443'
+        default: '443'
 security: 
 - oauth2: []
 paths:
