@@ -10,6 +10,8 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import escape from 'escape-html';
+import { getCollectionObjects } from './collections.repository';
+
 const inputSanitizer = require('../utilities/inputSanitizer');
 
 const urlValidator = require('../utilities/urlValidator');
@@ -32,6 +34,16 @@ router.get('/:collectionID', async (req, res) => {
 		data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
 		return res.json({ success: true, data: data });
 	});
+});
+
+router.get('/relatedobjects/:collectionID', async (req, res) => {
+	await getCollectionObjects(req)
+		.then(data => {
+			return res.json({ success: true, data });
+		})
+		.catch(err => {
+			return res.json({ success: false, err });
+		});
 });
 
 router.get('/entityid/:entityID', async (req, res) => {
