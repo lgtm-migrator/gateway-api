@@ -2,29 +2,33 @@ import { Data } from '../tool/data.model';
 import { v4 as uuidv4 } from 'uuid';
 import _ from 'lodash';
 import axios from 'axios';
+import FormData from 'form-data';
+var fs = require('fs');
 
 import constants from '../utilities/constants.util';
 
 module.exports = {
     //GET api/v1/dataset-onboarding
-	getDatasetsByPublisher: async (req, res) => {
+    getDatasetsByPublisher: async (req, res) => {
         try {
             let {
                 params: { publisherID },
             } = req;
-            
-            if (!publisherID) 
+
+            if (!publisherID)
                 return res.status(404).json({ status: 'error', message: 'Publisher ID could not be found.' });
-            
-            
+
+
             // get all pids for publisherID
-            let dataset = await Data.find({ 
+            let dataset = await Data.find({
                 $and: [
-                    {'datasetfields.publisher': 'ALLIANCE > HQIP' },
-                    { $or : [
-                        {activeflag: 'active'},
-                        {activeflag: 'draft'}
-                    ]}
+                    { 'datasetfields.publisher': 'ALLIANCE > HQIP' },
+                    {
+                        $or: [
+                            { activeflag: 'active' },
+                            { activeflag: 'draft' }
+                        ]
+                    }
                 ]
             }).sort({ updatedAt: -1 });;
 
@@ -37,12 +41,12 @@ module.exports = {
 
 
 
-            
 
-            
+
+
             return res.status(200).json({
                 success: true,
-                data: {dataset}
+                data: { dataset }
             });
         } catch (err) {
             console.log(err.message);
@@ -51,12 +55,12 @@ module.exports = {
     },
 
     //GET api/v1/dataset-onboarding/:id
-	getDatasetVersion: async (req, res) => {
+    getDatasetVersion: async (req, res) => {
         try {
             const id = req.params.id || null;
-            
-            if (!id) 
-                    return res.status(404).json({ status: 'error', message: 'Dataset pid could not be found.' });
+
+            if (!id)
+                return res.status(404).json({ status: 'error', message: 'Dataset pid could not be found.' });
 
             let dataset = await Data.findOne({ _id: id });
             if (dataset.questionAnswers) {
@@ -66,9 +70,12 @@ module.exports = {
                 dataset.questionAnswers = {}
             }
 
+            let listOfDatasets = await Data.find({ pid: dataset.pid }, { _id: 1, datasetVersion: 1, activeflag: 1 }).sort({ updatedAt: -1 });
+
             return res.status(200).json({
                 success: true,
-                data: {dataset}
+                data: { dataset },
+                listOfDatasets
             });
         } catch (err) {
             console.log(err.message);
@@ -77,13 +84,14 @@ module.exports = {
     },
 
     //POST api/v1/dataset-onboarding
-	createNewDatasetVersion: async (req, res) => {
+    createNewDatasetVersion: async (req, res) => {
         try {
             const publisherID = req.body.publisherID || null;
             const pid = req.body.pid || null;
-            
+            const currentVersionId = req.body.currentVersionId || null;
+
             //If no publisher then return error
-            if (!publisherID) 
+            if (!publisherID)
                 return res.status(404).json({ status: 'error', message: 'Dataset publisher could not be found.' });
 
             //If publisher but no pid then new dataset - create new pid and version is 1.0.0
@@ -105,8 +113,8 @@ module.exports = {
                 data.datasetVersion = '1.0.0';
                 data.id = uniqueID;
                 data.datasetid = 'New dataset';
-                data.datasetfields.publisher = 'ALLIANCE > HQIP',//to sbe updated
-                data.type = 'dataset';
+                data.datasetfields.publisher = 'ALLIANCE > HQIP',//to be updated
+                    data.type = 'dataset';
                 data.activeflag = 'draft';
                 data.createdAt = Date.now();
                 await data.save();
@@ -118,340 +126,443 @@ module.exports = {
                     type: String,
                     default: "{}"
                 }, */
-                
-                
 
-                return res.status(200).json({
-                    success: true,
-                    data: {id:data._id}
-                });
+
+
+                return res.status(200).json({ success: true, data: { id: data._id } });
             }
             else {
-                //If publisher and pid then new version
+                //check does a version already exist with the pid that is in draft
+                let isDraftDataset = await Data.findOne({ pid, activeflag: 'draft' }, { _id: 1 });
+
+                if (!_.isNil(isDraftDataset)) {
+                    //if yes then return with error
+                    return res.status(200).json({ success: true, data: { id: isDraftDataset._id, draftExists: true } });
+                }
+
+                //else create new version of currentVersionId and send back new id
+                let datasetToCopy = await Data.findOne({ _id: currentVersionId });
+
+                if (_.isNil(datasetToCopy)) {
+                    return res.status(404).json({ status: 'error', message: 'Dataset to copy is not found' });
+                }
+
+                //create new uniqueID
+                let uniqueID = '';
+                while (uniqueID === '') {
+                    uniqueID = parseInt(Math.random().toString().replace('0.', ''));
+                    if ((await Data.find({ id: uniqueID }).length) === 0) uniqueID = '';
+                }
+
+                //incremenet the dataset version
+                let newVersion = module.exports.incrementVersion([1, 0, 0], datasetToCopy.datasetVersion)
+
+                let data = new Data();
+                data.pid = pid;
+                data.datasetVersion = newVersion;
+                data.id = uniqueID;
+                data.datasetid = 'New dataset version';
+                data.name = datasetToCopy.name;
+                data.datasetfields.publisher = 'ALLIANCE > HQIP', //to be updated
+                    data.type = 'dataset';
+                data.activeflag = 'draft';
+                data.questionAnswers = datasetToCopy.questionAnswers;
+                data.structuralMetadata = datasetToCopy.structuralMetadata;
+                data.createdAt = Date.now();
+                await data.save();
+
+                return res.status(200).json({ success: true, data: { id: data._id } });
             }
         } catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
+            console.log(err.message);
+            res.status(500).json({ status: 'error', message: err.message });
+        }
     },
+
+    incrementVersion: (masks, version) => {
+        if (typeof masks === 'string') {
+            version = masks;
+            masks = [0, 0, 0];
+        }
+
+        let bitMap = ['major', 'minor', 'patch'];
+        let bumpAt = 'patch';
+        let oldVer = version.match(/\d+/g);
+
+        for (let i = 0; i < masks.length; ++i) {
+            if (masks[i] === 1) {
+                bumpAt = bitMap[i];
+                break;
+            }
+        }
+
+        let bumpIdx = bitMap.indexOf(bumpAt);
+        let newVersion = []
+        for (let i = 0; i < oldVer.length; ++i) {
+            if (i < bumpIdx) {
+                newVersion[i] = +oldVer[i];
+            } else if (i === bumpIdx) {
+                newVersion[i] = +oldVer[i] + 1;
+            } else {
+                newVersion[i] = 0;
+            }
+        }
+
+        return newVersion.join('.');
+    },
+
 
     //PATCH api/v1/dataset-onboarding/:id
-	updateDatasetVersionDataElement: async (req, res) => {
-		try {
-			// 1. Id is the _id object in mongoo.db not the generated id or dataset Id
-			const {
-				params: { id },
-				body: data,
+    updateDatasetVersionDataElement: async (req, res) => {
+        try {
+            // 1. Id is the _id object in mongoo.db not the generated id or dataset Id
+            const {
+                params: { id },
+                body: data,
             } = req;
-			// 2. Destructure body and update only specific fields by building a segregated non-user specified update object
-			let updateObj = module.exports.buildUpdateObject({
-				...data,
-				user: req.user,
+            // 2. Destructure body and update only specific fields by building a segregated non-user specified update object
+            let updateObj = module.exports.buildUpdateObject({
+                ...data,
+                user: req.user,
             });
-			// 3. Find data request by _id to determine current status
-			let dataset = await Data.findOne({ _id: id });
-			// 4. Check access record
-			if (!dataset) {
-				return res.status(404).json({ status: 'error', message: 'Dataset not found.' });
+            // 3. Find data request by _id to determine current status
+            let dataset = await Data.findOne({ _id: id });
+            // 4. Check access record
+            if (!dataset) {
+                return res.status(404).json({ status: 'error', message: 'Dataset not found.' });
             }
-			// 5. Update record object
-			module.exports.updateApplication(dataset, updateObj).then(dataset => {
-				const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = dataset;
-				if(dirtySchema) {
-					accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
-					accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
-				}
-				let data = {
-					status: 'success',
-					unansweredAmendments,
-					answeredAmendments
-				};
-				if(dirtySchema) {
-					data = {
-						...data,
-						jsonSchema: accessRequestRecord.jsonSchema
-					}
+            // 5. Update record object
+            if (_.isEmpty(updateObj)) {
+                if (data.key !== 'structuralMetadata') {
+                    return res.status(404).json({ status: 'error', message: 'Update failed' });
                 }
-                
-                if (updateObj.updatedQuestionId === 'title') {
-                    let questionAnswers = JSON.parse(updateObj.questionAnswers)
-                    let title = questionAnswers['title'];
-                    Data.findByIdAndUpdate({_id:id}, {name: title}, { new: true }, err => {
-                        if (err) {
-                            console.error(err);
-                            throw err;
+                else {
+                    let structuralMetadata = JSON.parse(data.rows);
+
+                    if (_.isEmpty(structuralMetadata)) {
+                        return res.status(404).json({ status: 'error', message: 'Update failed' });
+                    }
+                    else {
+
+
+                        Data.findByIdAndUpdate({ _id: id }, { structuralMetadata }, { new: true }, err => {
+                            if (err) {
+                                console.error(err);
+                                throw err;
+                            }
+                        });
+
+                        return res.status(200).json();
+                    }
+                }
+            }
+            else {
+                module.exports.updateApplication(dataset, updateObj).then(dataset => {
+                    const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = dataset;
+                    if (dirtySchema) {
+                        accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
+                        accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
+                    }
+                    let data = {
+                        status: 'success',
+                        unansweredAmendments,
+                        answeredAmendments
+                    };
+                    if (dirtySchema) {
+                        data = {
+                            ...data,
+                            jsonSchema: accessRequestRecord.jsonSchema
                         }
-                    });
-                    data.name = title;
-                }
+                    }
 
-				// 6. Return new data object
-				return res.status(200).json(data);
-            });
-		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
-    },
+                    if (updateObj.updatedQuestionId === 'title') {
+                        let questionAnswers = JSON.parse(updateObj.questionAnswers)
+                        let title = questionAnswers['title'];
+                        Data.findByIdAndUpdate({ _id: id }, { name: title }, { new: true }, err => {
+                            if (err) {
+                                console.error(err);
+                                throw err;
+                            }
+                        });
+                        data.name = title;
+                    }
 
-    updateMDCCatalogueItem: async (item, value, newDatasetVersionId) => {
-        new Promise(async (resolve, reject) => {
-            const newDatasetDetails = {
-                namespace: "org.healthdatagateway",
-                key: item,
-                value: value
+                    // 6. Return new data object
+                    return res.status(200).json(data);
+                });
             }
-            await axios
-            .post(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/facets/${newDatasetVersionId}/metadata`, newDatasetDetails, { withCredentials: true, timeout: 5000 })
-            .then (async (newDatasetVersion) => {
-                let test = "test"
-
-
-                resolve();
-            })
-            .catch(err => {
-                console.log('Error when trying to create new dataset on the MDC - ' + err.message);
-                reject();
-            });
-        })
+        } catch (err) {
+            console.log(err.message);
+            res.status(500).json({ status: 'error', message: err.message });
+        }
     },
-    
+
+    buildJSONFile: async (dataset) => {
+        let jsonFile = {}
+        let metadata = [];
+        let childDataClasses = [];
+
+        Object.keys(dataset.questionAnswers).forEach(item => {
+            const newDatasetCatalogueItems = {
+                "namespace": "org.healthdatagateway",
+                "key": item,
+                "value": dataset.questionAnswers[item]
+            }
+            if (item !== 'associatedMedia') metadata.push(newDatasetCatalogueItems); //Paul - Fix associatedMedia
+        });
+
+        const orderedMetadata = _.map(
+            _.groupBy(_.orderBy(dataset.structuralMetadata, ['tableName'], ['asc']), 'tableName'),
+            (children, tableName) => ({ tableName, children })
+        )
+
+        orderedMetadata.forEach(item => {
+            let childDataElements = [];
+            item.children.forEach(child => {
+                childDataElements.push(
+                    {
+                        "label": child.columnName,
+                        "description": child.columnDescription,
+                        "dataType": {
+                            "label": child.dataType,
+                            "domainType": "PrimitiveType"
+                        }
+                    }
+                )
+            });
+
+            childDataClasses.push({
+                "label": item.children[0].tableName,
+                "description": item.children[0].tableDescription,
+                "childDataElements": childDataElements
+            });
+        });
+
+        jsonFile = {
+            "dataModel": {
+                "label": dataset.questionAnswers['title'],
+                "description": dataset.questionAnswers['description'],
+                "type": "Data Asset",
+                "metadata": metadata,
+                "childDataClasses": childDataClasses
+            }
+        }
+
+        return jsonFile;
+    },
+
     //POST api/v1/data-access-request/:id
     submitDatasetVersion: async (req, res) => {
         try {
-			// 1. id is the _id object in mongoo.db not the generated id or dataset Id
-			const id = req.params.id || null;
-            
-            if (!id) 
-                    return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
+            // 1. id is the _id object in mongoo.db not the generated id or dataset Id
+            const id = req.params.id || null;
+
+            if (!id)
+                return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
 
             let dataset = await Data.findOne({ _id: id });
-            
-            if (!dataset) 
-                    return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
+
+            if (!dataset)
+                return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
 
             dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
 
             //1. create new version on MDC with version number and take datasetid and store
-            
-            const loginDetails = { 
-                "username" : "paul.mccafferty@paconsulting.com",
-                "password" : "blueLetterGlass47"
+
+            const loginDetails = {
+                "username": "paul.mccafferty@paconsulting.com",
+                "password": "blueLetterGlass47"
             }; //Paul - move to env variables
             await axios
-            .post('https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/login', loginDetails, { withCredentials: true, timeout: 5000 })
-            .then (async (session) => {
-                axios.defaults.headers.Cookie = session.headers["set-cookie"][0]; // get cookie from request
-                const newDatasetDetails = {
-                    label:dataset.questionAnswers.title,
-                    description: dataset.questionAnswers.description,
-                    folder:"5bf09bf5-3464-4e2d-99b3-c8f39344fff4", //Publishers folder, needs to be stored with publisher //pauls test - c5614fb7-ab50-445c-a310-bb45acbb3945
-                    type: "Data Asset"
-                }
+                .post('https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/login', loginDetails, { withCredentials: true, timeout: 5000 })
+                .then(async (session) => {
+                    axios.defaults.headers.Cookie = session.headers["set-cookie"][0]; // get cookie from request
 
-                await axios
-                .post('https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels', newDatasetDetails, { withCredentials: true, timeout: 5000 })
-                .then (async (newDatasetVersion) => {
-                    let newDatasetVersionId = newDatasetVersion.data.id;
-                    
-                    let keys = Object.keys(dataset.questionAnswers);
+                    let jsonData = JSON.stringify(await module.exports.buildJSONFile(dataset));
+                    fs.writeFileSync(__dirname + `/datasetfiles/${dataset._id}.json`, jsonData);
 
-                    await keys.reduce(
-                        (p, item) =>
-                            p.then(
-                                () =>
-                                    new Promise(resolve => {
-                                        setTimeout(async function () {
-                                            const newDatasetCatalogueItems = {
-                                                namespace: "org.healthdatagateway",
-                                                key: item,
-                                                value: dataset.questionAnswers[item]
-                                            }
-                                            
-                                            let result = axios
-                                            .post(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/facets/${newDatasetVersionId}/metadata`, newDatasetCatalogueItems, { withCredentials: true, timeout: 5000 })
-                                            .catch(err => {
-                                                console.log('Error when trying to create new dataset on the MDC - ' + err.message);
-                                            });
-
-                                            await axios.all([result]);
-                                            resolve(null);
-                                        }, 10);
-                                    })
-                            ),
-                        Promise.resolve(null)
-                    );
+                    var data = new FormData();
+                    data.append('folderId', '5bf09bf5-3464-4e2d-99b3-c8f39344fff4');
+                    data.append('importFile', fs.createReadStream(__dirname + `/datasetfiles/${dataset._id}.json`));
+                    data.append('finalised', 'false');
+                    data.append('importAsNewDocumentationVersion', 'true');
 
                     await axios
-                    .put(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/${newDatasetVersionId}/finalise`, { withCredentials: true, timeout: 5000 })
-                    .catch(err => {
-                        console.log('Error when trying to finalise the dataset on the MDC - ' + err.message);
-                    });
+                        .post('https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/import/ox.softeng.metadatacatalogue.core.spi.json/JsonImporterService/1.1', data, {
+                            withCredentials: true, timeout: 5000, headers: {
+                                ...data.getHeaders()
+                            }
+                        })
+                        .then(async (newDatasetVersion) => {
+                            let newDatasetVersionId = newDatasetVersion.data.items[0].id;
+                            fs.unlinkSync(__dirname + `/datasetfiles/${dataset._id}.json`);
 
+                            const updatedDatasetDetails = {
+                                documentationVersion: dataset.datasetVersion
+                            }
 
-                    // Adding to DB
-                    
-                    let datasetv2Object = {
-                        identifier: dataset.questionAnswers['identifier'] || '',
-                        version: dataset.questionAnswers['version'] || '',
-                        issued: dataset.questionAnswers['issued'] || '',
-                        modified: dataset.questionAnswers['modified'] || '',
-                        revisions: [],
-                        summary: {
-                            title: dataset.questionAnswers['title'] || '',
-                            abstract: dataset.questionAnswers['abstract'] || '',
-                            publisher: {
-                                identifier: dataset.questionAnswers['identifier'] || '',
-                                name: 'HQIP',//dataset.questionAnswers['name'] || '',
-                                logo: dataset.questionAnswers['logo'] || '',
-                                description: dataset.questionAnswers['description'] || '',
-                                contactPoint: dataset.questionAnswers['contactPoint'] || [],
-                                memberOf: 'ALLIANCE',//dataset.questionAnswers['memberOf'] || '',
-                                accessRights: dataset.questionAnswers['accessRights'] || [],
-                                deliveryLeadTime: dataset.questionAnswers['deliveryLeadTime'] || '',
-                                accessService: dataset.questionAnswers['accessService'] || '',
-                                accessRequestCost: dataset.questionAnswers['accessRequestCost'] || '',
-                                dataUseLimitation: dataset.questionAnswers['dataUseLimitation'] || [],
-                                dataUseRequirements: dataset.questionAnswers['dataUseRequirements'] || [],
-                            },
-                            contactPoint: dataset.questionAnswers['contactPoint'] || '',
-                            keywords: dataset.questionAnswers['keywords'] || [],
-                            alternateIdentifiers: dataset.questionAnswers['alternateIdentifiers'] || [],
-                            doiName: dataset.questionAnswers['doiName'] || '',
-                        },
-                        documentation: {
-                            description: dataset.questionAnswers['description'] || '',
-                            associatedMedia: dataset.questionAnswers['associatedMedia'] || [],
-                            isPartOf: dataset.questionAnswers['isPartOf'] || [],
-                        },
-                        coverage: {
-                            spatial: dataset.questionAnswers['spatial'] || '',
-                            typicalAgeRange: dataset.questionAnswers['typicalAgeRange'] || '',
-                            physicalSampleAvailability: dataset.questionAnswers['physicalSampleAvailability'] || [],
-                            followup: dataset.questionAnswers['followup'] || '',
-                            pathway: dataset.questionAnswers['pathway'] || '',
-                        },
-                        provenance: {
-                            origin: {
-                                purpose: dataset.questionAnswers['purpose'] || [],
-                                source: dataset.questionAnswers['source'] || [],
-                                collectionSituation: dataset.questionAnswers['collectionSituation'] || [],
-                            },
-                            temporal: {
-                                accrualPeriodicity: dataset.questionAnswers['accrualPeriodicity'] || '',
-                                distributionReleaseDate: dataset.questionAnswers['distributionReleaseDate'] || '',
-                                startDate: dataset.questionAnswers['startDate'] || '',
-                                endDate: dataset.questionAnswers['endDate'] || '',
-                                timeLag: dataset.questionAnswers['timeLag'] || '',
-                            },
-                        },
-                        accessibility: {
-                            usage: {
-                                dataUseLimitation: dataset.questionAnswers['dataUseLimitation'] || [],
-                                dataUseRequirements: dataset.questionAnswers['dataUseRequirements'] || [],
-                                resourceCreator: dataset.questionAnswers['resourceCreator'] || '',
-                                investigations: dataset.questionAnswers['investigations'] || [],
-                                isReferencedBy: dataset.questionAnswers['isReferencedBy'] || [],
-                            },
-                            access: {
-                                accessRights: dataset.questionAnswers['accessRights'] || [],
-                                accessService: dataset.questionAnswers['accessService'] || '',
-                                accessRequestCost: dataset.questionAnswers['accessRequestCost'] || '',
-                                deliveryLeadTime: dataset.questionAnswers['deliveryLeadTime'] || '',
-                                jurisdiction: dataset.questionAnswers['jurisdiction'] || [],
-                                dataProcessor: dataset.questionAnswers['dataProcessor'] || '',
-                                dataController: dataset.questionAnswers['dataController'] || '',
-                            },
-                            formatAndStandards: {
-                                vocabularyEncodingScheme: dataset.questionAnswers['vocabularyEncodingScheme'] || [],
-                                conformsTo: dataset.questionAnswers['conformsTo'] || [],
-                                language: dataset.questionAnswers['language'] || [],
-                                format: dataset.questionAnswers['format'] || [],
-                            },
-                        },
-                        enrichmentAndLinkage: {
-                            qualifiedRelation: dataset.questionAnswers['qualifiedRelation'] || [],
-                            derivation: dataset.questionAnswers['derivation'] || [],
-                            tools: dataset.questionAnswers['tools'] || [],
-                        },
-                        observations: [],
-                    }; 
+                            await axios
+                                .put(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/${newDatasetVersionId}`, updatedDatasetDetails, { withCredentials: true, timeout: 5000 })
+                                .catch(err => {
+                                    console.log('Error when trying to update the version number on the MDC - ' + err.message);
+                                });
 
-                    await Data.findOneAndUpdate(
-                        { _id: id },
-                        {
-                            datasetid: newDatasetVersionId,
-                            datasetVersion: '1.0.0',
-                            name: dataset.questionAnswers['title'] || '',
-                            description: dataset.questionAnswers['description'] || '',
-                            activeflag: 'active',
-                            tags: {
-                                features: dataset.questionAnswers['keywords'] || [],
-                            },
-                            datasetfields: {
-                                publisher: 'ALLIANCE > HQIP',//datasetMDC.publisher,
-                                geographicCoverage: dataset.questionAnswers['spatial'] || '',
-                                physicalSampleAvailability: dataset.questionAnswers['physicalSampleAvailability'] || [],
-                                abstract: dataset.questionAnswers['abstract'] || '',
-                                releaseDate: dataset.questionAnswers['distributionReleaseDate'] || '',
-                                accessRequestDuration: dataset.questionAnswers['deliveryLeadTime'] || '',
-                                conformsTo: dataset.questionAnswers['conformsTo'] || '',
-                                accessRights: dataset.questionAnswers['accessRights'] || '',
-                                jurisdiction: dataset.questionAnswers['jurisdiction'] || '',
-                                datasetStartDate: dataset.questionAnswers['startDate'] || '',
-                                datasetEndDate: dataset.questionAnswers['endDate'] || '',
-                                //statisticalPopulation: datasetMDC.statisticalPopulation,
-                                ageBand: dataset.questionAnswers['typicalAgeRange'] || '',
-                                contactPoint: dataset.questionAnswers['contactPoint'] || '',
-                                periodicity: dataset.questionAnswers['accrualPeriodicity'] || '',
+                            await axios
+                                .put(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/${newDatasetVersionId}/finalise`, { withCredentials: true, timeout: 5000 })
+                                .catch(err => {
+                                    console.log('Error when trying to finalise the dataset on the MDC - ' + err.message);
+                                });
 
-                                //metadataquality: metadataQuality ? metadataQuality : {},
-                                //datautility: dataUtility ? dataUtility : {},
-                                //metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
-                                //technicaldetails: technicaldetails,
-                                //versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
-                                phenotypes: [],
-                            },
-                            datasetv2: datasetv2Object,
-                        }
-                    );
+                            // Adding to DB
 
+                            let datasetv2Object = {
+                                identifier: newDatasetVersionId,
+                                version: dataset.datasetVersion,
+                                issued: dataset.questionAnswers['issued'] || '',
+                                modified: dataset.questionAnswers['modified'] || '',
+                                revisions: [],
+                                summary: {
+                                    title: dataset.questionAnswers['title'] || '',
+                                    abstract: dataset.questionAnswers['abstract'] || '',
+                                    publisher: {
+                                        identifier: dataset.questionAnswers['identifier'] || '',
+                                        name: 'HQIP',//dataset.questionAnswers['name'] || '',
+                                        logo: dataset.questionAnswers['logo'] || '',
+                                        description: dataset.questionAnswers['description'] || '',
+                                        contactPoint: dataset.questionAnswers['contactPoint'] || [],
+                                        memberOf: 'ALLIANCE',//dataset.questionAnswers['memberOf'] || '',
+                                        accessRights: dataset.questionAnswers['accessRights'] || [],
+                                        deliveryLeadTime: dataset.questionAnswers['deliveryLeadTime'] || '',
+                                        accessService: dataset.questionAnswers['accessService'] || '',
+                                        accessRequestCost: dataset.questionAnswers['accessRequestCost'] || '',
+                                        dataUseLimitation: dataset.questionAnswers['dataUseLimitation'] || [],
+                                        dataUseRequirements: dataset.questionAnswers['dataUseRequirements'] || [],
+                                    },
+                                    contactPoint: dataset.questionAnswers['contactPoint'] || '',
+                                    keywords: dataset.questionAnswers['keywords'] || [],
+                                    alternateIdentifiers: dataset.questionAnswers['alternateIdentifiers'] || [],
+                                    doiName: dataset.questionAnswers['doiName'] || '',
+                                },
+                                documentation: {
+                                    description: dataset.questionAnswers['description'] || '',
+                                    associatedMedia: dataset.questionAnswers['associatedMedia'] || [],
+                                    isPartOf: dataset.questionAnswers['isPartOf'] || [],
+                                },
+                                coverage: {
+                                    spatial: dataset.questionAnswers['spatial'] || '',
+                                    typicalAgeRange: dataset.questionAnswers['typicalAgeRange'] || '',
+                                    physicalSampleAvailability: dataset.questionAnswers['physicalSampleAvailability'] || [],
+                                    followup: dataset.questionAnswers['followup'] || '',
+                                    pathway: dataset.questionAnswers['pathway'] || '',
+                                },
+                                provenance: {
+                                    origin: {
+                                        purpose: dataset.questionAnswers['purpose'] || [],
+                                        source: dataset.questionAnswers['source'] || [],
+                                        collectionSituation: dataset.questionAnswers['collectionSituation'] || [],
+                                    },
+                                    temporal: {
+                                        accrualPeriodicity: dataset.questionAnswers['accrualPeriodicity'] || '',
+                                        distributionReleaseDate: dataset.questionAnswers['distributionReleaseDate'] || '',
+                                        startDate: dataset.questionAnswers['startDate'] || '',
+                                        endDate: dataset.questionAnswers['endDate'] || '',
+                                        timeLag: dataset.questionAnswers['timeLag'] || '',
+                                    },
+                                },
+                                accessibility: {
+                                    usage: {
+                                        dataUseLimitation: dataset.questionAnswers['dataUseLimitation'] || [],
+                                        dataUseRequirements: dataset.questionAnswers['dataUseRequirements'] || [],
+                                        resourceCreator: dataset.questionAnswers['resourceCreator'] || '',
+                                        investigations: dataset.questionAnswers['investigations'] || [],
+                                        isReferencedBy: dataset.questionAnswers['isReferencedBy'] || [],
+                                    },
+                                    access: {
+                                        accessRights: dataset.questionAnswers['accessRights'] || [],
+                                        accessService: dataset.questionAnswers['accessService'] || '',
+                                        accessRequestCost: dataset.questionAnswers['accessRequestCost'] || '',
+                                        deliveryLeadTime: dataset.questionAnswers['deliveryLeadTime'] || '',
+                                        jurisdiction: dataset.questionAnswers['jurisdiction'] || [],
+                                        dataProcessor: dataset.questionAnswers['dataProcessor'] || '',
+                                        dataController: dataset.questionAnswers['dataController'] || '',
+                                    },
+                                    formatAndStandards: {
+                                        vocabularyEncodingScheme: dataset.questionAnswers['vocabularyEncodingScheme'] || [],
+                                        conformsTo: dataset.questionAnswers['conformsTo'] || [],
+                                        language: dataset.questionAnswers['language'] || [],
+                                        format: dataset.questionAnswers['format'] || [],
+                                    },
+                                },
+                                enrichmentAndLinkage: {
+                                    qualifiedRelation: dataset.questionAnswers['qualifiedRelation'] || [],
+                                    derivation: dataset.questionAnswers['derivation'] || [],
+                                    tools: dataset.questionAnswers['tools'] || [],
+                                },
+                                observations: [],
+                            };
 
+                            await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
 
+                            await Data.findOneAndUpdate(
+                                { _id: id },
+                                {
+                                    datasetid: newDatasetVersionId,
+                                    datasetVersion: dataset.datasetVersion,
+                                    name: dataset.questionAnswers['title'] || '',
+                                    description: dataset.questionAnswers['description'] || '',
+                                    activeflag: 'active',
+                                    tags: {
+                                        features: dataset.questionAnswers['keywords'] || [],
+                                    },
+                                    datasetfields: {
+                                        publisher: 'ALLIANCE > HQIP',//datasetMDC.publisher,
+                                        geographicCoverage: dataset.questionAnswers['spatial'] || '',
+                                        physicalSampleAvailability: dataset.questionAnswers['physicalSampleAvailability'] || [],
+                                        abstract: dataset.questionAnswers['abstract'] || '',
+                                        releaseDate: dataset.questionAnswers['distributionReleaseDate'] || '',
+                                        accessRequestDuration: dataset.questionAnswers['deliveryLeadTime'] || '',
+                                        conformsTo: dataset.questionAnswers['conformsTo'] || '',
+                                        accessRights: dataset.questionAnswers['accessRights'] || '',
+                                        jurisdiction: dataset.questionAnswers['jurisdiction'] || '',
+                                        datasetStartDate: dataset.questionAnswers['startDate'] || '',
+                                        datasetEndDate: dataset.questionAnswers['endDate'] || '',
+                                        //statisticalPopulation: datasetMDC.statisticalPopulation,
+                                        ageBand: dataset.questionAnswers['typicalAgeRange'] || '',
+                                        contactPoint: dataset.questionAnswers['contactPoint'] || '',
+                                        periodicity: dataset.questionAnswers['accrualPeriodicity'] || '',
 
-
-
-                      
-                    
-                    
-                    
-
-                    
-
-                    //Update record in tools collection.
+                                        //metadataquality: metadataQuality ? metadataQuality : {},
+                                        //datautility: dataUtility ? dataUtility : {},
+                                        //metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
+                                        //technicaldetails: technicaldetails,
+                                        //versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
+                                        phenotypes: [],
+                                    },
+                                    datasetv2: datasetv2Object,
+                                }
+                            );
+                        })
+                        .catch(err => {
+                            console.log('Error when trying to create new dataset on the MDC - ' + err.message);
+                        });
                 })
                 .catch(err => {
-                    console.log('Error when trying to create new dataset on the MDC - ' + err.message);
+                    console.log('Error when trying to login to MDC - ' + err.message);
                 });
-            })
-            .catch(err => {
-                console.log('Error when trying to login to MDC - ' + err.message);
-            });
-
 
             await axios
-            .post(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/logout`, { withCredentials: true, timeout: 5000 })
-            .catch(err => {
-                console.log('Error when trying to logout of the MDC - ' + err.message);
-            });
+                .post(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/logout`, { withCredentials: true, timeout: 5000 })
+                .catch(err => {
+                    console.log('Error when trying to logout of the MDC - ' + err.message);
+                });
 
 
 
 
 
 
-            
-            
+
+
 
             //"id": "5bf09bf5-3464-4e2d-99b3-c8f39344fff4" HQIP
 
@@ -464,558 +575,564 @@ module.exports = {
             //2. update MDC with v2 entries of data
 
             //3. finalise entry in MDC and input data into DB
-            
-//http://localhost:3000/dataset-onboarding/5ffdbb1247b6f529a72be3e0
+
+            //http://localhost:3000/dataset-onboarding/5ffdbb1247b6f529a72be3e0
             /* const metadataQualityCall = axios
             .get('https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/isValidSession', { timeout: 5000 })
             .catch(err => {
                 console.log('Unable to get session - ' + err.message);
             });
+        
+            // 2. Find the relevant data request application
+            /*let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+                {
+                    path: 'datasets dataset',
+                    populate: {
+                        path: 'publisher',
+                        populate: {
+                            path: 'team',
+                            populate: {
+                                path: 'users',
+                                populate: {
+                                    path: 'additionalInfo',
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    path: 'mainApplicant authors',
+                    populate: {
+                        path: 'additionalInfo',
+                    },
+                },
+                {
+                    path: 'publisherObj',
+                },
+            ]);
+            if (!accessRecord) {
+                return res.status(404).json({ status: 'error', message: 'Application not found.' });
+            }
+            // 3. Check user type and authentication to submit application
+            let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+            if (!authorised) {
+                return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+            }
+            // 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
+            if (_.isEmpty(accessRecord.datasets)) {
+                accessRecord.datasets = [accessRecord.dataset];
+            }
+            // 5. Perform either initial submission or resubmission depending on application status
+            if (accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
+                accessRecord = module.exports.doInitialSubmission(accessRecord);
+            } else if (
+                accessRecord.applicationStatus === constants.applicationStatuses.INREVIEW ||
+                accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED
+            ) {
+                accessRecord = amendmentController.doResubmission(accessRecord.toObject(), req.user._id.toString());
+            }
+            // 6. Ensure a valid submission is taking place
+            if (_.isNil(accessRecord.submissionType)) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: 'Application cannot be submitted as it has reached a final decision status.',
+                });
+            }
+            // 7. Save changes to db
+            await DataRequestModel.replaceOne({ _id: id }, accessRecord, async err => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({
+                        status: 'error',
+                        message: 'An error occurred saving the changes',
+                    });
+                } else {
+                    // 8. Send notifications and emails with amendments
+                    accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
+                    accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
+                    accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
+                    await module.exports.createNotifications(
+                        accessRecord.submissionType === constants.submissionTypes.INITIAL
+                            ? constants.notificationTypes.SUBMITTED
+                            : constants.notificationTypes.RESUBMITTED,
+                        {},
+                        accessRecord,
+                        req.user
+                    );
+                    // 8. Start workflow process in Camunda if publisher requires it and it is the first submission
+                    if (accessRecord.workflowEnabled && accessRecord.submissionType === constants.submissionTypes.INITIAL) {
+                        let {
+                            publisherObj: { name: publisher },
+                            dateSubmitted,
+                        } = accessRecord;
+                        let bpmContext = {
+                            dateSubmitted,
+                            applicationStatus: constants.applicationStatuses.SUBMITTED,
+                            publisher,
+                            businessKey: id,
+                        };
+                        bpmController.postStartPreReview(bpmContext);
+                    }
+                }
+            });
+            // 9. Return aplication and successful response
+            return res.status(200).json({ status: 'success', data: accessRecord._doc });*/
+            return res.status(200).json({ status: 'success' });
+        } catch (err) {
+            console.log(err.message);
+            res.status(500).json({ status: 'error', message: err.message });
+        }
+    },
 
-			// 2. Find the relevant data request application
-			/*let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
-				{
-					path: 'datasets dataset',
-					populate: {
-						path: 'publisher',
-						populate: {
-							path: 'team',
-							populate: {
-								path: 'users',
-								populate: {
-									path: 'additionalInfo',
-								},
-							},
-						},
-					},
-				},
-				{
-					path: 'mainApplicant authors',
-					populate: {
-						path: 'additionalInfo',
-					},
-				},
-				{
-					path: 'publisherObj',
-				},
-			]);
-			if (!accessRecord) {
-				return res.status(404).json({ status: 'error', message: 'Application not found.' });
-			}
-			// 3. Check user type and authentication to submit application
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
-			if (!authorised) {
-				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			}
-			// 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
-			if (_.isEmpty(accessRecord.datasets)) {
-				accessRecord.datasets = [accessRecord.dataset];
-			}
-			// 5. Perform either initial submission or resubmission depending on application status
-			if (accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
-				accessRecord = module.exports.doInitialSubmission(accessRecord);
-			} else if (
-				accessRecord.applicationStatus === constants.applicationStatuses.INREVIEW ||
-				accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED
-			) {
-				accessRecord = amendmentController.doResubmission(accessRecord.toObject(), req.user._id.toString());
-			}
-			// 6. Ensure a valid submission is taking place
-			if (_.isNil(accessRecord.submissionType)) {
-				return res.status(400).json({
-					status: 'error',
-					message: 'Application cannot be submitted as it has reached a final decision status.',
-				});
-			}
-			// 7. Save changes to db
-			await DataRequestModel.replaceOne({ _id: id }, accessRecord, async err => {
-				if (err) {
-					console.error(err);
-					return res.status(500).json({
-						status: 'error',
-						message: 'An error occurred saving the changes',
-					});
-				} else {
-					// 8. Send notifications and emails with amendments
-					accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
-					accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
-					accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
-					await module.exports.createNotifications(
-						accessRecord.submissionType === constants.submissionTypes.INITIAL
-							? constants.notificationTypes.SUBMITTED
-							: constants.notificationTypes.RESUBMITTED,
-						{},
-						accessRecord,
-						req.user
-					);
-					// 8. Start workflow process in Camunda if publisher requires it and it is the first submission
-					if (accessRecord.workflowEnabled && accessRecord.submissionType === constants.submissionTypes.INITIAL) {
-						let {
-							publisherObj: { name: publisher },
-							dateSubmitted,
-						} = accessRecord;
-						let bpmContext = {
-							dateSubmitted,
-							applicationStatus: constants.applicationStatuses.SUBMITTED,
-							publisher,
-							businessKey: id,
-						};
-						bpmController.postStartPreReview(bpmContext);
-					}
-				}
-			});
-			// 9. Return aplication and successful response
-			return res.status(200).json({ status: 'success', data: accessRecord._doc });*/
-			return res.status(200).json({ status: 'success' });
-		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
+    //POST api/v1/data-access-request/:id/upload
+    uploadFiles: async (req, res) => {
+
     },
 
 
 
 
-	/* //GET api/v1/data-access-request
-	getAccessRequestsByUser: async (req, res) => {
-		try {
-			// 1. Deconstruct the
-			let { id: userId } = req.user;
-			// 2. Find all data access request applications created with single dataset version
-			let singleDatasetApplications = await DataRequestModel.find({
-				$and: [
-					{
-						$or: [{ userId: parseInt(userId) }, { authorIds: userId }],
-					},
-					{ dataSetId: { $ne: null } },
-				],
-			}).populate('dataset mainApplicant');
-			// 3. Find all data access request applications created with multi dataset version
-			let multiDatasetApplications = await DataRequestModel.find({
-				$and: [
-					{
-						$or: [{ userId: parseInt(userId) }, { authorIds: userId }],
-					},
-					{
-						$and: [{ datasetIds: { $ne: [] } }, { datasetIds: { $ne: null } }],
-					},
-				],
-			}).populate('datasets mainApplicant');
-			// 4. Return all users applications combined
-			const applications = [...singleDatasetApplications, ...multiDatasetApplications];
+    /* //GET api/v1/data-access-request
+    getAccessRequestsByUser: async (req, res) => {
+        try {
+            // 1. Deconstruct the
+            let { id: userId } = req.user;
+            // 2. Find all data access request applications created with single dataset version
+            let singleDatasetApplications = await DataRequestModel.find({
+                $and: [
+                    {
+                        $or: [{ userId: parseInt(userId) }, { authorIds: userId }],
+                    },
+                    { dataSetId: { $ne: null } },
+                ],
+            }).populate('dataset mainApplicant');
+            // 3. Find all data access request applications created with multi dataset version
+            let multiDatasetApplications = await DataRequestModel.find({
+                $and: [
+                    {
+                        $or: [{ userId: parseInt(userId) }, { authorIds: userId }],
+                    },
+                    {
+                        $and: [{ datasetIds: { $ne: [] } }, { datasetIds: { $ne: null } }],
+                    },
+                ],
+            }).populate('datasets mainApplicant');
+            // 4. Return all users applications combined
+            const applications = [...singleDatasetApplications, ...multiDatasetApplications];
+ 
+            // 5. Append project name and applicants
+            let modifiedApplications = [...applications]
+                .map(app => {
+                    return module.exports.createApplicationDTO(app.toObject(), constants.userTypes.APPLICANT);
+                })
+                .sort((a, b) => b.updatedAt - a.updatedAt);
+ 
+            let avgDecisionTime = module.exports.calculateAvgDecisionTime(applications);
+ 
+            // 6. Return payload
+            return res.status(200).json({
+                success: true,
+                data: modifiedApplications,
+                avgDecisionTime,
+                canViewSubmitted: true,
+            });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({
+                success: false,
+                message: 'An error occurred searching for user applications',
+            });
+        }
+    },
+ 
+    //GET api/v1/data-access-request/:requestId
+    getAccessRequestById: async (req, res) => {
+        try {
+            // 1. Get dataSetId from params
+            let {
+                params: { requestId },
+            } = req;
+            // 2. Find the matching record and include attached datasets records with publisher details
+            let accessRecord = await DataRequestModel.findOne({
+                _id: requestId,
+            }).populate([
+                { path: 'mainApplicant', select: 'firstname lastname -id' },
+                {
+                    path: 'datasets dataset authors',
+                    populate: { path: 'publisher', populate: { path: 'team' } },
+                },
+                { path: 'workflow.steps.reviewers', select: 'firstname lastname' },
+                { path: 'files.owner', select: 'firstname lastname' },
+            ]);
+            // 3. If no matching application found, return 404
+            if (!accessRecord) {
+                return res.status(404).json({ status: 'error', message: 'Application not found.' });
+            } else {
+                accessRecord = accessRecord.toObject();
+            }
+            // 4. Ensure single datasets are mapped correctly into array
+            if (_.isEmpty(accessRecord.datasets)) {
+                accessRecord.datasets = [accessRecord.dataset];
+            }
+            // 5. Check if requesting user is custodian member or applicant/contributor
+            let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+            let readOnly = true;
+            if (!authorised) {
+                return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+            }
+            // 6. Set edit mode for applicants who have not yet submitted
+            if (userType === constants.userTypes.APPLICANT && accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
+                readOnly = false;
+            }
+            // 7. Count unsubmitted amendments
+            let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(accessRecord, userType);
+            // 8. Set the review mode if user is a custodian reviewing the current step
+            let { inReviewMode, reviewSections, hasRecommended } = workflowController.getReviewStatus(accessRecord, req.user._id);
+            // 9. Get the workflow/voting status
+            let workflow = workflowController.getWorkflowStatus(accessRecord);
+            let isManager = false;
+            // 10. Check if the current user can override the current step
+            if (_.has(accessRecord.datasets[0], 'publisher.team')) {
+                isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, accessRecord.datasets[0].publisher.team, req.user._id);
+                // Set the workflow override capability if there is an active step and user is a manager
+                if (!_.isEmpty(workflow)) {
+                    workflow.canOverrideStep = !workflow.isCompleted && isManager;
+                }
+            }
+            // 11. Update json schema and question answers with modifications since original submission
+            accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
+            accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
+            accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
+            // 12. Determine the current active party handling the form
+            let activeParty = amendmentController.getAmendmentIterationParty(accessRecord);
+            // 13. Append question actions depending on user type and application status
+            let userRole =
+                userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
+            accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
+                accessRecord.jsonSchema,
+                userType,
+                accessRecord.applicationStatus,
+                userRole
+            );
+            // 14. Return application form
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    ...accessRecord,
+                    aboutApplication:
+                        typeof accessRecord.aboutApplication === 'string' ? JSON.parse(accessRecord.aboutApplication) : accessRecord.aboutApplication,
+                    datasets: accessRecord.datasets,
+                    readOnly,
+                    ...countUnsubmittedAmendments,
+                    userType,
+                    activeParty,
+                    projectId: accessRecord.projectId || helper.generateFriendlyId(accessRecord._id),
+                    inReviewMode,
+                    reviewSections,
+                    hasRecommended,
+                    workflow,
+                    files: accessRecord.files || [],
+                },
+            });
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).json({ status: 'error', message: err.message });
+        }
+    },
+ 
+    //GET api/v1/data-access-request/dataset/:datasetId
+    getAccessRequestByUserAndDataset: async (req, res) => {
+        let accessRecord;
+        let data = {};
+        let dataset;
+        try {
+            // 1. Get dataSetId from params
+            let {
+                params: { dataSetId },
+            } = req;
+            // 2. Get the userId
+            let { id: userId, firstname, lastname } = req.user;
+            // 3. Find the matching record
+            accessRecord = await DataRequestModel.findOne({
+                dataSetId,
+                userId,
+                applicationStatus: constants.applicationStatuses.INPROGRESS,
+            }).populate({
+                path: 'mainApplicant',
+                select: 'firstname lastname -id -_id',
+            });
+            // 4. Get dataset
+            dataset = await ToolModel.findOne({ datasetid: dataSetId }).populate('publisher');
+            // 5. If no record create it and pass back
+            if (!accessRecord) {
+                if (!dataset) {
+                    return res.status(500).json({ status: 'error', message: 'No dataset available.' });
+                }
+                let {
+                    datasetfields: { publisher = '' },
+                } = dataset;
+                // 1. GET the template from the custodian
+                const accessRequestTemplate = await DataRequestSchemaModel.findOne({
+                    $or: [{ dataSetId }, { publisher }, { dataSetId: 'default' }],
+                    status: 'active',
+                }).sort({ createdAt: -1 });
+ 
+                if (!accessRequestTemplate) {
+                    return res.status(400).json({
+                        status: 'error',
+                        message: 'No Data Access request schema.',
+                    });
+                }
+                // 2. Build up the accessModel for the user
+                let { jsonSchema, version } = accessRequestTemplate;
+                // 3. create new DataRequestModel
+                let record = new DataRequestModel({
+                    version,
+                    userId,
+                    dataSetId,
+                    jsonSchema,
+                    publisher,
+                    questionAnswers: '{}',
+                    aboutApplication: {},
+                    applicationStatus: constants.applicationStatuses.INPROGRESS,
+                });
+                // 4. save record
+                const newApplication = await record.save();
+                newApplication.projectId = helper.generateFriendlyId(newApplication._id);
+                await newApplication.save();
+ 
+                // 5. return record
+                data = {
+                    ...newApplication._doc,
+                    mainApplicant: { firstname, lastname },
+                };
+            } else {
+                data = { ...accessRecord.toObject() };
+            }
+            // 6. Parse json to allow us to modify schema
+            data.jsonSchema = JSON.parse(data.jsonSchema);
+            // 7. Append question actions depending on user type and application status
+            data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+            // 8. Return payload
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    ...data,
+                    questionAnswers: JSON.parse(data.questionAnswers),
+                    aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
+                    dataset,
+                    projectId: data.projectId || helper.generateFriendlyId(data._id),
+                    userType: constants.userTypes.APPLICANT,
+                    activeParty: constants.userTypes.APPLICANT,
+                    inReviewMode: false,
+                    reviewSections: [],
+                    files: data.files || [],
+                },
+            });
+        } catch (err) {
+            console.log(err.message);
+            res.status(500).json({ status: 'error', message: err.message });
+        }
+    },
+ 
+    //GET api/v1/data-access-request/datasets/:datasetIds
+    getAccessRequestByUserAndMultipleDatasets: async (req, res) => {
+        let accessRecord;
+        let data = {};
+        let datasets = [];
+        try {
+            // 1. Get datasetIds from params
+            let {
+                params: { datasetIds },
+            } = req;
+            let arrDatasetIds = datasetIds.split(',');
+            // 2. Get the userId
+            let { id: userId, firstname, lastname } = req.user;
+            // 3. Find the matching record
+            accessRecord = await DataRequestModel.findOne({
+                datasetIds: { $all: arrDatasetIds },
+                userId,
+                applicationStatus: constants.applicationStatuses.INPROGRESS,
+            })
+                .populate([
+                    {
+                        path: 'mainApplicant',
+                        select: 'firstname lastname -id -_id',
+                    },
+                    { path: 'files.owner', select: 'firstname lastname' },
+                ])
+                .sort({ createdAt: 1 });
+            // 4. Get datasets
+            datasets = await ToolModel.find({
+                datasetid: { $in: arrDatasetIds },
+            }).populate('publisher');
+            // 5. If no record create it and pass back
+            if (!accessRecord) {
+                if (_.isEmpty(datasets)) {
+                    return res.status(500).json({ status: 'error', message: 'No datasets available.' });
+                }
+                let {
+                    datasetfields: { publisher = '' },
+                } = datasets[0];
+ 
+                // 1. GET the template from the custodian or take the default (Cannot have dataset specific question sets for multiple datasets)
+                const accessRequestTemplate = await DataRequestSchemaModel.findOne({
+                    $or: [{ publisher }, { dataSetId: 'default' }],
+                    status: 'active',
+                }).sort({ createdAt: -1 });
+                // 2. Ensure a question set was found
+                if (!accessRequestTemplate) {
+                    return res.status(400).json({
+                        status: 'error',
+                        message: 'No Data Access request schema.',
+                    });
+                }
+                // 3. Build up the accessModel for the user
+                let { jsonSchema, version } = accessRequestTemplate;
+                // 4. Create new DataRequestModel
+                let record = new DataRequestModel({
+                    version,
+                    userId,
+                    datasetIds: arrDatasetIds,
+                    jsonSchema,
+                    publisher,
+                    questionAnswers: '{}',
+                    aboutApplication: {},
+                    applicationStatus: constants.applicationStatuses.INPROGRESS,
+                });
+                // 4. save record
+                const newApplication = await record.save();
+                newApplication.projectId = helper.generateFriendlyId(newApplication._id);
+                await newApplication.save();
+                // 5. return record
+                data = {
+                    ...newApplication._doc,
+                    mainApplicant: { firstname, lastname },
+                };
+            } else {
+                data = { ...accessRecord.toObject() };
+            }
+            // 6. Parse json to allow us to modify schema
+            data.jsonSchema = JSON.parse(data.jsonSchema);
+            // 7. Append question actions depending on user type and application status
+            data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+            // 8. Return payload
+            return res.status(200).json({
+                status: 'success',
+                data: {
+                    ...data,
+                    questionAnswers: JSON.parse(data.questionAnswers),
+                    aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
+                    datasets,
+                    projectId: data.projectId || helper.generateFriendlyId(data._id),
+                    userType: constants.userTypes.APPLICANT,
+                    activeParty: constants.userTypes.APPLICANT,
+                    inReviewMode: false,
+                    reviewSections: [],
+                    files: data.files || [],
+                },
+            });
+        } catch (err) {
+            console.log(err.message);
+            res.status(500).json({ status: 'error', message: err.message });
+        }
+    },
+ 
+    //PATCH api/v1/data-access-request/:id
+    updateAccessRequestDataElement: async (req, res) => {
+        try {
+            // 1. Id is the _id object in mongoo.db not the generated id or dataset Id
+            const {
+                params: { id },
+                body: data,
+            } = req;
+            // 2. Destructure body and update only specific fields by building a segregated non-user specified update object
+            let updateObj = module.exports.buildUpdateObject({
+                ...data,
+                user: req.user,
+            });
+            // 3. Find data request by _id to determine current status
+            let accessRequestRecord = await DataRequestModel.findOne({
+                _id: id,
+            });
+            // 4. Check access record
+            if (!accessRequestRecord) {
+                return res.status(404).json({ status: 'error', message: 'Data Access Request not found.' });
+            }
+            // 5. Update record object
+            module.exports.updateApplication(accessRequestRecord, updateObj).then(accessRequestRecord => {
+                const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRequestRecord;
+                if(dirtySchema) {
+                    accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
+                    accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
+                }
+                let data = {
+                    status: 'success',
+                    unansweredAmendments,
+                    answeredAmendments
+                };
+                if(dirtySchema) {
+                    data = {
+                        ...data,
+                        jsonSchema: accessRequestRecord.jsonSchema
+                    }
+                }
+                // 6. Return new data object
+                return res.status(200).json(data);
+            });
+        } catch (err) {
+            console.log(err.message);
+            res.status(500).json({ status: 'error', message: err.message });
+        }
+    },*/
 
-			// 5. Append project name and applicants
-			let modifiedApplications = [...applications]
-				.map(app => {
-					return module.exports.createApplicationDTO(app.toObject(), constants.userTypes.APPLICANT);
-				})
-				.sort((a, b) => b.updatedAt - a.updatedAt);
+    buildUpdateObject: data => {
+        let updateObj = {};
+        let { questionAnswers, updatedQuestionId, user, jsonSchema = '' } = data;
+        if (questionAnswers) {
+            updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user };
+        }
 
-			let avgDecisionTime = module.exports.calculateAvgDecisionTime(applications);
+        if (!_.isEmpty(jsonSchema)) {
+            updateObj = { ...updateObj, jsonSchema };
+        }
 
-			// 6. Return payload
-			return res.status(200).json({
-				success: true,
-				data: modifiedApplications,
-				avgDecisionTime,
-				canViewSubmitted: true,
-			});
-		} catch (error) {
-			console.error(error);
-			return res.status(500).json({
-				success: false,
-				message: 'An error occurred searching for user applications',
-			});
-		}
-	},
+        return updateObj;
+    },
 
-	//GET api/v1/data-access-request/:requestId
-	getAccessRequestById: async (req, res) => {
-		try {
-			// 1. Get dataSetId from params
-			let {
-				params: { requestId },
-			} = req;
-			// 2. Find the matching record and include attached datasets records with publisher details
-			let accessRecord = await DataRequestModel.findOne({
-				_id: requestId,
-			}).populate([
-				{ path: 'mainApplicant', select: 'firstname lastname -id' },
-				{
-					path: 'datasets dataset authors',
-					populate: { path: 'publisher', populate: { path: 'team' } },
-				},
-				{ path: 'workflow.steps.reviewers', select: 'firstname lastname' },
-				{ path: 'files.owner', select: 'firstname lastname' },
-			]);
-			// 3. If no matching application found, return 404
-			if (!accessRecord) {
-				return res.status(404).json({ status: 'error', message: 'Application not found.' });
-			} else {
-				accessRecord = accessRecord.toObject();
-			}
-			// 4. Ensure single datasets are mapped correctly into array
-			if (_.isEmpty(accessRecord.datasets)) {
-				accessRecord.datasets = [accessRecord.dataset];
-			}
-			// 5. Check if requesting user is custodian member or applicant/contributor
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
-			let readOnly = true;
-			if (!authorised) {
-				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			}
-			// 6. Set edit mode for applicants who have not yet submitted
-			if (userType === constants.userTypes.APPLICANT && accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
-				readOnly = false;
-			}
-			// 7. Count unsubmitted amendments
-			let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(accessRecord, userType);
-			// 8. Set the review mode if user is a custodian reviewing the current step
-			let { inReviewMode, reviewSections, hasRecommended } = workflowController.getReviewStatus(accessRecord, req.user._id);
-			// 9. Get the workflow/voting status
-			let workflow = workflowController.getWorkflowStatus(accessRecord);
-			let isManager = false;
-			// 10. Check if the current user can override the current step
-			if (_.has(accessRecord.datasets[0], 'publisher.team')) {
-				isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, accessRecord.datasets[0].publisher.team, req.user._id);
-				// Set the workflow override capability if there is an active step and user is a manager
-				if (!_.isEmpty(workflow)) {
-					workflow.canOverrideStep = !workflow.isCompleted && isManager;
-				}
-			}
-			// 11. Update json schema and question answers with modifications since original submission
-			accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
-			accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
-			accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
-			// 12. Determine the current active party handling the form
-			let activeParty = amendmentController.getAmendmentIterationParty(accessRecord);
-			// 13. Append question actions depending on user type and application status
-			let userRole =
-				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
-			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
-				accessRecord.jsonSchema,
-				userType,
-				accessRecord.applicationStatus,
-				userRole
-			);
-			// 14. Return application form
-			return res.status(200).json({
-				status: 'success',
-				data: {
-					...accessRecord,
-					aboutApplication:
-						typeof accessRecord.aboutApplication === 'string' ? JSON.parse(accessRecord.aboutApplication) : accessRecord.aboutApplication,
-					datasets: accessRecord.datasets,
-					readOnly,
-					...countUnsubmittedAmendments,
-					userType,
-					activeParty,
-					projectId: accessRecord.projectId || helper.generateFriendlyId(accessRecord._id),
-					inReviewMode,
-					reviewSections,
-					hasRecommended,
-					workflow,
-					files: accessRecord.files || [],
-				},
-			});
-		} catch (err) {
-			console.error(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
-	},
+    updateApplication: async (accessRecord, updateObj) => {
+        // 1. Extract properties
+        let { activeflag, _id } = accessRecord;
+        let { updatedQuestionId = '', user } = updateObj;
+        // 2. If application is in progress, update initial question answers
+        if (activeflag === constants.datatsetStatuses.DRAFT) {
+            await Data.findByIdAndUpdate(_id, updateObj, { new: true }, err => {
+                if (err) {
+                    console.error(err);
+                    throw err;
+                }
+            });
+            return accessRecord;
+            // 3. Else if application has already been submitted make amendment
+        } else if (
+            activeflag === constants.applicationStatuses.INREVIEW ||
+            activeflag === constants.applicationStatuses.SUBMITTED
+        ) {
+            if (_.isNil(updateObj.questionAnswers)) {
+                return accessRecord;
+            }
+            let updatedAnswer = JSON.parse(updateObj.questionAnswers)[updatedQuestionId];
+            accessRecord = amendmentController.handleApplicantAmendment(accessRecord.toObject(), updatedQuestionId, '', updatedAnswer, user);
+            await DataRequestModel.replaceOne({ _id }, accessRecord, err => {
+                if (err) {
+                    console.error(err);
+                    throw err;
+                }
+            });
+            return accessRecord;
+        }
+    },
 
-	//GET api/v1/data-access-request/dataset/:datasetId
-	getAccessRequestByUserAndDataset: async (req, res) => {
-		let accessRecord;
-		let data = {};
-		let dataset;
-		try {
-			// 1. Get dataSetId from params
-			let {
-				params: { dataSetId },
-			} = req;
-			// 2. Get the userId
-			let { id: userId, firstname, lastname } = req.user;
-			// 3. Find the matching record
-			accessRecord = await DataRequestModel.findOne({
-				dataSetId,
-				userId,
-				applicationStatus: constants.applicationStatuses.INPROGRESS,
-			}).populate({
-				path: 'mainApplicant',
-				select: 'firstname lastname -id -_id',
-			});
-			// 4. Get dataset
-			dataset = await ToolModel.findOne({ datasetid: dataSetId }).populate('publisher');
-			// 5. If no record create it and pass back
-			if (!accessRecord) {
-				if (!dataset) {
-					return res.status(500).json({ status: 'error', message: 'No dataset available.' });
-				}
-				let {
-					datasetfields: { publisher = '' },
-				} = dataset;
-				// 1. GET the template from the custodian
-				const accessRequestTemplate = await DataRequestSchemaModel.findOne({
-					$or: [{ dataSetId }, { publisher }, { dataSetId: 'default' }],
-					status: 'active',
-				}).sort({ createdAt: -1 });
-
-				if (!accessRequestTemplate) {
-					return res.status(400).json({
-						status: 'error',
-						message: 'No Data Access request schema.',
-					});
-				}
-				// 2. Build up the accessModel for the user
-				let { jsonSchema, version } = accessRequestTemplate;
-				// 3. create new DataRequestModel
-				let record = new DataRequestModel({
-					version,
-					userId,
-					dataSetId,
-					jsonSchema,
-					publisher,
-					questionAnswers: '{}',
-					aboutApplication: {},
-					applicationStatus: constants.applicationStatuses.INPROGRESS,
-				});
-				// 4. save record
-				const newApplication = await record.save();
-				newApplication.projectId = helper.generateFriendlyId(newApplication._id);
-				await newApplication.save();
-
-				// 5. return record
-				data = {
-					...newApplication._doc,
-					mainApplicant: { firstname, lastname },
-				};
-			} else {
-				data = { ...accessRecord.toObject() };
-			}
-			// 6. Parse json to allow us to modify schema
-			data.jsonSchema = JSON.parse(data.jsonSchema);
-			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
-			// 8. Return payload
-			return res.status(200).json({
-				status: 'success',
-				data: {
-					...data,
-					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
-					dataset,
-					projectId: data.projectId || helper.generateFriendlyId(data._id),
-					userType: constants.userTypes.APPLICANT,
-					activeParty: constants.userTypes.APPLICANT,
-					inReviewMode: false,
-					reviewSections: [],
-					files: data.files || [],
-				},
-			});
-		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
-	},
-
-	//GET api/v1/data-access-request/datasets/:datasetIds
-	getAccessRequestByUserAndMultipleDatasets: async (req, res) => {
-		let accessRecord;
-		let data = {};
-		let datasets = [];
-		try {
-			// 1. Get datasetIds from params
-			let {
-				params: { datasetIds },
-			} = req;
-			let arrDatasetIds = datasetIds.split(',');
-			// 2. Get the userId
-			let { id: userId, firstname, lastname } = req.user;
-			// 3. Find the matching record
-			accessRecord = await DataRequestModel.findOne({
-				datasetIds: { $all: arrDatasetIds },
-				userId,
-				applicationStatus: constants.applicationStatuses.INPROGRESS,
-			})
-				.populate([
-					{
-						path: 'mainApplicant',
-						select: 'firstname lastname -id -_id',
-					},
-					{ path: 'files.owner', select: 'firstname lastname' },
-				])
-				.sort({ createdAt: 1 });
-			// 4. Get datasets
-			datasets = await ToolModel.find({
-				datasetid: { $in: arrDatasetIds },
-			}).populate('publisher');
-			// 5. If no record create it and pass back
-			if (!accessRecord) {
-				if (_.isEmpty(datasets)) {
-					return res.status(500).json({ status: 'error', message: 'No datasets available.' });
-				}
-				let {
-					datasetfields: { publisher = '' },
-				} = datasets[0];
-
-				// 1. GET the template from the custodian or take the default (Cannot have dataset specific question sets for multiple datasets)
-				const accessRequestTemplate = await DataRequestSchemaModel.findOne({
-					$or: [{ publisher }, { dataSetId: 'default' }],
-					status: 'active',
-				}).sort({ createdAt: -1 });
-				// 2. Ensure a question set was found
-				if (!accessRequestTemplate) {
-					return res.status(400).json({
-						status: 'error',
-						message: 'No Data Access request schema.',
-					});
-				}
-				// 3. Build up the accessModel for the user
-				let { jsonSchema, version } = accessRequestTemplate;
-				// 4. Create new DataRequestModel
-				let record = new DataRequestModel({
-					version,
-					userId,
-					datasetIds: arrDatasetIds,
-					jsonSchema,
-					publisher,
-					questionAnswers: '{}',
-					aboutApplication: {},
-					applicationStatus: constants.applicationStatuses.INPROGRESS,
-				});
-				// 4. save record
-				const newApplication = await record.save();
-				newApplication.projectId = helper.generateFriendlyId(newApplication._id);
-				await newApplication.save();
-				// 5. return record
-				data = {
-					...newApplication._doc,
-					mainApplicant: { firstname, lastname },
-				};
-			} else {
-				data = { ...accessRecord.toObject() };
-			}
-			// 6. Parse json to allow us to modify schema
-			data.jsonSchema = JSON.parse(data.jsonSchema);
-			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
-			// 8. Return payload
-			return res.status(200).json({
-				status: 'success',
-				data: {
-					...data,
-					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
-					datasets,
-					projectId: data.projectId || helper.generateFriendlyId(data._id),
-					userType: constants.userTypes.APPLICANT,
-					activeParty: constants.userTypes.APPLICANT,
-					inReviewMode: false,
-					reviewSections: [],
-					files: data.files || [],
-				},
-			});
-		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
-	},
-
-	//PATCH api/v1/data-access-request/:id
-	updateAccessRequestDataElement: async (req, res) => {
-		try {
-			// 1. Id is the _id object in mongoo.db not the generated id or dataset Id
-			const {
-				params: { id },
-				body: data,
-			} = req;
-			// 2. Destructure body and update only specific fields by building a segregated non-user specified update object
-			let updateObj = module.exports.buildUpdateObject({
-				...data,
-				user: req.user,
-			});
-			// 3. Find data request by _id to determine current status
-			let accessRequestRecord = await DataRequestModel.findOne({
-				_id: id,
-			});
-			// 4. Check access record
-			if (!accessRequestRecord) {
-				return res.status(404).json({ status: 'error', message: 'Data Access Request not found.' });
-			}
-			// 5. Update record object
-			module.exports.updateApplication(accessRequestRecord, updateObj).then(accessRequestRecord => {
-				const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRequestRecord;
-				if(dirtySchema) {
-					accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
-					accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
-				}
-				let data = {
-					status: 'success',
-					unansweredAmendments,
-					answeredAmendments
-				};
-				if(dirtySchema) {
-					data = {
-						...data,
-						jsonSchema: accessRequestRecord.jsonSchema
-					}
-				}
-				// 6. Return new data object
-				return res.status(200).json(data);
-			});
-		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
-	},*/
-
-	buildUpdateObject: data => {
-		let updateObj = {};
-		let { questionAnswers, updatedQuestionId, user, jsonSchema = '' } = data;
-		if (questionAnswers) {
-			updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user };
-		}
-
-		if (!_.isEmpty(jsonSchema)) {
-			updateObj = { ...updateObj, jsonSchema };
-		}
-
-		return updateObj;
-	},
-
-	updateApplication: async (accessRecord, updateObj) => {
-		// 1. Extract properties
-		let { activeflag, _id } = accessRecord;
-		let { updatedQuestionId = '', user } = updateObj;
-		// 2. If application is in progress, update initial question answers
-		if (activeflag === constants.datatsetStatuses.DRAFT) {
-			await Data.findByIdAndUpdate(_id, updateObj, { new: true }, err => {
-				if (err) {
-					console.error(err);
-					throw err;
-				}
-			});
-			return accessRecord;
-			// 3. Else if application has already been submitted make amendment
-		} else if (
-			applicationStatus === constants.applicationStatuses.INREVIEW ||
-			applicationStatus === constants.applicationStatuses.SUBMITTED
-		) {
-			if (_.isNil(updateObj.questionAnswers)) {
-				return accessRecord;
-			}
-			let updatedAnswer = JSON.parse(updateObj.questionAnswers)[updatedQuestionId];
-			accessRecord = amendmentController.handleApplicantAmendment(accessRecord.toObject(), updatedQuestionId, '', updatedAnswer, user);
-			await DataRequestModel.replaceOne({ _id }, accessRecord, err => {
-				if (err) {
-					console.error(err);
-					throw err;
-				}
-			});
-			return accessRecord;
-		}
-	},
     /*
 	//PUT api/v1/data-access-request/:id
 	updateAccessRequestById: async (req, res) => {
