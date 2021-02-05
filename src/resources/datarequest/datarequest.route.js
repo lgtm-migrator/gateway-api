@@ -74,6 +74,11 @@ router.put('/:id/startreview', passport.authenticate('jwt'), datarequestControll
 // @access  Private - Custodian Manager
 router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestController.updateAccessRequestStepOverride);
 
+// @route   PUT api/v1/data-access-request/:id/deletefile
+// @desc    Update access request deleting a file by Id 
+// @access  Private - Applicant (Gateway User)
+router.put('/:id/deletefile', passport.authenticate('jwt'), datarequestController.updateAccessRequestDeleteFile);
+
 // @route   POST api/v1/data-access-request/:id/upload
 // @desc    POST application files to scan bucket
 // @access  Private - Applicant (Gateway User / Custodian Manager) 
