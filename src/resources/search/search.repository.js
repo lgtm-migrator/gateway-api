@@ -1,13 +1,21 @@
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
+import { Collections } from '../collections/collections.model';
 import _ from 'lodash';
 import moment from 'moment';
 
 export function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort) {
 	let collection = Data;
-	if (type === 'course') collection = Course;
+	if (type === 'course') {
+		collection = Course;
+	} else if (type === 'collection') {
+		collection = Collections;
+	}
+	console.log(`searchQuery: ${JSON.stringify(searchQuery, null, 2)}`);
 	var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
-	newSearchQuery['$and'].push({ type: type });
+	if (type !== 'collection') {
+		newSearchQuery['$and'].push({ type: type });
+	}
 
 	if (type === 'course') {
 		newSearchQuery['$and'].forEach(x => {
@@ -43,6 +51,8 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 				},
 			},
 		];
+	} else if (type === 'collection') {
+		queryObject = [{ $match: newSearchQuery }, { $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } }];
 	} else {
 		queryObject = [
 			{ $match: newSearchQuery },
@@ -92,6 +102,8 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 		];
 	}
 
+	console.log(`queryObject: ${JSON.stringify(queryObject, null, 2)}`);
+
 	if (sort === '' || sort === 'relevance') {
 		if (type === 'person') {
 			if (searchAll) queryObject.push({ $sort: { lastname: 1 } });
@@ -127,9 +139,15 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 
 export function getObjectCount(type, searchAll, searchQuery) {
 	let collection = Data;
-	if (type === 'course') collection = Course;
+	if (type === 'course') {
+		collection = Course;
+	} else if (type === 'collection') {
+		collection = Collections;
+	}
 	var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
-	newSearchQuery['$and'].push({ type: type });
+	if (type !== 'collection') {
+		newSearchQuery['$and'].push({ type: type });
+	}
 	if (type === 'course') {
 		newSearchQuery['$and'].forEach(x => {
 			if (x.$or) {
@@ -185,6 +203,47 @@ export function getObjectCount(type, searchAll, searchQuery) {
 					},
 				])
 				.sort({ score: { $meta: 'textScore' } });
+		}
+	}
+	// TODO - get count for collections
+	else if (type === 'collection') {
+		if (searchAll) {
+			q = collection.aggregate([
+				{ $match: newSearchQuery },
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
+						},
+					},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
+					},
+				},
+			]);
+		} else {
+			q = collection.aggregate([
+				{ $match: newSearchQuery },
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
+						},
+					},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
+					},
+				},
+			]);
+			// .sort({ score: { $meta: 'textScore' } });
 		}
 	} else {
 		if (searchAll) {
@@ -266,6 +325,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		courseentrylevel = '',
 		courseframework = '',
 		coursepriority = '',
+		//TODO - add collection filter options in here
 	} = req.query;
 
 	if (type === 'dataset') {
@@ -478,6 +538,11 @@ export function getObjectFilters(searchQueryStart, req, type) {
 			});
 			searchQuery['$and'].push({ $or: filterTermArray });
 		}
+	}
+	// TODO - add in collection filters
+	else if (type === 'collection') {
+		searchQuery['$and'].push({ publicflag: true });
+		console.log(`collection searchQuery: ${JSON.stringify(searchQuery, null, 2)}`);
 	}
 	return searchQuery;
 }
