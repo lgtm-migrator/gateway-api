@@ -135,4 +135,10 @@ DataSchema.virtual('tools', {
 	localField: 'id',
 });
 
+DataSchema.virtual('persons', {
+	ref: 'Data',
+	foreignField: 'id',
+	localField: 'authors',
+});
+
 export const Data = model('Data', DataSchema);
