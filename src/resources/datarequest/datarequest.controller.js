@@ -283,6 +283,7 @@ module.exports = {
 			datasets = await ToolModel.find({
 				datasetid: { $in: arrDatasetIds },
 			}).populate('publisher');
+			const arrDatasetNames = datasets.map(dataset => dataset.name);
 			// 5. If no record create it and pass back
 			if (!accessRecord) {
 				if (_.isEmpty(datasets)) {
@@ -311,6 +312,7 @@ module.exports = {
 					version,
 					userId,
 					datasetIds: arrDatasetIds,
+					datasetTitles: arrDatasetNames,
 					jsonSchema,
 					schemaId,
 					publisher,
@@ -411,8 +413,13 @@ module.exports = {
 			if (typeof aboutApplication === 'string') {
 				aboutApplication = JSON.parse(aboutApplication);
 			}
-			let updatedDatasetIds = aboutApplication.selectedDatasets.map(dataset => dataset.datasetId);
-			updateObj = { aboutApplication, datasetIds: updatedDatasetIds };
+			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce((newObj, dataset) => {
+				newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
+				newObj.datasetTitles = [...newObj.datasetTitles, dataset.name];
+				return newObj;
+			}, { datasetIds: [], datasetTitles: []});
+
+			updateObj = { aboutApplication, datasetIds, datasetTitles };
 		}
 		if (questionAnswers) {
 			updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user };
@@ -1257,6 +1264,62 @@ module.exports = {
 			res.status(500).json({ status: 'error', message: err });
 		}
 	},
+
+	//PUT api/v1/data-access-request/:id/deletefile
+	updateAccessRequestDeleteFile: async (req, res) => {
+		try{
+			const {
+				params: { id },
+			} = req;
+
+			// 1. Id of the file to delete
+			let { fileId } = req.body;
+			
+			// 2. Find the relevant data request application
+			let accessRecord = await DataRequestModel.findOne({_id: id});
+
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 4. Ensure single datasets are mapped correctly into array
+			if (_.isEmpty(accessRecord.datasets)) {
+					accessRecord.datasets = [accessRecord.dataset];
+			}
+
+			// 5. If application is not in progress, actions cannot be performed
+			if (accessRecord.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
+				return res.status(400).json({
+					success: false,
+					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
+				});
+			}
+
+			// 6. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord.toObject(), req.user.id, req.user._id);
+			// 7. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 8. Remove the file from the application
+			const newFileList = accessRecord.files.filter(file => file.fileId !== fileId);
+
+			accessRecord.files = newFileList;
+
+			// 9. write back into mongo
+			await accessRecord.save();
+			
+			// 10. Return successful response
+			return res.status(200).json({ status: 'success' });
+
+		} catch (err) {
+			console.log(err.message);
+			res.status(500).json({ status: 'error', message: err });
+		}
+
+	},
+
 
 	//POST api/v1/data-access-request/:id
 	submitAccessRequestById: async (req, res) => {
