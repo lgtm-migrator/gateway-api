@@ -86,6 +86,34 @@ router.get('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 	});
 });
 
+// @router   PATCH /api/v1/users/advancedSearch/terms/:id
+// @desc     Accept the advanced search T&Cs for a user
+// @access   Private
+router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), async (req, res) => {
+	if (parseInt(req.params.id) !== req.user.id) {
+		return res.status(400).json({
+			status: 'error',
+			message: "Can't accept terms of a different user",
+		});
+	}
+	let user = await UserModel.findOneAndUpdate(
+		{ id: req.params.id },
+		{ acceptedAdvancedSearchTerms: req.body.acceptedAdvancedSearchTerms },
+		{ new: true }
+	);
+	if (!user) return res.status(500).json({ status: 'error', message: 'Request failed' });
+	return res.status(200).json({ status: 'success', response: user });
+});
+
+// @router   PATCH /api/v1/users/advancedSearch/roles/:id
+// @desc     Set advanced search roles for a user
+// @access   Private
+router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), async (req, res) => {
+	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles: req.body.advancedSearchRoles }, { new: true });
+	if (!user) return res.status(500).json({ status: 'error', message: 'Request failed' });
+	return res.status(200).json({ status: 'success', response: user });
+});
+
 // @router   POST /api/v1/users/serviceaccount
 // @desc     create service account
 // @access   Private
