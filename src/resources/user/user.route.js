@@ -96,11 +96,8 @@ router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), async (r
 			message: "Can't accept terms of a different user",
 		});
 	}
-	let user = await UserModel.findOneAndUpdate(
-		{ id: req.params.id },
-		{ acceptedAdvancedSearchTerms: req.body.acceptedAdvancedSearchTerms },
-		{ new: true }
-	);
+	const { acceptedAdvancedSearchTerms } = req.body;
+	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { acceptedAdvancedSearchTerms }, { new: true });
 	if (!user) return res.status(500).json({ status: 'error', message: 'Request failed' });
 	return res.status(200).json({ status: 'success', response: user });
 });
@@ -109,7 +106,8 @@ router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), async (r
 // @desc     Set advanced search roles for a user
 // @access   Private
 router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), async (req, res) => {
-	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles: req.body.advancedSearchRoles }, { new: true });
+	const { advancedSearchRoles } = req.body;
+	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles }, { new: true });
 	if (!user) return res.status(500).json({ status: 'error', message: 'Request failed' });
 	return res.status(200).json({ status: 'success', response: user });
 });
