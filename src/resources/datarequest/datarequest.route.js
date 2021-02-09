@@ -74,15 +74,30 @@ router.put('/:id/startreview', passport.authenticate('jwt'), datarequestControll
 // @access  Private - Custodian Manager
 router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestController.updateAccessRequestStepOverride);
 
+// @route   PUT api/v1/data-access-request/:id/deletefile
+// @desc    Update access request deleting a file by Id 
+// @access  Private - Applicant (Gateway User)
+router.put('/:id/deletefile', passport.authenticate('jwt'), datarequestController.updateAccessRequestDeleteFile);
+
 // @route   POST api/v1/data-access-request/:id/upload
 // @desc    POST application files to scan bucket
-// @access  Private - Applicant (Gateway User / Custodian Manager)
+// @access  Private - Applicant (Gateway User / Custodian Manager) 
 router.post('/:id/upload', passport.authenticate('jwt'), multerMid.array('assets'), datarequestController.uploadFiles);
 
 // @route   POST api/v1/data-access-request/:id/amendments
 // @desc    Create or remove amendments from DAR
 // @access  Private - Custodian Reviewer/Manager
 router.post('/:id/amendments', passport.authenticate('jwt'), amendmentController.setAmendment);
+
+// @route   POST api/v1/data-access-request/:id/requestAmendments
+// @desc    Submit a batch of requested amendments back to the form applicant(s)
+// @access  Private - Manager
+router.post('/:id/requestAmendments', passport.authenticate('jwt'), amendmentController.requestAmendments);
+
+// @route   POST api/v1/data-access-request/:id/actions
+// @desc    Perform an action on a presubmitted application form e.g. add/remove repeatable section
+// @access  Private - Applicant
+router.post('/:id/actions', passport.authenticate('jwt'), datarequestController.performAction);
 
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record

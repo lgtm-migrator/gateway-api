@@ -1,6 +1,6 @@
 'use strict';
 
-import express from 'express'; 
+import express from 'express';
 import Provider from 'oidc-provider';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
@@ -20,17 +20,17 @@ require('dotenv').config();
 if (helper.getEnvironment() !== 'local') {
     Sentry.init({
         dsn: 'https://c7c564a153884dc0a6b676943b172121@o444579.ingest.sentry.io/5419637',
-        environment: helper.getEnvironment()
+        environment: helper.getEnvironment(),
     });
 }
 
 const Account = require('./account');
 const configuration = require('./configuration');
 
-
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
 var app = express();
+app.disable('x-powered-by');
 
 configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
@@ -52,6 +52,11 @@ app.use(
     })
 );
 
+// apply rate limiter of 100 requests per minute
+const RateLimit = require('express-rate-limit');
+let limiter = new RateLimit({ windowMs: 60000, max: 500 });
+app.use(limiter);
+
 const router = express.Router();
 
 connectToDatabase();
@@ -70,6 +75,11 @@ app.use(
         secret: process.env.JWTSecret,
         resave: false,
         saveUninitialized: true,
+        name: 'sessionId',
+        cookie: {
+            secure: process.env.api_url ? true : false,
+            httpOnly: true
+        }
     })
 );
 
@@ -82,50 +92,38 @@ function setNoCache(req, res, next) {
 app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
     passport.authenticate('jwt', async function (err, user, info) {
         if (err || !user) {
-            return res.status(200).redirect(process.env.homeURL+'/search?search=');
+            return res.status(200).redirect(process.env.homeURL + '/search?search=');
         }
         oidc.Session.destory;
         req.logout();
-	    res.clearCookie('jwt');
+        res.clearCookie('jwt');
 
-        return res.status(200).redirect(process.env.homeURL+'/search?search=');
+        return res.status(200).redirect(process.env.homeURL + '/search?search=');
     })(req, res, next);
-})
-
+});
 
 app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
     passport.authenticate('jwt', async function (err, user, info) {
-
         if (err || !user) {
             //login in user - go to login screen
             var apiURL = process.env.api_url || 'http://localhost:3001';
-            return res.status(200).redirect(process.env.homeURL+'/search?search=&showLogin=true&loginReferrer='+apiURL+req.url)
-        }
-        else {
+            return res.status(200).redirect(process.env.homeURL + '/search?search=&showLogin=true&loginReferrer=' + apiURL + req.url);
+        } else {
             try {
                 const { uid, prompt, params, session } = await oidc.interactionDetails(req, res);
-        
+
                 const client = await oidc.Client.find(params.client_id);
-        
 
                 switch (prompt.name) {
                     case 'select_account': {
-                        
                     }
                     case 'login': {
-                        
-
-
                         const result = {
                             select_account: {}, // make sure its skipped by the interaction policy since we just logged in
                             login: {
-                                account: user.id.toString()
+                                account: user.id.toString(),
                             },
                         };
-
-
-
-
 
                         return await oidc.interactionFinished(req, res, result, { mergeWithLastSubmission: false });
                     }
@@ -133,12 +131,13 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
                         if (!session) {
                             return oidc.interactionFinished(req, res, { select_account: {} }, { mergeWithLastSubmission: false });
                         }
-        
+
                         const account = await oidc.Account.findAccount(undefined, session.accountId);
                         const { email } = await account.claims('prompt', 'email', { email: null }, []);
 
-
-                        const { prompt: { name, details } } = await oidc.interactionDetails(req, res);
+                        const {
+                            prompt: { name, details },
+                        } = await oidc.interactionDetails(req, res);
                         //assert.equal(name, 'consent');
 
                         const consent = {};
@@ -167,19 +166,17 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
             }
         }
     })(req, res, next);
-})
-
-
-
-
+});
 
 app.use('/api/v1/openid', oidc.callback);
 app.use('/api', router);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+app.use('/oauth', require('../resources/auth/oauth.route'));
 app.use('/api/v1/auth/sso/discourse', require('../resources/auth/sso/sso.discourse.router'));
 app.use('/api/v1/auth', require('../resources/auth/auth.route'));
 app.use('/api/v1/auth/register', require('../resources/user/user.register.route'));
+
 
 app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/topics', require('../resources/topic/topic.route'));
@@ -192,14 +189,14 @@ app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedob
 app.use('/api/v1/tools', require('../resources/tool/tool.route'));
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
-app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people 
+app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
 
-app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router')); 
- 
-app.use('/api/v1/stats', require('../resources/stats/stats.router')); 
-app.use('/api/v1/kpis', require('../resources/stats/kpis.router')); 
+app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router'));
 
-app.use('/api/v1/course', require('../resources/course/course.route')); 
+app.use('/api/v1/stats', require('../resources/stats/stats.router'));
+app.use('/api/v1/kpis', require('../resources/stats/kpis.router'));
+
+app.use('/api/v1/course', require('../resources/course/course.route'));
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 

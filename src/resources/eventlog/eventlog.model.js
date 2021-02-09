@@ -2,7 +2,7 @@ import { model, Schema } from 'mongoose';
 
 const EventLogSchema = new Schema( 
   {
-    userId: String,
+    userId: Number,
     event: String, 
     timestamp: Date,
   }

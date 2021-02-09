@@ -19,5 +19,8 @@ const triggerNotificationMessage = (messageRecipients, messageDescription, messa
         }
     });
   });
-}
-module.exports.triggerNotificationMessage = triggerNotificationMessage;
+};
+
+export default {
+	triggerNotificationMessage: triggerNotificationMessage
+};
