@@ -1,8 +1,9 @@
-import { Data } from '../tool/data.model';
-import { MetricsData } from '../stats/metrics.model';
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
+
+import { Data } from '../tool/data.model';
+import { MetricsData } from '../stats/metrics.model';
 
 export async function loadDataset(datasetID) {
 	var metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
@@ -955,4 +956,26 @@ async function saveUptime() {
 	var metricsData = new MetricsData();
 	metricsData.uptime = averageUptime;
 	await metricsData.save();
+}
+
+export default class DatasetService {
+	constructor(datasetRepository) {
+		this.datasetRepository = datasetRepository;
+	}
+
+	getDataset(id) {
+		return this.datasetRepository.getDataset(id);
+	}
+
+	getDatasetExpanded(id) {
+		return this.datasetRepository.getDatasetExpanded(id);
+	}
+
+	getDatasets() {
+		return this.datasetRepository.getDatasets();
+	}
+
+	getDatasetsExpanded() {
+		return this.datasetRepository.getDatasetsExpanded();
+	}
 }
