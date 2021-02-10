@@ -114,8 +114,8 @@ router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), async (r
 	if (typeof advancedSearchRoles !== 'object') {
 		return res.status(400).json({ status: 'error', message: 'Invalid role(s) supplied.' });
 	}
-
-	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles }, { new: true }, err => {
+	let roles = advancedSearchRoles.map(role => role.toString());
+	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles: roles }, { new: true }, err => {
 		if (err) return res.json({ success: false, error: err });
 	});
 	return res.status(200).json({ status: 'success', response: user });
