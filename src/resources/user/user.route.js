@@ -93,12 +93,16 @@ router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), async (r
 	if (parseInt(req.params.id) !== req.user.id) {
 		return res.status(400).json({
 			status: 'error',
-			message: "Can't accept terms of a different user",
+			message: 'Invalid user id supplied',
 		});
 	}
 	const { acceptedAdvancedSearchTerms } = req.body;
-	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { acceptedAdvancedSearchTerms }, { new: true });
-	if (!user) return res.status(500).json({ status: 'error', message: 'Request failed' });
+	if (typeof acceptedAdvancedSearchTerms !== 'boolean') {
+		return res.status(400).json({ status: 'error', message: 'Invalid input supplied.' });
+	}
+	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { acceptedAdvancedSearchTerms }, { new: true }, err => {
+		if (err) return res.json({ success: false, error: err });
+	});
 	return res.status(200).json({ status: 'success', response: user });
 });
 
@@ -107,8 +111,13 @@ router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), async (r
 // @access   Private
 router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), async (req, res) => {
 	const { advancedSearchRoles } = req.body;
-	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles }, { new: true });
-	if (!user) return res.status(500).json({ status: 'error', message: 'Request failed' });
+	if (typeof advancedSearchRoles !== 'object') {
+		return res.status(400).json({ status: 'error', message: 'Invalid role(s) supplied.' });
+	}
+
+	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles }, { new: true }, err => {
+		if (err) return res.json({ success: false, error: err });
+	});
 	return res.status(200).json({ status: 'success', response: user });
 });
 
