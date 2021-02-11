@@ -34,7 +34,6 @@ const strategy = app => {
 
 		let [err, user] = await to(getUserByProviderId(profile._json.eduPersonTargetedID));
 		if (err || user) {
-			return done(profile);
 			return done(err, user);
 		}
 
@@ -74,7 +73,7 @@ const strategy = app => {
 				if (err === 'loginError') return res.status(200).redirect(process.env.homeURL + '/loginerror');
 
 				// failureRedirect
-				var redirect = '/profile=' + JSON.stringify(err);
+				var redirect = '/info=' + JSON.stringify(info);
 				let returnPage = null;
 
 				if (req.param.returnpage) {
