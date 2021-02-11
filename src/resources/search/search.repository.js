@@ -25,8 +25,8 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 	var queryObject;
 	if (type === 'course') {
 		queryObject = [
-			{ $unwind: '$courseOptions' },
 			{ $match: newSearchQuery },
+			{ $unwind: '$courseOptions' },
 			{
 				$project: {
 					_id: 0,
@@ -147,8 +147,8 @@ export function getObjectCount(type, searchAll, searchQuery) {
 	if (type === 'course') {
 		if (searchAll) {
 			q = collection.aggregate([
-				{ $unwind: '$courseOptions' },
 				{ $match: newSearchQuery },
+				{ $unwind: '$courseOptions' },
 				{
 					$group: {
 						_id: {},
@@ -167,8 +167,8 @@ export function getObjectCount(type, searchAll, searchQuery) {
 		} else {
 			q = collection
 				.aggregate([
-					{ $unwind: '$courseOptions' },
 					{ $match: newSearchQuery },
+					{ $unwind: '$courseOptions' },
 					{
 						$group: {
 							_id: {},
@@ -532,19 +532,19 @@ export const getFilter = async (searchString, type, field, isArray, activeFilter
 export function filterQueryGenerator(filter, searchString, type, isArray, activeFiltersQuery) {
 	var queryArray = [];
 
-	if (type === 'course') {
-		queryArray.push({ $unwind: '$courseOptions' });
-		queryArray.push({
-			$match: { $or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }] },
-		});
-	}
-
 	if (!_.isEmpty(activeFiltersQuery)) {
 		queryArray.push({ $match: activeFiltersQuery });
 	} else {
 		if (searchString !== '')
 			queryArray.push({ $match: { $and: [{ $text: { $search: searchString } }, { type: type }, { activeflag: 'active' }] } });
 		else queryArray.push({ $match: { $and: [{ type: type }, { activeflag: 'active' }] } });
+	}
+
+	if (type === 'course') {
+		queryArray.push({
+			$match: { $or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }] },
+		});
+		queryArray.push({ $unwind: '$courseOptions' });
 	}
 
 	queryArray.push({
