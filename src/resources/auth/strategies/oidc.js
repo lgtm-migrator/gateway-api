@@ -73,7 +73,7 @@ const strategy = app => {
 				if (err === 'loginError') return res.status(200).redirect(process.env.homeURL + '/loginerror');
 
 				// failureRedirect
-				var redirect = '/1';
+				var redirect = '/1' + err;
 				let returnPage = null;
 
 				if (req.param.returnpage) {
