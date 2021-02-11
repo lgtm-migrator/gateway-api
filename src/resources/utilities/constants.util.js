@@ -271,7 +271,8 @@ const _notificationTypes = {
 	MEMBERREMOVED: 'MemberRemoved',
 	MEMBERROLECHANGED: 'MemberRoleChanged',
 	WORKFLOWASSIGNED: 'WorkflowAssigned',
-	WORKFLOWCREATED: 'WorkflowCreated'
+	WORKFLOWCREATED: 'WorkflowCreated',
+	INPROGRESS: 'InProgress'
 };
 
 const _applicationStatuses = {
@@ -291,6 +292,7 @@ const _amendmentModes = {
 };
 
 const _submissionTypes = {
+	INPROGRESS: 'inProgress',
 	INITIAL: 'initial',
 	RESUBMISSION: 'resubmission',
 };
