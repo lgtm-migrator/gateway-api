@@ -1,13 +1,11 @@
-openapi: 3.0.0
+openapi: 3.0.1
 info:
   title: HDR UK API 
   description: API for Tools and artefacts repository.
-  version: 0.0.1
-
+  version: 1.0.0
 servers:
   - url: https://api.www.healthdatagateway.org/api
   - url: http://localhost:3001/api
-
   - url: https://api.{environment}.healthdatagateway.org:{port}/api
     variables:
       environment:
@@ -17,9 +15,1414 @@ servers:
         enum:
           - '443'
         default: '443'
-
+security: 
+- oauth2: []
 paths:
-  /v1/datasets/{datasetID}:
+  /oauth/token:
+    post:
+      tags: 
+        - Authorization
+      description: OAuth2.0 token endpoint responsible for issuing short-lived json web tokens (JWT) for access to secure Gateway APIs.  For client credentials grant flow, a valid client id and secret must be provided to identify your application and provide the expected permissions.  This type of authentication is reserved for team based connectivity through client applications and is not provided for human user access.  For more information, contact the HDR-UK team.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                grant_type:
+                  type: string
+                  description: The OAuth2.0 grant type that will be used to provide authentication.
+                client_id:
+                  type: string
+                  description: A unique identifer provided to your team by the HDR-UK team at the time of onboarding to the Gateway.  Contact the HDR-UK team for issue of new credentials.
+                client_secret:
+                  type: string
+                  description: A long (50 character) string provided by the HDR-UK team at the time of onboarding to the Gateway.  Contact the HDR-UK team for issue of new credentials.
+              required:
+               - grant_type
+               - client_secret
+               - client_id
+            examples:
+              'Client Credentials Grant Flow':
+                value:
+                  {
+                      "grant_type":"client_credentials",
+                      "client_id":"2ca1f61a90e3547",
+                      "client_secret":"3f80fecbf781b6da280a8d17aa1a22066fb66daa415d8befc1"
+                  }
+      responses:
+        '200':
+          description: Successful response containing json web token (JWT) that will authorize an HTTP request against secured resources.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: The encoded json web token (JWT) that must be appended to the Authorization of subsequent API HTTP requests in order to access secured resources.
+                  token_type:
+                    type: string
+                    description: The type of token issued, in this case, a json web token (JWT).
+                  expires_in:
+                    type: integer
+                    description: The length of time in seconds before the issued JWT expires, defaulted to 900 seconds (15 minutes).
+              examples:
+                'Client Credentials Grant Flow':
+                  value:
+                    {
+                      "access_token":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7Il9pZCI6IjYwMGJmYzk5YzhiZjcwMGYyYzdkNWMzNiIsInRpbWVTdGFtcCI2MTYxMjM4MzkwMzE5Nn0sImlhdCI6MTYxMjM4MzkwMywiZXhwIjoxNjEyMzg0ODAzfQ.-YvUBdjtJvdrRacz6E8-cYPQlum4TrEmiCFl8jO5a-M",
+                      "token_type":"jwt",
+                      "expires_in":900
+                    }
+        '400':
+          description: Failure response caused by incomplete or invalid client credentials being passed to the endpoint.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: A field that indicates the API request failed.
+                  message:
+                    type: string
+                    description: A message indicating that the request failed for a given reason.
+              examples:
+                'Invalid Client Credentials':
+                  value:
+                    {
+                      "success":false,
+                      "message":"Invalid client credentials were provided for the authorisation attempt"
+                    }
+                'Incomplete Client Credentials':
+                  value:
+                    {
+                      "success":false,
+                      "message":"Incomplete client credentials were provided for the authorisation attempt"
+                    }
+                'Invalid Grant Type':
+                  value:
+                    {
+                      "success":false,
+                      "message":"An invalid grant type has been specified"
+                    }
+  
+  /api/v1/data-access-request/{id}:
+    get:
+      tags: 
+        - Data Access Request
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The unique identifier for a single data access request application.
+          schema:
+            type : string
+            example: 5ee249426136805fbf094eef
+      description: Retrieve a single Data Access Request application using a supplied identifer
+      responses:
+        '200':
+          description: Successful response containing a full data access request application.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: The unique identifier for the application.
+                      aboutApplication:
+                        description: An object which holds data relating to the 'about application' section of the application form including details of whether the project is an NCS project or not.
+                        type: object
+                        properties:
+                          isNationalCoreStudies:
+                            type: boolean
+                            description: A flag to indicate if this application is in relation to a National Core Studies Project.
+                          nationalCoreStudiesProjectId:
+                            type: integer
+                            description: The unique identifier correlating to a Gateway Project entity indicating that this application is relating to a National Core Studies project.
+                          projectName:
+                            type: string
+                            description: The project name that has been assigned to the application by the applicant(s).
+                      authorIds:
+                        type: array
+                        items:
+                          type: integer
+                        description: An array of values correlating to specific user's via their numeric identifiers.  An author is also known as a contributor to an application and can view, edit or submit.
+                      datasetIds:
+                        type: array
+                        items:
+                          type: string
+                        description: An array of values correlating to datasets selected for the application via their identifier, which is unique per version.
+                      datasetTitles:
+                        type: array
+                        items:
+                          type: string
+                        description: An array of strings correlating to the dataset titles that have been selected for the application.
+                      applicationStatus:
+                        type: string
+                        enum: 
+                          - inProgress
+                          - submitted
+                          - inReview
+                          - approved
+                          - rejected
+                          - approved with conditions
+                        description: The current status of the application.
+                      jsonSchema:
+                        type: object
+                        description: The object containing the json definition that renders the application form using the Winterfell library.  This contains the details of questions, questions sets, question panels, headings and navigation items that appear.
+                      questionAnswers:
+                        type: object
+                        description: The object containing the answers provided on the application form.  This consists of a series of key pairs, where the key is the unqiue question Id, and the value the is the answer provided to the question.  In the case of a multi select on the form, the value may be an array.
+                      publisher:
+                        type: string
+                        description: The name of the Custodian that holds the dataset and is processing the application.
+                      publisherObj:
+                        type: object
+                        description: The object containing details regarding the Custodian/publisher relating to the application.
+                      userId:
+                        type: integer
+                        description: The unique identifier that correlates to the user account of the main applicant.  This is always the user that started the application.
+                      schemaId:
+                        type: string
+                        description: The unique identifier that correlates to the schema from which the application form was generated.
+                      files:
+                        type: array
+                        items:
+                          type: object
+                        description: An array containing the links to files that have been uploaded to the application form and are held within the Gateway ecosystem.
+                      amendmentIterations:
+                        type: array
+                        items:
+                          type: object
+                        description: An array containing an object with details for each iteration the application has passed through.  An iteration is defined as an application which has been returned by the Custodian for correction, corrected by the applicant(s) and resubmitted.  The object contains dates that the application was returned, and resubmitted as well as reference to any questions that were highlighted for amendment.
+                      createdAt:
+                        type: string
+                        description: The date and time that the application was started.
+                      updatedAt:
+                        type: string
+                        description: The date and time that the application was last updated by any party.
+                      projectId:
+                        type: string
+                        description: The unique identifier for the application converted to a more human friendly format in uppercase and hypenated.
+                      dateSubmitted:
+                        type: string
+                        description: The date and time that the application was originally submitted by the applicant(s) to the Custodian for review.
+                      dateReviewStart:
+                        type: string
+                        description: The date and time that the review process was commenced by a Custodian manager.  The review starts from the moment the manager opens the application to triage it.
+                      dateFinalStatus:
+                        type: string
+                        description: The date and time that the Custodian triggered a status change to the application once a final decision was made.  E.g. when application was approved.  This date can be used in conjunction with the dateReviewStart date to calculate the length of time the Custodian took to make a decision through their review process.
+                      datasets:
+                        type: array
+                        items:
+                          type: object
+                        description: An array containing the full metadata for each of the datasets that have been applied for through this application.
+                      mainApplicant:
+                        type: object
+                        description: An object containing the details of the main applicant of the application as referenced by the userId field.
+                      authors:
+                        type: array
+                        items:
+                          type: object
+                        description: An array containing the details of the contributors of the application as referenced by the authorIds field.
+                      readOnly:
+                        type: boolean
+                        description: A value to indicate if the requesting party is able to modify the application in its present state.  For example, this will be false for a Custodian, but true for applicants if the applicant(s) are working on resubmitting the application following a request for amendments.
+                      unansweredAmendments:
+                        type: integer
+                        description: The number of amendments that have been requested by the Custodian in the current amendment iteration.  
+                      answeredAmendments:
+                        type: integer
+                        description: The number of requested amendments that the applicant(s) have fixed in the current amendment iteration. 
+                      userType:
+                        type: string
+                        enum: 
+                          - custodian
+                          - applicant
+                        description: The type of user that has requested the Data Access Request application based on their permissions.  It is either an applicant or a Custodian user.
+                      activeParty:
+                        type: string
+                        enum: 
+                          - custodian
+                          - applicant
+                        description: The party that is currently handling the application.  This is the applicant during presubmission, then the Custodian following submission.  The active party then fluctuates between parties during amendment iterations.
+                      inReviewMode:
+                        type: boolean
+                        description: A flag to indicate if the current user is a reviewer of the application.  This value will be false unless the requesting user is an assigned reviewer to a currently active workflow step.  When this value is true, the requesting user is able to recommend approval or rejection of the application.
+                      reviewSections:
+                        type: array
+                        items:
+                          type: string
+                        description: An array containing the sections of the application form that the current user is required to review if they are a reviewer of the current workflow step that the application is in.  E.g. ['Safe People','Safe Data']
+                      hasRecommended:
+                        type: boolean
+                        description: A flag to indicate if the current user as a reviewer of the current workflow phase has submitted their recommendation for approval or rejection based on their review of the review sections assigned to them.
+                      workflow:
+                        type: object
+                        description: The full details of the workflow that has been assigned to the Data Access Request application.  This includes information such as the review phases that the application will pass through and associated metadata.
+              examples:
+                'Approved Application':
+                  value:
+                    {
+                      "status": "success",
+                      "data": {
+                        "aboutApplication": {
+                          "selectedDatasets": [
+                            {
+                              "_id": "5fc31a18d98e4f4cff7e9315",
+                              "datasetId": "d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                              "name": "HDR UK Papers & Preprints",
+                              "description": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations\n\nThis will include:\n- Papers\n- COVID-19 Papers\n- COVID-19 Preprint",
+                              "abstract": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations",
+                              "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                              "contactPoint": "hdr.hdr@hdruk.ac.uk",
+                              "publisherObj": {
+                                "dataRequestModalContent": {
+                                  "header": " ",
+                                  "body": "{omitted for brevity...}",
+                                  "footer": ""
+                                },
+                                "active": true,
+                                "allowsMessaging": true,
+                                "workflowEnabled": true,
+                                "_id": "5f7b1a2bce9f65e6ed83e7da",
+                                "name": "OTHER > HEALTH DATA RESEARCH UK",
+                                "imageURL": "",
+                                "team": {
+                                  "active": true,
+                                  "_id": "5f7b1a2bce9f65e6ed83e7da",
+                                  "members": [
+                                    {
+                                      "roles": [
+                                        "manager"
+                                      ],
+                                      "memberid": "5f1a98861a821b4a53e44d15"
+                                    },
+                                    {
+                                      "roles": [
+                                        "manager"
+                                      ],
+                                      "memberid": "600bfc99c8bf700f2c7d5c36"
+                                    }
+                                  ],
+                                  "type": "publisher",
+                                  "__v": 3,
+                                  "createdAt": "2020-11-30T21:12:40.855Z",
+                                  "updatedAt": "2020-12-02T13:33:45.232Z"
+                                }
+                              }
+                            }
+                          ],
+                          "isNationalCoreStudies": true,
+                          "nationalCoreStudiesProjectId": "4324836585275824",
+                          "projectName": "Test application title",
+                          "completedDatasetSelection": true,
+                          "completedInviteCollaborators": true,
+                          "completedReadAdvice": true,
+                          "completedCommunicateAdvice": true,
+                          "completedApprovalsAdvice": true,
+                          "completedSubmitAdvice": true
+                        },
+                        "authorIds": [],
+                        "datasetIds": [
+                          "d5faf9c6-6c34-46d7-93c4-7706a5436ed9"
+                        ],
+                        "datasetTitles": [],
+                        "applicationStatus": "approved",
+                        "jsonSchema": "{omitted for brevity...}",
+                        "questionAnswers": {
+                          "fullname-892140ec730145dc5a28b8fe139c2876": "James Smith",
+                          "jobtitle-ff1d692a04b4bb9a2babe9093339136f": "Consultant",
+                          "organisation-65c06905b8319ffa29919732a197d581": "Consulting Inc."
+                        },
+                        "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                        "_id": "60142c5b4316a0e0fcd47c56",
+                        "version": 1,
+                        "userId": 9190228196797084,
+                        "schemaId": "5f55e87e780ba204b0a98eb8",
+                        "files": [],
+                        "amendmentIterations": [],
+                        "createdAt": "2021-01-29T15:40:11.943Z",
+                        "updatedAt": "2021-02-03T14:38:22.688Z",
+                        "__v": 0,
+                        "projectId": "6014-2C5B-4316-A0E0-FCD4-7C56",
+                        "dateSubmitted": "2021-01-29T16:30:27.351Z",
+                        "dateReviewStart": "2021-02-03T14:36:22.341Z",
+                        "dateFinalStatus": "2021-02-03T14:38:22.680Z",
+                        "datasets": [
+                            "{omitted for brevity...}"
+                        ],
+                        "dataset": null,
+                        "mainApplicant": {
+                          "_id": "5f1a98861a821b4a53e44d15",
+                          "firstname": "James",
+                          "lastname": "Smith"
+                        },
+                        "authors": [],
+                        "id": "60142c5b4316a0e0fcd47c56",
+                        "readOnly": true,
+                        "unansweredAmendments": 0,
+                        "answeredAmendments": 0,
+                        "userType": "custodian",
+                        "activeParty": "custodian",
+                        "inReviewMode": false,
+                        "reviewSections": [],
+                        "hasRecommended": false,
+                        "workflow": {}
+                      }
+                    }
+        '404':
+          description: Failed to find the application requested.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+              examples:
+                'Not Found':
+                  value:
+                    {
+                      "status":"error",
+                      "message":"Application not found."
+                    }
+        '401':
+          description: Unauthorised attempt to access an application.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+              examples:
+                'Unauthorised':
+                  value:
+                    {
+                      "status":"failure",
+                      "message":"Unauthorised"
+                    }
+    put:
+      tags: 
+        - Data Access Request
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The unique identifier for a single Data Access Request application.
+          schema:
+            type : string
+            example: 5ee249426136805fbf094eef
+      description: Update a single Data Access Request application.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                applicationStatus:
+                  type: string
+                applicationStatusDesc:
+                  type: string
+            examples:
+              'Update Application Status':
+                value:
+                  {
+                      "applicationStatus": "approved",
+                      "applicationStatusDesc": "This application meets all the requirements."
+                  }
+      responses:
+        '200':
+          description: Successful response containing the full, updated data access request application.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: The unique identifier for the application.
+                      aboutApplication:
+                        description: An object which holds data relating to the 'about application' section of the application form including details of whether the project is an NCS project or not.
+                        type: object
+                        properties:
+                          isNationalCoreStudies:
+                            type: boolean
+                            description: A flag to indicate if this application is in relation to a National Core Studies Project.
+                          nationalCoreStudiesProjectId:
+                            type: integer
+                            description: The unique identifier correlating to a Gateway Project entity indicating that this application is relating to a National Core Studies project.
+                          projectName:
+                            type: string
+                            description: The project name that has been assigned to the application by the applicant(s).
+                      authorIds:
+                        type: array
+                        items:
+                          type: integer
+                        description: An array of values correlating to specific user's via their numeric identifiers.  An author is also known as a contributor to an application and can view, edit or submit.
+                      datasetIds:
+                        type: array
+                        items:
+                          type: string
+                        description: An array of values correlating to datasets selected for the application via their identifier, which is unique per version.
+                      datasetTitles:
+                        type: array
+                        items:
+                          type: string
+                        description: An array of strings correlating to the dataset titles that have been selected for the application.
+                      applicationStatus:
+                        type: string
+                        enum: 
+                          - inProgress
+                          - submitted
+                          - inReview
+                          - approved
+                          - rejected
+                          - approved with conditions
+                        description: The current status of the application.
+                      jsonSchema:
+                        type: object
+                        description: The object containing the json definition that renders the application form using the Winterfell library.  This contains the details of questions, questions sets, question panels, headings and navigation items that appear.
+                      questionAnswers:
+                        type: object
+                        description: The object containing the answers provided on the application form.  This consists of a series of key pairs, where the key is the unqiue question Id, and the value the is the answer provided to the question.  In the case of a multi select on the form, the value may be an array.
+                      publisher:
+                        type: string
+                        description: The name of the Custodian that holds the dataset and is processing the application.
+                      publisherObj:
+                        type: object
+                        description: The object containing details regarding the Custodian/publisher relating to the application.
+                      userId:
+                        type: integer
+                        description: The unique identifier that correlates to the user account of the main applicant.  This is always the user that started the application.
+                      schemaId:
+                        type: string
+                        description: The unique identifier that correlates to the schema from which the application form was generated.
+                      files:
+                        type: array
+                        items:
+                          type: object
+                        description: An array containing the links to files that have been uploaded to the application form and are held within the Gateway ecosystem.
+                      amendmentIterations:
+                        type: array
+                        items:
+                          type: object
+                        description: An array containing an object with details for each iteration the application has passed through.  An iteration is defined as an application which has been returned by the Custodian for correction, corrected by the applicant(s) and resubmitted.  The object contains dates that the application was returned, and resubmitted as well as reference to any questions that were highlighted for amendment.
+                      createdAt:
+                        type: string
+                        description: The date and time that the application was started.
+                      updatedAt:
+                        type: string
+                        description: The date and time that the application was last updated by any party.
+                      projectId:
+                        type: string
+                        description: The unique identifier for the application converted to a more human friendly format in uppercase and hypenated.
+                      dateSubmitted:
+                        type: string
+                        description: The date and time that the application was originally submitted by the applicant(s) to the Custodian for review.
+                      dateReviewStart:
+                        type: string
+                        description: The date and time that the review process was commenced by a Custodian manager.  The review starts from the moment the manager opens the application to triage it.
+                      dateFinalStatus:
+                        type: string
+                        description: The date and time that the Custodian triggered a status change to the application once a final decision was made.  E.g. when application was approved.  This date can be used in conjunction with the dateReviewStart date to calculate the length of time the Custodian took to make a decision through their review process.
+                      datasets:
+                        type: array
+                        items:
+                          type: object
+                        description: An array containing the full metadata for each of the datasets that have been applied for through this application.
+                      mainApplicant:
+                        type: object
+                        description: An object containing the details of the main applicant of the application as referenced by the userId field.
+                      authors:
+                        type: array
+                        items:
+                          type: object
+                        description: An array containing the details of the contributors of the application as referenced by the authorIds field.
+                      readOnly:
+                        type: boolean
+                        description: A value to indicate if the requesting party is able to modify the application in its present state.  For example, this will be false for a Custodian, but true for applicants if the applicant(s) are working on resubmitting the application following a request for amendments.
+                      unansweredAmendments:
+                        type: integer
+                        description: The number of amendments that have been requested by the Custodian in the current amendment iteration.  
+                      answeredAmendments:
+                        type: integer
+                        description: The number of requested amendments that the applicant(s) have fixed in the current amendment iteration. 
+                      userType:
+                        type: string
+                        enum: 
+                          - custodian
+                          - applicant
+                        description: The type of user that has requested the Data Access Request application based on their permissions.  It is either an applicant or a Custodian user.
+                      activeParty:
+                        type: string
+                        enum: 
+                          - custodian
+                          - applicant
+                        description: The party that is currently handling the application.  This is the applicant during presubmission, then the Custodian following submission.  The active party then fluctuates between parties during amendment iterations.
+                      inReviewMode:
+                        type: boolean
+                        description: A flag to indicate if the current user is a reviewer of the application.  This value will be false unless the requesting user is an assigned reviewer to a currently active workflow step.  When this value is true, the requesting user is able to recommend approval or rejection of the application.
+                      reviewSections:
+                        type: array
+                        items:
+                          type: string
+                        description: An array containing the sections of the application form that the current user is required to review if they are a reviewer of the current workflow step that the application is in.  E.g. ['Safe People','Safe Data']
+                      hasRecommended:
+                        type: boolean
+                        description: A flag to indicate if the current user as a reviewer of the current workflow phase has submitted their recommendation for approval or rejection based on their review of the review sections assigned to them.
+                      workflow:
+                        type: object
+                        description: The full details of the workflow that has been assigned to the Data Access Request application.  This includes information such as the review phases that the application will pass through and associated metadata.
+              examples:
+                'Approved Application':
+                  value:
+                    {
+                      "status": "success",
+                      "data": {
+                        "aboutApplication": {
+                          "selectedDatasets": [
+                            {
+                              "_id": "5fc31a18d98e4f4cff7e9315",
+                              "datasetId": "d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                              "name": "HDR UK Papers & Preprints",
+                              "description": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations\n\nThis will include:\n- Papers\n- COVID-19 Papers\n- COVID-19 Preprint",
+                              "abstract": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations",
+                              "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                              "contactPoint": "hdr.hdr@hdruk.ac.uk",
+                              "publisherObj": {
+                                "dataRequestModalContent": {
+                                  "header": " ",
+                                  "body": "{omitted for brevity...}",
+                                  "footer": ""
+                                },
+                                "active": true,
+                                "allowsMessaging": true,
+                                "workflowEnabled": true,
+                                "_id": "5f7b1a2bce9f65e6ed83e7da",
+                                "name": "OTHER > HEALTH DATA RESEARCH UK",
+                                "imageURL": "",
+                                "team": {
+                                  "active": true,
+                                  "_id": "5f7b1a2bce9f65e6ed83e7da",
+                                  "members": [
+                                    {
+                                      "roles": [
+                                        "manager"
+                                      ],
+                                      "memberid": "5f1a98861a821b4a53e44d15"
+                                    },
+                                    {
+                                      "roles": [
+                                        "manager"
+                                      ],
+                                      "memberid": "600bfc99c8bf700f2c7d5c36"
+                                    }
+                                  ],
+                                  "type": "publisher",
+                                  "__v": 3,
+                                  "createdAt": "2020-11-30T21:12:40.855Z",
+                                  "updatedAt": "2020-12-02T13:33:45.232Z"
+                                }
+                              }
+                            }
+                          ],
+                          "isNationalCoreStudies": true,
+                          "nationalCoreStudiesProjectId": "4324836585275824",
+                          "projectName": "Test application title",
+                          "completedDatasetSelection": true,
+                          "completedInviteCollaborators": true,
+                          "completedReadAdvice": true,
+                          "completedCommunicateAdvice": true,
+                          "completedApprovalsAdvice": true,
+                          "completedSubmitAdvice": true
+                        },
+                        "authorIds": [],
+                        "datasetIds": [
+                          "d5faf9c6-6c34-46d7-93c4-7706a5436ed9"
+                        ],
+                        "datasetTitles": [],
+                        "applicationStatus": "approved",
+                        "jsonSchema": "{omitted for brevity...}",
+                        "questionAnswers": {
+                          "fullname-892140ec730145dc5a28b8fe139c2876": "James Smith",
+                          "jobtitle-ff1d692a04b4bb9a2babe9093339136f": "Consultant",
+                          "organisation-65c06905b8319ffa29919732a197d581": "Consulting Inc."
+                        },
+                        "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                        "_id": "60142c5b4316a0e0fcd47c56",
+                        "version": 1,
+                        "userId": 9190228196797084,
+                        "schemaId": "5f55e87e780ba204b0a98eb8",
+                        "files": [],
+                        "amendmentIterations": [],
+                        "createdAt": "2021-01-29T15:40:11.943Z",
+                        "updatedAt": "2021-02-03T14:38:22.688Z",
+                        "__v": 0,
+                        "projectId": "6014-2C5B-4316-A0E0-FCD4-7C56",
+                        "dateSubmitted": "2021-01-29T16:30:27.351Z",
+                        "dateReviewStart": "2021-02-03T14:36:22.341Z",
+                        "dateFinalStatus": "2021-02-03T14:38:22.680Z",
+                        "datasets": [
+                            "{omitted for brevity...}"
+                        ],
+                        "dataset": null,
+                        "mainApplicant": {
+                          "_id": "5f1a98861a821b4a53e44d15",
+                          "firstname": "James",
+                          "lastname": "Smith"
+                        },
+                        "authors": [],
+                        "id": "60142c5b4316a0e0fcd47c56",
+                        "readOnly": true,
+                        "unansweredAmendments": 0,
+                        "answeredAmendments": 0,
+                        "userType": "custodian",
+                        "activeParty": "custodian",
+                        "inReviewMode": false,
+                        "reviewSections": [],
+                        "hasRecommended": false,
+                        "workflow": {}
+                      }
+                    }
+        '404':
+          description: Failed to find the application requested.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+              examples:
+                'Not Found':
+                  value:
+                    {
+                      "status": "error",
+                      "message": "Application not found."
+                    }
+        '401':
+          description: Unauthorised attempt to update an application.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+              examples:
+                'Unauthorised':
+                  value:
+                    {
+                      "status":"error",
+                      "message":"Unauthorised to perform this update."
+                    }
+    patch:
+      summary: Update a users question answers for access request.
+      security:
+        - cookieAuth: []
+      tags:
+        - Data Access Request
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: The ID of the datset
+          schema:
+            type : string
+            example: 5ee249426136805fbf094eef
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                questionAnswers:
+                  type: object
+            examples:
+              '0':
+                value: |-
+                  {
+                      "firstName": "Roger"
+                  }
+      responses: 
+        '200':
+          description: OK 
+  /api/v1/publishers/{publisher}/dataaccessrequests:
+    get:
+      tags:
+        - Publishers
+      parameters:
+        - in: path
+          name: publisher
+          required: true
+          description: The full name of the Custodian/Publisher, as registered on the Gateway.
+          schema:
+            type : string
+            example: OTHER > HEALTH DATA RESEARCH UK
+      description: Returns a collection of all Data Access Requests that have been submitted to the Custodian team for review.
+      responses:
+        '200':
+          description: Successful response containing a collection of Data Access Request applications.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avgDecisionTime:
+                    type: string
+                    description: The average number of days the Custodian has taken to process applications from submission to decision.
+                  canViewSubmitted: 
+                    type: boolean
+                    description: A flag to indicate if the requesting user has permissions to view submitted applications, which are visible only to managers of the Custodian team.  Using OAuth2.0 client credentials will return this value as true.
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        aboutApplication:
+                          description: An object which holds data relating to the 'about application' section of the application form including details of whether the project is an NCS project or not.
+                          type: object
+                          properties:
+                            isNationalCoreStudies:
+                              type: boolean
+                              description: A flag to indicate if this application is in relation to a National Core Studies Project.
+                            nationalCoreStudiesProjectId:
+                              type: integer
+                              description: The unique identifier correlating to a Gateway Project entity indicating that this application is relating to a National Core Studies project.
+                            projectName:
+                              type: string
+                              description: The project name that has been assigned to the application by the applicant(s).
+                        amendmentIterations:
+                          type: array
+                          items:
+                            type: object
+                          description: An array containing an object with details for each iteration the application has passed through.  An iteration is defined as an application which has been returned by the Custodian for correction, corrected by the applicant(s) and resubmitted.  The object contains dates that the application was returned, and resubmitted as well as reference to any questions that were highlighted for amendment.
+                        amendmentStatus: 
+                          type: string
+                          description: A textual indicator of what state the application is in relating to updates made by the Custodian e.g. if it is awaiting updates from the applicant or if new updates have been submitted by the applicant(s).
+                        applicants:
+                          type: string
+                          description: Concatenated list of applicants names who are contributing to the application.
+                        applicationStatus:
+                          type: string
+                          enum: 
+                            - inProgress
+                            - submitted
+                            - inReview
+                            - approved
+                            - rejected
+                            - approved with conditions
+                          description: The current status of the application.
+                        authorIds:
+                          type: array
+                          items:
+                            type: integer
+                            description: An array of values correlating to specific user's via their numeric identifiers.  An author is also known as a contributor to an application and can view, edit or submit.
+                        createdAt:
+                          type: string
+                          description: The date and time that the application was started.
+                        datasetIds:
+                          type: array
+                          items:
+                            type: string
+                          description: An array of values correlating to datasets selected for the application via their identifier, which is unique per version.
+                        datasetTitles:
+                          type: array
+                          items:
+                            type: string
+                          description: An array of strings correlating to the dataset titles that have been selected for the application.
+                        datasets:
+                          type: array
+                          items:
+                            type: object
+                          description: An array containing the full metadata for each of the datasets that have been applied for through this application.
+                        dateSubmitted:
+                          type: string
+                          description: The date and time that the application was originally submitted by the applicant(s) to the Custodian for review.
+                        files:
+                          type: array
+                          items:
+                            type: object
+                          description: An array containing the links to files that have been uploaded to the application form and are held within the Gateway ecosystem.
+                        id:
+                          type: string
+                          description: The unique identifier for the application.
+                        
+                        jsonSchema:
+                          type: object
+                          description: The object containing the json definition that renders the application form using the Winterfell library.  This contains the details of questions, questions sets, question panels, headings and navigation items that appear.
+                        questionAnswers:
+                          type: object
+                          description: The object containing the answers provided on the application form.  This consists of a series of key pairs, where the key is the unqiue question Id, and the value the is the answer provided to the question.  In the case of a multi select on the form, the value may be an array.
+                        mainApplicant:
+                          type: object
+                          description: An object containing the details of the main applicant of the application as referenced by the userId field.
+                        projectId:
+                          type: string
+                          description: The unique identifier for the application converted to a more human friendly format in uppercase and hypenated.
+                        projectName:
+                          type: string
+                          description: The project name that has been assigned to the application by the applicant(s).
+                        publisher:
+                          type: string
+                          description: The name of the Custodian that holds the dataset and is processing the application.
+                        publisherObj:
+                          type: object
+                          description: The object containing details regarding the Custodian/publisher relating to the application.
+                        reviewPanels:
+                          type: array
+                          items:
+                            type: string
+                          description: An array containing the sections of the application form that the current user is required to review if they are a reviewer of the current workflow step that the application is in.  E.g. ['Safe People','Safe Data']
+                        schemaId:
+                          type: string
+                          description: The unique identifier that correlates to the schema from which the application form was generated.
+                        updatedAt:
+                          type: string
+                          description: The date and time that the application was last updated by any party.
+                        userId:
+                          type: integer
+                          description: The unique identifier that correlates to the user account of the main applicant.  This is always the user that started the application.
+                        deadlinePassed:
+                          type: boolean
+                          description: A flag to indicate if the deadline has passed for the current review phase for this application.
+                        decisionApproved:
+                          type: boolean
+                          description: A flag to indicate if the request users decision as a reviewer of the current workflow phase was positive or negative.  i.e. correlating to approval or rejection recommendation.
+                        decisionComments:
+                          type: string
+                          description: A supporting note or comment made by the requesting user as context to their decision as a reviewer of the current workflow phase.
+                        decisionDate:
+                          type: string
+                          description: The date that the requesting user made their decision as a reviewer of the current workflow phase.
+                        decisionDuration:
+                          type: integer
+                          description: The number of days from submission until a final decision was made on the application.  i.e. the application status was changed to a final status e.g. 'Approved'.
+                        decisionMade:
+                          type: boolean
+                          description: A flag to indicate if the requesting user has made an expected decision as a reviewer of the current workflow phase.
+                        decisionStatus:
+                          type: string
+                          description: A message indicating if the requesting user as a reviewer of the application has made a decision or is still required to make a decision for the current work flow.
+                        isReviewer:
+                          type: boolean
+                          description: A flag to indicate if the requesting user is a reviewer of the current workflow step for the application.
+                        remainingActioners:
+                          type: array
+                          items:
+                            type: string
+                          description: An array containing the names of Custodian team reviewers expected to complete a review for the current workflow phase, or a list of managers if the application is awaiting a final decision. 
+                        reviewStatus:
+                          type: string
+                          description: A message indicating the current status of the application review in relation to the assigned workflow.  E.g. 'Final decision required' or 'Deadline is today'.  This message changes based on the requesting user's relationship to the application.  E.g. if they are a reviewer or manager.
+                        stepName:
+                          type: string
+                          description: The name of the current workflow step that the application is in. 
+                        workflowCompleted:
+                          type: boolean
+                          description: A flag to indicate if the assigned workflow for the review process has been completed.
+                        workflowName:
+                          type: string
+                          description: The name of the workflow the Custodian team have assigned to the application for the review process.
+              examples:
+                'Single Request Received':
+                  value:
+                    {
+                      "success": true,
+                      "data": [
+                        {
+                          "authorIds": [],
+                          "datasetIds": [
+                            "d5faf9c6-6c34-46d7-93c4-7706a5436ed9"
+                          ],
+                          "datasetTitles": [],
+                          "applicationStatus": "submitted",
+                          "jsonSchema": "{omitted for brevity...}",
+                          "questionAnswers": "{omitted for brevity...}",
+                          "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                          "_id": "601853db22dc004f9adfaa24",
+                          "version": 1,
+                          "userId": 7584453789581072,
+                          "schemaId": "5f55e87e780ba204b0a98eb8",
+                          "files": [
+                            {
+                              "error": "",
+                              "_id": "601aacf8ecdfa66e5cbc2742",
+                              "status": "UPLOADED",
+                              "description": "QuestionAnswers",
+                              "fileId": "9e76ee1a676f423b9b5c7aabf59c69db",
+                              "size": 509984,
+                              "name": "QuestionAnswersFlags.png",
+                              "owner": "5ec7f1b39219d627e5cafae3"
+                            },
+                            {
+                              "error": "",
+                              "_id": "601aadbcecdfa6c532bc2743",
+                              "status": "UPLOADED",
+                              "description": "Notifications",
+                              "fileId": "adb1718dcc094b9cb4b0ab347ad2ee94",
+                              "size": 54346,
+                              "name": "HQIP-Workflow-Assigned-Notification.png",
+                              "owner": "5ec7f1b39219d627e5cafae3"
+                            }
+                          ],
+                          "amendmentIterations": [],
+                          "createdAt": "2021-02-01T19:17:47.470Z",
+                          "updatedAt": "2021-02-03T16:36:36.720Z",
+                          "__v": 2,
+                          "projectId": "6018-53DB-22DC-004F-9ADF-AA24",
+                          "aboutApplication": {
+                            "selectedDatasets": [
+                              {
+                                "_id": "5fc31a18d98e4f4cff7e9315",
+                                "datasetId": "d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                                "name": "HDR UK Papers & Preprints",
+                                "description": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations\n\nThis will include:\n- Papers\n- COVID-19 Papers\n- COVID-19 Preprint",
+                                "abstract": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations",
+                                "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                                "contactPoint": "hdr.hdr@hdruk.ac.uk",
+                                "publisherObj": {
+                                  "dataRequestModalContent": {
+                                    "header": " ",
+                                    "body": "{omitted for brevity...}",
+                                    "footer": ""
+                                  },
+                                  "active": true,
+                                  "allowsMessaging": true,
+                                  "workflowEnabled": true,
+                                  "_id": "5f7b1a2bce9f65e6ed83e7da",
+                                  "name": "OTHER > HEALTH DATA RESEARCH UK",
+                                  "imageURL": "",
+                                  "team": {
+                                    "active": true,
+                                    "_id": "5f7b1a2bce9f65e6ed83e7da",
+                                    "members": [
+                                      {
+                                        "roles": [
+                                          "manager"
+                                        ],
+                                        "memberid": "5f1a98861a821b4a53e44d15"
+                                      },
+                                      {
+                                        "roles": [
+                                          "manager"
+                                        ],
+                                        "memberid": "600bfc99c8bf700f2c7d5c36"
+                                      }
+                                    ],
+                                    "type": "publisher",
+                                    "__v": 3,
+                                    "createdAt": "2020-11-30T21:12:40.855Z",
+                                    "updatedAt": "2020-12-02T13:33:45.232Z"
+                                  }
+                                }
+                              }
+                            ],
+                            "isNationalCoreStudies": true,
+                            "nationalCoreStudiesProjectId": "4324836585275824",
+                            "projectName": "Test application title",
+                            "completedDatasetSelection": true,
+                            "completedInviteCollaborators": true,
+                            "completedReadAdvice": true,
+                            "completedCommunicateAdvice": true,
+                            "completedApprovalsAdvice": true,
+                            "completedSubmitAdvice": true
+                          },
+                          "dateSubmitted": "2021-02-03T16:37:36.081Z",
+                          "datasets": [
+                            {
+                              "categories": {
+                                "programmingLanguage": []
+                              },
+                              "tags": {
+                                "features": [
+                                  "Preprints",
+                                  "Papers",
+                                  "HDR UK"
+                                ],
+                                "topics": []
+                              },
+                              "datasetfields": {
+                                "geographicCoverage": [
+                                  "https://www.geonames.org/countries/GB/united-kingdom.html"
+                                ],
+                                "physicalSampleAvailability": [
+                                  "Not Available"
+                                ],
+                                "technicaldetails": "{omitted for brevity...}",
+                                "versionLinks": [
+                                  {
+                                    "id": "142b1618-2691-4019-97b4-16b1e27c5f95",
+                                    "linkType": "Superseded By",
+                                    "domainType": "CatalogueSemanticLink",
+                                    "source": {
+                                      "id": "9e798632-442a-427b-8d0e-456f754d28dc",
+                                      "domainType": "DataModel",
+                                      "label": "HDR UK Papers & Preprints",
+                                      "documentationVersion": "0.0.1"
+                                    },
+                                    "target": {
+                                      "id": "d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                                      "domainType": "DataModel",
+                                      "label": "HDR UK Papers & Preprints",
+                                      "documentationVersion": "1.0.0"
+                                    }
+                                  }
+                                ],
+                                "phenotypes": [],
+                                "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                                "abstract": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations",
+                                "releaseDate": "2020-11-27T00:00:00Z",
+                                "accessRequestDuration": "Other",
+                                "conformsTo": "OTHER",
+                                "accessRights": "https://github.com/HDRUK/papers/blob/master/LICENSE",
+                                "jurisdiction": "GB-ENG",
+                                "datasetStartDate": "2020-03-31",
+                                "datasetEndDate": "2022-04-30",
+                                "statisticalPopulation": "0",
+                                "ageBand": "0-0",
+                                "contactPoint": "hdr.hdr@hdruk.ac.uk",
+                                "periodicity": "Daily",
+                                "metadataquality": {
+                                  "id": "d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                                  "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                                  "title": "HDR UK Papers & Preprints",
+                                  "completeness_percent": 95.24,
+                                  "weighted_completeness_percent": 100,
+                                  "error_percent": 11.63,
+                                  "weighted_error_percent": 19.05,
+                                  "quality_score": 91.81,
+                                  "quality_rating": "Gold",
+                                  "weighted_quality_score": 90.47,
+                                  "weighted_quality_rating": "Gold"
+                                },
+                                "datautility": {
+                                  "id": "d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                                  "publisher": "OTHER > HEALTH DATA RESEARCH UK",
+                                  "title": "HDR UK Papers & Preprints",
+                                  "metadata_richness": "Gold",
+                                  "availability_of_additional_documentation_and_support": "",
+                                  "data_model": "",
+                                  "data_dictionary": "",
+                                  "provenance": "",
+                                  "data_quality_management_process": "",
+                                  "dama_quality_dimensions": "",
+                                  "pathway_coverage": "",
+                                  "length_of_follow_up": "",
+                                  "allowable_uses": "",
+                                  "research_environment": "",
+                                  "time_lag": "",
+                                  "timeliness": "",
+                                  "linkages": "",
+                                  "data_enrichments": ""
+                                },
+                                "metadataschema": {
+                                  "@context": "http://schema.org/",
+                                  "@type": "Dataset",
+                                  "identifier": "d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                                  "url": "https://healthdatagateway.org/detail/d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                                  "name": "HDR UK Papers & Preprints",
+                                  "description": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations\n\nThis will include:\n- Papers\n- COVID-19 Papers\n- COVID-19 Preprint",
+                                  "license": "Open Access",
+                                  "keywords": [
+                                    "Preprints,Papers,HDR UK",
+                                    "OTHER > HEALTH DATA RESEARCH UK",
+                                    "NOT APPLICABLE",
+                                    "GB-ENG",
+                                    "https://www.geonames.org/countries/GB/united-kingdom.html"
+                                  ],
+                                  "includedinDataCatalog": [
+                                    {
+                                      "@type": "DataCatalog",
+                                      "name": "OTHER > HEALTH DATA RESEARCH UK",
+                                      "url": "hdr.hdr@hdruk.ac.uk"
+                                    },
+                                    {
+                                      "@type": "DataCatalog",
+                                      "name": "HDR UK Health Data Gateway",
+                                      "url": "http://healthdatagateway.org"
+                                    }
+                                  ]
+                                }
+                              },
+                              "authors": [],
+                              "showOrganisation": false,
+                              "toolids": [],
+                              "datasetids": [],
+                              "_id": "5fc31a18d98e4f4cff7e9315",
+                              "relatedObjects": [],
+                              "programmingLanguage": [],
+                              "pid": "b7a62c6d-ed00-4423-ad27-e90b71222d8e",
+                              "datasetVersion": "1.0.0",
+                              "id": 9816147066244124,
+                              "datasetid": "d5faf9c6-6c34-46d7-93c4-7706a5436ed9",
+                              "type": "dataset",
+                              "activeflag": "active",
+                              "name": "HDR UK Papers & Preprints",
+                              "description": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations\n\nThis will include:\n- Papers\n- COVID-19 Papers\n- COVID-19 Preprint",
+                              "license": "Open Access",
+                              "datasetv2": {
+                                "identifier": "",
+                                "version": "",
+                                "issued": "",
+                                "modified": "",
+                                "revisions": [],
+                                "summary": {
+                                  "title": "",
+                                  "abstract": "Publications that mention HDR-UK (or any variant thereof) in Acknowledgements or Author Affiliations",
+                                  "publisher": {
+                                    "identifier": "",
+                                    "name": "HEALTH DATA RESEARCH UK",
+                                    "logo": "",
+                                    "description": "",
+                                    "contactPoint": "hdr.hdr@hdruk.ac.uk",
+                                    "memberOf": "OTHER",
+                                    "accessRights": [],
+                                    "deliveryLeadTime": "",
+                                    "accessService": "",
+                                    "accessRequestCost": "",
+                                    "dataUseLimitation": [],
+                                    "dataUseRequirements": []
+                                  },
+                                  "contactPoint": "hdr.hdr@hdruk.ac.uk",
+                                  "keywords": [
+                                    "Preprints",
+                                    "Papers",
+                                    "HDR UK"
+                                  ],
+                                  "alternateIdentifiers": [],
+                                  "doiName": "https://doi.org/10.5281/zenodo.326615"
+                                },
+                                "documentation": {
+                                  "description": "",
+                                  "associatedMedia": [
+                                    "https://github.com/HDRUK/papers"
+                                  ],
+                                  "isPartOf": "NOT APPLICABLE"
+                                },
+                                "coverage": {
+                                  "spatial": "GB",
+                                  "typicalAgeRange": "0-0",
+                                  "physicalSampleAvailability": [
+                                    "NOT AVAILABLE"
+                                  ],
+                                  "followup": "UNKNOWN",
+                                  "pathway": "NOT APPLICABLE"
+                                },
+                                "provenance": {
+                                  "origin": {
+                                    "purpose": "OTHER",
+                                    "source": "MACHINE GENERATED",
+                                    "collectionSituation": "OTHER"
+                                  },
+                                  "temporal": {
+                                    "accrualPeriodicity": "DAILY",
+                                    "distributionReleaseDate": "2020-11-27",
+                                    "startDate": "2020-03-31",
+                                    "endDate": "2022-04-30",
+                                    "timeLag": "NO TIMELAG"
+                                  }
+                                },
+                                "accessibility": {
+                                  "usage": {
+                                    "dataUseLimitation": "GENERAL RESEARCH USE",
+                                    "dataUseRequirements": "RETURN TO DATABASE OR RESOURCE",
+                                    "resourceCreator": "HDR UK Using Team",
+                                    "investigations": [
+                                      "https://github.com/HDRUK/papers"
+                                    ],
+                                    "isReferencedBy": [
+                                      "Not Available"
+                                    ]
+                                  },
+                                  "access": {
+                                    "accessRights": [
+                                      "Open Access"
+                                    ],
+                                    "accessService": "https://github.com/HDRUK/papers",
+                                    "accessRequestCost": "Free",
+                                    "deliveryLeadTime": "OTHER",
+                                    "jurisdiction": "GB-ENG",
+                                    "dataProcessor": "HDR UK",
+                                    "dataController": "HDR UK"
+                                  },
+                                  "formatAndStandards": {
+                                    "vocabularyEncodingScheme": "OTHER",
+                                    "conformsTo": "OTHER",
+                                    "language": "en",
+                                    "format": [
+                                      "csv",
+                                      "JSON"
+                                    ]
+                                  }
+                                },
+                                "enrichmentAndLinkage": {
+                                  "qualifiedRelation": [
+                                    "Not Available"
+                                  ],
+                                  "derivation": [
+                                    "Not Available"
+                                  ],
+                                  "tools": [
+                                    "https://github.com/HDRUK/papers"
+                                  ]
+                                },
+                                "observations": []
+                              },
+                              "createdAt": "2020-11-29T03:48:41.794Z",
+                              "updatedAt": "2021-02-02T10:09:57.030Z",
+                              "__v": 0,
+                              "counter": 20
+                            }
+                          ],
+                          "dataset": null,
+                          "mainApplicant": {
+                            "isServiceAccount": false,
+                            "_id": "5ec7f1b39219d627e5cafae3",
+                            "id": 7584453789581072,
+                            "providerId": "112563375053074694443",
+                            "provider": "google",
+                            "firstname": "Chris",
+                            "lastname": "Marks",
+                            "email": "chris.marks@paconsulting.com",
+                            "role": "Admin",
+                            "__v": 0,
+                            "redirectURL": "/tool/100000012",
+                            "discourseKey": "2f52ecaa21a0d0223a119da5a09f8f8b09459e7b69ec3f981102d09f66488d99",
+                            "discourseUsername": "chris.marks",
+                            "updatedAt": "2021-02-01T12:39:56.372Z"
+                          },
+                          "publisherObj": {
+                            "dataRequestModalContent": {
+                              "header": "",
+                              "body": "",
+                              "footer": ""
+                            },
+                            "active": true,
+                            "allowsMessaging": true,
+                            "workflowEnabled": true,
+                            "_id": "5f7b1a2bce9f65e6ed83e7da",
+                            "name": "OTHER > HEALTH DATA RESEARCH UK",
+                            "imageURL": "",
+                            "team": {
+                              "active": true,
+                              "_id": "5f7b1a2bce9f65e6ed83e7da",
+                              "members": [
+                                {
+                                  "roles": [
+                                    "manager"
+                                  ],
+                                  "memberid": "5f1a98861a821b4a53e44d15"
+                                },
+                                {
+                                  "roles": [
+                                    "manager"
+                                  ],
+                                  "memberid": "600bfc99c8bf700f2c7d5c36"
+                                }
+                              ],
+                              "type": "publisher",
+                              "__v": 3,
+                              "createdAt": "2020-11-30T21:12:40.855Z",
+                              "updatedAt": "2020-12-02T13:33:45.232Z",
+                              "users": [
+                                {
+                                  "_id": "5f1a98861a821b4a53e44d15",
+                                  "firstname": "Robin",
+                                  "lastname": "Kavanagh"
+                                },
+                                {
+                                  "_id": "600bfc99c8bf700f2c7d5c36",
+                                  "firstname": "HDR-UK",
+                                  "lastname": "Service Account"
+                                }
+                              ]
+                            }
+                          },
+                          "id": "601853db22dc004f9adfaa24",
+                          "projectName": "PA Paper",
+                          "applicants": "Chris Marks",
+                          "workflowName": "",
+                          "workflowCompleted": false,
+                          "decisionDuration": "",
+                          "decisionMade": false,
+                          "decisionStatus": "",
+                          "decisionComments": "",
+                          "decisionDate": "",
+                          "decisionApproved": false,
+                          "remainingActioners": "Robin Kavanagh (you), HDR-UK Service Account",
+                          "stepName": "",
+                          "deadlinePassed": "",
+                          "reviewStatus": "",
+                          "isReviewer": false,
+                          "reviewPanels": [],
+                          "amendmentStatus": ""
+                        }
+                      ],
+                      "avgDecisionTime": 1,
+                      "canViewSubmitted": true
+                    }
+        '404':
+          description: Failed to find the application requested.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+              examples:
+                'Not Found':
+                  value:
+                    {
+                      "success":false
+                    }
+        '401':
+          description: Unauthorised attempt to access an application.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+              examples:
+                'Unauthorised':
+                  value:
+                    {
+                      "status":"failure",
+                      "message":"Unauthorised"
+                    }
+  /api/v1/datasets/{datasetID}:
     get:
       summary: Returns Dataset object.
       tags:
@@ -36,7 +1439,7 @@ paths:
         '200':
           description: OK    
 
-  /v1/datasets/:
+  /api/v1/datasets:
     get:
       summary: Returns List of Dataset objects.
       tags:
@@ -67,7 +1470,7 @@ paths:
         '200':
           description: OK
 
-  /v1/data-access-request/{datasetID}:
+  /api/v1/data-access-request/{datasetID}:
     get:
       summary: Returns access request template.
       security:
@@ -86,35 +1489,7 @@ paths:
         '200':
           description: OK 
 
-  /v1/data-access-request/{id}:
-    patch:
-      summary: Update a users question answers for access request.
-      security:
-        - cookieAuth: []
-      tags:
-        - Data Access Request
-      parameters:
-        - in: path
-          name: datasetID
-          required: true
-          description: The ID of the datset
-          schema:
-            type : string
-            example: 5ee249426136805fbf094eef
-        - in: body 
-          name: questionAnswers
-          description: Answers object
-          schema: 
-            type: object
-            properties:
-              questionAnswers:
-                type: string
-                example: '{firstName: Roger}'
-      responses: 
-        '200':
-          description: OK 
-        
-  /v1/person/{id}:
+  /api/v1/person/{id}:
     get:
       summary: Returns details for a person.
       tags:
@@ -131,7 +1506,7 @@ paths:
         '200':
           description: OK
           
-  /v1/person/:
+  /api/v1/person:
     get:
       summary: Returns an array of person objects.
       tags:
@@ -222,13 +1597,11 @@ paths:
                 emailNotifications: false
                 terms: true
           
-  /v1/search/:
+  /api/v1/search:
     get:
       tags:
         - Search
       summary: Search for HDRUK /search?search
-      produces:
-        - application/json
       parameters:
         - in: query
           name: params
@@ -264,65 +1637,22 @@ paths:
       responses: 
         '200':
           description: OK
-
-  /v1/datasets/?search={searchTerm}:
-    get:
-      summary: Returns dataset search results by searchTerm
-      tags:
-        - Datasets
-      parameters:
-        - name: searchTerm
-          in: path
-          required: true
-          description: A search term.
-          schema:
-            type : string
-            example: epilepsy
-      responses: 
-        '200':
-          description: OK
-
-  /v1/stats/:
-    get:
-      summary: This will return a JSON document to show high level stats.
-      tags:
-        - Stats
-      responses: 
-        '200':
-          description: OK
-
-  /v1/stats?rank={rank}:
-    get:
-      summary: Returns the details on recent searches, popular objects or recently updated objects based on the rank query parameter.
-      tags:
-        - Stats
-      parameters:
-        - name: rank
-          in: path
-          required: true
-          description: The type of stat.
-          schema:
-            type : string
-            example: recent
-      responses: 
-        '200':
-          description: OK
   
-  /v1/stats/topSearches?month={month}&year={year}:
+  /api/v1/stats/topSearches:
     get:
       summary: Returns top searches for a given month and year.
       tags:
         - Stats
       parameters:
         - name: month
-          in: path
+          in: query
           required: true
           description: Month number.
           schema:
             type : string
             example: 7
         - name: year
-          in: path
+          in: query
           required: true
           description: Year.
           schema:
@@ -332,35 +1662,35 @@ paths:
         '200':
           description: OK
 
-  /v1/stats?rank={rank}&type={type}&month={month}&year={year}:
+  /api/v1/stats:
     get:
-      summary: Returns unmet demand information for the resource type specified, based on the month and year query params.
+      summary: Returns the details on recent searches, popular objects, unmet demands or recently updated objects based on the rank query parameter.
       tags:
         - Stats
       parameters:
         - name: rank
-          in: path
+          in: query
           required: true
           description: The type of stat.
           schema:
             type : string
             example: unmet
         - name: type
-          in: path
+          in: query
           required: true
           description: Resource type.
           schema:
             type : string
             example: Tools
         - name: month
-          in: path
+          in: query
           required: true
           description: Month number.
           schema:
             type : string
             example: 7
         - name: year
-          in: path
+          in: query
           required: true
           description: Year.
           schema:
@@ -370,38 +1700,21 @@ paths:
         '200':
           description: OK
 
-  /v1/kpis?kpi={type}:
-    get:
-      summary: Returns information for KPIs, based on the KPI type parameter.
-      tags:
-        - KPIs
-      parameters:
-        - name: type
-          in: path
-          required: true
-          description: The type of KPI.
-          schema:
-            type : string
-            example: technicalmetadata
-      responses: 
-        '200':
-          description: OK
-
-  /v1/kpis?kpi={type}&selectedDate={selectedDate}:
+  /api/v1/kpis:
     get:
       summary: Returns information for KPIs, based on the KPI type and selectedDate parameters.
       tags:
         - KPIs
       parameters:
         - name: type
-          in: path
+          in: query
           required: true
           description: The type of KPI.
           schema:
             type : string
             example: uptime
         - name: selectedDate
-          in: path
+          in: query
           required: true
           description: Full date time string.
           schema:
@@ -411,8 +1724,7 @@ paths:
         '200':
           description: OK
           
-  /v1/messages/{id}:
-  
+  /api/v1/messages/{id}:
     delete:
       summary: Delete a Message
       security:
@@ -430,7 +1742,6 @@ paths:
       responses:
         '204':
           description: Ok
-        
     put:
       summary: Update a single Message
       security:
@@ -445,25 +1756,25 @@ paths:
           schema:
             type: string
             example: "5ee249426136805fbf094eef"
-        - in: body 
-          name: payload
-          description: Payload for updating existing Message
-          schema: 
-            type: object
-            properties:
-              isRead:
-                type: boolean
-              messageDescription:
-                type: string
-              messageType:
-                type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isRead:
+                  type: boolean
+            examples:
+              'Update message to read':
+                value: |-
+                  {
+                      "isRead": true
+                  }
       responses: 
         '204':
           description: OK 
     
-    
-  /v1/messages/unread/count:
-  
+  /api/v1/messages/unread/count:
     get:
       summary: Returns the number of unread messages for the authenticated user
       security:
@@ -474,48 +1785,66 @@ paths:
         '200':
           description: OK 
             
-  /v1/messages/:
-  
+  /api/v1/messages:
     post:
       summary: Returns a new Message object and creates an associated parent Topic if a Topic is not specified in request body
       security:
         - cookieAuth: []
       tags:
         - Messages
-      parameters:
-        - in: body 
-          name: payload
-          description: Payload for updating existing Message
-          schema: 
-            type: object
-            properties:
-              isRead:
-                type: boolean
-              messageDescription:
-                type: string
-              messageType:
-                type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isRead:
+                  type: boolean
+                messageDescription:
+                  type: string
+                messageType:
+                  type: string
+              required:
+                - isRead
+                - messageDescription
+                - messageType
+            examples:
+              'Create new message':
+                value: |-
+                  {
+                      "isRead": false,
+                      "messageDescription": "this is an example",
+                      "messageType": "message"
+                  }
       responses: 
         '201':
           description: OK
           
-  /v1/topics/:
+  /api/v1/topics:
     post:
       summary: Returns a new Topic object with ID (Does not create any associated messages)
       security:
         - cookieAuth: []
       tags:
         - Topics
-      parameters:
-        - in: body 
-          name: payload
-          description: Payload for posting new message Topic
-          schema: 
-            type: object
-            properties:
-              relatedObjectIds:
-                type: array
-                example: "['1','2','3']"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                relatedObjectIds:
+                  type: array
+                  items:
+                    type: string
+            examples:
+              'Create a new topic':
+                value: |-
+                  {
+                      "relatedObjectIds": "['1','2','3']"
+                  }
       responses:
         '201':
           description: A new Topic
@@ -535,18 +1864,24 @@ paths:
                     description: Subtitle of message
                   relatedObjectIds:
                     type: array
+                    items:
+                      type: string
                     description: Object ID this Topic is related to
                   createdBy:
                     type: object
                     description: User that created the topic
                   createdDate:
-                    type: date
+                    type: string
                     description: Date the topic was created
                   recipients:
                     type: array
+                    items:
+                      type: string
                     description: Collection of user IDs
                   tags:
                     type: array
+                    items:
+                      type: string
                     description: Collection of tags to describe topic
     get:
       summary: Returns a list of all topics that the authenticated user is a recipient or member of
@@ -557,9 +1892,8 @@ paths:
       responses:
         '200':
           description: Ok                
-    
                     
-  /v1/topics/{id}:
+  /api/v1/topics/{id}:
     get:
       summary: Returns Topic object by ID
       security:
@@ -577,7 +1911,6 @@ paths:
       responses:
         '200':
           description: Ok
-          
     delete:
       summary: Soft deletes a message Topic but does not affect associated messages
       security:
@@ -596,7 +1929,7 @@ paths:
         '204':
           description: Ok
             
-  /v1/projects/:
+  /api/v1/projects:
     post:
       summary: Returns a Project object with ID.
       security:
@@ -659,7 +1992,6 @@ paths:
       responses: 
         '200':
           description: OK
-          
     get:
       summary: Returns List of Project objects.
       tags:
@@ -690,7 +2022,7 @@ paths:
         '200':
           description: OK
           
-  /v1/projects/{id}:
+  /api/v1/projects/{id}:
     get:
       summary: Returns Project object.
       tags:
@@ -813,7 +2145,7 @@ paths:
         '200':
           description: OK
 
-  /v1/papers/:
+  /api/v1/papers:
     post:
       summary: Returns a Paper object with ID.
       security:
@@ -906,7 +2238,7 @@ paths:
         '200':
           description: OK
   
-  /v1/papers/{id}:
+  /api/v1/papers/{id}:
     get:
       summary: Returns Paper object.
       tags:
@@ -1034,7 +2366,7 @@ paths:
         '200':
           description: OK
 
-  /v1/tools/:
+  /api/v1/tools:
     get:
       summary: Return List of Tool objects.
       tags:
@@ -1119,39 +2451,8 @@ paths:
       responses: 
         '200':
           description: OK
-  
-  /v1/tools/:
-    get:
-      summary: Return List of Tool objects.
-      tags:
-        - Tools
-      parameters:
-      - in: query
-        name: limit
-        required: false
-        description: Limit the number of results
-        schema:
-          type : integer
-          example: 3
-      - in: query
-        name: offset
-        required: false
-        description: Index to offset the search results
-        schema:
-          type : integer
-          example: 1
-      - in: query
-        name: q
-        required: false
-        description: Filter using search query
-        schema:
-          type : string
-          example: epilepsy
-      responses: 
-        '200':
-          description: OK
           
-  /v1/tools/{id}:
+  /api/v1/tools/{id}:
     get:
       summary: Returns Tool object.
       tags:
@@ -1279,322 +2580,15 @@ paths:
       responses: 
         '200':
           description: OK
-    # Delete requires validation to be implemented first
-    # delete:
-    #   summary: Delete a tool.
-    #   security:
-    #     - cookieAuth: []
-    #   tags:
-    #     - Tools
-    #   parameters:
-    #     - in: path
-    #       name: id
-    #       required: true
-    #       schema:
-    #         type : integer
-    #         example: 123
-    #   requestBody:
-    #     content:
-    #       application/json:
-    #         schema:      
-    #           type: object
-    #           required:
-    #             - id
-    #           properties:
-    #             id:
-    #               type: number
-    #             id: 26542005388306332
-    #           example:   # Sample object
-    #             id: 26542005388306332
-    #   responses: 
-    #     '200':
-    #       description: OK
-    #     '204':
-    #       description: No Content
     
-
-  
-
-  
-  
-
-  # /v1/tools/get:
-  #   get:
-  #     summary: Tool search.
-  #     tags:
-  #       - Tool
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/tools/get/admin:
-  #   get:
-  #     summary: Tool search admins.
-  #     tags:
-  #       - Tool
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/tools/status:
-  #   put:
-  #     summary: Tool update status.
-  #     tags:
-  #       - Tool
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-    # /v1/project/get:
-  #   get:
-  #     summary: Project search.
-  #     tags:
-  #       - Project
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/project/get/admin:
-  #   get:
-  #     summary: Project search admins.
-  #     tags:
-  #       - Project
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/project/status:
-  #   put:
-  #     summary: Project update status.
-  #     tags:
-  #       - Project
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-     # /v1/paper/get:
-  #   get:
-  #     summary: Paper search.
-  #     tags:
-  #       - Paper
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/paper/get/admin:
-  #   get:
-  #     summary: Paper search admins.
-  #     tags:
-  #       - Paper
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/paper/status:
-  #   put:
-  #     summary: Paper update status.
-  #     tags:
-  #       - Paper
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/users/{userId}:
-  #   get:
-  #     summary: Find user by id.
-  #     tags:
-  #       - Users
-  #   parameters:
-  #     - name: userId
-  #       in: path
-  #       required: true
-  #       description: The ID of the user
-  #       schema:
-  #         type : string
-  #         example: b2475d19-75fe-422b-9d0c-c53cdfff8230
-  #   responses:
-  #     '200':
-  #       description: OK
-  
-  # /v1/users:
-  #   get:
-  #     summary: Find all users
-  #     tags:
-  #       - users
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/auth/register:
-  #   post:
-  #     summary: Register User.
-  #     tags:
-  #       - Users
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/auth/login:
-  #   post:
-  #     summary: Authenticate User.
-  #     tags:
-  #       - Auth   
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/auth/logout:
-  #   get:
-  #     summary: Logout.
-  #     tags:
-  #       - Auth
-  #     responses: 
-  #       '200':
-  #         description: OK
-  
-  # /v1/auth/status:
-  #   get:
-  #     summary: Auth status.
-  #     tags:
-  #       - Auth
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/tools/add:
-  #   post:
-  #     summary: Add a tool.
-  #     tags:
-  #       - Tool
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/tools/edit:
-  #   put:
-  #     summary: Edit a tool.
-  #     tags:
-  #       - Tool
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/tools/delete:
-  #   delete:
-  #     summary: delete a tool.
-  #     tags:
-  #       - Tool
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/project/add:
-  #   post:
-  #     summary: Add a project.
-  #     tags:
-  #       - Project
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/project/edit:
-  #   put:
-  #     summary: Edit a project.
-  #     tags:
-  #       - Project
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/project/delete:
-  #   delete:
-  #     summary: delete a project.
-  #     tags:
-  #       - Project
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-   # /v1/paper/add:
-  #   post:
-  #     summary: Add a paper.
-  #     tags:
-  #       - Paper
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/paper/edit:
-  #   put:
-  #     summary: Edit a paper.
-  #     tags:
-  #       - Paper
-  #     responses: 
-  #       '200':
-  #         description: OK
-
-  # /v1/paper/delete:
-  #   delete:
-  #     summary: delete a paper.
-  #     tags:
-  #       - Paper
-  #     responses: 
-  #       '200':
-  #         description: OK
-  
-  # /v1/messages/{personId}:
-  #   get:
-  #     summary: Find messages by person.
-  #     tags:
-  #       - Messages
-  #     parameters:
-  #       - name: personId
-  #         in: path
-  #         required: true
-  #         description: The ID of the person
-  #         schema:
-  #           type : string
-  #           example: b2475d19-75fe-422b-9d0c-c53cdfff8230
-
-  # /v1/messages/admin/{personId}:
-  #   get:
-  #     summary: find messages for admin by person id
-  #     tags:
-  #       - Messages
-  #     parameters:
-  #       - name: personId
-  #         in: path
-  #         required: true
-  #         description: The ID of the person
-  #         schema:
-  #           type : string
-  #           example: b2475d19-75fe-422b-9d0c-c53cdfff8230
-
-  # /v1/reviews:
-  #   get:
-  #     summary: find all reviews.
-  #     tags:
-  #       - Reviews
-
-  # /v1/reviews/pending:
-  #   get:
-  #     summary: find all pending reviews.
-  #     tags:
-  #       - Reviews
-
-  # /v1/reviews/admin/pending:
-  #   get:
-  #     summary: find all pending reviews for admins.
-  #     tags:
-  #       - Reviews
-
-  # /v1/discourse/topic/tool/{toolId}:
-  #   put:
-  #     summary: This route creates a new topic in Discourse if the tool exists and is active. Returns an object with the link to the new Discourse topic.
-  #     tags:
-  #       - Discourse
-  #     parameters:
-  #       - name: toolId
-  #         in: path
-  #         required: true
-  #         description: Tool id
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: 'https://api.www.healthdatagateway.org/oauth/token'
+    cookieAuth:
+      type: http
+      scheme: jwt
+      
