@@ -298,7 +298,7 @@ const _formActions = {
 	REMOVEREPEATABLESECTION: 'removeRepeatableSection',
 	ADDREPEATABLEQUESTIONS: 'addRepeatableQuestions',
 	REMOVEREPEATABLEQUESTIONS: 'removeRepeatableQuestions',
-}
+};
 
 const _darPanelMapper = {
 	safesettings: 'Safe settings',
@@ -330,6 +330,22 @@ const _datatsetStatuses = {
 	WITHDRAWN: 'withdrawn',
 };
 
+/* const _notificationTypes = {
+	STATUSCHANGE: 'StatusChange',
+	SUBMITTED: 'Submitted',
+	RESUBMITTED: 'Resubmitted',
+	CONTRIBUTORCHANGE: 'ContributorChange',
+	STEPOVERRIDE: 'StepOverride',
+	REVIEWSTEPSTART: 'ReviewStepStart',
+	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
+	DEADLINEWARNING: 'DeadlineWarning',
+	DEADLINEPASSED: 'DeadlinePassed',
+	RETURNED: 'Returned',
+	MEMBERADDED: 'MemberAdded',
+	MEMBERREMOVED: 'MemberRemoved',
+	MEMBERROLECHANGED: 'MemberRoleChanged',
+}; */
+
 // </Dataset onboarding related enums>
 
 const _hdrukEmail = 'enquiry@healthdatagateway.org';
@@ -347,6 +363,6 @@ export default {
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
-    hdrukEmail: _hdrukEmail,
-    datatsetStatuses: _datatsetStatuses
+	hdrukEmail: _hdrukEmail,
+	datatsetStatuses: _datatsetStatuses,
 };

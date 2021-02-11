@@ -22,7 +22,7 @@ module.exports = {
 				$and: [
 					{ 'datasetfields.publisher': 'ALLIANCE > HQIP' },
 					{
-						$or: [{ activeflag: 'active' }, { activeflag: 'draft' }],
+						$or: [{ activeflag: 'active' }, { activeflag: 'inProgress' }, { activeflag: 'draft' }],
 					},
 				],
 			}).sort({ updatedAt: -1 });
@@ -324,13 +324,32 @@ module.exports = {
 		return jsonFile;
 	},
 
-	//POST api/v1/data-access-request/:id
+	//POST api/v1/dataset-onboarding/:id
 	submitDatasetVersion: async (req, res) => {
 		try {
 			// 1. id is the _id object in mongoo.db not the generated id or dataset Id
 			const id = req.params.id || null;
 
 			if (!id) return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
+
+			// 3. Check user type and authentication to submit application
+			/* let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+            if (!authorised) {
+                return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+            } */
+
+			//update dataset to inprogress - constants.datatsetStatuses.INPROGRESS
+
+			let updatedDataset = await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.INPROGRESS });
+
+			/* , err => {
+				if (err) return res.send(err);
+				return res.json({ success: true });
+			}); */
+
+			return res.status(200).json({ status: 'success' });
+
+			//Below here is once a dataset has been approved
 
 			let dataset = await Data.findOne({ _id: id });
 
