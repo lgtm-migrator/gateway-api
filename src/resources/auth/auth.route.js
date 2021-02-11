@@ -89,6 +89,9 @@ router.get('/status', function (req, res, next) {
 						name: req.user.firstname + ' ' + req.user.lastname,
 						loggedIn: true,
 						teams,
+						provider: req.user.provider,
+						advancedSearchRoles: req.user.advancedSearchRoles,
+						acceptedAdvancedSearchTerms: req.user.acceptedAdvancedSearchTerms,
 					},
 				],
 			});

@@ -20,7 +20,9 @@ const UserSchema = new Schema(
 		discourseKey: String,
 		isServiceAccount: { type: Boolean, default: false },
 		clientId: String,
-		clientSecret: String
+		clientSecret: String,
+		advancedSearchRoles: [],
+		acceptedAdvancedSearchTerms: Boolean,
 	},
 	{
 		timestamps: true,
