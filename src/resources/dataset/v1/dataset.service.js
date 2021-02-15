@@ -1,9 +1,8 @@
+import { Data } from '../../tool/data.model';
+import { MetricsData } from '../../stats/metrics.model';
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
-
-import { Data } from '../../tool/data.model';
-import { MetricsData } from '../../stats/metrics.model';
 
 export async function loadDataset(datasetID) {
 	var metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
