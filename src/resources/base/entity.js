@@ -1,13 +1,9 @@
 class Entity {
-    constructor () {
-        this.id = '';
-    }
 
     equals (other) {
         if (other instanceof Entity === false) {
             return false;
         }
-
         return other.id ? this.referenceEquals(other.id) : this === other;
     }
     
@@ -15,10 +11,8 @@ class Entity {
         if (!this.id) {
             return this.equals(id);
         }
-
-        const reference = typeof id !== 'string' ? id.toString() : id;
-
-        return this.id === reference;
+        const reference = id.toString();
+        return this.id.toString() === reference;
     }
 
     toString () {

@@ -67,6 +67,7 @@ const datasetSchema = new Schema(
 			phenotypes: [],
 		},
 		datasetv2: {},
+		isLatestVersion: Boolean
 	},
 	{
 		timestamps: true,
@@ -76,6 +77,7 @@ const datasetSchema = new Schema(
 	}
 );
 
+// Virtuals
 datasetSchema.virtual('publisher', {
 	ref: 'Publisher',
 	foreignField: 'name',
@@ -105,13 +107,19 @@ datasetSchema.virtual('submittedDataAccessRequests', {
 	match: {
 		applicationStatus: { $in: ['submitted', 'approved', 'inReview', 'rejected', 'approved with conditions'] },
 	},
-	justOne: false,
+	justOne: true,
 });
 
+// Pre hook query middleware
+datasetSchema.pre('find', function() {
+    this.where({type: 'dataset'});
+});
 
-// TODO Add virtual for Related Objects connected to this dataset
+datasetSchema.pre('findOne', function() {
+    this.where({type: 'dataset'});
+});
 
+// Load entity class
 datasetSchema.loadClass(DatasetClass);
 
 export const Dataset = model('Dataset', datasetSchema, 'tools');
-export const type = 'dataset';

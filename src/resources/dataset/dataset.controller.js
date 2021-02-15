@@ -1,5 +1,8 @@
-export default class DatasetController {
+import Controller from '../base/controller';
+
+export default class DatasetController extends Controller {
 	constructor(datasetService) {
+        super(datasetService);
 		this.datasetService = datasetService;
 	}
 
@@ -11,16 +14,11 @@ export default class DatasetController {
 			if (!id) {
 				return res.status(400).json({
 					success: false,
-					message: 'You must provide a dataset version id or a dataset persistent id',
+					message: 'You must provide a dataset identifier',
 				});
 			}
             // Find the dataset
-            let dataset = {};
-            if(req.params.expanded) {
-                dataset = await this.datasetService.getDatasetExpanded();
-            } else {
-                dataset = await this.datasetService.getDataset();
-            }
+			let dataset = await this.datasetService.getDataset(id, req.query);
             // Return if no dataset found
 			if (!dataset) {
 				return res.status(404).json({
@@ -35,6 +33,7 @@ export default class DatasetController {
 			});
 		} catch (err) {
             // Return error response if something goes wrong
+            console.error(err);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',
@@ -44,16 +43,8 @@ export default class DatasetController {
     
     async getDatasets(req, res) {
 		try {
-            // Parse filter options from query params
-            // TODO
-
             // Find the datasets
-            let datasets = [];
-            if(req.params.expanded) {
-                datasets = await this.datasetService.getDatasetsExpanded();
-            } else {
-                datasets = await this.datasetService.getDatasets();
-            }
+            let datasets = await this.datasetService.getDatasets(req.query);
             // Return the datasets
 			return res.status(200).json({
 				success: true,
@@ -61,6 +52,7 @@ export default class DatasetController {
 			});
 		} catch (err) {
             // Return error response if something goes wrong
+            console.error(err);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',

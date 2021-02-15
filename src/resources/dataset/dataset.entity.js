@@ -46,7 +46,9 @@ export default class DatasetClass extends Entity {
 		this.datasetv2 = datasetv2;
 	}
 
-	isLatestVersion() {
+	checkLatestVersion() {
         return this.activeflag === 'active';
 	}
+
+
 }

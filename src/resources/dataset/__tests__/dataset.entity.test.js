@@ -1,7 +1,6 @@
 import DatasetClass from '../dataset.entity';
 
 describe('DatasetEntity', function () {
-    
 	describe('constructor', function () {
 		it('should create an instance of a dataset entity with the expected properties', async function () {
 			const dataset = new DatasetClass(
@@ -49,7 +48,7 @@ describe('DatasetEntity', function () {
 		});
     });
     
-    describe('isLatestVersion', function () {
+    describe('checkLatestVersion', function () {
 		it('should return a boolean indicating this is the latest version of the dataset', async function () {
 			const dataset = new DatasetClass(
 				675584862177848,
@@ -74,7 +73,7 @@ describe('DatasetEntity', function () {
 				{}
             );
             
-            const result = dataset.isLatestVersion(); 
+            const result = dataset.checkLatestVersion(); 
 
 			expect(result).toBe(true);
         });
@@ -103,7 +102,7 @@ describe('DatasetEntity', function () {
 				{}
             );
             
-            const result = dataset.isLatestVersion(); 
+            const result = dataset.checkLatestVersion(); 
 
 			expect(result).toBe(false);
 		});

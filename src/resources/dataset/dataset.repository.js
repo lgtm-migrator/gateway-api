@@ -1,5 +1,5 @@
 import Repository from '../base/repository';
-import { Dataset, type } from './dataset.model';
+import { Dataset } from './dataset.model';
 
 export default class DatasetRepository extends Repository {
 	constructor() {
@@ -7,19 +7,14 @@ export default class DatasetRepository extends Repository {
 		this.dataset = Dataset;
 	}
 
-	async getDataset(id) {
-		return this.findOne({ type, datasetid: id }, { lean: true, populate: { path: 'submittedDataAccessRequests' } });
+	async getDataset(id, query) {
+		query = { ...query, datasetid: id };
+		const options = { lean: true, populate: { path: 'submittedDataAccessRequests' } };
+		return this.findOne(query, options);
 	}
 
-	async getDatasetExpanded(id) {
-		return this.findOne({ type, datasetid: id }, { lean: true, populate: { path: 'submittedDataAccessRequests' } });
-	}
-
-	async getDatasets() {
-		return this.find({ type }, { lean: true, populate: { path: 'submittedDataAccessRequests' } });
-	}
-
-	async getDatasetsExpanded() {
-		return this.find({ type }, { lean: true, populate: { path: 'submittedDataAccessRequests' } });
+	async getDatasets(query) {
+		const options = { lean: true, populate: { path: 'submittedDataAccessRequests' } };
+		return this.find(query, options);
 	}
 }

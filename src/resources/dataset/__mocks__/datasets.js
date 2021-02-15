@@ -1,4 +1,4 @@
-export const datasets = [{
+export const datasetsStub = [{
     id: '675584862177848',
     submittedDataAccessRequests: 1,
     name: 'Admitted Patient Care Dataset',

@@ -1,6 +1,6 @@
 import express from 'express';
 import { Data } from '../../tool/data.model';
-import { loadDataset, loadDatasets } from '../dataset.service';
+import { loadDataset, loadDatasets } from './dataset.service';
 import { getAllTools } from '../../tool/data.repository';
 import _ from 'lodash';
 import escape from 'escape-html';
