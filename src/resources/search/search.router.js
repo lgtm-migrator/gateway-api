@@ -46,14 +46,13 @@ router.get('/', async (req, res) => {
 		searchAll = true;
 	}
 
-	var allResults = [],
+	let allResults = [],
 		datasetResults = [],
 		toolResults = [],
 		projectResults = [],
 		paperResults = [],
 		personResults = [],
 		courseResults = [],
-		// TODO
 		collectionResults = [];
 
 	if (tab === '') {
@@ -99,14 +98,13 @@ router.get('/', async (req, res) => {
 				req.query.maxResults || 40,
 				'startdate'
 			),
-			// TODO
 			getObjectResult(
 				'collection',
 				searchAll,
 				getObjectFilters(searchQuery, req, 'collection'),
 				req.query.collectionIndex || 0,
 				req.query.maxResults || 40,
-				'startdate'
+				req.query.collectionSort || ''
 			),
 		]);
 	} else if (tab === 'Datasets') {
@@ -168,9 +166,7 @@ router.get('/', async (req, res) => {
 				'startdate'
 			),
 		]);
-	}
-	// TODO
-	else if (tab === 'Collections') {
+	} else if (tab === 'Collections') {
 		collectionResults = await Promise.all([
 			getObjectResult(
 				'collection',
@@ -178,7 +174,7 @@ router.get('/', async (req, res) => {
 				getObjectFilters(searchQuery, req, 'collection'),
 				req.query.collectionIndex || 0,
 				req.query.maxResults || 40,
-				'startdate'
+				req.query.collectionSort || ''
 			),
 		]);
 	}
@@ -190,7 +186,6 @@ router.get('/', async (req, res) => {
 		getObjectCount('paper', searchAll, getObjectFilters(searchQuery, req, 'paper')),
 		getObjectCount('person', searchAll, searchQuery),
 		getObjectCount('course', searchAll, getObjectFilters(searchQuery, req, 'course')),
-		//TODO
 		getObjectCount('collection', searchAll, getObjectFilters(searchQuery, req, 'collection')),
 	]);
 
@@ -201,8 +196,7 @@ router.get('/', async (req, res) => {
 		papers: summaryCounts[3][0] !== undefined ? summaryCounts[3][0].count : 0,
 		persons: summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0,
 		courses: summaryCounts[5][0] !== undefined ? summaryCounts[5][0].count : 0,
-		//TODO
-		collections: summaryCounts[5][0] !== undefined ? summaryCounts[6][0].count : 0,
+		collections: summaryCounts[6][0] !== undefined ? summaryCounts[6][0].count : 0,
 	};
 
 	let recordSearchData = new RecordSearchData();
@@ -213,7 +207,6 @@ router.get('/', async (req, res) => {
 	recordSearchData.returned.paper = summaryCounts[3][0] !== undefined ? summaryCounts[3][0].count : 0;
 	recordSearchData.returned.person = summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0;
 	recordSearchData.returned.course = summaryCounts[5][0] !== undefined ? summaryCounts[5][0].count : 0;
-	//TODO
 	recordSearchData.returned.collection = summaryCounts[6][0] !== undefined ? summaryCounts[6][0].count : 0;
 	recordSearchData.datesearched = Date.now();
 	recordSearchData.save(err => {});
@@ -227,7 +220,6 @@ router.get('/', async (req, res) => {
 			paperResults: allResults[3],
 			personResults: allResults[4],
 			courseResults: allResults[5],
-			// TODO
 			collectionResults: allResults[6],
 			summary: summary,
 		});
@@ -240,7 +232,6 @@ router.get('/', async (req, res) => {
 		paperResults: paperResults[0],
 		personResults: personResults[0],
 		courseResults: courseResults[0],
-		// TODO
 		collectionResults: collectionResults[0],
 		summary: summary,
 	});
