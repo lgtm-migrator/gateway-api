@@ -2,15 +2,9 @@ import express from 'express';
 import { Data } from '../../tool/data.model';
 import { ROLES } from '../../user/user.roles';
 import passport from 'passport';
-<<<<<<< HEAD:src/resources/paper/v1/paper.route.js
 import { utils } from '../../auth';
 import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks } from '../../tool/data.repository';
 import helper from '../../utilities/helper.util';
-=======
-import { utils } from '../auth';
-import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks } from '../tool/data.repository';
-import helper from '../utilities/helper.util';
->>>>>>> dev:src/resources/paper/paper.route.js
 import escape from 'escape-html';
 const router = express.Router();
 
