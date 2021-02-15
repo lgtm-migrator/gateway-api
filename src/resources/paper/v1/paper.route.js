@@ -2,9 +2,15 @@ import express from 'express';
 import { Data } from '../../tool/data.model';
 import { ROLES } from '../../user/user.roles';
 import passport from 'passport';
+<<<<<<< HEAD:src/resources/paper/v1/paper.route.js
 import { utils } from '../../auth';
-import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools } from '../../tool/data.repository';
+import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks } from '../../tool/data.repository';
 import helper from '../../utilities/helper.util';
+=======
+import { utils } from '../auth';
+import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks } from '../tool/data.repository';
+import helper from '../utilities/helper.util';
+>>>>>>> dev:src/resources/paper/paper.route.js
 import escape from 'escape-html';
 const router = express.Router();
 
@@ -19,7 +25,7 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 		.catch(err => {
 			return res.json({ success: false, err });
 		});
-}); 
+});
 
 // @router   GET /api/v1/
 // @desc     Returns List of Paper Objects Authenticated
@@ -27,7 +33,7 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	req.params.type = 'paper';
 	let role = req.user.role;
- 
+
 	if (role === ROLES.Admin) {
 		await getToolsAdmin(req)
 			.then(data => {
@@ -118,7 +124,7 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
  *
  * Return the details on the paper based on the tool ID.
  */
-router.get('/:paperID', async (req, res) => { 
+router.get('/:paperID', async (req, res) => {
 	var q = Data.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.paperID) }, { type: 'paper' }] } },
 		{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
@@ -146,6 +152,9 @@ router.get('/:paperID', async (req, res) => {
 				if (err) return res.json({ success: false, error: err });
 
 				data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
+				if (Array.isArray(data[0].document_links)) {
+					data[0].document_links = formatRetroDocumentLinks(data[0].document_links);
+				}
 				return res.json({ success: true, data: data });
 			});
 		} else {
@@ -161,6 +170,9 @@ router.get('/edit/:paperID', async (req, res) => {
 	]);
 	query.exec((err, data) => {
 		if (data.length > 0) {
+			if (Array.isArray(data[0].document_links)) {
+				data[0].document_links = formatRetroDocumentLinks(data[0].document_links);
+			}
 			return res.json({ success: true, data: data });
 		} else {
 			return res.json({ success: false, error: `Paper not found for paper id ${req.params.id}` });
