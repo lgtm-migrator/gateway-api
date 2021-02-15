@@ -1,10 +1,10 @@
 import express from 'express';
-import { Data } from '../tool/data.model';
+import { Data } from '../../tool/data.model';
 import { loadDataset, loadDatasets } from './dataset.service';
-import { getAllTools } from '../tool/data.repository';
+import { getAllTools } from '../../tool/data.repository';
 import _ from 'lodash';
 import escape from 'escape-html';
-import { Course } from '../course/course.model';
+import { Course } from '../../course/course.model';
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 
