@@ -198,7 +198,7 @@ module.exports = {
 					});
 				}
 				// 2. Build up the accessModel for the user
-				let { jsonSchema, version, _id:schemaId } = accessRequestTemplate;
+				let { jsonSchema, version, _id: schemaId } = accessRequestTemplate;
 				// 3. create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
@@ -283,6 +283,7 @@ module.exports = {
 			datasets = await ToolModel.find({
 				datasetid: { $in: arrDatasetIds },
 			}).populate('publisher');
+			const arrDatasetNames = datasets.map(dataset => dataset.name);
 			// 5. If no record create it and pass back
 			if (!accessRecord) {
 				if (_.isEmpty(datasets)) {
@@ -305,12 +306,13 @@ module.exports = {
 					});
 				}
 				// 3. Build up the accessModel for the user
-				let { jsonSchema, version, _id:schemaId } = accessRequestTemplate;
+				let { jsonSchema, version, _id: schemaId } = accessRequestTemplate;
 				// 4. Create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
 					userId,
 					datasetIds: arrDatasetIds,
+					datasetTitles: arrDatasetNames,
 					jsonSchema,
 					schemaId,
 					publisher,
@@ -411,8 +413,13 @@ module.exports = {
 			if (typeof aboutApplication === 'string') {
 				aboutApplication = JSON.parse(aboutApplication);
 			}
-			let updatedDatasetIds = aboutApplication.selectedDatasets.map(dataset => dataset.datasetId);
-			updateObj = { aboutApplication, datasetIds: updatedDatasetIds };
+			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce((newObj, dataset) => {
+				newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
+				newObj.datasetTitles = [...newObj.datasetTitles, dataset.name];
+				return newObj;
+			}, { datasetIds: [], datasetTitles: []});
+
+			updateObj = { aboutApplication, datasetIds, datasetTitles };
 		}
 		if (questionAnswers) {
 			updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user };
@@ -498,6 +505,7 @@ module.exports = {
 					select: 'id email',
 				},
 			]);
+
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
 			}
@@ -667,9 +675,12 @@ module.exports = {
 			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate({
 				path: 'datasets dataset mainApplicant authors',
 				populate: {
-					path: 'publisher additionalInfo',
+					path: 'publisher',
 					populate: {
 						path: 'team',
+						populate: {
+							path: 'users',
+						},
 					},
 				},
 			});
@@ -770,6 +781,8 @@ module.exports = {
 					const emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflowObj, 0);
 					// 15. Create notifications to reviewers of the step that has been completed
 					module.exports.createNotifications(constants.notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, req.user);
+					// 16. Create our notifications to the custodian team managers if assigned a workflow to a DAR application
+					module.exports.createNotifications(constants.notificationTypes.WORKFLOWASSIGNED, emailContext, accessRecord, req.user);
 					// 16. Return workflow payload
 					return res.status(200).json({
 						success: true,
@@ -1252,6 +1265,62 @@ module.exports = {
 		}
 	},
 
+	//PUT api/v1/data-access-request/:id/deletefile
+	updateAccessRequestDeleteFile: async (req, res) => {
+		try{
+			const {
+				params: { id },
+			} = req;
+
+			// 1. Id of the file to delete
+			let { fileId } = req.body;
+			
+			// 2. Find the relevant data request application
+			let accessRecord = await DataRequestModel.findOne({_id: id});
+
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 4. Ensure single datasets are mapped correctly into array
+			if (_.isEmpty(accessRecord.datasets)) {
+					accessRecord.datasets = [accessRecord.dataset];
+			}
+
+			// 5. If application is not in progress, actions cannot be performed
+			if (accessRecord.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
+				return res.status(400).json({
+					success: false,
+					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
+				});
+			}
+
+			// 6. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord.toObject(), req.user.id, req.user._id);
+			// 7. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 8. Remove the file from the application
+			const newFileList = accessRecord.files.filter(file => file.fileId !== fileId);
+
+			accessRecord.files = newFileList;
+
+			// 9. write back into mongo
+			await accessRecord.save();
+			
+			// 10. Return successful response
+			return res.status(200).json({ status: 'success' });
+
+		} catch (err) {
+			console.log(err.message);
+			res.status(500).json({ status: 'error', message: err });
+		}
+
+	},
+
+
 	//POST api/v1/data-access-request/:id
 	submitAccessRequestById: async (req, res) => {
 		try {
@@ -1466,7 +1535,7 @@ module.exports = {
 			if (accessRecord.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
 				return res.status(400).json({
 					success: false,
-					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed'
+					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
 				});
 			}
 			// 4. Get the requesting users permission levels
@@ -1489,7 +1558,7 @@ module.exports = {
 					questionAnswers = dynamicForm.removeQuestionSetAnswers(questionId, questionAnswers);
 					break;
 				case constants.formActions.ADDREPEATABLEQUESTIONS:
-					if(_.isEmpty(questionIds)) {
+					if (_.isEmpty(questionIds)) {
 						return res.status(400).json({
 							success: false,
 							message: 'You must supply the question identifiers to duplicate when performing this action',
@@ -1499,7 +1568,7 @@ module.exports = {
 					jsonSchema = dynamicForm.insertQuestions(questionSetId, questionId, duplicateQuestions, jsonSchema);
 					break;
 				case constants.formActions.REMOVEREPEATABLEQUESTIONS:
-					if(_.isEmpty(questionIds)) {
+					if (_.isEmpty(questionIds)) {
 						return res.status(400).json({
 							success: false,
 							message: 'You must supply the question identifiers to remove when performing this action',
@@ -1537,7 +1606,7 @@ module.exports = {
 						success: true,
 						accessRecord: {
 							jsonSchema,
-							questionAnswers
+							questionAnswers,
 						},
 					});
 				}
@@ -1606,6 +1675,7 @@ module.exports = {
 		// Deconstruct workflow context if passed
 		let {
 			workflowName = '',
+			steps = [],
 			stepName = '',
 			reviewerNames = '',
 			reviewSections = '',
@@ -1732,7 +1802,14 @@ module.exports = {
 						submissionType: constants.submissionTypes.INITIAL,
 					};
 					// Build email template
-					({ html, jsonContent } = await emailGenerator.generateEmail(aboutApplication, questions, pages, questionPanels, questionAnswers, options));
+					({ html, jsonContent } = await emailGenerator.generateEmail(
+						aboutApplication,
+						questions,
+						pages,
+						questionPanels,
+						questionAnswers,
+						options
+					));
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
@@ -1808,7 +1885,14 @@ module.exports = {
 						submissionType: constants.submissionTypes.RESUBMISSION,
 					};
 					// Build email template
-					({ html, jsonContent } = await emailGenerator.generateEmail(aboutApplication, questions, pages, questionPanels, questionAnswers, options));
+					({ html, jsonContent } = await emailGenerator.generateEmail(
+						aboutApplication,
+						questions,
+						pages,
+						questionPanels,
+						questionAnswers,
+						options
+					));
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
@@ -2066,6 +2150,41 @@ module.exports = {
 					false
 				);
 				break;
+			case constants.notificationTypes.WORKFLOWASSIGNED:
+				// 1. Get managers for publisher
+				custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
+				// 2. Get managerIds for notifications
+				managerUserIds = custodianManagers.map(user => user.id);
+				// 3. deconstruct and set options for notifications and email
+				options = {
+					id: accessRecord._id,
+					steps,
+					projectId,
+					projectName,
+					applicants,
+					actioner: `${firstname} ${lastname}`,
+					workflowName,
+					dateSubmitted,
+					datasetTitles,
+				};
+				// 4. Create notifications for the managers only
+				await notificationBuilder.triggerNotificationMessage(
+					managerUserIds,
+					`Workflow of ${workflowName} has been assiged to an appplication`,
+					'data access request',
+					accessRecord._id
+				);
+				// 5. Generate the email
+				html = await emailGenerator.generateWorkflowAssigned(options);
+				// 6. Send email to custodian managers only within the team
+				await emailGenerator.sendEmail(
+					custodianManagers,
+					constants.hdrukEmail,
+					`A Workflow has been assigned to an application request`,
+					html,
+					false
+				);
+				break;
 		}
 	},
 
@@ -2232,5 +2351,5 @@ module.exports = {
 			if (totalDecisionTime > 0) return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
-	}
+	},
 };

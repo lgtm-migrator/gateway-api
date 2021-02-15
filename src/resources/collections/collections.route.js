@@ -4,12 +4,15 @@ import passport from 'passport';
 import { utils } from '../auth';
 // import { UserModel } from '../user/user.model'
 import { Collections } from '../collections/collections.model';
+import { Data } from '../tool/data.model';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import escape from 'escape-html';
+import { getCollectionObjects } from './collections.repository';
+
 const inputSanitizer = require('../utilities/inputSanitizer');
 
 const urlValidator = require('../utilities/urlValidator');
@@ -34,8 +37,23 @@ router.get('/:collectionID', async (req, res) => {
 	});
 });
 
+router.get('/relatedobjects/:collectionID', async (req, res) => {
+	await getCollectionObjects(req)
+		.then(data => {
+			return res.json({ success: true, data });
+		})
+		.catch(err => {
+			return res.json({ success: false, err });
+		});
+});
+
 router.get('/entityid/:entityID', async (req, res) => {
-	var q = Collections.aggregate([
+    let entityID = req.params.entityID
+    let dataVersions = await Data.find({ pid: entityID }, {_id: 0, datasetid:1});
+    let dataVersionsArray = dataVersions.map(a => a.datasetid);
+    dataVersionsArray.push(entityID);
+    
+    var q = Collections.aggregate([
 		{
 			$match: {
 				$and: [
@@ -44,11 +62,11 @@ router.get('/entityid/:entityID', async (req, res) => {
 							$elemMatch: {
 								$or: [
 									{
-										objectId: req.params.entityID,
+										objectId: { $in : dataVersionsArray },
 									},
 									{
-										pid: req.params.entityID,
-									},
+										pid: entityID,
+									}
 								],
 							},
 						},

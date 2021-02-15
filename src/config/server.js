@@ -54,7 +54,7 @@ app.use(
 
 // apply rate limiter of 100 requests per minute
 const RateLimit = require('express-rate-limit');
-let limiter = new RateLimit({ windowMs: 60000, max: 100 });
+let limiter = new RateLimit({ windowMs: 60000, max: 500 });
 app.use(limiter);
 
 const router = express.Router();
@@ -76,10 +76,10 @@ app.use(
 		resave: false,
 		saveUninitialized: true,
 		name: 'sessionId',
-		cookie: {
-			secure: process.env.api_url ? true : false,
-			httpOnly: true
-		  }
+		/* cookie: {
+            secure: process.env.api_url ? true : false,
+            httpOnly: true
+        } */
 	})
 );
 
@@ -176,7 +176,6 @@ app.use('/oauth', require('../resources/auth/oauth.route'));
 app.use('/api/v1/auth/sso/discourse', require('../resources/auth/sso/sso.discourse.router'));
 app.use('/api/v1/auth', require('../resources/auth/auth.route'));
 app.use('/api/v1/auth/register', require('../resources/user/user.register.route'));
-
 
 app.use('/api/v1/users', require('../resources/user/user.route'));
 app.use('/api/v1/topics', require('../resources/topic/topic.route'));

@@ -31,8 +31,8 @@ const DataSchema = new Schema(
 		relatedObjects: [
 			{
 				objectId: String,
-                reason: String,
-                pid: String,
+				reason: String,
+				pid: String,
 				objectType: String,
 				user: String,
 				updated: String,
@@ -50,6 +50,11 @@ const DataSchema = new Schema(
 		journal: String,
 		journalYear: Number,
 		isPreprint: Boolean,
+		document_links: {
+			doi: [String],
+			pdf: [String],
+			html: [String],
+		},
 
 		//person related fields
 		firstname: String,
@@ -128,6 +133,12 @@ DataSchema.virtual('tools', {
 	ref: 'Data',
 	foreignField: 'authors',
 	localField: 'id',
+});
+
+DataSchema.virtual('persons', {
+	ref: 'Data',
+	foreignField: 'id',
+	localField: 'authors',
 });
 
 export const Data = model('Data', DataSchema);
