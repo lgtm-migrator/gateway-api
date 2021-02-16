@@ -19,7 +19,7 @@ router.get('/publisher/:publisherID', passport.authenticate('jwt'), datasetOnboa
 router.post('/', passport.authenticate('jwt'), datasetOnboardingController.createNewDatasetVersion);
 
 // @route   PATCH api/v1/dataset-onboarding/:id
-// @desc    PATCH Create a new dataset version
+// @desc    PATCH Update a field in a dataset
 // @access  Private - Custodian Manager/Reviewer ?
 router.patch('/:id', passport.authenticate('jwt'), datasetOnboardingController.updateDatasetVersionDataElement);
 
@@ -27,5 +27,10 @@ router.patch('/:id', passport.authenticate('jwt'), datasetOnboardingController.u
 // @desc    POST Submit a new dataset version
 // @access  Private - Custodian Manager/Reviewer ?
 router.post('/:id', passport.authenticate('jwt'), datasetOnboardingController.submitDatasetVersion);
+
+// @route   PUT api/v1/dataset-onboarding/:id
+// @desc    PUT Update the status of a dataset
+// @access  Private - Custodian Manager/Reviewer ?
+router.put('/:id', passport.authenticate('jwt'), datasetOnboardingController.changeDatasetVersionStatus);
 
 module.exports = router;

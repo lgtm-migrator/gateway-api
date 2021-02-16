@@ -99,6 +99,7 @@ const DataSchema = new Schema(
         datasetv2: {},
         questionAnswers: {},
         structuralMetadata: {},
+        applicationStatusDesc : String,
         lastActivity: Date,
 
         //not used

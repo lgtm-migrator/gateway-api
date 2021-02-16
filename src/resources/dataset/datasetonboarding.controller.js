@@ -17,15 +17,23 @@ module.exports = {
 
 			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Publisher ID could not be found.' });
 
-			// get all pids for publisherID
-			let dataset = await Data.find({
-				$and: [
-					{ 'datasetfields.publisher': 'ALLIANCE > HQIP' },
-					{
-						$or: [{ activeflag: 'active' }, { activeflag: 'inProgress' }, { activeflag: 'draft' }],
-					},
-				],
-			}).sort({ updatedAt: -1 });
+			let dataset = [];
+
+			if (publisherID === 'admin') {
+				// get all datasets in review for admin
+				dataset = await Data.find({ activeflag: 'inReview' }).sort({ updatedAt: -1 });
+			}
+			else {
+				// get all pids for publisherID
+				dataset = await Data.find({
+					$and: [
+						{ 'datasetfields.publisher': 'ALLIANCE > HQIP' },
+						{
+							$or: [{ activeflag: 'active' }, { activeflag: 'inReview' }, { activeflag: 'draft' }, { activeflag: 'rejected' }],
+						},
+					],
+				}).sort({ updatedAt: -1 });
+			}
 
 			//active tab - live and draft
 			//pending - in review
@@ -273,57 +281,6 @@ module.exports = {
 		}
 	},
 
-	buildJSONFile: async dataset => {
-		let jsonFile = {};
-		let metadata = [];
-		let childDataClasses = [];
-
-		Object.keys(dataset.questionAnswers).forEach(item => {
-			const newDatasetCatalogueItems = {
-				namespace: 'org.healthdatagateway',
-				key: item,
-				value: dataset.questionAnswers[item],
-			};
-		});
-
-		const orderedMetadata = _.map(
-			_.groupBy(_.orderBy(dataset.structuralMetadata, ['tableName'], ['asc']), 'tableName'),
-			(children, tableName) => ({ tableName, children })
-		);
-
-		orderedMetadata.forEach(item => {
-			let childDataElements = [];
-			item.children.forEach(child => {
-				childDataElements.push({
-					label: child.columnName,
-					description: child.columnDescription,
-					dataType: {
-						label: child.dataType,
-						domainType: 'PrimitiveType',
-					},
-				});
-			});
-
-			childDataClasses.push({
-				label: item.children[0].tableName,
-				description: item.children[0].tableDescription,
-				childDataElements: childDataElements,
-			});
-		});
-
-		jsonFile = {
-			dataModel: {
-				label: dataset.questionAnswers['summary/title'],
-				description: dataset.questionAnswers['summary/abstract'],
-				type: 'Data Asset',
-				metadata: metadata,
-				childDataClasses: childDataClasses,
-			},
-		};
-
-		return jsonFile;
-	},
-
 	//POST api/v1/dataset-onboarding/:id
 	submitDatasetVersion: async (req, res) => {
 		try {
@@ -338,9 +295,9 @@ module.exports = {
                 return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
             } */
 
-			//update dataset to inprogress - constants.datatsetStatuses.INPROGRESS
+			//update dataset to inreview - constants.datatsetStatuses.INREVIEW
 
-			let updatedDataset = await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.INPROGRESS });
+			let updatedDataset = await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.INREVIEW });
 
 			/* , err => {
 				if (err) return res.send(err);
@@ -351,216 +308,7 @@ module.exports = {
 
 			//Below here is once a dataset has been approved
 
-			let dataset = await Data.findOne({ _id: id });
-
-			if (!dataset) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
-
-			dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
-
-			//1. create new version on MDC with version number and take datasetid and store
-
-			const loginDetails = {
-				username: 'paul.mccafferty@paconsulting.com',
-				password: 'blueLetterGlass47',
-			}; //Paul - move to env variables
-			await axios
-				.post('https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/login', loginDetails, {
-					withCredentials: true,
-					timeout: 5000,
-				})
-				.then(async session => {
-					axios.defaults.headers.Cookie = session.headers['set-cookie'][0]; // get cookie from request
-
-					let jsonData = JSON.stringify(await module.exports.buildJSONFile(dataset));
-					fs.writeFileSync(__dirname + `/datasetfiles/${dataset._id}.json`, jsonData);
-
-					var data = new FormData();
-					data.append('folderId', '5bf09bf5-3464-4e2d-99b3-c8f39344fff4');
-					data.append('importFile', fs.createReadStream(__dirname + `/datasetfiles/${dataset._id}.json`));
-					data.append('finalised', 'false');
-					data.append('importAsNewDocumentationVersion', 'true');
-
-					await axios
-						.post(
-							'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/import/ox.softeng.metadatacatalogue.core.spi.json/JsonImporterService/1.1',
-							data,
-							{
-								withCredentials: true,
-								timeout: 5000,
-								headers: {
-									...data.getHeaders(),
-								},
-							}
-						)
-						.then(async newDatasetVersion => {
-							let newDatasetVersionId = newDatasetVersion.data.items[0].id;
-							fs.unlinkSync(__dirname + `/datasetfiles/${dataset._id}.json`);
-
-							const updatedDatasetDetails = {
-								documentationVersion: dataset.datasetVersion,
-							};
-
-							await axios
-								.put(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/${newDatasetVersionId}`, updatedDatasetDetails, {
-									withCredentials: true,
-									timeout: 5000,
-								})
-								.catch(err => {
-									console.log('Error when trying to update the version number on the MDC - ' + err.message);
-								});
-
-							await axios
-								.put(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/${newDatasetVersionId}/finalise`, {
-									withCredentials: true,
-									timeout: 5000,
-								})
-								.catch(err => {
-									console.log('Error when trying to finalise the dataset on the MDC - ' + err.message);
-								});
-
-							// Adding to DB
-
-							let datasetv2Object = {
-								identifier: newDatasetVersionId,
-								version: dataset.datasetVersion,
-								issued: dataset.questionAnswers['issued'] || '',
-								modified: dataset.questionAnswers['modified'] || '',
-								revisions: [],
-								summary: {
-									title: dataset.questionAnswers['summary/title'] || '',
-									abstract: dataset.questionAnswers['summary/abstract'] || '',
-									publisher: {
-										identifier: dataset.questionAnswers['organisation/identifier'] || '',
-										name: 'HQIP', //dataset.questionAnswers['organisation/name'] || '',
-										logo: dataset.questionAnswers['organisation/logo'] || '',
-										description: dataset.questionAnswers['organisation/description'] || '',
-										contactPoint: dataset.questionAnswers['organisation/contactPoint'] || [],
-										memberOf: 'ALLIANCE', //dataset.questionAnswers['organisation/memberOf'] || '',
-										accessRights: dataset.questionAnswers['organisation/accessRights'] || [],
-										deliveryLeadTime: dataset.questionAnswers['member/deliveryLeadTime'] || '',
-										accessService: dataset.questionAnswers['member/accessService'] || '',
-										accessRequestCost: dataset.questionAnswers['member/accessRequestCost'] || '',
-										dataUseLimitation: dataset.questionAnswers['member/dataUseLimitation'] || [],
-										dataUseRequirements: dataset.questionAnswers['member/dataUseRequirements'] || [],
-									},
-									contactPoint: dataset.questionAnswers['summary/contactPoint'] || '',
-									keywords: dataset.questionAnswers['summary/keywords'] || [],
-									alternateIdentifiers: dataset.questionAnswers['summary/alternateIdentifiers'] || [],
-									doiName: dataset.questionAnswers['summary/doiName'] || '',
-								},
-								documentation: {
-									description: dataset.questionAnswers['properties/documentation/description'] || '',
-									associatedMedia: dataset.questionAnswers['properties/documentation/associatedMedia'] || [],
-									isPartOf: dataset.questionAnswers['properties/documentation/isPartOf'] || [],
-								},
-								coverage: {
-									spatial: dataset.questionAnswers['properties/coverage/spatial'] || '',
-									typicalAgeRange: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
-									physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
-									followup: dataset.questionAnswers['properties/coverage/followup'] || '',
-									pathway: dataset.questionAnswers['properties/coverage/pathway'] || '',
-								},
-								provenance: {
-									origin: {
-										purpose: dataset.questionAnswers['properties/provenance/origin/purpose'] || [],
-										source: dataset.questionAnswers['properties/provenance/origin/source'] || [],
-										collectionSituation: dataset.questionAnswers['properties/provenance/origin/collectionSituation'] || [],
-									},
-									temporal: {
-										accrualPeriodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
-										distributionReleaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
-										startDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
-										endDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
-										timeLag: dataset.questionAnswers['properties/provenance/temporal/timeLag'] || '',
-									},
-								},
-								accessibility: {
-									usage: {
-										dataUseLimitation: dataset.questionAnswers['properties/accessibility/usage/dataUseLimitation'] || [],
-										dataUseRequirements: dataset.questionAnswers['properties/accessibility/usage/dataUseRequirements'] || [],
-										resourceCreator: dataset.questionAnswers['properties/accessibility/usage/resourceCreator'] || '',
-										investigations: dataset.questionAnswers['properties/accessibility/usage/investigations'] || [],
-										isReferencedBy: dataset.questionAnswers['properties/accessibility/usage/isReferencedBy'] || [],
-									},
-									access: {
-										accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || [],
-										accessService: dataset.questionAnswers['properties/accessibility/access/accessService'] || '',
-										accessRequestCost: dataset.questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
-										deliveryLeadTime: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
-										jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || [],
-										dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
-										dataController: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
-									},
-									formatAndStandards: {
-										vocabularyEncodingScheme:
-											dataset.questionAnswers['properties/accessibility/formatAndStandards/vocabularyEncodingScheme'] || [],
-										conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || [],
-										language: dataset.questionAnswers['properties/accessibility/formatAndStandards/language'] || [],
-										format: dataset.questionAnswers['properties/accessibility/formatAndStandards/format'] || [],
-									},
-								},
-								enrichmentAndLinkage: {
-									qualifiedRelation: dataset.questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] || [],
-									derivation: dataset.questionAnswers['properties/enrichmentAndLinkage/derivation'] || [],
-									tools: dataset.questionAnswers['properties/enrichmentAndLinkage/tools'] || [],
-								},
-								observations: [],
-							};
-
-							await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
-
-							await Data.findOneAndUpdate(
-								{ _id: id },
-								{
-									datasetid: newDatasetVersionId,
-									datasetVersion: dataset.datasetVersion,
-									name: dataset.questionAnswers['summary/title'] || '',
-									description: dataset.questionAnswers['properties/documentation/description'] || '',
-									activeflag: 'active',
-									tags: {
-										features: dataset.questionAnswers['summary/keywords'] || [],
-									},
-									datasetfields: {
-										publisher: 'ALLIANCE > HQIP', //datasetMDC.publisher,
-										geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || '',
-										physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
-										abstract: dataset.questionAnswers['summary/abstract'] || '',
-										releaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
-										accessRequestDuration: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
-										conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || '',
-										accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || '',
-										jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || '',
-										datasetStartDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
-										datasetEndDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
-										//statisticalPopulation: datasetMDC.statisticalPopulation,
-										ageBand: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
-										contactPoint: dataset.questionAnswers['summary/contactPoint'] || '',
-										periodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
-
-										//metadataquality: metadataQuality ? metadataQuality : {},
-										//datautility: dataUtility ? dataUtility : {},
-										//metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
-										//technicaldetails: technicaldetails,
-										//versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
-										phenotypes: [],
-									},
-									datasetv2: datasetv2Object,
-								}
-							);
-						})
-						.catch(err => {
-							console.log('Error when trying to create new dataset on the MDC - ' + err.message);
-						});
-				})
-				.catch(err => {
-					console.log('Error when trying to login to MDC - ' + err.message);
-				});
-
-			await axios
-				.post(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/logout`, { withCredentials: true, timeout: 5000 })
-				.catch(err => {
-					console.log('Error when trying to logout of the MDC - ' + err.message);
-				});
+			
 
 			//"id": "5bf09bf5-3464-4e2d-99b3-c8f39344fff4" HQIP
 
@@ -675,7 +423,7 @@ module.exports = {
             });
             // 9. Return aplication and successful response
             return res.status(200).json({ status: 'success', data: accessRecord._doc });*/
-			return res.status(200).json({ status: 'success' });
+			
 		} catch (err) {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
@@ -1121,6 +869,324 @@ module.exports = {
 			});
 			return accessRecord;
 		}
+	},
+
+	//PUT api/v1/dataset-onboarding/:id
+	changeDatasetVersionStatus: async (req, res) => {
+		try {
+			// 1. Id is the _id object in MongoDb not the generated id or dataset Id
+			// 2. Get the userId
+			const id = req.params.id || null;
+			let { _id, id: userId } = req.user;
+			let { applicationStatus, applicationStatusDesc = ''} = req.body
+			
+			if (!id) return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
+
+			if (applicationStatus === 'approved') {
+				let dataset = await Data.findOne({ _id: id });
+
+				if (!dataset) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
+
+				dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
+
+				//1. create new version on MDC with version number and take datasetid and store
+
+				const loginDetails = {
+					username: 'paul.mccafferty@paconsulting.com',
+					password: 'blueLetterGlass47',
+				}; //Paul - move to env variables
+				await axios
+					.post('https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/login', loginDetails, {
+						withCredentials: true,
+						timeout: 5000,
+					})
+					.then(async session => {
+						axios.defaults.headers.Cookie = session.headers['set-cookie'][0]; // get cookie from request
+
+						let jsonData = JSON.stringify(await module.exports.buildJSONFile(dataset));
+						fs.writeFileSync(__dirname + `/datasetfiles/${dataset._id}.json`, jsonData);
+
+						var data = new FormData();
+						data.append('folderId', '5bf09bf5-3464-4e2d-99b3-c8f39344fff4');
+						data.append('importFile', fs.createReadStream(__dirname + `/datasetfiles/${dataset._id}.json`));
+						data.append('finalised', 'false');
+						data.append('importAsNewDocumentationVersion', 'true');
+
+						await axios
+							.post(
+								'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/import/ox.softeng.metadatacatalogue.core.spi.json/JsonImporterService/1.1',
+								data,
+								{
+									withCredentials: true,
+									timeout: 5000,
+									headers: {
+										...data.getHeaders(),
+									},
+								}
+							)
+							.then(async newDatasetVersion => {
+								let newDatasetVersionId = newDatasetVersion.data.items[0].id;
+								fs.unlinkSync(__dirname + `/datasetfiles/${dataset._id}.json`);
+
+								const updatedDatasetDetails = {
+									documentationVersion: dataset.datasetVersion,
+								};
+
+								await axios
+									.put(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/${newDatasetVersionId}`, updatedDatasetDetails, {
+										withCredentials: true,
+										timeout: 5000,
+									})
+									.catch(err => {
+										console.log('Error when trying to update the version number on the MDC - ' + err.message);
+									});
+
+								await axios
+									.put(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/dataModels/${newDatasetVersionId}/finalise`, {
+										withCredentials: true,
+										timeout: 5000,
+									})
+									.catch(err => {
+										console.log('Error when trying to finalise the dataset on the MDC - ' + err.message);
+									});
+
+								// Adding to DB
+
+								let datasetv2Object = {
+									identifier: newDatasetVersionId,
+									version: dataset.datasetVersion,
+									issued: dataset.questionAnswers['issued'] || '',
+									modified: dataset.questionAnswers['modified'] || '',
+									revisions: [],
+									summary: {
+										title: dataset.questionAnswers['summary/title'] || '',
+										abstract: dataset.questionAnswers['summary/abstract'] || '',
+										publisher: {
+											identifier: dataset.questionAnswers['organisation/identifier'] || '',
+											name: 'HQIP', //dataset.questionAnswers['organisation/name'] || '',
+											logo: dataset.questionAnswers['organisation/logo'] || '',
+											description: dataset.questionAnswers['organisation/description'] || '',
+											contactPoint: dataset.questionAnswers['organisation/contactPoint'] || [],
+											memberOf: 'ALLIANCE', //dataset.questionAnswers['organisation/memberOf'] || '',
+											accessRights: dataset.questionAnswers['organisation/accessRights'] || [],
+											deliveryLeadTime: dataset.questionAnswers['member/deliveryLeadTime'] || '',
+											accessService: dataset.questionAnswers['member/accessService'] || '',
+											accessRequestCost: dataset.questionAnswers['member/accessRequestCost'] || '',
+											dataUseLimitation: dataset.questionAnswers['member/dataUseLimitation'] || [],
+											dataUseRequirements: dataset.questionAnswers['member/dataUseRequirements'] || [],
+										},
+										contactPoint: dataset.questionAnswers['summary/contactPoint'] || '',
+										keywords: dataset.questionAnswers['summary/keywords'] || [],
+										alternateIdentifiers: dataset.questionAnswers['summary/alternateIdentifiers'] || [],
+										doiName: dataset.questionAnswers['summary/doiName'] || '',
+									},
+									documentation: {
+										description: dataset.questionAnswers['properties/documentation/description'] || '',
+										associatedMedia: dataset.questionAnswers['properties/documentation/associatedMedia'] || [],
+										isPartOf: dataset.questionAnswers['properties/documentation/isPartOf'] || [],
+									},
+									coverage: {
+										spatial: dataset.questionAnswers['properties/coverage/spatial'] || '',
+										typicalAgeRange: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
+										physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
+										followup: dataset.questionAnswers['properties/coverage/followup'] || '',
+										pathway: dataset.questionAnswers['properties/coverage/pathway'] || '',
+									},
+									provenance: {
+										origin: {
+											purpose: dataset.questionAnswers['properties/provenance/origin/purpose'] || [],
+											source: dataset.questionAnswers['properties/provenance/origin/source'] || [],
+											collectionSituation: dataset.questionAnswers['properties/provenance/origin/collectionSituation'] || [],
+										},
+										temporal: {
+											accrualPeriodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
+											distributionReleaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
+											startDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
+											endDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
+											timeLag: dataset.questionAnswers['properties/provenance/temporal/timeLag'] || '',
+										},
+									},
+									accessibility: {
+										usage: {
+											dataUseLimitation: dataset.questionAnswers['properties/accessibility/usage/dataUseLimitation'] || [],
+											dataUseRequirements: dataset.questionAnswers['properties/accessibility/usage/dataUseRequirements'] || [],
+											resourceCreator: dataset.questionAnswers['properties/accessibility/usage/resourceCreator'] || '',
+											investigations: dataset.questionAnswers['properties/accessibility/usage/investigations'] || [],
+											isReferencedBy: dataset.questionAnswers['properties/accessibility/usage/isReferencedBy'] || [],
+										},
+										access: {
+											accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || [],
+											accessService: dataset.questionAnswers['properties/accessibility/access/accessService'] || '',
+											accessRequestCost: dataset.questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
+											deliveryLeadTime: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
+											jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || [],
+											dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
+											dataController: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
+										},
+										formatAndStandards: {
+											vocabularyEncodingScheme:
+												dataset.questionAnswers['properties/accessibility/formatAndStandards/vocabularyEncodingScheme'] || [],
+											conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || [],
+											language: dataset.questionAnswers['properties/accessibility/formatAndStandards/language'] || [],
+											format: dataset.questionAnswers['properties/accessibility/formatAndStandards/format'] || [],
+										},
+									},
+									enrichmentAndLinkage: {
+										qualifiedRelation: dataset.questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] || [],
+										derivation: dataset.questionAnswers['properties/enrichmentAndLinkage/derivation'] || [],
+										tools: dataset.questionAnswers['properties/enrichmentAndLinkage/tools'] || [],
+									},
+									observations: [],
+								};
+
+								await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
+
+								await Data.findOneAndUpdate(
+									{ _id: id },
+									{
+										datasetid: newDatasetVersionId,
+										datasetVersion: dataset.datasetVersion,
+										name: dataset.questionAnswers['summary/title'] || '',
+										description: dataset.questionAnswers['properties/documentation/abstract'] || '',
+										activeflag: 'active',
+										tags: {
+											features: dataset.questionAnswers['summary/keywords'] || [],
+										},
+										datasetfields: {
+											publisher: 'ALLIANCE > HQIP', //datasetMDC.publisher,
+											geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || '',
+											physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
+											abstract: dataset.questionAnswers['summary/abstract'] || '',
+											releaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
+											accessRequestDuration: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
+											//conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || '',
+											//accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || '',
+											//jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || '',
+											datasetStartDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
+											datasetEndDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
+											//statisticalPopulation: datasetMDC.statisticalPopulation,
+											ageBand: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
+											contactPoint: dataset.questionAnswers['summary/contactPoint'] || '',
+											periodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
+
+											//metadataquality: metadataQuality ? metadataQuality : {},
+											//datautility: dataUtility ? dataUtility : {},
+											//metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
+											//technicaldetails: technicaldetails,
+											//versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
+											phenotypes: [],
+										},
+										datasetv2: datasetv2Object,
+										applicationStatusDesc: applicationStatusDesc
+									}
+								);
+							})
+							.catch(err => {
+								console.log('Error when trying to create new dataset on the MDC - ' + err.message);
+							});
+					})
+					.catch(err => {
+						console.log('Error when trying to login to MDC - ' + err.message);
+					});
+
+				await axios
+					.post(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/logout`, { withCredentials: true, timeout: 5000 })
+					.catch(err => {
+						console.log('Error when trying to logout of the MDC - ' + err.message);
+					});
+
+					return res.status(200).json({ status: 'success' });
+			}
+			else if (applicationStatus === 'rejected') {
+				await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.REJECTED, applicationStatusDesc: applicationStatusDesc });
+
+				return res.status(200).json({ status: 'success' });
+			}
+			else if (applicationStatus === 'archived') {
+				//await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.ARCHIVED });
+			}
+			else if (applicationStatus === 'unarchived') {
+
+			}
+			
+			
+			if (applicationStatusDesc) {
+				accessRecord.applicationStatusDesc = inputSanitizer.removeNonBreakingSpaces(applicationStatusDesc);
+				isDirty = true;
+			}
+
+			// 3. Check user type and authentication to submit application
+			/* let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} */
+
+			//update dataset to inreview - constants.datatsetStatuses.INREVIEW
+
+			
+
+			//let updatedDataset = await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.INREVIEW });
+
+
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({
+				status: 'error',
+				message: 'An error occurred updating the dataset status',
+			});
+		}
+	},
+
+	buildJSONFile: async dataset => {
+		let jsonFile = {};
+		let metadata = [];
+		let childDataClasses = [];
+
+		Object.keys(dataset.questionAnswers).forEach(item => {
+			const newDatasetCatalogueItems = {
+				namespace: 'org.healthdatagateway',
+				key: item,
+				value: dataset.questionAnswers[item],
+			};
+			metadata.push(newDatasetCatalogueItems);
+		});
+
+		const orderedMetadata = _.map(
+			_.groupBy(_.orderBy(dataset.structuralMetadata, ['tableName'], ['asc']), 'tableName'),
+			(children, tableName) => ({ tableName, children })
+		);
+
+		orderedMetadata.forEach(item => {
+			let childDataElements = [];
+			item.children.forEach(child => {
+				childDataElements.push({
+					label: child.columnName,
+					description: child.columnDescription,
+					dataType: {
+						label: child.dataType,
+						domainType: 'PrimitiveType',
+					},
+				});
+			});
+
+			childDataClasses.push({
+				label: item.children[0].tableName,
+				description: item.children[0].tableDescription,
+				childDataElements: childDataElements,
+			});
+		});
+
+		jsonFile = {
+			dataModel: {
+				label: dataset.questionAnswers['summary/title'],
+				description: dataset.questionAnswers['summary/abstract'],
+				type: 'Data Asset',
+				metadata: metadata,
+				childDataClasses: childDataClasses,
+			},
+		};
+
+		return jsonFile;
 	},
 
 	/*
