@@ -48,12 +48,12 @@ router.get('/relatedobjects/:collectionID', async (req, res) => {
 });
 
 router.get('/entityid/:entityID', async (req, res) => {
-    let entityID = req.params.entityID
-    let dataVersions = await Data.find({ pid: entityID }, {_id: 0, datasetid:1});
-    let dataVersionsArray = dataVersions.map(a => a.datasetid);
-    dataVersionsArray.push(entityID);
-    
-    var q = Collections.aggregate([
+	let entityID = req.params.entityID;
+	let dataVersions = await Data.find({ pid: entityID }, { _id: 0, datasetid: 1 });
+	let dataVersionsArray = dataVersions.map(a => a.datasetid);
+	dataVersionsArray.push(entityID);
+
+	var q = Collections.aggregate([
 		{
 			$match: {
 				$and: [
@@ -62,11 +62,11 @@ router.get('/entityid/:entityID', async (req, res) => {
 							$elemMatch: {
 								$or: [
 									{
-										objectId: { $in : dataVersionsArray },
+										objectId: { $in: dataVersionsArray },
 									},
 									{
 										pid: entityID,
-									}
+									},
 								],
 							},
 						},
@@ -88,9 +88,10 @@ router.get('/entityid/:entityID', async (req, res) => {
 	});
 });
 
+//Edit collection
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const collectionCreator = req.body.collectionCreator;
-	var { id, name, description, imageLink, authors, relatedObjects } = req.body;
+	var { id, name, description, imageLink, authors, relatedObjects, publicflag } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
 
 	Collections.findOneAndUpdate(
@@ -101,6 +102,7 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 			imageLink: imageLink,
 			authors: authors,
 			relatedObjects: relatedObjects,
+			publicflag: publicflag,
 		},
 		err => {
 			if (err) {
@@ -112,12 +114,13 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	});
 });
 
+//Add collection
 router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	let collections = new Collections();
 
 	const collectionCreator = req.body.collectionCreator;
 
-	const { name, description, imageLink, authors, relatedObjects } = req.body;
+	const { name, description, imageLink, authors, relatedObjects, publicflag } = req.body;
 
 	collections.id = parseInt(Math.random().toString().replace('0.', ''));
 	collections.name = inputSanitizer.removeNonBreakingSpaces(name);
@@ -126,6 +129,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	collections.authors = authors;
 	collections.relatedObjects = relatedObjects;
 	collections.activeflag = 'active';
+	collections.publicflag = publicflag;
 
 	try {
 		if (collections.authors) {
