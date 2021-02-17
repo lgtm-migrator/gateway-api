@@ -109,4 +109,9 @@ router.post('/:id', passport.authenticate('jwt'), datarequestController.submitAc
 // @access  Private
 router.post('/:id/notify', passport.authenticate('jwt'), datarequestController.notifyAccessRequestById);
 
+// @route   POST api/v1/data-access-request/:id/email
+// @desc    Mail a Data Access Request information in presubmission 
+// @access  Private - Applicant
+router.post('/:id/email', passport.authenticate('jwt'), datarequestController.mailDataAccessRequestInfoById);
+
 module.exports = router;
