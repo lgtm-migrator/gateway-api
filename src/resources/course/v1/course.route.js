@@ -1,10 +1,10 @@
 import express from 'express';
-import { ROLES } from '../user/user.roles';
-import { Data } from '../tool/data.model';
-import { Course } from './course.model';
+import { ROLES } from '../../user/user.roles';
+import { Data } from '../../tool/data.model';
+import { Course } from '../course.model';
 import passport from 'passport';
-import { utils } from '../auth';
-import { addCourse, editCourse, setStatus, getCourseAdmin, getCourse, getAllCourses } from './course.repository';
+import { utils } from '../../auth';
+import { addCourse, editCourse, setStatus, getCourseAdmin, getCourse, getAllCourses } from '../course.repository';
 import escape from 'escape-html';
 const router = express.Router();
 

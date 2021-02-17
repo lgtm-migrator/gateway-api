@@ -74,5 +74,5 @@ export default {
 	generatedNumericId: _generatedNumericId,
 	generateAlphaNumericString: _generateAlphaNumericString,
 	hidePrivateProfileDetails: _hidePrivateProfileDetails,
-	getEnvironment: _getEnvironment,
+	getEnvironment: _getEnvironment
 };
