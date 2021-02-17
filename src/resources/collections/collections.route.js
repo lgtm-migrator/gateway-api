@@ -21,6 +21,33 @@ const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 const router = express.Router();
 
+//TODO
+router.get('/keywords', async (req, res) => {
+	console.log(`KEYWORDS`);
+	Collections.find(
+		{},
+		{
+			_id: 0,
+			keywords: 1,
+		},
+		err => {
+			if (err) {
+				return res.json({ success: false, error: err });
+			}
+		}
+	).then(res => {
+		for (let item of res) {
+			console.log(`item: ${JSON.stringify(item, null, 2)} - ${typeof item} - ${item.length}`);
+
+			if (_.isEmpty(item)) {
+				console.log(`YES`);
+			} else console.log(`NO`);
+		}
+
+		return res;
+	});
+});
+
 router.get('/:collectionID', async (req, res) => {
 	var q = Collections.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.collectionID) }] } },
