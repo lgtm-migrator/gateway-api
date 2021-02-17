@@ -642,8 +642,8 @@ export function filterQueryGenerator(filter, searchString, type, isArray, active
 				: queryArray.push({ $match: { $and: [{ activeflag: 'active' }, { publicflag: true }] } });
 		}
 	}
-  
-  if (type === 'course') {
+
+	if (type === 'course') {
 		queryArray.push({
 			$match: { $or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }] },
 		});
@@ -658,7 +658,7 @@ export function filterQueryGenerator(filter, searchString, type, isArray, active
 				$project: {
 					result: '$' + filter,
 					_id: 0,
-					name: { $concat: ['$persons.firstname', ' ', '$persons.lastname'] },
+					value: { $concat: ['$persons.firstname', ' ', '$persons.lastname'] },
 					id: '$persons.id',
 				},
 			}
@@ -671,7 +671,6 @@ export function filterQueryGenerator(filter, searchString, type, isArray, active
 			},
 		});
 	}
-  
 
 	if (isArray) {
 		queryArray.push({ $unwind: '$result' });
