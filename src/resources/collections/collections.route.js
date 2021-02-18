@@ -21,33 +21,6 @@ const hdrukEmail = `enquiry@healthdatagateway.org`;
 
 const router = express.Router();
 
-//TODO
-router.get('/keywords', async (req, res) => {
-	console.log(`KEYWORDS`);
-	Collections.find(
-		{},
-		{
-			_id: 0,
-			keywords: 1,
-		},
-		err => {
-			if (err) {
-				return res.json({ success: false, error: err });
-			}
-		}
-	).then(res => {
-		for (let item of res) {
-			console.log(`item: ${JSON.stringify(item, null, 2)} - ${typeof item} - ${item.length}`);
-
-			if (_.isEmpty(item)) {
-				console.log(`YES`);
-			} else console.log(`NO`);
-		}
-
-		return res;
-	});
-});
-
 router.get('/:collectionID', async (req, res) => {
 	var q = Collections.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.collectionID) }] } },
@@ -115,10 +88,9 @@ router.get('/entityid/:entityID', async (req, res) => {
 	});
 });
 
-//Edit collection
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const collectionCreator = req.body.collectionCreator;
-	var { id, name, description, imageLink, authors, relatedObjects, publicflag } = req.body;
+	var { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
 
 	Collections.findOneAndUpdate(
@@ -130,6 +102,7 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 			authors: authors,
 			relatedObjects: relatedObjects,
 			publicflag: publicflag,
+			keywords: keywords,
 		},
 		err => {
 			if (err) {
@@ -141,13 +114,12 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	});
 });
 
-//Add collection
 router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	let collections = new Collections();
 
 	const collectionCreator = req.body.collectionCreator;
 
-	const { name, description, imageLink, authors, relatedObjects, publicflag } = req.body;
+	const { name, description, imageLink, authors, relatedObjects, publicflag, keywords } = req.body;
 
 	collections.id = parseInt(Math.random().toString().replace('0.', ''));
 	collections.name = inputSanitizer.removeNonBreakingSpaces(name);
@@ -157,6 +129,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	collections.relatedObjects = relatedObjects;
 	collections.activeflag = 'active';
 	collections.publicflag = publicflag;
+	collections.keywords = keywords;
 
 	try {
 		if (collections.authors) {

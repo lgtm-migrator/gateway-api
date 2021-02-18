@@ -23,6 +23,7 @@ const CollectionSchema = new Schema(
 		],
 		activeflag: String,
 		publicflag: Boolean,
+		keywords: [String],
 	},
 	{
 		collection: 'collections', //will be created when first posting
