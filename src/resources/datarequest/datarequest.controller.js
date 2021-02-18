@@ -1423,7 +1423,7 @@ module.exports = {
 			// 9. Return aplication and successful response
 			return res.status(200).json({ status: 'success', data: accessRecord._doc });
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -1445,6 +1445,65 @@ module.exports = {
 		accessRecord.dateSubmitted = dateSubmitted;
 		// 3. Return updated access record for saving
 		return accessRecord;
+	},
+
+	//POST api/v1/data-access-request/:id/email
+	mailDataAccessRequestInfoById: async (req, res) => {
+
+		try{
+
+			// 1. Get the required request params
+			const {
+				params: { id },
+			} = req;
+
+			// 2. Retrieve DAR from database
+			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
+				{
+					path: 'datasets dataset',
+				},
+				{
+					path: 'mainApplicant',
+				}
+				
+			]);
+
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. Ensure single datasets are mapped correctly into array
+			if (_.isEmpty(accessRecord.datasets)) {
+					accessRecord.datasets = [accessRecord.dataset];
+			}
+
+			// 4. If application is not in progress, actions cannot be performed
+			if (accessRecord.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
+				return res.status(400).json({
+					success: false,
+					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
+				});
+			}
+				
+			// 5. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord.toObject(), req.user.id, req.user._id);
+			// 6. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+			
+			// 7. Send notification to the authorised user
+			module.exports.createNotifications(constants.notificationTypes.INPROGRESS, {}, accessRecord, req.user);
+
+			return res.status(200).json({ status: 'success' });
+
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred',
+			});
+		}
 	},
 
 	//POST api/v1/data-access-request/:id/notify
@@ -1689,7 +1748,44 @@ module.exports = {
 		} = context;
 
 		switch (type) {
-			case constants.notificationTypes.STATUSCHANGE:
+			case constants.notificationTypes.INPROGRESS:
+				await notificationBuilder.triggerNotificationMessage(
+					[user.id],
+					`An email with the data access request info for ${datasetTitles} has been sent to you`,
+					'data access request',
+					accessRecord._id
+				);
+				
+				options = {
+					userType: '',
+					userEmail: appEmail,
+					publisher,
+					datasetTitles,
+					userName: `${appFirstName} ${appLastName}`,
+					userType: 'applicant',
+					submissionType: constants.submissionTypes.INPROGRESS,
+				};
+			
+			
+				// Build email template
+				({ html, jsonContent } = await emailGenerator.generateEmail(
+						aboutApplication,
+						questions,
+						pages,
+						questionPanels,
+						questionAnswers,
+						options
+				));
+				await emailGenerator.sendEmail(
+					[user],
+					constants.hdrukEmail,
+					`Data Access Request in progress for ${datasetTitles}`,
+					html,
+					false,
+					attachments
+				);
+				break;	
+				case constants.notificationTypes.STATUSCHANGE:
 				// 1. Create notifications
 				// Custodian manager and current step reviewer notifications
 				if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {

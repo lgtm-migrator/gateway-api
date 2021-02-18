@@ -617,4 +617,28 @@ function validateDocumentLinks(document_links) {
 	return documentLinksValidated;
 }
 
-export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin, getAllTools };
+function formatRetroDocumentLinks(document_links) {
+	let documentLinksValidated = { doi: [], pdf: [], html: [] };
+
+	document_links.forEach(obj => {
+		for (const [key, value] of Object.entries(obj)) {
+			switch (key) {
+				case 'doi':
+					documentLinksValidated.doi.push(value);
+					break;
+				case 'pdf':
+					documentLinksValidated.pdf.push(value);
+					break;
+				case 'html':
+					documentLinksValidated.html.push(value);
+					break;
+				default:
+					break;
+			}
+		}
+	});
+
+	return documentLinksValidated;
+}
+
+export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks };

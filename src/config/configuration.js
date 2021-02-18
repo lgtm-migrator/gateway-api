@@ -63,6 +63,7 @@ export const cookies = {
 export const claims = {
 	email: ['email'],
 	profile: ['firstname', 'lastname'],
+	rquestroles: ['rquestroles'],
 };
 
 export const features = {

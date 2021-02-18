@@ -1,11 +1,12 @@
 import express from 'express';
-import { Data } from '../tool/data.model';
-import { ROLES } from '../user/user.roles';
-import passport from 'passport';
-import { utils } from '../auth';
-import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools } from '../tool/data.repository';
-import helper from '../utilities/helper.util';
+import helper from '../../utilities/helper.util';
 import escape from 'escape-html';
+import passport from 'passport';
+
+import { Data } from '../../tool/data.model';
+import { ROLES } from '../../user/user.roles';
+import { utils } from '../../auth';
+import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools } from '../../tool/data.repository';
 
 const router = express.Router();
 

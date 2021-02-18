@@ -36,7 +36,7 @@ function getCollectionObject(objectId, objectType, pid) {
 
 	return new Promise(async (resolve, reject) => {
 		let data;
-		if (!isNaN(id) && objectType !== 'course') {
+		if (objectType !== 'dataset' && objectType !== 'course') {
 			data = await Data.find(
 				{ id: parseInt(id) },
 				{
@@ -68,7 +68,7 @@ function getCollectionObject(objectId, objectType, pid) {
 			);
 			// 2. If dataset not found search for a dataset based on datasetID
 			if (!data || data.length <= 0) {
-				data = await Data.find({ datasetid: id }, { datasetid: 1, pid: 1 });
+				data = await Data.find({ datasetid: objectId }, { datasetid: 1, pid: 1 });
 				// 3. Use retrieved dataset's pid to search by pid again
 				data = await Data.find(
 					{ pid: data[0].pid, activeflag: 'active' },
