@@ -49,34 +49,54 @@ export default class DatasetClass extends Entity {
 	checkLatestVersion() {
 		return this.activeflag === 'active';
 	}
-}
 
-export const v2Format = {
-	dataset: {
-		"@schema": {
-			"type": "Dataset",
-			"version": "2.0.0",
-			"url": "https://raw.githubusercontent.com/HDRUK/schemata/master/schema/dataset/latest/dataset.schema.json"
-		},
-		pid: 'pid',
-		id: 'datasetid',
-		identifier: '',
-		version: '',
-		summary: '',
-		documentation: '',
-		revisions: '',
-		modified: '',
-		issued: '',
-		accessibility: '',
-		observations: '',
-		provenance: '',
-		coverage: '',
-		enrichmentAndLinkage: '',
-		sturcturalMetadata: ''
-	},
-	relatedObjects: 'relatedObjects',
-	metadataQuality: 'datasetfields.metadataquality',
-	dataUtility: 'datasetfields.datautility',
-	viewCounter: 'counter',
-	submittedDataAccessRequests: 'submittedDataAccessRequests'
-};
+	toV2Format() {
+		// Version 2 transformer map
+		const transformer = {
+			dataset: {
+				pid: 'pid',
+				id: 'datasetid',
+				version: 'datasetVersion',
+				identifier: 'datasetv2.identifier',
+				summary: 'datasetv2.summary',
+				documentation: 'datasetv2.documentation',
+				revisions: 'datasetv2.revisions',
+				modified: 'datasetv2.modified',
+				issued: 'datasetv2.issued',
+				accessibility: 'datasetv2.accessibility',
+				observations: 'datasetv2.observations',
+				provenance: 'datasetv2.provenance',
+				coverage: 'datasetv2.coverage',
+				enrichmentAndLinkage: 'datasetv2.enrichmentAndLinkage',
+				structuralMetadata: {
+					structuralMetadataCount: {},
+					dataClasses: 'datasetfields.technicaldetails',
+				},
+			},
+			relatedObjects: 'relatedObjects',
+			metadataQuality: 'datasetfields.metadataquality',
+			dataUtility: 'datasetfields.datautility',
+			viewCounter: 'counter',
+			submittedDataAccessRequests: 'submittedDataAccessRequests',
+		};
+
+		// Transform entity into v2 using map, with stict applied to retain null values
+		const transformedObject = this.transformTo(transformer, { strict: true });
+
+		// Manually update identifier URL link
+		transformedObject.dataset.identifier = `https://web.www.healthdatagateway.org/dataset/${this.datasetid}`;
+
+		// Append static schema details for v2
+		const formattedObject = {
+			'@schema': {
+				type: `Dataset`,
+				version: `2.0.0`,
+				url: `https://raw.githubusercontent.com/HDRUK/schemata/master/schema/dataset/latest/dataset.schema.json`,
+			},
+			...transformedObject
+		};
+		
+		// Return v2 object
+		return formattedObject;
+	}
+}

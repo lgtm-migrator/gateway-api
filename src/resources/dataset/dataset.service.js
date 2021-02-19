@@ -1,7 +1,5 @@
 import _ from 'lodash';
 
-import { v2Format } from './dataset.entity';
-
 export default class DatasetService {
 	constructor(datasetRepository) {
 		this.datasetRepository = datasetRepository;
@@ -18,6 +16,7 @@ export default class DatasetService {
 		}
 		
 		// Get latest data set
+		delete query.datasetid;
 		dataset = await this.datasetRepository.getDataset({ ...query, pid: id, activeflag: 'active' });
 
 		// If no dataset is found active, look for most recent archived dataset
@@ -34,7 +33,7 @@ export default class DatasetService {
 			dataset.isLatestVersion = dataset.checkLatestVersion();
 		} else {
 			// Transform to dataset v2 data structure
-			dataset = dataset.transformTo(v2Format, { strict: true });
+			dataset = dataset.toV2Format();
 		}
 
 		return dataset;
