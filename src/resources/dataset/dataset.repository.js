@@ -22,7 +22,9 @@ export default class DatasetRepository extends Repository {
 			return {};
 		}
 		// Get dataset versions using pid
-		const datasets = await Dataset.find({ pid }).select({ datasetid: 1, datasetVersion: 1, activeflag: 1 }).lean();
+		const query = { pid, fields:'datasetid,datasetVersion,activeflag' };
+		const options = { lean: true };
+		const datasets = await this.find(query, options);
 		// Create revision structure
 		return datasets.reduce((obj, dataset) => {
 			const { datasetVersion = 'default', datasetid = 'empty', activeflag = '' } = dataset;

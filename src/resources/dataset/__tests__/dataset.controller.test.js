@@ -32,7 +32,7 @@ describe('DatasetController', function () {
 
 			expect(serviceStub.calledOnce).toBe(true);
 			expect(status.calledWith(200)).toBe(true);
-			expect(json.calledWith({ success: true, data: stubValue })).toBe(true);
+			expect(json.calledWith({ success: true, ...stubValue })).toBe(true);
 		});
 
 		it('should return a bad request response if no dataset id is provided', async function () {

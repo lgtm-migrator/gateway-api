@@ -10,24 +10,12 @@ export default class DatasetService {
 	}
 
 	async getDataset(id, query = {}) {
+		// Protect for no id passed
+		if(!id) return;
+
 		// Get dataset from Db by datasetid first
 		query = { ...query, datasetid: id };
 		let dataset = await this.datasetRepository.getDataset(query);
-
-		// Update query to find the latest dataset
-		if (!_.isNil(dataset)) {
-			id = dataset.pid;
-		}
-
-		// Get latest data set
-		delete query.datasetid;
-		dataset = await this.datasetRepository.getDataset({ ...query, pid: id, activeflag: 'active' });
-
-		// If no dataset is found active, look for most recent archived dataset
-		if (!dataset) {
-			query.sort = '-createdAt';
-			dataset = await this.datasetRepository.getDataset({ ...query, pid: id, activeflag: 'archive' });
-		}
 
 		// Return undefined if no dataset found
 		if (!dataset) return;
@@ -35,15 +23,14 @@ export default class DatasetService {
 		// Populate derived fields
 		dataset.revisions = await this.datasetRepository.getDatasetRevisions(dataset.pid);
 		dataset.relatedObjects = await this.getRelatedObjects(dataset.pid);
+		dataset.isLatestVersion = dataset.checkLatestVersion();
 
-		// Raw output responds with the data structure as defined in MongoDb
-		if (query['raw'] === true) {
-			dataset.isLatestVersion = dataset.checkLatestVersion();
-		} else {
+		// Return v2 format for datasets if 'raw' isn't passed
+		if (!query['raw']) {
 			// Transform to dataset v2 data structure
 			let v2Response = dataset.toV2Format();
 			// Temporary step of reformatting technical details until cache updated
-			v2Response.dataset = reformatTechnicalDetails(v2Response.dataset);
+			v2Response.dataset = this.reformatTechnicalDetails(v2Response.dataset);
 			// Set full response
 			dataset = v2Response;
 		}
@@ -83,7 +70,7 @@ export default class DatasetService {
 
 		// Flatten and reduce related entities into related objects
 		const relatedObjects = relatedEntities.flat().reduce((arr, entity) => {
-			let { relatedObjects: entityRelatedObjects = [] } = entity;
+			let { relatedObjects: entityRelatedObjects } = entity;
 			entityRelatedObjects = entityRelatedObjects.filter(obj => obj.pid === pid);
 			const formattedEntityRelatedObjects = entityRelatedObjects.map(obj => {
 				return {
@@ -99,28 +86,28 @@ export default class DatasetService {
 		}, []);
 		return relatedObjects;
 	}
-}
 
-const reformatTechnicalDetails = dataset => {
-	// Return if no technical details found
-	if (_.isNil(dataset.structuralMetadata) || _.isNil(dataset.structuralMetadata.dataClasses)) {
-		return dataset;
-	}
-	// Convert mongoose array to regular array
-	const dataClasses = Array.from([...dataset.structuralMetadata.dataClasses]) || [];
-	// Map data classes array into correct format
-	dataset.structuralMetadata.dataClasses = [...dataClasses].map(el => {
-		const { id = '', description = '', label: name = '', elements = [] } = el;
-		const dataElements = [...elements].map(dataEl => {
-			const {
-				id = '',
-				description = '',
-				label: name = '',
-				dataType: { domainType: type = '' },
-			} = dataEl;
-			return { id, description, name, type };
+	 reformatTechnicalDetails (dataset) {
+		// Return if no technical details found
+		if (_.isNil(dataset.structuralMetadata) || _.isNil(dataset.structuralMetadata.dataClasses)) {
+			return dataset;
+		}
+		// Convert mongoose array to regular array
+		const dataClasses = Array.from([...dataset.structuralMetadata.dataClasses]) || [];
+		// Map data classes array into correct format
+		dataset.structuralMetadata.dataClasses = [...dataClasses].map(el => {
+			const { id = '', description = '', label: name = '', elements = [] } = el;
+			const dataElements = [...elements].map(dataEl => {
+				const {
+					id = '',
+					description = '',
+					label: name = '',
+					dataType: { domainType: type = '' },
+				} = dataEl;
+				return { id, description, name, type };
+			});
+			return { id, description, name, dataElementsCount: dataElements.length || 0, dataElements };
 		});
-		return { id, description, name, dataElementsCount: dataElements.length || 0, dataElements };
-	});
-	return dataset;
-};
+		return dataset;
+	};
+}
