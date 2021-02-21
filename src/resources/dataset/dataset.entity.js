@@ -60,9 +60,9 @@ export default class DatasetClass extends Entity {
 				identifier: 'datasetv2.identifier',
 				summary: 'datasetv2.summary',
 				documentation: 'datasetv2.documentation',
-				revisions: 'datasetv2.revisions',
-				modified: 'datasetv2.modified',
-				issued: 'datasetv2.issued',
+				revisions: 'revisions',
+				modified: 'updatedAt',
+				issued: 'createdAt',
 				accessibility: 'datasetv2.accessibility',
 				observations: 'datasetv2.observations',
 				provenance: 'datasetv2.provenance',
@@ -81,7 +81,7 @@ export default class DatasetClass extends Entity {
 		};
 
 		// Transform entity into v2 using map, with stict applied to retain null values
-		const transformedObject = this.transformTo(transformer, { strict: true });
+		const transformedObject = this.transformTo(transformer, { strict: false });
 
 		// Manually update identifier URL link
 		transformedObject.dataset.identifier = `https://web.www.healthdatagateway.org/dataset/${this.datasetid}`;
@@ -95,7 +95,7 @@ export default class DatasetClass extends Entity {
 			},
 			...transformedObject
 		};
-		
+
 		// Return v2 object
 		return formattedObject;
 	}
