@@ -28,8 +28,8 @@ describe('DatasetRepository', function () {
 	describe('getDataset', () => {
 		it('should return a dataset by a specified id', async function () {
 			const datasetRepository = new DatasetRepository();
-			const dataset = await datasetRepository.getDataset("dfb21b3b-7fd9-40c4-892e-810edd6dfc25");
-			expect(dataset).toEqual(datasetsStub[0]);
+			const dataset = await datasetRepository.getDataset({datasetid: "dfb21b3b-7fd9-40c4-892e-810edd6dfc25"});
+			expect(dataset.toObject()).toEqual(datasetsStub[0]);
 		});
 	});
 
