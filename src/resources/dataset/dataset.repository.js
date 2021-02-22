@@ -7,14 +7,33 @@ export default class DatasetRepository extends Repository {
 		this.dataset = Dataset;
 	}
 
-	async getDataset(id, query) {
-		query = { ...query, datasetid: id };
-		const options = { lean: true, populate: { path: 'submittedDataAccessRequests' } };
+	async getDataset(query) {
+		const options = { lean: false, populate: { path: 'submittedDataAccessRequests' } };
 		return this.findOne(query, options);
 	}
 
 	async getDatasets(query) {
-		const options = { lean: true, populate: { path: 'submittedDataAccessRequests' } };
+		const options = { lean: false, populate: { path: 'submittedDataAccessRequests' } };
 		return this.find(query, options);
+	}
+
+	async getDatasetRevisions(pid) {
+		if (!pid) {
+			return {};
+		}
+		// Get dataset versions using pid
+		const query = { pid, fields:'datasetid,datasetVersion,activeflag' };
+		const options = { lean: true };
+		const datasets = await this.find(query, options);
+		// Create revision structure
+		return datasets.reduce((obj, dataset) => {
+			const { datasetVersion = 'default', datasetid = 'empty', activeflag = '' } = dataset;
+			obj[datasetVersion] = datasetid;
+			// Set the active dataset as the latest version
+			if (activeflag === 'active') {
+				obj['latest'] = datasetid;
+			}
+			return obj;
+		}, {});
 	}
 }
