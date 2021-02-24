@@ -14,14 +14,16 @@ const CollectionSchema = new Schema(
 		relatedObjects: [
 			{
 				objectId: String,
-                reason: String,
-                pid: String,
+				reason: String,
+				pid: String,
 				objectType: String,
 				user: String,
 				updated: String,
 			},
 		],
 		activeflag: String,
+		publicflag: Boolean,
+		keywords: [String],
 	},
 	{
 		collection: 'collections', //will be created when first posting
