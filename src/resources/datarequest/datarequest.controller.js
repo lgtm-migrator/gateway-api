@@ -955,6 +955,34 @@ module.exports = {
 		}
 	},
 
+	//GET api/v1/data-access-request/:id/file/:fileId/status
+	getFileStatus: async (req, res) => {
+		try {
+				// 1. get params
+				const {
+					params: { id, fileId },
+				} = req;
+	
+				// 2. get AccessRecord
+				let accessRecord = await DataRequestModel.findOne({ _id: id });
+				if (!accessRecord) {
+					return res.status(404).json({ status: 'error', message: 'Application not found.' });
+				}
+
+				// 3. get file
+				const fileIndex = accessRecord.files.findIndex(file => file.fileId === fileId);
+				if(fileIndex === -1)
+					return res.status(404).json({ status: 'error', message: 'File not found.' });
+				
+				// 4. Return successful response
+				return res.status(200).json({ status: accessRecord.files[fileIndex].status });
+
+		} catch (err) {
+			console.log(err.message);
+			res.status(500).json({ status: 'error', message: err });
+		}
+	},
+
 	//GET api/v1/data-access-request/:id/file/:fileId
 	getFile: async (req, res) => {
 		try {
@@ -1619,6 +1647,50 @@ module.exports = {
 			});
 		}
 	},
+
+	updateFileStatus: async (req, res) => {
+        try {
+            // 1. Get the required request params
+            const {
+                params: { id, fileId },
+            } = req;
+
+            let { status } = req.body;
+
+            // 2. Find the relevant data request application
+            let accessRecord = await DataRequestModel.findOne({_id: id});
+
+            if (!accessRecord) {
+                    return res.status(404).json({ status: 'error', message: 'Application not found.' });
+            }
+
+			//3. Check the status is valid
+            if(status!==fileStatus.UPLOADED && status!==fileStatus.SCANNED && status!==fileStatus.ERROR && status!==fileStatus.QUARANTINED ){
+                return res.status(400).json({ status: 'error', message: 'File status not valid' }); 
+			}
+
+			//4. get the file
+			const fileIndex = accessRecord.files.findIndex(file => file.fileId === fileId);
+            if(fileIndex === -1)
+                return res.status(404).json({ status: 'error', message: 'File not found.' });
+            
+			//5. update the status	
+            accessRecord.files[fileIndex].status=status;
+
+            //6. write back into mongo
+            await accessRecord.save();
+
+            return res.status(200).json({
+                success: true,
+            });
+        } catch (err) {
+            console.error(err.message);
+            return res.status(500).json({
+                success: false,
+                message: err.message,
+            });
+        }
+    },
 
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
