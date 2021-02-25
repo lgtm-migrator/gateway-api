@@ -31,7 +31,9 @@ module.exports = {
 			let { id: userId } = req.user;
 
 			// 2. Find all data access request applications created with multi dataset version
-			let applications = await DataRequestModel.find({ $or: [{ userId: parseInt(userId) }, { authorIds: userId }] }).populate('datasets mainApplicant');
+			let applications = await DataRequestModel.find({ $or: [{ userId: parseInt(userId) }, { authorIds: userId }] }).populate(
+				'datasets mainApplicant'
+			);
 
 			// 3. Append project name and applicants
 			let modifiedApplications = [...applications]
@@ -413,11 +415,14 @@ module.exports = {
 			if (typeof aboutApplication === 'string') {
 				aboutApplication = JSON.parse(aboutApplication);
 			}
-			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce((newObj, dataset) => {
-				newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
-				newObj.datasetTitles = [...newObj.datasetTitles, dataset.name];
-				return newObj;
-			}, { datasetIds: [], datasetTitles: []});
+			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce(
+				(newObj, dataset) => {
+					newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
+					newObj.datasetTitles = [...newObj.datasetTitles, dataset.name];
+					return newObj;
+				},
+				{ datasetIds: [], datasetTitles: [] }
+			);
 
 			updateObj = { aboutApplication, datasetIds, datasetTitles };
 		}
@@ -958,25 +963,23 @@ module.exports = {
 	//GET api/v1/data-access-request/:id/file/:fileId/status
 	getFileStatus: async (req, res) => {
 		try {
-				// 1. get params
-				const {
-					params: { id, fileId },
-				} = req;
-	
-				// 2. get AccessRecord
-				let accessRecord = await DataRequestModel.findOne({ _id: id });
-				if (!accessRecord) {
-					return res.status(404).json({ status: 'error', message: 'Application not found.' });
-				}
+			// 1. get params
+			const {
+				params: { id, fileId },
+			} = req;
 
-				// 3. get file
-				const fileIndex = accessRecord.files.findIndex(file => file.fileId === fileId);
-				if(fileIndex === -1)
-					return res.status(404).json({ status: 'error', message: 'File not found.' });
-				
-				// 4. Return successful response
-				return res.status(200).json({ status: accessRecord.files[fileIndex].status });
+			// 2. get AccessRecord
+			let accessRecord = await DataRequestModel.findOne({ _id: id });
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
 
+			// 3. get file
+			const fileIndex = accessRecord.files.findIndex(file => file.fileId === fileId);
+			if (fileIndex === -1) return res.status(404).json({ status: 'error', message: 'File not found.' });
+
+			// 4. Return successful response
+			return res.status(200).json({ status: accessRecord.files[fileIndex].status });
 		} catch (err) {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err });
@@ -1295,16 +1298,16 @@ module.exports = {
 
 	//PUT api/v1/data-access-request/:id/deletefile
 	updateAccessRequestDeleteFile: async (req, res) => {
-		try{
+		try {
 			const {
 				params: { id },
 			} = req;
 
 			// 1. Id of the file to delete
 			let { fileId } = req.body;
-			
+
 			// 2. Find the relevant data request application
-			let accessRecord = await DataRequestModel.findOne({_id: id});
+			let accessRecord = await DataRequestModel.findOne({ _id: id });
 
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
@@ -1312,7 +1315,7 @@ module.exports = {
 
 			// 4. Ensure single datasets are mapped correctly into array
 			if (_.isEmpty(accessRecord.datasets)) {
-					accessRecord.datasets = [accessRecord.dataset];
+				accessRecord.datasets = [accessRecord.dataset];
 			}
 
 			// 5. If application is not in progress, actions cannot be performed
@@ -1337,17 +1340,14 @@ module.exports = {
 
 			// 9. write back into mongo
 			await accessRecord.save();
-			
+
 			// 10. Return successful response
 			return res.status(200).json({ status: 'success' });
-
 		} catch (err) {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err });
 		}
-
 	},
-
 
 	//POST api/v1/data-access-request/:id
 	submitAccessRequestById: async (req, res) => {
@@ -1649,48 +1649,52 @@ module.exports = {
 	},
 
 	updateFileStatus: async (req, res) => {
-        try {
-            // 1. Get the required request params
-            const {
-                params: { id, fileId },
-            } = req;
+		try {
+			// 1. Get the required request params
+			const {
+				params: { id, fileId },
+			} = req;
 
-            let { status } = req.body;
+			let { status } = req.body;
 
-            // 2. Find the relevant data request application
-            let accessRecord = await DataRequestModel.findOne({_id: id});
+			// 2. Find the relevant data request application
+			let accessRecord = await DataRequestModel.findOne({ _id: id });
 
-            if (!accessRecord) {
-                    return res.status(404).json({ status: 'error', message: 'Application not found.' });
-            }
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
 
 			//3. Check the status is valid
-            if(status!==fileStatus.UPLOADED && status!==fileStatus.SCANNED && status!==fileStatus.ERROR && status!==fileStatus.QUARANTINED ){
-                return res.status(400).json({ status: 'error', message: 'File status not valid' }); 
+			if (
+				status !== fileStatus.UPLOADED &&
+				status !== fileStatus.SCANNED &&
+				status !== fileStatus.ERROR &&
+				status !== fileStatus.QUARANTINED
+			) {
+				return res.status(400).json({ status: 'error', message: 'File status not valid' });
 			}
 
 			//4. get the file
 			const fileIndex = accessRecord.files.findIndex(file => file.fileId === fileId);
-            if(fileIndex === -1)
-                return res.status(404).json({ status: 'error', message: 'File not found.' });
-            
-			//5. update the status	
-            accessRecord.files[fileIndex].status=status;
+			if (fileIndex === -1) return res.status(404).json({ status: 'error', message: 'File not found.' });
 
-            //6. write back into mongo
-            await accessRecord.save();
+			//5. update the status
+			accessRecord.files[fileIndex].status = status;
 
-            return res.status(200).json({
-                success: true,
-            });
-        } catch (err) {
-            console.error(err.message);
-            return res.status(500).json({
-                success: false,
-                message: err.message,
-            });
-        }
-    },
+			//6. write back into mongo
+			await accessRecord.save();
+
+			return res.status(200).json({
+				success: true,
+			});
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: err.message,
+			});
+		}
+	},
 
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
