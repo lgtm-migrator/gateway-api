@@ -1,3 +1,5 @@
+const transform = require('transformobject').transform;
+
 class Entity {
 
     equals (other) {
@@ -17,6 +19,10 @@ class Entity {
 
     toString () {
         return this.id;
+    }
+
+    transformTo(format, {strict} = {strict: false}) {
+        return transform(this, format, { strict });
     }
 }
 
