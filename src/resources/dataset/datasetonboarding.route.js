@@ -3,6 +3,11 @@ import passport from 'passport';
 const router = express.Router();
 const datasetOnboardingController = require('./datasetonboarding.controller');
 
+// @route   PUT api/v1/dataset-onboarding/checkUniqueTitle
+// @desc    PUT Update the status of a dataset
+// @access  Private - Custodian Manager/Reviewer ?
+router.get('/checkUniqueTitle', passport.authenticate('jwt'), datasetOnboardingController.checkUniqueTitle);
+
 // @route   GET api/v1/dataset-onboarding/:id
 // @desc    GET Dataset version based on _id
 // @access  Private - Custodian Manager/Reviewer ?

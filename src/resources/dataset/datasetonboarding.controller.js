@@ -22,8 +22,7 @@ module.exports = {
 			if (publisherID === 'admin') {
 				// get all datasets in review for admin
 				dataset = await Data.find({ activeflag: 'inReview' }).sort({ updatedAt: -1 });
-			}
-			else {
+			} else {
 				// get all pids for publisherID
 				dataset = await Data.find({
 					$and: [
@@ -308,8 +307,6 @@ module.exports = {
 
 			//Below here is once a dataset has been approved
 
-			
-
 			//"id": "5bf09bf5-3464-4e2d-99b3-c8f39344fff4" HQIP
 
 			/* {
@@ -423,7 +420,6 @@ module.exports = {
             });
             // 9. Return aplication and successful response
             return res.status(200).json({ status: 'success', data: accessRecord._doc });*/
-			
 		} catch (err) {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
@@ -878,17 +874,15 @@ module.exports = {
 			// 2. Get the userId
 			const id = req.params.id || null;
 			let { _id, id: userId } = req.user;
-			let { applicationStatus, applicationStatusDesc = ''} = req.body
-			
+			let { applicationStatus, applicationStatusDesc = '' } = req.body;
+
 			if (!id) return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
 
 			if (applicationStatus === 'approved') {
 				let dataset = await Data.findOne({ _id: id });
-
 				if (!dataset) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
 
 				dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
-
 				//1. create new version on MDC with version number and take datasetid and store
 
 				const loginDetails = {
@@ -951,6 +945,7 @@ module.exports = {
 									});
 
 								// Adding to DB
+								let observations = await module.exports.buildObservations(dataset.questionAnswers);
 
 								let datasetv2Object = {
 									identifier: newDatasetVersionId,
@@ -1036,10 +1031,13 @@ module.exports = {
 										derivation: dataset.questionAnswers['properties/enrichmentAndLinkage/derivation'] || [],
 										tools: dataset.questionAnswers['properties/enrichmentAndLinkage/tools'] || [],
 									},
-									observations: [],
+									observations: observations,
 								};
 
 								await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
+
+								//get technicaldetails
+								let technicalDetails = await module.exports.buildTechnicalDetails(dataset.structuralMetadata);
 
 								await Data.findOneAndUpdate(
 									{ _id: id },
@@ -1072,12 +1070,12 @@ module.exports = {
 											//metadataquality: metadataQuality ? metadataQuality : {},
 											//datautility: dataUtility ? dataUtility : {},
 											//metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
-											//technicaldetails: technicaldetails,
+											technicaldetails: technicalDetails,
 											//versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
 											phenotypes: [],
 										},
 										datasetv2: datasetv2Object,
-										applicationStatusDesc: applicationStatusDesc
+										applicationStatusDesc: applicationStatusDesc,
 									}
 								);
 							})
@@ -1095,21 +1093,19 @@ module.exports = {
 						console.log('Error when trying to logout of the MDC - ' + err.message);
 					});
 
-					return res.status(200).json({ status: 'success' });
-			}
-			else if (applicationStatus === 'rejected') {
-				await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.REJECTED, applicationStatusDesc: applicationStatusDesc });
+				return res.status(200).json({ status: 'success' });
+			} else if (applicationStatus === 'rejected') {
+				await Data.findOneAndUpdate(
+					{ _id: id },
+					{ activeflag: constants.datatsetStatuses.REJECTED, applicationStatusDesc: applicationStatusDesc }
+				);
 
 				return res.status(200).json({ status: 'success' });
-			}
-			else if (applicationStatus === 'archived') {
+			} else if (applicationStatus === 'archived') {
 				//await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.ARCHIVED });
+			} else if (applicationStatus === 'unarchived') {
 			}
-			else if (applicationStatus === 'unarchived') {
 
-			}
-			
-			
 			if (applicationStatusDesc) {
 				accessRecord.applicationStatusDesc = inputSanitizer.removeNonBreakingSpaces(applicationStatusDesc);
 				isDirty = true;
@@ -1123,11 +1119,7 @@ module.exports = {
 
 			//update dataset to inreview - constants.datatsetStatuses.INREVIEW
 
-			
-
 			//let updatedDataset = await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.INREVIEW });
-
-
 		} catch (err) {
 			console.error(err.message);
 			res.status(500).json({
@@ -1137,19 +1129,144 @@ module.exports = {
 		}
 	},
 
+	buildObservations: async observationsData => {
+		let observationsArray = [];
+		let regex = new RegExp('properties/observation/', 'g');
+
+		let observationQuestions = [];
+		Object.keys(observationsData).forEach(item => {
+			if (item.match(regex)) {
+				observationQuestions.push({ key: item, value: observationsData[item] });
+			}
+		});
+
+		let observationUniqueIds = [''];
+		observationQuestions.forEach(item => {
+			let [, uniqueId] = item.key.split('_');
+			if (!_.isEmpty(uniqueId) && !observationUniqueIds.find(x => x === uniqueId)) {
+				observationUniqueIds.push(uniqueId);
+			}
+		});
+
+		observationUniqueIds.forEach(uniqueId => {
+			let entry = {};
+			if (uniqueId === '') {
+				observationQuestions.forEach(question => {
+					if (!question.key.includes('_')) {
+						let [, key] = question.key.split('properties/observation/');
+						let newEntry = { [key]: question.value };
+						entry = { ...entry, ...newEntry };
+					}
+				});
+			} else {
+				observationQuestions.forEach(question => {
+					if (question.key.includes(uniqueId)) {
+						let [keyLong] = question.key.split('_');
+						let [, key] = keyLong.split('properties/observation/');
+						let newEntry = { [key]: question.value };
+						entry = { ...entry, ...newEntry };
+					}
+				});
+			}
+			observationsArray.push(entry);
+		});
+
+		return observationsArray;
+	},
+
+	buildTechnicalDetails: async structuralMetadata => {
+		let technicalDetailsClasses = [];
+
+		const orderedMetadata = _.map(_.groupBy(_.orderBy(structuralMetadata, ['tableName'], ['asc']), 'tableName'), (children, tableName) => ({
+			tableName,
+			children,
+		}));
+
+		orderedMetadata.forEach(item => {
+			let technicalDetailsElements = [];
+			item.children.forEach(child => {
+				technicalDetailsElements.push({
+					label: child.columnName,
+					description: child.columnDescription,
+					domainType: 'DataElement',
+					dataType: {
+						label: child.dataType,
+						domainType: 'PrimitiveType',
+					},
+				});
+			});
+
+			technicalDetailsClasses.push({
+				label: item.children[0].tableName,
+				description: item.children[0].tableDescription,
+				domainType: 'DataClass',
+				elements: technicalDetailsElements,
+			});
+		});
+
+		return technicalDetailsClasses;
+	},
+
 	buildJSONFile: async dataset => {
 		let jsonFile = {};
 		let metadata = [];
 		let childDataClasses = [];
+		let regex = new RegExp('properties/observation/', 'g');
 
+		let observationQuestions = [];
 		Object.keys(dataset.questionAnswers).forEach(item => {
+			if (item.match(regex)) {
+				observationQuestions.push({ key: item, value: dataset.questionAnswers[item] });
+			} else {
+				const newDatasetCatalogueItems = {
+					namespace: 'org.healthdatagateway',
+					key: item,
+					value: dataset.questionAnswers[item],
+				};
+				metadata.push(newDatasetCatalogueItems);
+			}
+		});
+
+		let observationUniqueIds = [''];
+		observationQuestions.forEach(item => {
+			let [, uniqueId] = item.key.split('_');
+			if (!_.isEmpty(uniqueId) && !observationUniqueIds.find(x => x === uniqueId)) {
+				observationUniqueIds.push(uniqueId);
+			}
+		});
+
+		let observations = [];
+		observationUniqueIds.forEach(uniqueId => {
+			let entry = {};
+			if (uniqueId === '') {
+				observationQuestions.forEach(question => {
+					if (!question.key.includes('_')) {
+						let [, key] = question.key.split('properties/observation/');
+						let newEntry = { [key]: question.value };
+						entry = { ...entry, ...newEntry };
+					}
+				});
+			} else {
+				observationQuestions.forEach(question => {
+					if (question.key.includes(uniqueId)) {
+						let [keyLong] = question.key.split('_');
+						let [, key] = keyLong.split('properties/observation/');
+						let newEntry = { [key]: question.value };
+						entry = { ...entry, ...newEntry };
+					}
+				});
+			}
+			observations.push(entry);
+		});
+
+		if (!_.isEmpty(observations)) {
 			const newDatasetCatalogueItems = {
 				namespace: 'org.healthdatagateway',
-				key: item,
-				value: dataset.questionAnswers[item],
+				key: 'properties/observations/observations',
+				value: JSON.stringify(observations),
 			};
 			metadata.push(newDatasetCatalogueItems);
-		});
+		}
 
 		const orderedMetadata = _.map(
 			_.groupBy(_.orderBy(dataset.structuralMetadata, ['tableName'], ['asc']), 'tableName'),
@@ -1187,6 +1304,14 @@ module.exports = {
 		};
 
 		return jsonFile;
+	},
+
+	//GET api/v1/data-access-request/checkUniqueTitle
+	checkUniqueTitle: async (req, res) => {
+		let { pid, title = '' } = req.query;
+		let regex = new RegExp(`^${title}$`, 'i');
+		let dataset = await Data.findOne({ name: regex, pid: { $ne: pid } });
+		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
 	},
 
 	/*
