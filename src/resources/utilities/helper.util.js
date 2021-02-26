@@ -57,12 +57,30 @@ const _hidePrivateProfileDetails = persons => {
 };
 
 const _getEnvironment = () => {
-	let environment = 'local';
+	let environment = '';
 
-	if (process.env.environment === 'www') environment = 'prod';
-	else if (process.env.environment === 'uat') environment = 'uat';
-	else if (process.env.environment === 'uatbeta') environment = 'uatbeta';
-	else if (process.env.environment === 'latest') environment = 'latest';
+	switch (process.env.api_url) {
+		case 'https://api.latest.healthdatagateway.org':
+			environment = 'latest';
+			break;
+		case 'https://api.uatbeta.healthdatagateway.org':
+			environment = 'uatbeta';
+			break;
+		case 'https://api.uat.healthdatagateway.org':
+			environment = 'uat';
+			break;
+		case 'https://api.uat2.healthdatagateway.org':
+			environment = 'uat2';
+			break;
+		case 'https://api.preprod.healthdatagateway.org':
+			environment = 'preprod';
+			break;
+		case 'https://api.www.healthdatagateway.org':
+			environment = 'prod';
+			break;
+		default:
+			environment = 'local';
+	}
 
 	return environment;
 };
