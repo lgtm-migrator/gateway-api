@@ -198,9 +198,9 @@ export async function loadDataset(datasetID) {
 
 export async function loadDatasets(override) {
 	console.log('Starting run at ' + Date());
-	var metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
+	let metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
 
-	var datasetsMDCCount = await new Promise(function (resolve, reject) {
+	let datasetsMDCCount = await new Promise(function (resolve, reject) {
 		axios
 			.post(
 				metadataCatalogueLink +
