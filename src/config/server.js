@@ -19,9 +19,9 @@ require('dotenv').config();
 
 if (helper.getEnvironment() !== 'local') {
 	Sentry.init({
-		dsn: 'https://c7c564a153884dc0a6b676943b172121@o444579.ingest.sentry.io/5419637',
-		environment: helper.getEnvironment(),
-	});
+		dsn: "https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683",
+		environment: helper.getEnvironment()
+	  });
 }
 
 const Account = require('./account');
