@@ -419,9 +419,7 @@ export async function loadDatasets(override) {
 
 									technicaldetails = [...technicaldetails, technicalDetailClass];
 								}
-
-								console.log(JSON.stringify(technicaldetails));
-
+								
 								let datasetv2Object = populateV2datasetObject(datasetV2.data.items);
 
 								if (datasetHDR) {
