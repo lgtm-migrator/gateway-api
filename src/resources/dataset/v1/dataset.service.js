@@ -377,58 +377,50 @@ export async function loadDatasets(override) {
 									datasetV2Call,
 								]);
 
-								var technicaldetails = [];
+								// Safely destructure data class items to protect against undefined and HTTP failures
+								const { data: { items: dataClassItems = [] } = {} } = dataClass || [];
 
-								await dataClass.data.items.reduce(
-									(p, dataclassMDC) =>
-										p.then(
-											() =>
-												new Promise(resolve => {
-													setTimeout(async function () {
-														const dataClassElementCall = axios
-															.get(
-																metadataCatalogueLink +
-																	'/api/dataModels/' +
-																	datasetMDC.id +
-																	'/dataClasses/' +
-																	dataclassMDC.id +
-																	'/dataElements?max=300',
-																{ timeout: 5000 }
-															)
-															.catch(err => {
-																console.log('Unable to get dataclass element ' + err.message);
-															});
-														const [dataClassElement] = await axios.all([dataClassElementCall]);
-														var dataClassElementArray = [];
+								// Get technical details data classes
+								let technicaldetails = [];
 
-														dataClassElement.data.items.forEach(element => {
-															dataClassElementArray.push({
-																id: element.id,
-																domainType: element.domainType,
-																label: element.label,
-																description: element.description,
-																dataType: {
-																	id: element.dataType.id,
-																	domainType: element.dataType.domainType,
-																	label: element.dataType.label,
-																},
-															});
-														});
+								for (const dataClassMDC of dataClassItems) {
+									// Get data elements for each class
+									const { data: { items: dataClassElements = [] } = {} } = await axios
+										.get(`${metadataCatalogueLink}/api/dataModels/${datasetMDC.id}/dataClasses/${dataClassMDC.id}/dataElements?max=300`, {
+											timeout: 10000,
+										})
+										.catch(err => {
+											console.log('Unable to get dataclass element ' + err.message);
+										});
 
-														technicaldetails.push({
-															id: dataclassMDC.id,
-															domainType: dataclassMDC.domainType,
-															label: dataclassMDC.label,
-															description: dataclassMDC.description,
-															elements: dataClassElementArray,
-														});
+									// Map out data class elements to attach to class
+									const dataClassElementArray = dataClassElements.map(element => {
+										return {
+											id: element.id,
+											domainType: element.domainType,
+											label: element.label,
+											description: element.description,
+											dataType: {
+												id: element.dataType.id,
+												domainType: element.dataType.domainType,
+												label: element.dataType.label,
+											},
+										};
+									});
 
-														resolve(null);
-													}, 500);
-												})
-										),
-									Promise.resolve(null)
-								);
+									// Create class object
+									const technicalDetailClass = {
+										id: dataClassMDC.id,
+										domainType: dataClassMDC.domainType,
+										label: dataClassMDC.label,
+										description: dataClassMDC.description,
+										elements: dataClassElementArray,
+									};
+
+									technicaldetails = [...technicaldetails, technicalDetailClass];
+								}
+
+								console.log(JSON.stringify(technicaldetails));
 
 								let datasetv2Object = populateV2datasetObject(datasetV2.data.items);
 
