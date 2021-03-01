@@ -825,9 +825,9 @@ module.exports = {
 
 	buildUpdateObject: data => {
 		let updateObj = {};
-		let { questionAnswers, updatedQuestionId, user, jsonSchema = '' } = data;
+		let { questionAnswers, updatedQuestionId, user, jsonSchema = '', percentageCompleted } = data;
 		if (questionAnswers) {
-			updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user };
+			updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user, percentageCompleted };
 		}
 
 		if (!_.isEmpty(jsonSchema)) {
@@ -840,7 +840,7 @@ module.exports = {
 	updateApplication: async (accessRecord, updateObj) => {
 		// 1. Extract properties
 		let { activeflag, _id } = accessRecord;
-		let { updatedQuestionId = '', user } = updateObj;
+		let { updatedQuestionId = '', user, percentageCompleted } = updateObj;
 		// 2. If application is in progress, update initial question answers
 		if (activeflag === constants.datatsetStatuses.DRAFT) {
 			await Data.findByIdAndUpdate(_id, updateObj, { new: true }, err => {
