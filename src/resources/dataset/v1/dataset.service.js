@@ -9,40 +9,40 @@ export async function loadDataset(datasetID) {
 	const datasetCall = axios
 		.get(metadataCatalogueLink + '/api/facets/' + datasetID + '/profile/uk.ac.hdrukgateway/HdrUkProfilePluginService', { timeout: 5000 })
 		.catch(err => {
-			console.log('Unable to get dataset details ' + err.message);
+			console.error('Unable to get dataset details ' + err.message);
 		});
 	const metadataQualityCall = axios
 		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/metadata_quality.json', { timeout: 5000 })
 		.catch(err => {
-			console.log('Unable to get metadata quality value ' + err.message);
+			console.error('Unable to get metadata quality value ' + err.message);
 		});
 	const metadataSchemaCall = axios
 		.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/' + datasetID, { timeout: 5000 })
 		.catch(err => {
-			console.log('Unable to get metadata schema ' + err.message);
+			console.error('Unable to get metadata schema ' + err.message);
 		});
 	const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/' + datasetID + '/dataClasses', { timeout: 5000 }).catch(err => {
-		console.log('Unable to get dataclass ' + err.message);
+		console.error('Unable to get dataclass ' + err.message);
 	});
 	const versionLinksCall = axios
 		.get(metadataCatalogueLink + '/api/catalogueItems/' + datasetID + '/semanticLinks', { timeout: 5000 })
 		.catch(err => {
-			console.log('Unable to get version links ' + err.message);
+			console.error('Unable to get version links ' + err.message);
 		});
 	const phenotypesCall = await axios
 		.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout: 5000 })
 		.catch(err => {
-			console.log('Unable to get phenotypes ' + err.message);
+			console.error('Unable to get phenotypes ' + err.message);
 		});
 	const dataUtilityCall = await axios
 		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout: 5000 })
 		.catch(err => {
-			console.log('Unable to get data utility ' + err.message);
+			console.error('Unable to get data utility ' + err.message);
 		});
 	const datasetV2Call = axios
 		.get(metadataCatalogueLink + '/api/facets/' + datasetID + '/metadata?all=true', { timeout: 5000 })
 		.catch(err => {
-			console.log('Unable to get dataset version 2 ' + err.message);
+			console.error('Unable to get dataset version 2 ' + err.message);
 		});
 	const [
 		dataset,
@@ -77,7 +77,7 @@ export async function loadDataset(datasetID) {
 									timeout: 5000,
 								})
 								.catch(err => {
-									console.log('Unable to get dataclass element ' + err.message);
+									console.error('Unable to get dataclass element ' + err.message);
 								});
 							const [dataClassElement] = await axios.all([dataClassElementCall]);
 							var dataClassElementArray = [];
@@ -197,7 +197,7 @@ export async function loadDataset(datasetID) {
 }
 
 export async function loadDatasets(override) {
-	console.log('Starting run at ' + Date());
+	console.error('Starting run at ' + Date());
 	let metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
 
 	let datasetsMDCCount = await new Promise(function (resolve, reject) {
@@ -275,7 +275,7 @@ export async function loadDatasets(override) {
 				level: Sentry.Severity.Error,
 			});
 			Sentry.captureException(err);
-			//console.log("Unable to get metadata quality value " + err.message); //Uncomment for local testing
+			console.error("Unable to get metadata quality value " + err.message);
 		});
 
 	const phenotypesList = await axios
@@ -287,7 +287,7 @@ export async function loadDatasets(override) {
 				level: Sentry.Severity.Error,
 			});
 			Sentry.captureException(err);
-			//console.log("Unable to get metadata quality value " + err.message); //Uncomment for local testing
+			console.error("Unable to get metadata quality value " + err.message);
 		});
 
 	const dataUtilityList = await axios
@@ -299,7 +299,7 @@ export async function loadDatasets(override) {
 				level: Sentry.Severity.Error,
 			});
 			Sentry.captureException(err);
-			//console.log("Unable to get data utility " + err.message); //Uncomment for local testing
+			console.error("Unable to get data utility " + err.message);
 		});
 
 	var datasetsMDCIDs = [];
@@ -331,7 +331,7 @@ export async function loadDatasets(override) {
 											level: Sentry.Severity.Error,
 										});
 										Sentry.captureException(err);
-										//console.log('Unable to get metadata schema ' + err.message);
+										console.error('Unable to get metadata schema ' + err.message);
 									});
 
 								const dataClassCall = axios
@@ -343,7 +343,7 @@ export async function loadDatasets(override) {
 											level: Sentry.Severity.Error,
 										});
 										Sentry.captureException(err);
-										//console.log('Unable to get dataclass ' + err.message);
+										console.error('Unable to get dataclass ' + err.message);
 									});
 
 								const versionLinksCall = axios
@@ -355,7 +355,7 @@ export async function loadDatasets(override) {
 											level: Sentry.Severity.Error,
 										});
 										Sentry.captureException(err);
-										//console.log('Unable to get version links ' + err.message);
+										console.error('Unable to get version links ' + err.message);
 									});
 
 								const datasetV2Call = axios
@@ -367,7 +367,7 @@ export async function loadDatasets(override) {
 											level: Sentry.Severity.Error,
 										});
 										Sentry.captureException(err);
-										//console.log('Unable to get dataset version 2 ' + err.message);
+										console.error('Unable to get dataset version 2 ' + err.message);
 									});
 
 								const [metadataSchema, dataClass, versionLinks, datasetV2] = await axios.all([
@@ -390,7 +390,7 @@ export async function loadDatasets(override) {
 											timeout: 10000,
 										})
 										.catch(err => {
-											console.log('Unable to get dataclass element ' + err.message);
+											console.error('Unable to get dataclass element ' + err.message);
 										});
 
 									// Map out data class elements to attach to class
@@ -419,7 +419,7 @@ export async function loadDatasets(override) {
 
 									technicaldetails = [...technicaldetails, technicalDetailClass];
 								}
-								
+
 								let datasetv2Object = populateV2datasetObject(datasetV2.data.items);
 
 								if (datasetHDR) {
@@ -462,6 +462,7 @@ export async function loadDatasets(override) {
 											datasetVersion: datasetHDR.datasetVersion,
 											name: datasetMDC.title,
 											description: datasetMDC.description,
+											source: 'HDRUK MDC',
 											activeflag: 'active',
 											license: datasetMDC.license,
 											tags: {
@@ -543,6 +544,7 @@ export async function loadDatasets(override) {
 									data.datasetid = datasetMDC.id;
 									data.type = 'dataset';
 									data.activeflag = 'active';
+									data.source = 'HDRUK MDC';
 
 									data.name = datasetMDC.title;
 									data.description = datasetMDC.description;
@@ -574,7 +576,7 @@ export async function loadDatasets(override) {
 									data.datasetv2 = datasetv2Object;
 									await data.save();
 								}
-								console.log(`Finished ${counter} of ${datasetsMDCCount} datasets (${datasetMDC.id})`);
+								console.error(`Finished ${counter} of ${datasetsMDCCount} datasets (${datasetMDC.id})`);
 								resolve(null);
 							} catch (err) {
 								Sentry.addBreadcrumb({
@@ -583,7 +585,7 @@ export async function loadDatasets(override) {
 									level: Sentry.Severity.Fatal,
 								});
 								Sentry.captureException(err);
-								//console.log(`Failed to add ${datasetMDC.id} to the DB with the error of ${err.message}`);  //Uncomment for local testing
+								console.error(`Failed to add ${datasetMDC.id} to the DB with the error of ${err.message}`);
 							}
 						}, 500);
 					})
