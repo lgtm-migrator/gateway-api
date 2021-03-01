@@ -12,6 +12,7 @@ const datasetSchema = new Schema(
 		id: Number,
 		name: String,
 		description: String,
+		source: String,
 		resultsInsights: String,
 		link: String,
 		type: String,

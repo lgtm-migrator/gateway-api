@@ -74,6 +74,7 @@ const DataSchema = new Schema(
 		profileComplete: Boolean,
 
 		//dataset related fields
+		source: String,
 		datasetid: String,
 		pid: String,
 		datasetVersion: String,
