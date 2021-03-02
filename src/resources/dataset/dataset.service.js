@@ -393,7 +393,7 @@ export async function loadDatasets(override) {
 																	'/dataClasses/' +
 																	dataclassMDC.id +
 																	'/dataElements?max=300',
-																{ timeout: 5000 }
+																{ timeout: 10000 }
 															)
 															.catch(err => {
 																console.log('Unable to get dataclass element ' + err.message);

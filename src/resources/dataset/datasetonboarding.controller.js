@@ -1,8 +1,9 @@
 import { Data } from '../tool/data.model';
 import { v4 as uuidv4 } from 'uuid';
-import _ from 'lodash';
+import _, { forEach } from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
+import Ajv from 'ajv';
 var fs = require('fs');
 
 import constants from '../utilities/constants.util';
@@ -157,6 +158,7 @@ module.exports = {
 				data.activeflag = 'draft';
 				data.questionAnswers = datasetToCopy.questionAnswers;
 				data.structuralMetadata = datasetToCopy.structuralMetadata;
+				data.percentageCompleted = datasetToCopy.percentageCompleted;
 				data.createdAt = Date.now();
 				await data.save();
 
@@ -1036,8 +1038,9 @@ module.exports = {
 
 								await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
 
-								//get technicaldetails
+								//get technicaldetails and metadataQuality
 								let technicalDetails = await module.exports.buildTechnicalDetails(dataset.structuralMetadata);
+								let metadataQuality = await module.exports.buildMetadataQuality(datasetv2Object);
 
 								await Data.findOneAndUpdate(
 									{ _id: id },
@@ -1067,7 +1070,7 @@ module.exports = {
 											contactPoint: dataset.questionAnswers['summary/contactPoint'] || '',
 											periodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
 
-											//metadataquality: metadataQuality ? metadataQuality : {},
+											metadataquality: metadataQuality,
 											//datautility: dataUtility ? dataUtility : {},
 											//metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
 											technicaldetails: technicalDetails,
@@ -1312,6 +1315,173 @@ module.exports = {
 		let regex = new RegExp(`^${title}$`, 'i');
 		let dataset = await Data.findOne({ name: regex, pid: { $ne: pid } });
 		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
+	},
+
+	//GET api/v1/data-access-request/checkUniqueTitle
+	buildMetadataQuality: async (dataset, pid) => {
+		//VALIDATION_WEIGHTS_PATH = os.path.join(CWD, 'config', 'weights', 'latest', 'weights.v2.json')
+		let weights = {
+			//'1: Summary': {
+			identifier: 0.026845638,
+			'summary.title': 0.026845638,
+			'summary.abstract': 0.026845638,
+			'summary.contactPoint': 0.026845638,
+			'summary.keywords': 0.026845638,
+			'summary.doiName': 0.026845638,
+			'summary.publisher.name': 0.026845638,
+			'summary.publisher.contactPoint': 0.0,
+			'summary.publisher.memberOf': 0.006711409,
+			//},
+			//'2: Documentation': {
+			'documentation.description': 0.026845638,
+			'documentation.associatedMedia': 0.0,
+			'documentation.isPartOf': 0.0,
+			//},
+			//'3: Coverage': {
+			'coverage.spatial': 0.026845638,
+			'coverage.typicalAgeRange': 0.026845638,
+			'coverage.physicalSampleAvailability': 0.026845638,
+			'coverage.followup': 0.006711409,
+			'coverage.pathway': 0.006711409,
+			//},
+			//'4: Provenance': {
+			'provenance.origin.purpose': 0.006711409,
+			'provenance.origin.source': 0.006711409,
+			'provenance.origin.collectionSituation': 0.006711409,
+			'provenance.temporal.accrualPeriodicity': 0.026845638,
+			'provenance.temporal.distributionReleaseDate': 0.0,
+			'provenance.temporal.startDate': 0.026845638,
+			'provenance.temporal.endDate': 0.0,
+			'provenance.temporal.timeLag': 0.006711409,
+			//},
+			//'5: Accessibility': {
+			'accessibility.usage.dataUseLimitation': 0.026845638,
+			'accessibility.usage.dataUseRequirements': 0.026845638,
+			'accessibility.usage.resourceCreator': 0.026845638,
+			'accessibility.usage.investigations': 0.006711409,
+			'accessibility.usage.isReferencedBy': 0.006711409,
+			'accessibility.access.accessRights': 0.026845638,
+			'accessibility.access.accessService': 0.006711409,
+			'accessibility.access.accessRequestCost': 0.026845638,
+			'accessibility.access.deliveryLeadTime': 0.026845638,
+			'accessibility.access.jurisdiction': 0.026845638,
+			'accessibility.access.dataController': 0.026845638,
+			'accessibility.access.dataProcessor': 0.0,
+			'accessibility.formatAndStandards.vocabularyEncodingScheme': 0.026845638,
+			'accessibility.formatAndStandards.conformsTo': 0.026845638,
+			'accessibility.formatAndStandards.language': 0.026845638,
+			'accessibility.formatAndStandards.format': 0.026845638,
+			//},
+			//'6: Enrichment & Linkage': {
+			'enrichmentAndLinkage.qualifiedRelation': 0.006711409,
+			'enrichmentAndLinkage.derivation': 0.006711409,
+			'enrichmentAndLinkage.tools': 0.006711409,
+			//},
+			//'7. Observations': {
+			'observation.observedNode': 0.026845638,
+			'observation.measuredValue': 0.026845638,
+			'observation.disambiguatingDescription': 0.0,
+			'observation.observationDate': 0.0,
+			'observation.measuredProperty': 0.0,
+			//},
+			//'8. Structural metadata': {
+			'structuralMetadata.dataClassesCount': 0.026845638,
+			'structuralMetadata.tableName': 0.026845638,
+			'structuralMetadata.tableDescription': 0.026845638,
+			'structuralMetadata.columnName': 0.026845638,
+			'structuralMetadata.columnDescription': 0.026845638,
+			'structuralMetadata.dataType': 0.026845638,
+			'structuralMetadata.sensitive': 0.026845638,
+			//},
+		};
+
+		let metadataquality = {
+			schema_version: '2.0.1',
+			pid: '',
+			id: '',
+			publisher: '',
+			title: '',
+			weighted_quality_rating: 'Not Rated',
+			weighted_quality_score: 0,
+			weighted_completeness_percent: 0,
+			weighted_error_percent: 0,
+		};
+
+		metadataquality.pid = pid;
+		metadataquality.id = dataset.identifier;
+		metadataquality.publisher = dataset.summary.publisher.memberOf + ' > ' + dataset.summary.publisher.name;
+		metadataquality.title = dataset.summary.title;
+
+		let completeness = [];
+		let totalCount = 0,
+			totalWeight = 0;
+
+		Object.entries(weights).forEach(([key, weight]) => {
+			let datasetValue = module.exports.getDatatsetValue(dataset, key);
+
+			if (key === 'identifier') {
+				completeness.push({ weight, value: datasetValue });
+				totalCount++;
+				totalWeight += weight;
+			} else if (key === 'structuralMetadata') {
+				completeness.push({ weight, value: datasetValue });
+				totalCount++;
+				totalWeight += weight;
+			}
+			if (datasetValue) {
+				completeness.push({ value: datasetValue, weight, score: weight });
+				totalCount++;
+				totalWeight += weight;
+			} else {
+				completeness.push({ value: datasetValue, weight, score: 0 });
+			}
+
+			//special rules around provenance.temporal.accrualPeriodicity = CONTINUOUS
+		});
+
+		let schema = {};
+
+		let rawdata = fs.readFileSync(__dirname + '/schema.json');
+		schema = JSON.parse(rawdata);
+
+		const ajv = new Ajv({ strict: false, allErrors: true });
+		const validate = ajv.compile(schema);
+		const valid = validate(dataset);
+
+		let errors = [];
+		let errorCount = 0,
+			errorWeight = 0;
+
+		Object.entries(weights).forEach(([key, weight]) => {
+			let updatedKey = '/' + key.replace(/\./g, '/');
+			let errorIndex = Object.keys(validate.errors).find(key => validate.errors[key].dataPath === updatedKey);
+			if (errorIndex) {
+				errors.push({ value: key, scor: weight });
+				errorCount += 1;
+				errorWeight += weight;
+			} else {
+				errors.push({ value: key, scor: 0 });
+			}
+		});
+
+		metadataquality.weighted_completeness_percent = Number(100 * totalWeight).toFixed(2);
+		metadataquality.weighted_error_percent = Number(100 * errorWeight).toFixed(2);
+		metadataquality.weighted_quality_score = Number(50 * (totalWeight + (1 - errorWeight))).toFixed(2);
+
+		let rating = 'Not Rated';
+		if (metadataquality.weighted_quality_score > 60 && metadataquality.weighted_quality_score <= 70) rating = 'Bronze';
+		else if (metadataquality.weighted_quality_score > 70 && metadataquality.weighted_quality_score <= 80) rating = 'Silver';
+		else if (metadataquality.weighted_quality_score > 80 && metadataquality.weighted_quality_score <= 90) rating = 'Gold';
+		else if (metadataquality.weighted_quality_score > 90) rating = 'Platinum';
+		metadataquality.weighted_quality_rating = rating;
+
+		return metadataquality;
+	},
+
+	getDatatsetValue(dataset, field) {
+		return field.split('.').reduce(function (o, k) {
+			return o && o[k];
+		}, dataset);
 	},
 
 	/*
