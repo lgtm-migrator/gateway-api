@@ -136,7 +136,7 @@ module.exports = {
 		try {
 			const { id } = req.params;
 			if (!id) return res.status(404).json({ success: false, message: 'Topic Id not found.' });
-			const topic = await TopicModel.findByIdAndUpdate(id, { isDeleted: true, status: 'closed', expiryDate: Date.now() }, { new: true });
+			TopicModel.findByIdAndUpdate(id, { isDeleted: true, status: 'closed', expiryDate: Date.now() }, { new: true });
 			return res.status(204).json({ success: true });
 		} catch (err) {
 			console.error(err.message);
