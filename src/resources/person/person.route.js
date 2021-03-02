@@ -17,7 +17,6 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 	let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
 	let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
 	let data = Data();
-	console.log(req.body);
 	data.id = parseInt(Math.random().toString().replace('0.', ''));
 	(data.firstname = inputSanitizer.removeNonBreakingSpaces(firstname)),
 		(data.lastname = inputSanitizer.removeNonBreakingSpaces(lastname)),
@@ -66,7 +65,6 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 	sector = inputSanitizer.removeNonBreakingSpaces(sector);
 	organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
 	tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
-	console.log(req.body);
 
 	await Data.findOneAndUpdate(
 		{ id: id },

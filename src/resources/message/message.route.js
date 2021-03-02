@@ -107,7 +107,6 @@ router.get('/admin/:personID', passport.authenticate('jwt'), utils.checkIsInRole
 });
 
 router.post('/markasread', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	console.log('in markAsRead');
 	const messageIds = req.body;
 
 	MessagesModel.updateMany({ messageID: { $in: messageIds } }, { isRead: true }, err => {

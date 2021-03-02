@@ -48,7 +48,7 @@ module.exports = {
 			businessKey: businessKey.toString(),
 		};
 		await axios.post(`${bpmnBaseUrl}/engine-rest/process-definition/key/GatewayWorkflowSimple/start`, data, config).catch(err => {
-			console.error(err);
+			console.error(err.message);
 		});
 	},
 	postUpdateProcess: async bpmContext => {
@@ -79,7 +79,7 @@ module.exports = {
 			},
 		};
 		await axios.post(`${bpmnBaseUrl}/engine-rest/task/${taskId}/complete`, data, config).catch(err => {
-			console.error(err);
+			console.error(err.message);
 		});
 	},
 
@@ -105,7 +105,7 @@ module.exports = {
 			businessKey: businessKey.toString(),
 		};
 		await axios.post(`${bpmnBaseUrl}/engine-rest/process-definition/key/GatewayReviewWorkflowComplex/start`, data, config).catch(err => {
-			console.error(err);
+			console.error(err.message);
 		});
 	},
 	postStartManagerReview: async bpmContext => {
@@ -132,28 +132,28 @@ module.exports = {
 			},
 		};
 		await axios.post(`${bpmnBaseUrl}/engine-rest/task/${taskId}/complete`, data, config).catch(err => {
-			console.error(err);
+			console.error(err.message);
 		});
 	},
 	postManagerApproval: async bpmContext => {
 		// Manager has approved sectoin
 		let { businessKey } = bpmContext;
 		await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/manager/completed/${businessKey}`, bpmContext.config).catch(err => {
-			console.error(err);
+			console.error(err.message);
 		});
 	},
 	postStartStepReview: async bpmContext => {
 		//Start Step-Review process
 		let { businessKey } = bpmContext;
 		await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/complete/review/${businessKey}`, bpmContext, config).catch(err => {
-			console.error(err);
+			console.error(err.message);
 		});
 	},
 	postCompleteReview: async bpmContext => {
 		//Start Next-Step process
 		let { businessKey } = bpmContext;
 		await axios.post(`${bpmnBaseUrl}/api/gateway/workflow/v1/reviewer/complete/${businessKey}`, bpmContext, config).catch(err => {
-			console.error(err);
+			console.error(err.message);
 		});
 	},
 };
