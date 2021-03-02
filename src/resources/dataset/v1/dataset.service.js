@@ -576,7 +576,7 @@ export async function loadDatasets(override) {
 									data.datasetv2 = datasetv2Object;
 									await data.save();
 								}
-								console.error(`Finished ${counter} of ${datasetsMDCCount} datasets (${datasetMDC.id})`);
+								console.log(`Finished ${counter} of ${datasetsMDCCount} datasets (${datasetMDC.id})`);
 								resolve(null);
 							} catch (err) {
 								Sentry.addBreadcrumb({

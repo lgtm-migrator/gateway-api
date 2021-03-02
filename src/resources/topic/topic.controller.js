@@ -59,7 +59,7 @@ module.exports = {
 						tags.push(datasetTitle);
 						break;
 					default:
-						console.log('default');
+						break;
 				}
 			});
 			// 7. Get recipients for topic/message using the first tool (same team exists as each publisher is the same)
@@ -128,7 +128,7 @@ module.exports = {
 			return res.status(201).json({ success: true, topic });
 		} catch (err) {
 			console.error(err.message);
-			return res.status(500).json(err);
+			return res.status(500).json(err.message);
 		}
 	},
 	// DELETE api/v1/topics/:id
@@ -137,11 +137,10 @@ module.exports = {
 			const { id } = req.params;
 			if (!id) return res.status(404).json({ success: false, message: 'Topic Id not found.' });
 			const topic = await TopicModel.findByIdAndUpdate(id, { isDeleted: true, status: 'closed', expiryDate: Date.now() }, { new: true });
-			console.log(topic);
 			return res.status(204).json({ success: true });
 		} catch (err) {
 			console.error(err.message);
-			return res.status(500).json(err);
+			return res.status(500).json(err.message);
 		}
 	},
 	// GET api/v1/topics
@@ -162,7 +161,6 @@ module.exports = {
 					}
 					// Calculate last unread message date at topic level
 					topic.lastUnreadMessage = topic.topicMessages.reduce((a, b) => {
-						console.log(Date(a.createdDate) > new Date(b.createdDate) ? a : b);
 						return (new Date(a.createdDate) > new Date(b.createdDate) ? a : b).createdDate;
 					});
 				});
@@ -174,7 +172,7 @@ module.exports = {
 			return res.status(200).json({ success: true, topics });
 		} catch (err) {
 			console.error(err.message);
-			return res.status(500).json(err);
+			return res.status(500).json(err.message);
 		}
 	},
 	// GET api/v1/topics/:id
@@ -199,7 +197,7 @@ module.exports = {
 			return res.status(200).json({ success: true, topic: dispatchTopic });
 		} catch (err) {
 			console.error(err.message);
-			return res.status(500).json(err);
+			return res.status(500).json(err.message);
 		}
 	},
 };

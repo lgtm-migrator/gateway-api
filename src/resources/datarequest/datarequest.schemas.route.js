@@ -52,6 +52,6 @@ async function archiveOtherVersions(id, dataSetId, status) {
 			);
 		}
 	} catch (err) {
-		console.log(err);
+		console.error(err.message);
 	}
 }

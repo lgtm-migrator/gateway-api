@@ -142,7 +142,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 		// Send email notifications to all admins and authors who have opted in
 		await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
 	} catch (err) {
-		console.log(err);
+		console.error(err.message);
 		// return res.status(500).json({ success: false, error: err });
 	}
 

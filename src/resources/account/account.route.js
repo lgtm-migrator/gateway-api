@@ -202,7 +202,7 @@ router.put('/status', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Ad
 
 		return res.json({ success: true });
 	} catch (err) {
-		console.log(err);
+		console.error(err.message);
 		return res.status(500).json({ success: false, error: err });
 	}
 });
