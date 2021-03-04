@@ -194,7 +194,7 @@ router.get('', async (req, res) => {
 				break;
 
 			case 'popular':
-				const popularType = {};
+				let popularType = {};
 				if (query.type) popularType = { type: query.type };
 				const popularData = await Data.aggregate([
 					{
