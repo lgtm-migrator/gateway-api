@@ -15,7 +15,7 @@ const triggerNotificationMessage = (messageRecipients, messageDescription, messa
     });
     await message.save(async (err) => {
       if (err) {
-          console.error(`Failed to save ${messageType} message with error : ${err}`);
+          console.error(`Failed to save ${messageType} message with error : ${err.message}`);
         }
     });
   });

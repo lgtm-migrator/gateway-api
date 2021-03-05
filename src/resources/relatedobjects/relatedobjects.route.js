@@ -11,7 +11,6 @@ const router = express.Router();
  * Return the details on the relatedobject based on the ID.
  */
 router.get('/:id', async (req, res) => {
-	console.log(`in relatedobjects.route`);
 	let id = req.params.id;
 	if (!isNaN(id)) {
 		let q = Data.aggregate([

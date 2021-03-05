@@ -171,7 +171,6 @@ router.get('/', async (req, res) => {
 		let searchQuery = { $and: [{ activeflag: 'active' }] };
 		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
 		var activeFiltersQuery = getObjectFilters(searchQuery, req, 'paper');
-
 		await Promise.all([
 			getFilter(searchString, 'paper', 'tags.topics', true, activeFiltersQuery),
 			getFilter(searchString, 'paper', 'tags.features', true, activeFiltersQuery),
@@ -230,6 +229,27 @@ router.get('/', async (req, res) => {
 					courseKeywordsFilterOptions: values[7][1],
 					courseFrameworkFilterOptions: values[8][1],
 					coursePriorityFilterOptions: values[9][1],
+				},
+			});
+		});
+	} else if (tab === 'Collections') {
+		let searchQuery = { $and: [{ activeflag: 'active' }, { publicflag: true }] };
+		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
+		var activeFiltersQuery = getObjectFilters(searchQuery, req, 'collection');
+
+		await Promise.all([
+			getFilter(searchString, 'collection', 'keywords', true, activeFiltersQuery),
+			getFilter(searchString, 'collection', 'authors', true, activeFiltersQuery),
+		]).then(values => {
+			return res.json({
+				success: true,
+				allFilters: {
+					collectionKeywordFilter: values[0][0],
+					collectionPublisherFilter: values[1][0],
+				},
+				filterOptions: {
+					collectionKeywordsFilterOptions: values[0][1],
+					collectionPublisherFilterOptions: values[1][1],
 				},
 			});
 		});

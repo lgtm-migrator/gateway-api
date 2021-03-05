@@ -31,7 +31,9 @@ module.exports = {
 			let { id: userId } = req.user;
 
 			// 2. Find all data access request applications created with multi dataset version
-			let applications = await DataRequestModel.find({ $or: [{ userId: parseInt(userId) }, { authorIds: userId }] }).populate('datasets mainApplicant');
+			let applications = await DataRequestModel.find({ $or: [{ userId: parseInt(userId) }, { authorIds: userId }] }).populate(
+				'datasets mainApplicant'
+			);
 
 			// 3. Append project name and applicants
 			let modifiedApplications = [...applications]
@@ -50,8 +52,8 @@ module.exports = {
 				avgDecisionTime,
 				canViewSubmitted: true,
 			});
-		} catch (error) {
-			console.error(error);
+		} catch (err) {
+			console.error(err.message);
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred searching for user applications',
@@ -247,7 +249,7 @@ module.exports = {
 				},
 			});
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -353,7 +355,7 @@ module.exports = {
 				},
 			});
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -401,7 +403,7 @@ module.exports = {
 				return res.status(200).json(data);
 			});
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -413,11 +415,14 @@ module.exports = {
 			if (typeof aboutApplication === 'string') {
 				aboutApplication = JSON.parse(aboutApplication);
 			}
-			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce((newObj, dataset) => {
-				newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
-				newObj.datasetTitles = [...newObj.datasetTitles, dataset.name];
-				return newObj;
-			}, { datasetIds: [], datasetTitles: []});
+			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce(
+				(newObj, dataset) => {
+					newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
+					newObj.datasetTitles = [...newObj.datasetTitles, dataset.name];
+					return newObj;
+				},
+				{ datasetIds: [], datasetTitles: [] }
+			);
 
 			updateObj = { aboutApplication, datasetIds, datasetTitles };
 		}
@@ -440,7 +445,7 @@ module.exports = {
 		if (applicationStatus === constants.applicationStatuses.INPROGRESS) {
 			await DataRequestModel.findByIdAndUpdate(_id, updateObj, { new: true }, err => {
 				if (err) {
-					console.error(err);
+					console.error(err.message);
 					throw err;
 				}
 			});
@@ -457,7 +462,7 @@ module.exports = {
 			accessRecord = amendmentController.handleApplicantAmendment(accessRecord.toObject(), updatedQuestionId, '', updatedAnswer, user);
 			await DataRequestModel.replaceOne({ _id }, accessRecord, err => {
 				if (err) {
-					console.error(err);
+					console.error(err.message);
 					throw err;
 				}
 			});
@@ -607,8 +612,8 @@ module.exports = {
 			if (isDirty) {
 				await accessRecord.save(async err => {
 					if (err) {
-						console.error(err);
-						return res.status(500).json({ status: 'error', message: err });
+						console.error(err.message);
+						return res.status(500).json({ status: 'error', message: err.message });
 					} else {
 						// If save has succeeded - send notifications
 						// Send notifications to added/removed contributors
@@ -758,7 +763,7 @@ module.exports = {
 			// 12. Submit save
 			accessRecord.save(function (err) {
 				if (err) {
-					console.error(err);
+					console.error(err.message);
 					return res.status(400).json({
 						success: false,
 						message: err.message,
@@ -840,8 +845,8 @@ module.exports = {
 			// 7. Save update to access record
 			await accessRecord.save(async err => {
 				if (err) {
-					console.error(err);
-					res.status(500).json({ status: 'error', message: err });
+					console.error(err.message);
+					res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 8. Call Camunda controller to get pre-review process
 					let response = await bpmController.getProcess(id);
@@ -867,8 +872,8 @@ module.exports = {
 			// 14. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -950,8 +955,34 @@ module.exports = {
 			// 10. return response
 			return res.status(200).json({ status: 'success', mediaFiles });
 		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
+		}
+	},
+
+	//GET api/v1/data-access-request/:id/file/:fileId/status
+	getFileStatus: async (req, res) => {
+		try {
+			// 1. get params
+			const {
+				params: { id, fileId },
+			} = req;
+
+			// 2. get AccessRecord
+			let accessRecord = await DataRequestModel.findOne({ _id: id });
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. get file
+			const fileIndex = accessRecord.files.findIndex(file => file.fileId === fileId);
+			if (fileIndex === -1) return res.status(404).json({ status: 'error', message: 'File not found.' });
+
+			// 4. Return successful response
+			return res.status(200).json({ status: accessRecord.files[fileIndex].status });
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -990,8 +1021,8 @@ module.exports = {
 			// 8. send file back to user
 			return res.status(200).sendFile(`${process.env.TMPDIR}${id}/${dbFileId}_${name}`);
 		} catch (err) {
-			console.log(err);
-			res.status(500).json({ status: 'error', message: err });
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -1113,8 +1144,8 @@ module.exports = {
 			// 14. Update MongoDb record for DAR
 			await accessRecord.save(async err => {
 				if (err) {
-					console.error(err);
-					res.status(500).json({ status: 'error', message: err });
+					console.error(err.message);
+					res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 15. Create emails and notifications
 					let relevantStepIndex = 0,
@@ -1140,8 +1171,8 @@ module.exports = {
 			// 17. Return aplication and successful response
 			return res.status(200).json({ status: 'success', data: accessRecord._doc });
 		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
@@ -1229,8 +1260,8 @@ module.exports = {
 			// 11. Save changes to the DAR
 			await accessRecord.save(async err => {
 				if (err) {
-					console.error(err);
-					res.status(500).json({ status: 'error', message: err });
+					console.error(err.message);
+					res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 12. Gather context for notifications (active step)
 					let emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
@@ -1260,23 +1291,23 @@ module.exports = {
 			// 16. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 
 	//PUT api/v1/data-access-request/:id/deletefile
 	updateAccessRequestDeleteFile: async (req, res) => {
-		try{
+		try {
 			const {
 				params: { id },
 			} = req;
 
 			// 1. Id of the file to delete
 			let { fileId } = req.body;
-			
+
 			// 2. Find the relevant data request application
-			let accessRecord = await DataRequestModel.findOne({_id: id});
+			let accessRecord = await DataRequestModel.findOne({ _id: id });
 
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
@@ -1284,7 +1315,7 @@ module.exports = {
 
 			// 4. Ensure single datasets are mapped correctly into array
 			if (_.isEmpty(accessRecord.datasets)) {
-					accessRecord.datasets = [accessRecord.dataset];
+				accessRecord.datasets = [accessRecord.dataset];
 			}
 
 			// 5. If application is not in progress, actions cannot be performed
@@ -1309,17 +1340,14 @@ module.exports = {
 
 			// 9. write back into mongo
 			await accessRecord.save();
-			
+
 			// 10. Return successful response
 			return res.status(200).json({ status: 'success' });
-
 		} catch (err) {
-			console.log(err.message);
-			res.status(500).json({ status: 'error', message: err });
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
 		}
-
 	},
-
 
 	//POST api/v1/data-access-request/:id
 	submitAccessRequestById: async (req, res) => {
@@ -1386,7 +1414,7 @@ module.exports = {
 			// 7. Save changes to db
 			await DataRequestModel.replaceOne({ _id: id }, accessRecord, async err => {
 				if (err) {
-					console.error(err);
+					console.error(err.message);
 					return res.status(500).json({
 						status: 'error',
 						message: 'An error occurred saving the changes',
@@ -1650,8 +1678,8 @@ module.exports = {
 
 			await accessRecord.save(async err => {
 				if (err) {
-					console.error(err);
-					return res.status(500).json({ status: 'error', message: err });
+					console.error(err.message);
+					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 9. Append question actions for in progress applicant
 					jsonSchema = datarequestUtil.injectQuestionActions(
@@ -1675,6 +1703,54 @@ module.exports = {
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred updating the application amendment',
+			});
+		}
+	},
+
+	updateFileStatus: async (req, res) => {
+		try {
+			// 1. Get the required request params
+			const {
+				params: { id, fileId },
+			} = req;
+
+			let { status } = req.body;
+
+			// 2. Find the relevant data request application
+			let accessRecord = await DataRequestModel.findOne({ _id: id });
+
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			//3. Check the status is valid
+			if (
+				status !== fileStatus.UPLOADED &&
+				status !== fileStatus.SCANNED &&
+				status !== fileStatus.ERROR &&
+				status !== fileStatus.QUARANTINED
+			) {
+				return res.status(400).json({ status: 'error', message: 'File status not valid' });
+			}
+
+			//4. get the file
+			const fileIndex = accessRecord.files.findIndex(file => file.fileId === fileId);
+			if (fileIndex === -1) return res.status(404).json({ status: 'error', message: 'File not found.' });
+
+			//5. update the status
+			accessRecord.files[fileIndex].status = status;
+
+			//6. write back into mongo
+			await accessRecord.save();
+
+			return res.status(200).json({
+				success: true,
+			});
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: err.message,
 			});
 		}
 	},

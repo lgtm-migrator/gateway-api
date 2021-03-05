@@ -67,8 +67,8 @@ router.post('/validate', passport.authenticate('jwt'), utils.checkIsInRole(ROLES
 				.json({ success: true, error: 'This link is already associated to another paper on the HDR-UK Innovation Gateway' });
 		// 5. Otherwise return valid
 		return res.status(200).json({ success: true });
-	} catch (error) {
-		console.error(error);
+	} catch (err) {
+		console.error(err.message);
 		return res.status(500).json({ success: false, error: 'Paper link validation failed' });
 	}
 });
