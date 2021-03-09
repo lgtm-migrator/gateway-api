@@ -89,7 +89,7 @@ router.get('/entityid/:entityID', async (req, res) => {
 
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const collectionCreator = req.body.collectionCreator;
-	var { id, name, description, imageLink, authors, relatedObjects } = req.body;
+	var { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
 
 	Collections.findOneAndUpdate(
@@ -100,6 +100,8 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 			imageLink: imageLink,
 			authors: authors,
 			relatedObjects: relatedObjects,
+			publicflag: publicflag,
+			keywords: keywords,
 		},
 		err => {
 			if (err) {
@@ -116,7 +118,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 
 	const collectionCreator = req.body.collectionCreator;
 
-	const { name, description, imageLink, authors, relatedObjects } = req.body;
+	const { name, description, imageLink, authors, relatedObjects, publicflag, keywords } = req.body;
 
 	collections.id = parseInt(Math.random().toString().replace('0.', ''));
 	collections.name = inputSanitizer.removeNonBreakingSpaces(name);
@@ -125,6 +127,8 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	collections.authors = authors;
 	collections.relatedObjects = relatedObjects;
 	collections.activeflag = 'active';
+	collections.publicflag = publicflag;
+	collections.keywords = keywords;
 
 	try {
 		if (collections.authors) {
@@ -137,7 +141,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 		// Send email notifications to all admins and authors who have opted in
 		await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
 	} catch (err) {
-		console.log(err);
+		console.error(err.message);
 		// return res.status(500).json({ success: false, error: err });
 	}
 

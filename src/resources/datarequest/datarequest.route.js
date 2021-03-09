@@ -44,6 +44,11 @@ router.get('/datasets/:datasetIds', passport.authenticate('jwt'), datarequestCon
 // @access  Private
 router.get('/:id/file/:fileId', param('id').customSanitizer(value => {return value}), passport.authenticate('jwt'), datarequestController.getFile);
 
+// @route   GET api/v1/data-access-request/:id/file/:fileId/status
+// @desc    GET Status of a file 
+// @access  Private
+router.get('/:id/file/:fileId/status', passport.authenticate('jwt'), datarequestController.getFileStatus);
+
 // @route   PATCH api/v1/data-access-request/:id
 // @desc    Update application passing single object to update database entry with specified key
 // @access  Private - Applicant (Gateway User)
@@ -108,5 +113,15 @@ router.post('/:id', passport.authenticate('jwt'), datarequestController.submitAc
 // @desc    External facing endpoint to trigger notifications for Data Access Request workflows
 // @access  Private
 router.post('/:id/notify', passport.authenticate('jwt'), datarequestController.notifyAccessRequestById);
+
+// @route   POST api/v1/data-access-request/:id/updatefilestatus
+// @desc    Update the status of a file.
+// @access  Private
+router.post('/:id/file/:fileId/status', passport.authenticate('jwt'), datarequestController.updateFileStatus);
+
+// @route   POST api/v1/data-access-request/:id/email
+// @desc    Mail a Data Access Request information in presubmission 
+// @access  Private - Applicant
+router.post('/:id/email', passport.authenticate('jwt'), datarequestController.mailDataAccessRequestInfoById);
 
 module.exports = router;

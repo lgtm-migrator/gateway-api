@@ -21,19 +21,23 @@ class Account {
 	 *   or not return them in id tokens but only userinfo and so on.
 	 */
 	async claims(use, scope) {
+		let claimsToSend = scope.split(' ');
 		// eslint-disable-line no-unused-vars
-		if (this.profile) {
-			return {
-				sub: this.accountId, // it is essential to always return a sub claim
-				email: this.profile.email,
-				firstname: this.profile.firstname,
-				lastname: this.profile.lastname,
-			};
-		}
-
-		return {
+		let claim = {
 			sub: this.accountId, // it is essential to always return a sub claim
 		};
+		if (claimsToSend.includes('profile')) {
+			claim.firstname = this.profile.firstname;
+			claim.lastname = this.profile.lastname;
+		}
+		if (claimsToSend.includes('email')) {
+			claim.email = this.profile.email;
+		}
+		if (claimsToSend.includes('rquestroles')) {
+			claim.rquestroles = this.profile.advancedSearchRoles;
+		}
+
+		return claim;
 	}
 
 	static async findByFederated(provider, claims) {

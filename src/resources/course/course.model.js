@@ -1,6 +1,8 @@
 import { model, Schema } from 'mongoose';
 
-const CourseSchema = new Schema(
+import CourseClass from './v2/course.entity';
+
+const courseSchema = new Schema(
 	{
 		id: Number,
 		type: String,
@@ -63,4 +65,7 @@ const CourseSchema = new Schema(
 	}
 );
 
-export const Course = model('Course', CourseSchema);
+// Load entity class
+courseSchema.loadClass(CourseClass);
+
+export const Course = model('Course', courseSchema);

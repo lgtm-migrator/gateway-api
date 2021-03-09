@@ -24,7 +24,7 @@ module.exports = {
 			return res.status(200).json({ success: true, publisher });
 		} catch (err) {
 			console.error(err.message);
-			return res.status(500).json(err);
+			return res.status(500).json(err.message);
 		}
 	},
 
@@ -196,7 +196,7 @@ module.exports = {
 				.status(200)
 				.json({ success: true, data: modifiedApplications, avgDecisionTime, canViewSubmitted: isManager });
 		} catch (err) {
-			console.error(err);
+			console.error(err.message);
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred searching for custodian applications',

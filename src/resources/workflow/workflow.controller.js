@@ -229,7 +229,7 @@ const updateWorkflow = async (req, res) => {
 		if (isDirty) {
 			workflow.save(async err => {
 				if (err) {
-					console.error(err);
+					console.error(err.message);
 					return res.status(400).json({
 						success: false,
 						message: err.message,
@@ -295,7 +295,7 @@ const deleteWorkflow = async (req, res) => {
 		// 5. Delete workflow
 		WorkflowModel.deleteOne({ _id: workflowId }, function (err) {
 			if (err) {
-				console.error(err);
+				console.error(err.message);
 				return res.status(400).json({
 					success: false,
 					message: 'An error occurred deleting the workflow',

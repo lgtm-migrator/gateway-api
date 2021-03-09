@@ -1,10 +1,11 @@
 import express from 'express';
-import { Data } from '../tool/data.model';
+import { Data } from '../../tool/data.model';
 import { loadDataset, loadDatasets } from './dataset.service';
-import { getAllTools } from '../tool/data.repository';
+import { getAllTools } from '../../tool/data.repository';
 import _ from 'lodash';
 import escape from 'escape-html';
-import { Course } from '../course/course.model';
+import { Course } from '../../course/course.model';
+import * as Sentry from '@sentry/node';
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 
@@ -15,20 +16,30 @@ const datasetLimiter = rateLimit({
 });
 
 router.post('/', async (req, res) => {
-	//Check to see if header is in json format
-	var parsedBody = {};
-	if (req.header('content-type') === 'application/json') {
-		parsedBody = req.body;
-	} else {
-		parsedBody = JSON.parse(req.body);
-	}
-	//Check for key
-	if (parsedBody.key !== process.env.cachingkey) {
-		return res.json({ success: false, error: 'Caching failed' });
-	}
+	try {
+		//Check to see if header is in json format
+		let parsedBody = {};
+		if (req.header('content-type') === 'application/json') {
+			parsedBody = req.body;
+		} else {
+			parsedBody = JSON.parse(req.body);
+		}
+		//Check for key
+		if (parsedBody.key !== process.env.cachingkey) {
+			return res.status(400).json({ success: false, error: 'Caching could not be started' });
+		}
 
-	loadDatasets(parsedBody.override || false);
-	return res.json({ success: true, message: 'Caching started' });
+		if (parsedBody.error === true) {
+			throw new Error('cache error test');
+		}
+
+		loadDatasets(parsedBody.override || false);
+		return res.status(200).json({ success: true, message: 'Caching started' });
+	} catch (err) {
+		Sentry.captureException(err);
+		console.error(err.message);
+		return res.status(500).json({ success: false, message: 'Caching failed' });
+	}
 });
 
 // @router   GET /api/v1/datasets/pidList

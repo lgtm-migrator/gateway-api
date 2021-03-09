@@ -530,7 +530,7 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 			{ $lookup: { from: 'tools', localField: 'id', foreignField: 'authors', as: 'objects' } },
 			{ $lookup: { from: 'reviews', localField: 'id', foreignField: 'toolID', as: 'reviews' } },
 		])
-			.sort({ updatedAt: -1 })
+			.sort({ updatedAt: -1, _id: 1 })
 			.skip(parseInt(startIndex))
 			.limit(parseInt(limit));
 	} else {
@@ -617,4 +617,28 @@ function validateDocumentLinks(document_links) {
 	return documentLinksValidated;
 }
 
-export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin, getAllTools };
+function formatRetroDocumentLinks(document_links) {
+	let documentLinksValidated = { doi: [], pdf: [], html: [] };
+
+	document_links.forEach(obj => {
+		for (const [key, value] of Object.entries(obj)) {
+			switch (key) {
+				case 'doi':
+					documentLinksValidated.doi.push(value);
+					break;
+				case 'pdf':
+					documentLinksValidated.pdf.push(value);
+					break;
+				case 'html':
+					documentLinksValidated.html.push(value);
+					break;
+				default:
+					break;
+			}
+		}
+	});
+
+	return documentLinksValidated;
+}
+
+export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks };

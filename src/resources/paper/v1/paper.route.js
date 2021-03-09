@@ -1,10 +1,10 @@
 import express from 'express';
-import { Data } from '../tool/data.model';
-import { ROLES } from '../user/user.roles';
+import { Data } from '../../tool/data.model';
+import { ROLES } from '../../user/user.roles';
 import passport from 'passport';
-import { utils } from '../auth';
-import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools } from '../tool/data.repository';
-import helper from '../utilities/helper.util';
+import { utils } from '../../auth';
+import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks } from '../../tool/data.repository';
+import helper from '../../utilities/helper.util';
 import escape from 'escape-html';
 const router = express.Router();
 
@@ -67,8 +67,8 @@ router.post('/validate', passport.authenticate('jwt'), utils.checkIsInRole(ROLES
 				.json({ success: true, error: 'This link is already associated to another paper on the HDR-UK Innovation Gateway' });
 		// 5. Otherwise return valid
 		return res.status(200).json({ success: true });
-	} catch (error) {
-		console.error(error);
+	} catch (err) {
+		console.error(err.message);
 		return res.status(500).json({ success: false, error: 'Paper link validation failed' });
 	}
 });
@@ -146,6 +146,9 @@ router.get('/:paperID', async (req, res) => {
 				if (err) return res.json({ success: false, error: err });
 
 				data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
+				if (Array.isArray(data[0].document_links)) {
+					data[0].document_links = formatRetroDocumentLinks(data[0].document_links);
+				}
 				return res.json({ success: true, data: data });
 			});
 		} else {
@@ -161,6 +164,9 @@ router.get('/edit/:paperID', async (req, res) => {
 	]);
 	query.exec((err, data) => {
 		if (data.length > 0) {
+			if (Array.isArray(data[0].document_links)) {
+				data[0].document_links = formatRetroDocumentLinks(data[0].document_links);
+			}
 			return res.json({ success: true, data: data });
 		} else {
 			return res.json({ success: false, error: `Paper not found for paper id ${req.params.id}` });

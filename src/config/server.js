@@ -19,9 +19,9 @@ require('dotenv').config();
 
 if (helper.getEnvironment() !== 'local') {
 	Sentry.init({
-		dsn: "https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683",
-		environment: helper.getEnvironment()
-	  });
+		dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
+		environment: helper.getEnvironment(),
+	});
 }
 
 const Account = require('./account');
@@ -75,8 +75,8 @@ app.use(
 		secret: process.env.JWTSecret,
 		resave: false,
 		saveUninitialized: true,
-		/* name: 'sessionId',
-        cookie: {
+		name: 'sessionId',
+		/* cookie: {
             secure: process.env.api_url ? true : false,
             httpOnly: true
         } */
@@ -185,7 +185,7 @@ app.use('/api/v1/workflows', require('../resources/workflow/workflow.route'));
 app.use('/api/v1/messages', require('../resources/message/message.route'));
 app.use('/api/v1/reviews', require('../resources/tool/review.route'));
 app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
-app.use('/api/v1/tools', require('../resources/tool/tool.route'));
+
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
@@ -195,18 +195,27 @@ app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.rou
 app.use('/api/v1/stats', require('../resources/stats/stats.router'));
 app.use('/api/v1/kpis', require('../resources/stats/kpis.router'));
 
-app.use('/api/v1/course', require('../resources/course/course.route'));
+app.use('/api/v1/course', require('../resources/course/v1/course.route'));
+app.use('/api/v2/courses', require('../resources/course/v2/course.route'));
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
-app.use('/api/v1/projects', require('../resources/project/project.route'));
-app.use('/api/v1/papers', require('../resources/paper/paper.route'));
+app.use('/api/v1/tools', require('../resources/tool/v1/tool.route'));
+app.use('/api/v2/tools', require('../resources/tool/v2/tool.route'));
+
+app.use('/api/v1/projects', require('../resources/project/v1/project.route'));
+app.use('/api/v2/projects', require('../resources/project/v2/project.route'));
+
+app.use('/api/v1/papers', require('../resources/paper/v1/paper.route'));
+app.use('/api/v2/papers', require('../resources/paper/v2/paper.route'));
+
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
-app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
+app.use('/api/v1/datasets', require('../resources/dataset/v1/dataset.route'));
+app.use('/api/v2/datasets', require('../resources/dataset/v2/dataset.route'));
 
 app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/datarequest.schemas.route'));
 app.use('/api/v1/data-access-request', require('../resources/datarequest/datarequest.route'));

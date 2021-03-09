@@ -99,8 +99,8 @@ const setAmendment = async (req, res) => {
 		// 9. Save changes to database
 		await accessRecord.save(async err => {
 			if (err) {
-				console.error(err);
-				return res.status(500).json({ status: 'error', message: err });
+				console.error(err.message);
+				return res.status(500).json({ status: 'error', message: err.message });
 			} else {
 				// 10. Update json schema and question answers with modifications since original submission
 				let accessRecordObj = accessRecord.toObject();
@@ -214,8 +214,8 @@ const requestAmendments = async (req, res) => {
 		// 9. Save changes to database
 		await accessRecord.save(async err => {
 			if (err) {
-				console.error(err);
-				return res.status(500).json({ status: 'error', message: err });
+				console.error(err.message);
+				return res.status(500).json({ status: 'error', message: err.message });
 			} else {
 				// 10. Send update request notifications
 				createNotifications(constants.notificationTypes.RETURNED, accessRecord);
