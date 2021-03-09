@@ -88,6 +88,7 @@ router.get('/entityid/:entityID', async (req, res) => {
 	});
 });
 
+// TODO - collection edited
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const collectionCreator = req.body.collectionCreator;
 	var { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords } = req.body;
@@ -114,6 +115,7 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	});
 });
 
+// TODO - collection added
 router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	let collections = new Collections();
 
@@ -215,6 +217,7 @@ router.delete('/delete/:id', passport.authenticate('jwt'), utils.checkIsInRole(R
 
 module.exports = router;
 
+// TODO - In app notification
 async function createMessage(authorId, collections, activeflag, collectionCreator) {
 	let message = new MessagesModel();
 
@@ -254,34 +257,57 @@ async function createMessage(authorId, collections, activeflag, collectionCreato
 	// }
 }
 
+// TODO - Email notification
 async function sendEmailNotifications(collections, activeflag, collectionCreator) {
-	let subject;
-	let html;
+	console.log(`in sendEmailNotifications`);
+	console.log(`collections: ${collections}, activeflag: ${activeflag}, collectionCreator: ${JSON.stringify(collectionCreator, null, 2)}`);
+	// let subject;
+	// let html;
 	// 1. Generate URL for linking collection in email
 	const collectionLink = process.env.homeURL + '/collection/' + collections.id;
 
-	// 2. Build email body
-	emailRecipients.map(emailRecipient => {
-		if (activeflag === 'active' && emailRecipient.role === 'Admin') {
-			subject = `New collection ${collections.name} has been added and is now live`;
-			html = `New collection ${collections.name} has been added and is now live <br /><br />  ${collectionLink}`;
-		}
+	// // 2. Query Db for all admins who have opted in to email updates
+	// var q = UserModel.aggregate([
+	// 	// Find all users who are admins
+	// 	// { $match: { } },
+	// 	// Reduce response payload size to required fields
+	// 	{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1 } },
+	// ]);
 
-		collections.authors.map(author => {
-			if (activeflag === 'active' && author === emailRecipient.id && author === collectionCreator.id) {
-				subject = `Your collection ${collections.name} has been added and is now live`;
-				html = `Your collection ${collections.name} has been added and is now live <br /><br />  ${collectionLink}`;
-			} else if (activeflag === 'active' && author === emailRecipient.id && author !== collectionCreator.id) {
-				subject = `You have been added as a collaborator on collection ${collections.name}`;
-				html = `${collectionCreator.name} has added you as a collaborator to the collection ${collections.name} which is now live <br /><br />  ${collectionLink}`;
-			}
-		});
-	});
+	// q.exec((err, emailRecipients) => {
+	// 	console.log(`emailRecipients: ${JSON.stringify(emailRecipients, null, 2)}`);
+	// 	// 2. Build email body
+	// 	emailRecipients.map(emailRecipient => {
+	// 		if (activeflag === 'active' && emailRecipient.role === 'Admin') {
+	// 			console.log(`admin email`);
+	// 			subject = `New collection ${collections.name} has been added and is now live`;
+	// 			html = `New collection ${collections.name} has been added and is now live <br /><br />  ${collectionLink}`;
+	// 			console.log(`admin - subject: ${subject}, html: ${html}`);
+	// 		}
 
-	if (activeflag === 'active') {
-		subject = `Your collection ${collections.name} has been approved and is now live`;
-		html = `Your collection ${collections.name} has been approved and is now live <br /><br />  ${collectionLink}`;
-	}
+	// 		collections.authors.map(author => {
+	// 			if (activeflag === 'active' && author === emailRecipient.id && author === collectionCreator.id) {
+	// 				console.log(`author email - you added`);
+	// 				subject = `Your collection ${collections.name} has been added and is now live`;
+	// 				html = `Your collection ${collections.name} has been added and is now live <br /><br />  ${collectionLink}`;
+	// 				console.log(`author - subject: ${subject}, html: ${html}`);
+	// 			} else if (activeflag === 'active' && author === emailRecipient.id && author !== collectionCreator.id) {
+	// 				console.log(`author email - other person added`);
+	// 				subject = `You have been added as a collaborator on collection ${collections.name}`;
+	// 				html = `${collectionCreator.name} has added you as a collaborator to the collection ${collections.name} which is now live <br /><br />  ${collectionLink}`;
+	// 				console.log(`author - subject: ${subject}, html: ${html}`);
+	// 			}
+	// 		});
+	// 	});
+	// });
+
+	// if (activeflag === 'active') {
+	// 	subject = `Your collection ${collections.name} has been approved and is now live`;
+	// 	html = `Your collection ${collections.name} has been approved and is now live <br /><br />  ${collectionLink}`;
+	// }
+
+	// console.log(`subject: ${subject}`);
+	// console.log(`html: ${html}`);
 	//UPDATE WHEN ARCHIVE/DELETE IS AVAILABLE FOR COLLECTIONS
 	// else if (activeflag === 'archive') {
 	//   subject = `Your collection ${collections.name} has been rejected`
@@ -291,20 +317,172 @@ async function sendEmailNotifications(collections, activeflag, collectionCreator
 	// 3. Query Db for all admins or authors of the collection who have opted in to email updates
 	var q = UserModel.aggregate([
 		// Find all users who are admins or authors of this collection
-		{ $match: { $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] } },
+		// TODO - comment back in with admin role after doing the checks for how authors works
+		// { $match: { $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] } },
+		{ $match: { $or: [{ id: { $in: collections.authors } }] } },
 		// Perform lookup to check opt in/out flag in tools schema
 		{ $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
+		// TODO - don't think you can opt out of these...
 		// Filter out any user who has opted out of email notifications
-		{ $match: { 'tool.emailNotifications': true } },
+		// { $match: { 'tool.emailNotifications': true } },
 		// Reduce response payload size to required fields
-		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
+		{
+			$project: {
+				_id: 1,
+				firstname: 1,
+				lastname: 1,
+				email: 1,
+				role: 1,
+				id: 1,
+				// , 'tool.emailNotifications': 1
+			},
+		},
 	]);
 
 	// 4. Use the returned array of email recipients to generate and send emails with SendGrid
 	q.exec((err, emailRecipients) => {
 		if (err) {
 			return new Error({ success: false, error: err });
+		} else {
+			let subject;
+			let html;
+
+			emailRecipients.map(emailRecipient => {
+				console.log(`emailRecipient: ${JSON.stringify(emailRecipient, null, 2)}`);
+				// TODO - comment admin stuff back in
+				// if (activeflag === 'active' && emailRecipient.role === 'Admin') {
+				// 	console.log(`admin email`);
+				// 	subject = `New collection ${collections.name} has been added and is now live`;
+				// 	html = `New collection ${collections.name} has been added and is now live <br /><br />  ${collectionLink}`;
+				// 	// console.log(`admin - subject: ${subject}, html: ${html}`);
+				// }
+
+				collections.authors.map(author => {
+					console.log(`author: ${author} - ${typeof author}`);
+					console.log(`emailRecipient.id: ${emailRecipient.id} - ${typeof emailRecipient.id}`);
+					console.log(`collectionCreator.id: ${collectionCreator.id} - ${typeof collectionCreator.id}`);
+
+					if (activeflag === 'active' && author === emailRecipient.id && author === collectionCreator.id) {
+						console.log(`author email - you added`);
+						subject = `Your collection ${collections.name} has been added and is now live`;
+						// html = `Your collection ${collections.name} has been added and is now live <br /><br />  ${collectionLink}`;
+
+						// TODO - test out look of email from DAR...
+						html = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+						<table
+						align="center"
+						border="0"
+						cellpadding="0"
+						cellspacing="40"
+						width="700"
+						word-break="break-all"
+						style="font-family: Arial, sans-serif">
+						<thead>
+						  <tr>
+							<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+
+							Your ${collections.publicflag === true ? 'public' : 'private'} collection ${collections.name} has been published and is now live
+
+							</th>
+						  </tr>
+						  <tr>
+							<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+							 
+							 Your collection ${collections.name} has been added and is now live
+							 ${
+									collections.publicflag === true
+										? 'Your public collection has been published to the Gateway. The collection is searchable on the Gateway and can be viewed by all users. '
+										: 'Your private collection has been published to the Gateway. Only those who you share the collection link with will be able to view the collection.'
+								}
+							 
+
+							</th>
+						  </tr>
+						</thead>
+						<tbody style="overflow-y: auto; overflow-x: hidden;">
+						<tr style="width: 100%; text-align: left;">
+						  <td bgcolor="#fff" style="padding: 0; border: 0;">
+							<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+							<tr>
+								<td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+								<td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${collectionLink}</td>
+							  </tr>
+							  <tr>
+							</tr>  
+							<tr>
+								<td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+								<td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${collectionLink}</td>
+							  </tr>
+							  <tr>
+								<td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of submission</td>
+								<td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${collectionLink}</td>
+							  </tr>
+							  <tr>
+								<td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicant</td>
+								<td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${collectionLink}</td>
+							  </tr>
+							</table>
+						  </td>
+						</tr>
+					   `;
+
+						// console.log(`author - subject: ${subject}, html: ${html}`);
+					} else if (activeflag === 'active' && author === emailRecipient.id && author !== collectionCreator.id) {
+						console.log(`author email - other person added`);
+						subject = `You have been added as a collaborator on collection ${collections.name}`;
+						html = `${collectionCreator.name} has added you as a collaborator to the collection ${collections.name} which is now live <br /><br />  ${collectionLink}`;
+						// console.log(`author - subject: ${subject}, html: ${html}`);
+					}
+				});
+			});
+
+			console.log(`send email`);
+			// TODO - comment back in to send email
+			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, false);
 		}
-		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html);
+		// emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html);
+		// emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, true);
 	});
 }
+
+// // 1. Generate URL for linking tool from email
+// const toolLink = process.env.homeURL + '/' + data.type + '/' + data.id;
+
+// // 2. Query Db for all admins who have opted in to email updates
+// var q = UserModel.aggregate([
+// 	// Find all users who are admins
+// 	{ $match: { role: 'Admin' } },
+// 	// Reduce response payload size to required fields
+// 	{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1 } },
+// ]);
+
+// // 3. Use the returned array of email recipients to generate and send emails with SendGrid
+// q.exec((err, emailRecipients) => {
+// 	if (err) {
+// 		return new Error({ success: false, error: err });
+// 	}
+// 	// TODO - how emails are sent for tools...
+// 	emailGenerator.sendEmail(
+// 		emailRecipients,
+// 		`${hdrukEmail}`,
+// 		`A new ${data.type} has been added and is ready for review`,
+// 		`Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`,
+// 		false
+// 	);
+// });
+
+// const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, attachments = []) => {
+
+// q.exec((err, emailRecipients) => {
+// 	if (err) {
+// 		return new Error({ success: false, error: err });
+// 	}
+// 	// TODO - how emails are sent for tools...
+// 	emailGenerator.sendEmail(
+// 		emailRecipients,
+// 		`${hdrukEmail}`,
+// 		`A new ${data.type} has been added and is ready for review`,
+// 		`Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`,
+// 		false
+// 	);
+// });

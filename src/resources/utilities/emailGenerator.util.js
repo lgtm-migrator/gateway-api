@@ -189,9 +189,9 @@ const _buildSubjectTitle = (user, title, submissionType) => {
 	if (user.toUpperCase() === 'DATACUSTODIAN') {
 		subject = `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
 	} else {
-    if ( submissionType === constants.submissionTypes.INPROGRESS){
+		if (submissionType === constants.submissionTypes.INPROGRESS) {
 			subject = `You are in progress with a request access to ${title}. The custodian will be in contact after you submit the application.`;
-    } else if (submissionType === constants.submissionTypes.INITIAL) {
+		} else if (submissionType === constants.submissionTypes.INITIAL) {
 			subject = `You have requested access to ${title}. The custodian will be in contact about the application.`;
 		} else {
 			subject = `You have made updates to your Data Access Request for ${title}. The custodian will be in contact about the application.`;
@@ -216,9 +216,11 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
 	let linkNationalCoreStudies = nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
 	let heading =
-		submissionType === constants.submissionTypes.INPROGRESS ? 'Data access request application in progress' : (constants.submissionTypes.INITIAL
+		submissionType === constants.submissionTypes.INPROGRESS
+			? 'Data access request application in progress'
+			: constants.submissionTypes.INITIAL
 			? `New data access request application`
-			: `Existing data access request application with new updates`);
+			: `Existing data access request application with new updates`;
 	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
@@ -1502,6 +1504,14 @@ const _generateAddedToTeam = options => {
  * @param   {Object}  context
  */
 const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, attachments = []) => {
+	console.log(`in _sendEmail`);
+	console.log(
+		`to: ${JSON.stringify(
+			to,
+			null,
+			2
+		)}, \n from: ${from}, \n subject: ${subject}, \n html: ${html}, \n allowUnsubscribe: ${allowUnsubscribe}`
+	);
 	// 1. Apply SendGrid API key from environment variable
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -1518,6 +1528,9 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 			html: body,
 			attachments,
 		};
+
+		// console.log(`body: ${JSON.stringify(body, null, 2)}`);
+		// console.log(`msg: ${JSON.stringify(msg, null, 2)}`);
 
 		// 4. Send email using SendGrid
 		await sgMail.send(msg);
