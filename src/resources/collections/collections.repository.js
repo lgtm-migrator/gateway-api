@@ -85,7 +85,6 @@ const getCollectionsAdmin = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
 		let startIndex = 0;
 		let limit = 40;
-		let typeString = '';
 		let searchString = '';
 		let status = 'all';
 
