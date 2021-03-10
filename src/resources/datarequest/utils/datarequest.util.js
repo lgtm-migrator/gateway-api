@@ -2,6 +2,7 @@ import _ from 'lodash';
 import constants from '../../utilities/constants.util';
 import teamController from '../../team/team.controller';
 import moment from 'moment';
+import constantsUtil from '../../utilities/constants.util';
 
 const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '') => {
 	let formattedSchema = {};
@@ -205,7 +206,80 @@ const matchCurrentUser = (user, auditField) => {
 	return auditField;
 };
 
-const cloneApplication = (originalApplication, clonedApplication) => {
+const cloneApplication = (originalApplication, clonedApplication = {}) => {
+
+	// If no new application is passed, use values from original application to create it
+	if(_.isEmpty(clonedApplication)) {
+		const { userId } = originalApplication;
+		const applicationStatus = constantsUtil.applicationStatuses.INPROGRESS;
+		
+		// create application
+		// app = clonedApplication from save
+		// update project id
+		const { _id } = app;
+		app.projectId = 'test';
+	}
+	
+	clonedApplication = { ...clonedApplication, userId, applicationStatus };
+  
+  
+  applicationStatusDesc : String,
+  schemaId: { type : Schema.Types.ObjectId, ref: 'data_request_schemas' },
+  jsonSchema: {
+    type: String,
+    default: "{}"
+  },
+  questionAnswers: {
+    type: String,
+    default: "{}"
+  },
+  aboutApplication: {
+    type: Object,
+    default: {}
+  },
+  dateSubmitted: {
+    type: Date
+  },
+  dateFinalStatus: {
+    type: Date
+  },
+  dateReviewStart: {
+    type: Date
+  },
+  publisher: {
+    type: String,
+    default: ""
+  },
+  files: [{ 
+    name: { type: String },
+    size: { type: Number },
+    description: { type: String },
+    status: { type: String },
+    fileId: { type: String },
+    error: { type: String, default: '' },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: 'User' 
+    }
+  }],
+  amendmentIterations: [{
+    dateCreated: { type: Date },
+    createdBy: { type : Schema.Types.ObjectId, ref: 'User' },
+    dateReturned: { type: Date },
+    returnedBy: { type : Schema.Types.ObjectId, ref: 'User' },
+    dateSubmitted: { type: Date }, 
+    submittedBy: { type : Schema.Types.ObjectId, ref: 'User' },
+    questionAnswers: { type: Object, default: {} }
+  }]
+
+
+	
+
+	// 1. create new application
+
+	// 2. 
+
+	console.log(application);
 
 	return clonedApplication;
 };
