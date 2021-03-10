@@ -1707,6 +1707,84 @@ module.exports = {
 		}
 	},
 
+	//POST api/v1/data-access-request/:id/clone
+	cloneApplication: async (req, res) => {
+		try {
+			// 1. Get the required request and body params
+			const {
+				params: { id:originalAppId },
+			} = req;
+			const { datasetIds = [], datasetTitles = [], publisher = '', clonedAppId = '' } = req.body;
+
+			if (_.isEmpty(datasetIds) || _.isEmpty(datasetTitles) || _.isEmpty(publisher)) {
+				return res.status(400).json({
+					success: false,
+					message: 'You must supply dataset and publisher details for the new application form',
+				});
+			}
+			// 2. Retrieve DAR to clone from database
+			let originalAccessRecord = await DataRequestModel.findOne({ _id: originalAppId }).populate([
+				{
+					path: 'datasets dataset',
+				},
+				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
+						populate: {
+							path: 'users',
+						},
+					},
+				},
+			]).lean();
+			if (!originalAccessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+			// 3. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(originalAccessRecord, req.user.id, req.user._id);
+			// 4. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+			// 5. Set up new access record or load presubmission record as provided in request
+			let clonedAccessRecord = {};
+			if(!_.isEmpty(clonedAppId)) {
+				clonedAccessRecord = await DataRequestModel.findOne({ _id: originalAppId }).lean();
+			}
+			datarequestUtil.cloneApplication(originalAccessRecord, clonedAccessRecord);
+
+
+			// await accessRecord.save(async err => {
+			// 	if (err) {
+			// 		console.error(err.message);
+			// 		return res.status(500).json({ status: 'error', message: err.message });
+			// 	} else {
+			// 		// 9. Append question actions for in progress applicant
+			// 		jsonSchema = datarequestUtil.injectQuestionActions(
+			// 			jsonSchema,
+			// 			constants.userTypes.APPLICANT, // current user type
+			// 			constants.applicationStatuses.INPROGRESS,
+			// 			constants.userTypes.APPLICANT // active party
+			// 		);
+			// 		// 10. Return necessary object to reflect schema update
+			// 		return res.status(200).json({
+			// 			success: true,
+			// 			accessRecord: {
+			// 				jsonSchema,
+			// 				questionAnswers,
+			// 			},
+			// 		});
+			// 	}
+			// });
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred cloning the existing application',
+			});
+		}
+	},
+
 	updateFileStatus: async (req, res) => {
 		try {
 			// 1. Get the required request params

@@ -205,6 +205,11 @@ const matchCurrentUser = (user, auditField) => {
 	return auditField;
 };
 
+const cloneApplication = (originalApplication, clonedApplication) => {
+
+	return clonedApplication;
+};
+
 export default {
 	injectQuestionActions: injectQuestionActions,
 	getUserPermissionsForApplication: getUserPermissionsForApplication,
@@ -213,4 +218,5 @@ export default {
 	updateQuestion: updateQuestion,
 	buildQuestionAlert: buildQuestionAlert,
 	setQuestionState: setQuestionState,
+	cloneApplication: cloneApplication
 };
