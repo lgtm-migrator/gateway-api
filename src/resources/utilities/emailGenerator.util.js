@@ -1504,14 +1504,6 @@ const _generateAddedToTeam = options => {
  * @param   {Object}  context
  */
 const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, attachments = []) => {
-	console.log(`in _sendEmail`);
-	console.log(
-		`to: ${JSON.stringify(
-			to,
-			null,
-			2
-		)}, \n from: ${from}, \n subject: ${subject}, \n html: ${html}, \n allowUnsubscribe: ${allowUnsubscribe}`
-	);
 	// 1. Apply SendGrid API key from environment variable
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -1528,9 +1520,6 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 			html: body,
 			attachments,
 		};
-
-		// console.log(`body: ${JSON.stringify(body, null, 2)}`);
-		// console.log(`msg: ${JSON.stringify(msg, null, 2)}`);
 
 		// 4. Send email using SendGrid
 		await sgMail.send(msg);
