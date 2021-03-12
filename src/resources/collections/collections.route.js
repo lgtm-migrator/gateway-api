@@ -9,13 +9,44 @@ import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import escape from 'escape-html';
-import { getCollectionObjects, sendEmailNotifications, generateCollectionEmailSubject } from './collections.repository';
+import {
+	getCollectionObjects,
+	getCollectionsAdmin,
+	getCollections,
+	sendEmailNotifications,
+	generateCollectionEmailSubject,
+} from './collections.repository';
 
 const inputSanitizer = require('../utilities/inputSanitizer');
 
 const urlValidator = require('../utilities/urlValidator');
 
 const router = express.Router();
+
+// @router   GET /api/v1/collections/getList
+// @desc     Returns List of Collections
+// @access   Private
+router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	let role = req.user.role;
+
+	if (role === ROLES.Admin) {
+		await getCollectionsAdmin(req)
+			.then(data => {
+				return res.json({ success: true, data });
+			})
+			.catch(err => {
+				return res.json({ success: false, err });
+			});
+	} else if (role === ROLES.Creator) {
+		await getCollections(req)
+			.then(data => {
+				return res.json({ success: true, data });
+			})
+			.catch(err => {
+				return res.json({ success: false, err });
+			});
+	}
+});
 
 router.get('/:collectionID', async (req, res) => {
 	var q = Collections.aggregate([
