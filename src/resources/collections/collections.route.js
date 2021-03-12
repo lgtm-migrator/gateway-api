@@ -88,7 +88,6 @@ router.get('/entityid/:entityID', async (req, res) => {
 	});
 });
 
-// TODO - collection edited
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const collectionCreator = req.body.collectionCreator;
 	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag } = req.body;
@@ -123,12 +122,12 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 					await createMessage(authorId, res[0], res[0].activeflag, collectionCreator, true);
 				});
 			}
+
 			await createMessage(0, res[0], res[0].activeflag, collectionCreator, true);
 		}
 	});
 });
 
-// TODO - collection added
 router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	let collections = new Collections();
 
@@ -151,6 +150,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 			await createMessage(authorId, collections, collections.activeflag, collectionCreator);
 		});
 	}
+
 	await createMessage(0, collections, collections.activeflag, collectionCreator);
 
 	await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
@@ -224,7 +224,6 @@ router.delete('/delete/:id', passport.authenticate('jwt'), utils.checkIsInRole(R
 
 module.exports = router;
 
-// TODO - In app notification
 async function createMessage(authorId, collections, activeflag, collectionCreator, isEdit) {
 	let message = new MessagesModel();
 
@@ -246,23 +245,13 @@ async function createMessage(authorId, collections, activeflag, collectionCreato
 	}
 
 	for (let messageRecipient of messageRecipients) {
-		if (activeflag === 'active' && authorId === messageRecipient.id && authorId === collectionCreator.id) {
+		if (activeflag === 'active' && authorId === messageRecipient.id) {
 			message.messageType = 'added collection';
 			message.messageDescription = generateCollectionEmailSubject(
-				collectionCreator.role,
+				'Creator',
 				collections.publicflag,
 				collections.name,
-				true,
-				isEdit
-			);
-			saveMessage();
-		} else if (activeflag === 'active' && authorId === messageRecipient.id && authorId !== collectionCreator.id) {
-			message.messageType = 'added collection';
-			message.messageDescription = generateCollectionEmailSubject(
-				collectionCreator.role,
-				collections.publicflag,
-				collections.name,
-				false,
+				authorId === collectionCreator.id ? true : false,
 				isEdit
 			);
 			saveMessage();
@@ -270,7 +259,6 @@ async function createMessage(authorId, collections, activeflag, collectionCreato
 	}
 }
 
-// TODO - Email notification
 async function sendEmailNotifications(collections, activeflag, collectionCreator, isEdit) {
 	// Generate URL for linking collection in email
 	const collectionLink = process.env.homeURL + '/collection/' + collections.id;
@@ -300,30 +288,30 @@ async function sendEmailNotifications(collections, activeflag, collectionCreator
 			let html;
 
 			emailRecipients.map(emailRecipient => {
-				if (activeflag === 'active' && emailRecipient.role === 'Admin') {
+				if (collections.authors.includes(emailRecipient.id)) {
+					collections.authors.map(author => {
+						if (activeflag === 'active' && author === emailRecipient.id) {
+							subject = generateCollectionEmailSubject(
+								'Creator',
+								collections.publicflag,
+								collections.name,
+								author === collectionCreator.id ? true : false,
+								isEdit
+							);
+							html = generateCollectionEmailContent(
+								'Creator',
+								collections.publicflag,
+								collections.name,
+								collectionLink,
+								author === collectionCreator.id ? true : false,
+								isEdit
+							);
+						}
+					});
+				} else if (activeflag === 'active' && emailRecipient.role === 'Admin') {
 					subject = generateCollectionEmailSubject('Admin', collections.publicflag, collections.name, false, isEdit);
 					html = generateCollectionEmailContent('Admin', collections.publicflag, collections.name, collectionLink, false, isEdit);
 				}
-
-				collections.authors.map(author => {
-					if (activeflag === 'active' && author === emailRecipient.id) {
-						subject = generateCollectionEmailSubject(
-							collectionCreator.role,
-							collections.publicflag,
-							collections.name,
-							author === collectionCreator.id ? true : false,
-							isEdit
-						);
-						html = generateCollectionEmailContent(
-							collectionCreator.role,
-							collections.publicflag,
-							collections.name,
-							collectionLink,
-							author === collectionCreator.id ? true : false,
-							isEdit
-						);
-					}
-				});
 
 				emailGenerator.sendEmail([emailRecipient], `${hdrukEmail}`, subject, html, false);
 			});
