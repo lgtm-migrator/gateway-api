@@ -189,9 +189,9 @@ const _buildSubjectTitle = (user, title, submissionType) => {
 	if (user.toUpperCase() === 'DATACUSTODIAN') {
 		subject = `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
 	} else {
-    if ( submissionType === constants.submissionTypes.INPROGRESS){
+		if (submissionType === constants.submissionTypes.INPROGRESS) {
 			subject = `You are in progress with a request access to ${title}. The custodian will be in contact after you submit the application.`;
-    } else if (submissionType === constants.submissionTypes.INITIAL) {
+		} else if (submissionType === constants.submissionTypes.INITIAL) {
 			subject = `You have requested access to ${title}. The custodian will be in contact about the application.`;
 		} else {
 			subject = `You have made updates to your Data Access Request for ${title}. The custodian will be in contact about the application.`;
@@ -216,9 +216,11 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
 	let linkNationalCoreStudies = nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
 	let heading =
-		submissionType === constants.submissionTypes.INPROGRESS ? 'Data access request application in progress' : (constants.submissionTypes.INITIAL
+		submissionType === constants.submissionTypes.INPROGRESS
+			? 'Data access request application in progress'
+			: constants.submissionTypes.INITIAL
 			? `New data access request application`
-			: `Existing data access request application with new updates`);
+			: `Existing data access request application with new updates`;
 	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
