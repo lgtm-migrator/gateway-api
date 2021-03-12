@@ -1,5 +1,7 @@
 import express from 'express';
 import { getObjectFilters, getFilter } from './search.repository';
+import { filtersService } from '../filters/dependency';
+import { isEqual } from 'lodash';
 
 const router = express.Router();
 
@@ -7,20 +9,20 @@ const router = express.Router();
 // @desc    GET Get filters
 // @access  Public
 router.get('/', async (req, res) => {
-	var searchString = req.query.search || ''; //If blank then return all
-	var tab = req.query.tab || ''; //If blank then return all
+	let searchString = req.query.search || ''; //If blank then return all
+	let tab = req.query.tab || ''; //If blank then return all
 	if (tab === '') {
 		let searchQuery = { $and: [{ activeflag: 'active' }] };
 		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
 
 		await Promise.all([
-			getFilter(searchString, 'dataset', 'license', false, getObjectFilters(searchQuery, req, 'dataset')),
-			getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, getObjectFilters(searchQuery, req, 'dataset')),
-			getFilter(searchString, 'dataset', 'tags.features', true, getObjectFilters(searchQuery, req, 'dataset')),
-			getFilter(searchString, 'dataset', 'datasetfields.publisher', false, getObjectFilters(searchQuery, req, 'dataset')),
-			getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, getObjectFilters(searchQuery, req, 'dataset')),
-			getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, getObjectFilters(searchQuery, req, 'dataset')),
-			getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, getObjectFilters(searchQuery, req, 'dataset')),
+			// getFilter(searchString, 'dataset', 'license', false, getObjectFilters(searchQuery, req, 'dataset')),
+			// getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, getObjectFilters(searchQuery, req, 'dataset')),
+			// getFilter(searchString, 'dataset', 'tags.features', true, getObjectFilters(searchQuery, req, 'dataset')),
+			// getFilter(searchString, 'dataset', 'datasetfields.publisher', false, getObjectFilters(searchQuery, req, 'dataset')),
+			// getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, getObjectFilters(searchQuery, req, 'dataset')),
+			// getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, getObjectFilters(searchQuery, req, 'dataset')),
+			// getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, getObjectFilters(searchQuery, req, 'dataset')),
 
 			getFilter(searchString, 'tool', 'tags.topic', true, getObjectFilters(searchQuery, req, 'tool')),
 			getFilter(searchString, 'tool', 'tags.features', true, getObjectFilters(searchQuery, req, 'tool')),
@@ -37,13 +39,13 @@ router.get('/', async (req, res) => {
 			return res.json({
 				success: true,
 				allFilters: {
-					licenseFilter: values[0][0],
-					sampleFilter: values[1][0],
-					datasetFeatureFilter: values[2][0],
-					publisherFilter: values[3][0],
-					ageBandFilter: values[4][0],
-					geographicCoverageFilter: values[5][0],
-					phenotypesFilter: values[6][0],
+					// licenseFilter: values[0][0],
+					// sampleFilter: values[1][0],
+					// datasetFeatureFilter: values[2][0],
+					// publisherFilter: values[3][0],
+					// ageBandFilter: values[4][0],
+					// geographicCoverageFilter: values[5][0],
+					// phenotypesFilter: values[6][0],
 
 					toolTopicFilter: values[6][0],
 					toolFeatureFilter: values[7][0],
@@ -58,13 +60,13 @@ router.get('/', async (req, res) => {
 					paperFeatureFilter: values[14][0],
 				},
 				filterOptions: {
-					licenseFilterOptions: values[0][1],
-					sampleFilterOptions: values[1][1],
-					datasetFeaturesFilterOptions: values[2][1],
-					publisherFilterOptions: values[3][1],
-					ageBandFilterOptions: values[4][1],
-					geographicCoverageFilterOptions: values[5][1],
-					phenotypesOptions: values[6][1],
+					// licenseFilterOptions: values[0][1],
+					// sampleFilterOptions: values[1][1],
+					// datasetFeaturesFilterOptions: values[2][1],
+					// publisherFilterOptions: values[3][1],
+					// ageBandFilterOptions: values[4][1],
+					// geographicCoverageFilterOptions: values[5][1],
+					// phenotypesOptions: values[6][1],
 
 					toolTopicsFilterOptions: values[7][1],
 					featuresFilterOptions: values[8][1],
@@ -81,41 +83,59 @@ router.get('/', async (req, res) => {
 			});
 		});
 	} else if (tab === 'Datasets') {
-		let searchQuery = { $and: [{ activeflag: 'active' }] };
-		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
-		var activeFiltersQuery = getObjectFilters(searchQuery, req, 'dataset');
+		const type = 'dataset';
 
-		await Promise.all([
-			getFilter(searchString, 'dataset', 'license', false, activeFiltersQuery),
-			getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, activeFiltersQuery),
-			getFilter(searchString, 'dataset', 'tags.features', true, activeFiltersQuery),
-			getFilter(searchString, 'dataset', 'datasetfields.publisher', false, activeFiltersQuery),
-			getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, activeFiltersQuery),
-			getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, activeFiltersQuery),
-			getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, activeFiltersQuery),
-		]).then(values => {
-			return res.json({
-				success: true,
-				allFilters: {
-					licenseFilter: values[0][0],
-					sampleFilter: values[1][0],
-					datasetFeatureFilter: values[2][0],
-					publisherFilter: values[3][0],
-					ageBandFilter: values[4][0],
-					geographicCoverageFilter: values[5][0],
-					phenotypesFilter: values[6][0],
-				},
-				filterOptions: {
-					licenseFilterOptions: values[0][1],
-					sampleFilterOptions: values[1][1],
-					datasetFeaturesFilterOptions: values[2][1],
-					publisherFilterOptions: values[3][1],
-					ageBandFilterOptions: values[4][1],
-					geographicCoverageFilterOptions: values[5][1],
-					phenotypesOptions: values[6][1],
-				},
-			});
+		let defaultQuery = { $and: [{ activeflag: 'active', type }] };
+		if (searchString.length > 0) defaultQuery['$and'].push({ $text: { $search: searchString } });
+		const filterQuery = getObjectFilters(defaultQuery, req, type);
+		const useCachedFilters = isEqual(defaultQuery, filterQuery) && searchString.length === 0;
+
+		const filters = await filtersService.buildFilters(type, filterQuery, useCachedFilters);
+		return res.json({
+			success: true,
+			filters
 		});
+	//const matchQuery = queryObject[0][`$match`];
+	//const useCachedFilters = matchQuery[`$and`] && matchQuery[`$and`].length === 2;
+
+	// Get paged results based on query params
+	// const [searchResults, filters] = await Promise.all(
+	// 	collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)),
+	// 	filtersService.buildFilters(type, matchQuery, useCachedFilters)
+	// );
+
+
+		// await Promise.all([
+		// 	// getFilter(searchString, 'dataset', 'license', false, activeFiltersQuery),
+		// 	// getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, activeFiltersQuery),
+		// 	// getFilter(searchString, 'dataset', 'tags.features', true, activeFiltersQuery),
+		// 	// getFilter(searchString, 'dataset', 'datasetfields.publisher', false, activeFiltersQuery),
+		// 	// getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, activeFiltersQuery),
+		// 	// getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, activeFiltersQuery),
+		// 	// getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, activeFiltersQuery),
+		// ]).then(values => {
+		// 	return res.json({
+		// 		success: true,
+		// 		allFilters: {
+		// 			// licenseFilter: values[0][0],
+		// 			// sampleFilter: values[1][0],
+		// 			// datasetFeatureFilter: values[2][0],
+		// 			// publisherFilter: values[3][0],
+		// 			// ageBandFilter: values[4][0],
+		// 			// geographicCoverageFilter: values[5][0],
+		// 			// phenotypesFilter: values[6][0],
+		// 		},
+		// 		filterOptions: {
+		// 			// licenseFilterOptions: values[0][1],
+		// 			// sampleFilterOptions: values[1][1],
+		// 			// datasetFeaturesFilterOptions: values[2][1],
+		// 			// publisherFilterOptions: values[3][1],
+		// 			// ageBandFilterOptions: values[4][1],
+		// 			// geographicCoverageFilterOptions: values[5][1],
+		// 			// phenotypesOptions: values[6][1],
+		// 		},
+		// 	});
+		// });
 	} else if (tab === 'Tools') {
 		let searchQuery = { $and: [{ activeflag: 'active' }] };
 		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
