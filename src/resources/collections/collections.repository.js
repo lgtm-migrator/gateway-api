@@ -122,25 +122,25 @@ async function sendEmailNotifications(collections, activeflag, collectionCreator
 
 			emailRecipients.map(emailRecipient => {
 				if (collections.authors.includes(emailRecipient.id)) {
-					collections.authors.map(author => {
-						if (activeflag === 'active' && author === emailRecipient.id) {
-							subject = generateCollectionEmailSubject(
-								'Creator',
-								collections.publicflag,
-								collections.name,
-								author === collectionCreator.id ? true : false,
-								isEdit
-							);
-							html = generateCollectionEmailContent(
-								'Creator',
-								collections.publicflag,
-								collections.name,
-								collectionLink,
-								author === collectionCreator.id ? true : false,
-								isEdit
-							);
-						}
-					});
+					let author = Number(collections.authors.filter(author => author === emailRecipient.id));
+
+					if (activeflag === 'active') {
+						subject = generateCollectionEmailSubject(
+							'Creator',
+							collections.publicflag,
+							collections.name,
+							author === collectionCreator.id ? true : false,
+							isEdit
+						);
+						html = generateCollectionEmailContent(
+							'Creator',
+							collections.publicflag,
+							collections.name,
+							collectionLink,
+							author === collectionCreator.id ? true : false,
+							isEdit
+						);
+					}
 				} else if (activeflag === 'active' && emailRecipient.role === 'Admin') {
 					subject = generateCollectionEmailSubject('Admin', collections.publicflag, collections.name, false, isEdit);
 					html = generateCollectionEmailContent('Admin', collections.publicflag, collections.name, collectionLink, false, isEdit);
