@@ -464,8 +464,8 @@ export async function loadDatasets(override) {
 									let keywordArray = splitString(datasetMDC.keywords);
 									let physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability);
 									let geographicCoverageArray = splitString(datasetMDC.geographicCoverage);
-
-									const updatedDatasetHDR = await Data.findOneAndUpdate(
+									// Update dataset
+									await Data.findOneAndUpdate(
 										{ datasetid: datasetMDC.id },
 										{
 											pid: datasetHDR.pid,

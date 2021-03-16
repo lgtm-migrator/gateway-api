@@ -1,6 +1,6 @@
 import express from 'express';
 import { Data } from '../../tool/data.model';
-import { loadDataset, loadDatasets } from './dataset.service';
+import { loadDataset } from './dataset.service';
 import { getAllTools } from '../../tool/data.repository';
 import _ from 'lodash';
 import escape from 'escape-html';
@@ -35,9 +35,6 @@ router.post('/', async (req, res) => {
 		}
 
 		filtersService.optimiseFilters('dataset');
-		// loadDatasets(parsedBody.override || false).then(() => {
-		// 	filtersService.optimiseFilters('dataset');
-		// });
 
 		return res.status(200).json({ success: true, message: 'Caching started' });
 	} catch (err) {

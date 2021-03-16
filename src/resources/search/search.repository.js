@@ -3,7 +3,6 @@ import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
 import { findNodeInTree } from '../filters/utils/filters.util';
 import { datasetFilters } from '../filters/filters.mapper';
-import { filtersService } from '../filters/dependency';
 import _ from 'lodash';
 import moment from 'moment';
 import helperUtil from '../utilities/helper.util';
@@ -16,9 +15,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	} else if (type === 'collection') {
 		collection = Collections;
 	}
-
+	// ie copy deep object
 	let newSearchQuery = _.cloneDeep(searchQuery);
-	//let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
 	if (type !== 'collection') {
 		newSearchQuery['$and'].push({ type: type });
 	} else {
