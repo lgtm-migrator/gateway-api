@@ -1932,8 +1932,9 @@ module.exports = {
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
 						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
-						'data access request',
-						accessRecord._id
+						'data access request received',
+						accessRecord._id,
+						accessRecord.datasets[0].publisher.name
 					);
 				} else {
 					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;

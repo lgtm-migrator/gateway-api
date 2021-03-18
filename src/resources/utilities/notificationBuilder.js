@@ -1,6 +1,6 @@
 import { MessagesModel } from '../message/message.model';
 
-const triggerNotificationMessage = (messageRecipients, messageDescription, messageType, messageObjectID) => {
+const triggerNotificationMessage = (messageRecipients, messageDescription, messageType, messageObjectID, publisherName = '') => {
   messageRecipients.forEach(async (recipient) => {
     let messageID = parseInt(Math.random().toString().replace('0.', ''));
     let message = new MessagesModel({
@@ -11,7 +11,8 @@ const triggerNotificationMessage = (messageRecipients, messageDescription, messa
       messageID,
       messageObjectID : (typeof messageObjectID == 'number' ? messageObjectID : messageID),
       messageTo: recipient,
-      messageDataRequestID: messageType === 'data access request' ? messageObjectID : null
+      messageDataRequestID: messageType === 'data access request' ? messageObjectID : null,
+      publisherName
     });
     await message.save(async (err) => {
       if (err) {
