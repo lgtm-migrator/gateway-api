@@ -8,6 +8,7 @@ const DataRequestSchema = new Schema({
   dataSetId: String,
   datasetIds: [{ type: String}],
   datasetTitles: [{ type: String}],
+  isCloneable: Boolean,
   projectId: String,
   workflowId: { type : Schema.Types.ObjectId, ref: 'Workflow' },
   workflow: { type: WorkflowSchema },

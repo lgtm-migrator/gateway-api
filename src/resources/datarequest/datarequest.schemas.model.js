@@ -16,6 +16,7 @@ const DataRequestSchemas = new Schema({
     default: ''
   },
   jsonSchema: String,
+  isCloneable: Boolean
 }, {
   timestamps: true 
 });

@@ -35,7 +35,7 @@ module.exports = {
 			let applications = await DataRequestModel.find({
 				$and: [{ ...query }, { $or: [{ userId: parseInt(userId) }, { authorIds: userId }] }],
 			})
-				.select("-jsonSchema -questionAnswers -files")
+				.select('-jsonSchema -questionAnswers -files')
 				.populate('datasets mainApplicant')
 				.lean();
 
@@ -204,7 +204,7 @@ module.exports = {
 					});
 				}
 				// 2. Build up the accessModel for the user
-				let { jsonSchema, version, _id: schemaId } = accessRequestTemplate;
+				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
 				// 3. create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
@@ -212,6 +212,7 @@ module.exports = {
 					dataSetId,
 					datasetIds: [dataSetId],
 					datasetTitles: [dataset.name],
+					isCloneable,
 					jsonSchema,
 					schemaId,
 					publisher,
@@ -312,13 +313,14 @@ module.exports = {
 					});
 				}
 				// 3. Build up the accessModel for the user
-				let { jsonSchema, version, _id: schemaId } = accessRequestTemplate;
+				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
 				// 4. Create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
 					userId,
 					datasetIds: arrDatasetIds,
 					datasetTitles: arrDatasetNames,
+					isCloneable,
 					jsonSchema,
 					schemaId,
 					publisher,
@@ -1712,7 +1714,7 @@ module.exports = {
 		try {
 			// 1. Get the required request and body params
 			const {
-				params: { id:originalAppId },
+				params: { id: originalAppId },
 			} = req;
 			const { datasetIds = [], datasetTitles = [], publisher = '', clonedAppId = '' } = req.body;
 
@@ -1723,20 +1725,22 @@ module.exports = {
 				});
 			}
 			// 2. Retrieve DAR to clone from database
-			let originalAccessRecord = await DataRequestModel.findOne({ _id: originalAppId }).populate([
-				{
-					path: 'datasets dataset',
-				},
-				{
-					path: 'publisherObj',
-					populate: {
-						path: 'team',
+			let originalAccessRecord = await DataRequestModel.findOne({ _id: originalAppId })
+				.populate([
+					{
+						path: 'datasets dataset',
+					},
+					{
+						path: 'publisherObj',
 						populate: {
-							path: 'users',
+							path: 'team',
+							populate: {
+								path: 'users',
+							},
 						},
 					},
-				},
-			]).lean();
+				])
+				.lean();
 			if (!originalAccessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
 			}
@@ -1748,11 +1752,14 @@ module.exports = {
 			}
 			// 5. Set up new access record or load presubmission record as provided in request
 			let clonedAccessRecord = {};
-			if(!_.isEmpty(clonedAppId)) {
+			if (!_.isEmpty(clonedAppId)) {
 				clonedAccessRecord = await DataRequestModel.findOne({ _id: originalAppId }).lean();
 			}
-			datarequestUtil.cloneApplication(originalAccessRecord, clonedAccessRecord);
-
+			//datarequestUtil.cloneApplication(originalAccessRecord, clonedAccessRecord);
+			return res.status(200).json({
+				success: true,
+				originalAccessRecord,
+			});
 
 			// await accessRecord.save(async err => {
 			// 	if (err) {

@@ -223,54 +223,54 @@ const cloneApplication = (originalApplication, clonedApplication = {}) => {
 	clonedApplication = { ...clonedApplication, userId, applicationStatus };
   
   
-  applicationStatusDesc : String,
-  schemaId: { type : Schema.Types.ObjectId, ref: 'data_request_schemas' },
-  jsonSchema: {
-    type: String,
-    default: "{}"
-  },
-  questionAnswers: {
-    type: String,
-    default: "{}"
-  },
-  aboutApplication: {
-    type: Object,
-    default: {}
-  },
-  dateSubmitted: {
-    type: Date
-  },
-  dateFinalStatus: {
-    type: Date
-  },
-  dateReviewStart: {
-    type: Date
-  },
-  publisher: {
-    type: String,
-    default: ""
-  },
-  files: [{ 
-    name: { type: String },
-    size: { type: Number },
-    description: { type: String },
-    status: { type: String },
-    fileId: { type: String },
-    error: { type: String, default: '' },
-    owner: {
-      type: Schema.Types.ObjectId,
-      ref: 'User' 
-    }
-  }],
-  amendmentIterations: [{
-    dateCreated: { type: Date },
-    createdBy: { type : Schema.Types.ObjectId, ref: 'User' },
-    dateReturned: { type: Date },
-    returnedBy: { type : Schema.Types.ObjectId, ref: 'User' },
-    dateSubmitted: { type: Date }, 
-    submittedBy: { type : Schema.Types.ObjectId, ref: 'User' },
-    questionAnswers: { type: Object, default: {} }
-  }]
+//   applicationStatusDesc : String,
+//   schemaId: { type : Schema.Types.ObjectId, ref: 'data_request_schemas' },
+//   jsonSchema: {
+//     type: String,
+//     default: "{}"
+//   },
+//   questionAnswers: {
+//     type: String,
+//     default: "{}"
+//   },
+//   aboutApplication: {
+//     type: Object,
+//     default: {}
+//   },
+//   dateSubmitted: {
+//     type: Date
+//   },
+//   dateFinalStatus: {
+//     type: Date
+//   },
+//   dateReviewStart: {
+//     type: Date
+//   },
+//   publisher: {
+//     type: String,
+//     default: ""
+//   },
+//   files: [{ 
+//     name: { type: String },
+//     size: { type: Number },
+//     description: { type: String },
+//     status: { type: String },
+//     fileId: { type: String },
+//     error: { type: String, default: '' },
+//     owner: {
+//       type: Schema.Types.ObjectId,
+//       ref: 'User' 
+//     }
+//   }],
+//   amendmentIterations: [{
+//     dateCreated: { type: Date },
+//     createdBy: { type : Schema.Types.ObjectId, ref: 'User' },
+//     dateReturned: { type: Date },
+//     returnedBy: { type : Schema.Types.ObjectId, ref: 'User' },
+//     dateSubmitted: { type: Date }, 
+//     submittedBy: { type : Schema.Types.ObjectId, ref: 'User' },
+//     questionAnswers: { type: Object, default: {} }
+//   }]
 
 
 	
