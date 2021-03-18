@@ -1864,6 +1864,7 @@ module.exports = {
 				// 1. Create notifications
 				// Custodian manager and current step reviewer notifications
 				if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
+					console.log(accessRecord.datasets[0].toObject());
 					// Retrieve all custodian manager user Ids and active step reviewers
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
 					let activeStep = workflowController.getActiveWorkflowStep(workflow);
@@ -1932,8 +1933,9 @@ module.exports = {
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
 						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
-						'data access request',
-						accessRecord._id
+						'data access request received',
+						accessRecord._id,
+						accessRecord.datasets[0].publisher.name
 					);
 				} else {
 					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;

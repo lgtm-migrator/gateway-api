@@ -22,12 +22,18 @@ const MessageSchema = new Schema(
 				'added collection',
 				'review',
 				'data access request',
+				'data access request received',
 				'data access request unlinked',
 				'team',
 				'team unlinked',
 				'edit',
 				'workflow'
 			],
+		},
+		publisherName: {
+			type: String,
+			default: '',
+			trim: true
 		},
 		createdBy: {
 			type: Schema.Types.ObjectId,
