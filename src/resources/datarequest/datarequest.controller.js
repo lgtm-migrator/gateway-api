@@ -1714,21 +1714,18 @@ module.exports = {
 		try {
 			// 1. Get the required request and body params
 			const {
-				params: { id: originalAppId },
+				params: { id: appIdToClone },
 			} = req;
-			const { datasetIds = [], datasetTitles = [], publisher = '', clonedAppId = '' } = req.body;
+			const { datasetIds = [], datasetTitles = [], publisher = '', appIdToCloneInto = '' } = req.body;
 
-			if (_.isEmpty(datasetIds) || _.isEmpty(datasetTitles) || _.isEmpty(publisher)) {
-				return res.status(400).json({
-					success: false,
-					message: 'You must supply dataset and publisher details for the new application form',
-				});
-			}
 			// 2. Retrieve DAR to clone from database
-			let originalAccessRecord = await DataRequestModel.findOne({ _id: originalAppId })
+			let appToClone = await DataRequestModel.findOne({ _id: appIdToClone })
 				.populate([
 					{
-						path: 'datasets dataset',
+						path: 'datasets dataset authors',
+					},
+					{
+						path: 'mainApplicant',
 					},
 					{
 						path: 'publisherObj',
@@ -1741,48 +1738,64 @@ module.exports = {
 					},
 				])
 				.lean();
-			if (!originalAccessRecord) {
+			if (!appToClone) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
 			}
+
 			// 3. Get the requesting users permission levels
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(originalAccessRecord, req.user.id, req.user._id);
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, req.user.id, req.user._id);
+
 			// 4. Return unauthorised message if the requesting user is not an applicant
 			if (!authorised || userType !== constants.userTypes.APPLICANT) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
-			// 5. Set up new access record or load presubmission record as provided in request
-			let clonedAccessRecord = {};
-			if (!_.isEmpty(clonedAppId)) {
-				clonedAccessRecord = await DataRequestModel.findOne({ _id: originalAppId }).lean();
-			}
-			//datarequestUtil.cloneApplication(originalAccessRecord, clonedAccessRecord);
-			return res.status(200).json({
-				success: true,
-				originalAccessRecord,
-			});
 
-			// await accessRecord.save(async err => {
-			// 	if (err) {
-			// 		console.error(err.message);
-			// 		return res.status(500).json({ status: 'error', message: err.message });
-			// 	} else {
-			// 		// 9. Append question actions for in progress applicant
-			// 		jsonSchema = datarequestUtil.injectQuestionActions(
-			// 			jsonSchema,
-			// 			constants.userTypes.APPLICANT, // current user type
-			// 			constants.applicationStatuses.INPROGRESS,
-			// 			constants.userTypes.APPLICANT // active party
-			// 		);
-			// 		// 10. Return necessary object to reflect schema update
-			// 		return res.status(200).json({
-			// 			success: true,
-			// 			accessRecord: {
-			// 				jsonSchema,
-			// 				questionAnswers,
-			// 			},
-			// 		});
-			// 	}
-			// });
+			// 5. Update question answers with modifications since original submission
+			appToClone.questionAnswers = JSON.parse(appToClone.questionAnswers);
+			appToClone = amendmentController.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
+
+			// 6. Set up new access record or load presubmission application as provided in request
+			let clonedAccessRecord = {},
+				findQuery = {};
+			if (_.isEmpty(appIdToCloneInto)) {
+				findQuery = { _id: mongoose.Types.ObjectId(0) };
+				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
+					userId: req.user.id,
+					datasetIds,
+					datasetTitles,
+					publisher,
+				});
+			} else {
+				findQuery = { _id: appIdToCloneInto };
+				let appToCloneInto = await DataRequestModel.findOne(findQuery).lean();
+				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
+			}
+
+			// 7. Save into existing record
+			clonedAccessRecord.questionAnswers = JSON.stringify(clonedAccessRecord.questionAnswers);
+			let accessRecord = await DataRequestModel.findOneAndUpdate(
+				findQuery,
+				clonedAccessRecord,
+				{ upsert: true, new: true },
+				async (err, doc) => {
+					if (err) {
+						console.error(err.message);
+						return res.status(500).json({ status: 'error', message: err.message });
+					}
+
+					// 8. Create notifications
+					await module.exports.createNotifications(
+						constants.notificationTypes.APPLICATIONCLONED,
+						{ newDatasetTitles: datasetTitles, newApplicationId: doc._id.toString() },
+						appToClone,
+						req.user
+					);
+					return res.status(200).json({
+						success: true,
+						accessRecord,
+					});
+				}
+			);
 		} catch (err) {
 			console.error(err.message);
 			return res.status(500).json({
@@ -2437,6 +2450,52 @@ module.exports = {
 					custodianManagers,
 					constants.hdrukEmail,
 					`A Workflow has been assigned to an application request`,
+					html,
+					false
+				);
+				break;
+			case constants.notificationTypes.APPLICATIONCLONED:
+				// Deconstruct required variables from context object
+				const { newDatasetTitles, newApplicationId } = context;
+				// 1. Create notifications
+				await notificationBuilder.triggerNotificationMessage(
+					[accessRecord.userId],
+					`Your Data Access Request for ${datasetTitles} was successfully copied into a new form for ${newDatasetTitles.join(
+						','
+					)}, which can now be edited`,
+					'data access request',
+					newApplicationId
+				);
+				// Create authors notification
+				if (!_.isEmpty(authors)) {
+					await notificationBuilder.triggerNotificationMessage(
+						authors.map(author => author.id),
+						`A Data Access Request you contributed to for ${datasetTitles} has been copied into a new form by ${firstname} ${lastname}`,
+						'data access request unlinked',
+						newApplicationId
+					);
+				}
+				// 2. Send emails to relevant users
+				// Aggregate objects for custodian and applicant
+				emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
+				// Create object to pass through email data
+				options = {
+					id: accessRecord._id,
+					projectId,
+					projectName,
+					datasetTitles,
+					dateSubmitted,
+					applicants,
+					firstname,
+					lastname,
+				};
+				// Create email body content
+				html = emailGenerator.generateDARClonedEmail(options);
+				// Send email
+				await emailGenerator.sendEmail(
+					emailRecipients,
+					constants.hdrukEmail,
+					`Data Access Request for ${datasetTitles} has been copied into a new form by ${firstname} ${lastname}`,
 					html,
 					false
 				);

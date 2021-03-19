@@ -1,8 +1,8 @@
-import _ from 'lodash';
+import { has, isEmpty, isNil } from 'lodash';
 import constants from '../../utilities/constants.util';
 import teamController from '../../team/team.controller';
 import moment from 'moment';
-import constantsUtil from '../../utilities/constants.util';
+import { DataRequestSchemaModel } from '../datarequest.schemas.model';
 
 const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '') => {
 	let formattedSchema = {};
@@ -24,9 +24,9 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 			return { authorised, userType };
 		}
 		// Check if the user is a custodian team member and assign permissions if so
-		if (_.has(application.datasets[0], 'publisher.team')) {
+		if (has(application.datasets[0], 'publisher.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.datasets[0].publisher.team, _id);
-		} else if (_.has(application, 'publisherObj.team')) {
+		} else if (has(application, 'publisherObj.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.publisherObj.team, _id);
 		}
 		if (isTeamMember) {
@@ -34,7 +34,7 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 			authorised = true;
 		}
 		// If user is not authenticated as a custodian, check if they are an author or the main applicant
-		if (application.applicationStatus === constants.applicationStatuses.INPROGRESS || _.isEmpty(userType)) {
+		if (application.applicationStatus === constants.applicationStatuses.INPROGRESS || isEmpty(userType)) {
 			if (application.authorIds.includes(userId) || application.userId === userId) {
 				userType = constants.userTypes.APPLICANT;
 				authorised = true;
@@ -90,7 +90,7 @@ const findQuestion = (questionsArr, questionId) => {
 					return typeof option.conditionalQuestions !== 'undefined' && option.conditionalQuestions.length > 0;
 				})
 				.forEach(option => {
-					if(!child) {
+					if (!child) {
 						child = findQuestion(option.conditionalQuestions, questionId);
 					}
 				});
@@ -117,9 +117,9 @@ const updateQuestion = (questionsArr, question) => {
 			return;
 		}
 		// 5. If target question has not been identified, recall function with child questions
-		if (_.has(currentQuestion, 'input.options')) {
+		if (has(currentQuestion, 'input.options')) {
 			currentQuestion.input.options.forEach(option => {
-				if (_.has(option, 'conditionalQuestions')) {
+				if (has(option, 'conditionalQuestions')) {
 					Array.isArray(option.conditionalQuestions) && option.conditionalQuestions.forEach(iter);
 				}
 			});
@@ -142,16 +142,16 @@ const setQuestionState = (question, questionAlert, readOnly) => {
 		},
 	};
 	// 3. Recursively set readOnly mode for children
-	if (_.has(question, 'input.options')) {
+	if (has(question, 'input.options')) {
 		question.input.options.forEach(function iter(currentQuestion) {
 			// 4. If current question contains an input, set readOnly mode
-			if (_.has(currentQuestion, 'input')) {
+			if (has(currentQuestion, 'input')) {
 				currentQuestion.input.readOnly = readOnly;
 			}
 			// 5. Recall the iteration with each child question
-			if (_.has(currentQuestion, 'conditionalQuestions')) {
+			if (has(currentQuestion, 'conditionalQuestions')) {
 				currentQuestion.conditionalQuestions.forEach(option => {
-					if (_.has(option, 'input.options')) {
+					if (has(option, 'input.options')) {
 						Array.isArray(option.input.options) && option.input.options.forEach(iter);
 					} else {
 						option.input.readOnly = readOnly;
@@ -176,16 +176,11 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 		requestedBy = matchCurrentUser(user, requestedBy);
 		updatedBy = matchCurrentUser(user, updatedBy);
 		// 5. Update the generic question alerts to match the scenario
-		let relevantActioner = !_.isNil(updatedBy) ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
-		questionAlert.text = questionAlert.text.replace(
-			'#NAME#',
-			relevantActioner
-		);
+		let relevantActioner = isNil(updatedBy) ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
+		questionAlert.text = questionAlert.text.replace('#NAME#', relevantActioner);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',
-			userType === !_.isNil(dateUpdated)
-				? moment(dateUpdated).format('Do MMM YYYY')
-				: moment(dateRequested).format('Do MMM YYYY')
+			userType === isNil(dateUpdated) ? moment(dateUpdated).format('Do MMM YYYY') : moment(dateRequested).format('Do MMM YYYY')
 		);
 		// 6. Return the built question alert
 		return questionAlert;
@@ -206,82 +201,55 @@ const matchCurrentUser = (user, auditField) => {
 	return auditField;
 };
 
-const cloneApplication = (originalApplication, clonedApplication = {}) => {
+const cloneIntoExistingApplication = (appToClone, appToCloneInto) => {
+	// 1. Extract values required to clone into existing application
+	const { questionAnswers } = appToClone;
+	
+	// 2. Return updated application
+	return { ...appToCloneInto, questionAnswers };
+};
 
-	// If no new application is passed, use values from original application to create it
-	if(_.isEmpty(clonedApplication)) {
-		const { userId } = originalApplication;
-		const applicationStatus = constantsUtil.applicationStatuses.INPROGRESS;
-		
-		// create application
-		// app = clonedApplication from save
-		// update project id
-		const { _id } = app;
-		app.projectId = 'test';
+const cloneIntoNewApplication = async (appToClone, context) => {
+	// 1. Extract values required to clone existing application
+	const { userId, datasetIds, datasetTitles, publisher } = context;
+	const { questionAnswers } = appToClone;
+
+	// 2. Get latest publisher schema
+	const { jsonSchema, version, _id: schemaId, isCloneable = false } = await getLatestPublisherSchema(publisher);
+
+	// 3. Create new application with combined details
+	let newApplication = {
+		version,
+		userId,
+		datasetIds,
+		datasetTitles,
+		isCloneable,
+		jsonSchema,
+		schemaId,
+		publisher,
+		questionAnswers,
+		aboutApplication: {},
+		applicationStatus: constants.applicationStatuses.INPROGRESS,
+	};
+
+	// 4. Return the cloned application
+	return newApplication;
+};
+
+const getLatestPublisherSchema = async publisher => {
+	// 1. Find latest schema for publisher
+	let schema = await DataRequestSchemaModel.findOne({
+		$or: [{ publisher }],
+		status: 'active',
+	}).sort({ createdAt: -1 });
+
+	// 2. If no schema is found, throw error
+	if (!schema) {
+		throw new Error('The selected publisher does not have an active application form');
 	}
-	
-	clonedApplication = { ...clonedApplication, userId, applicationStatus };
-  
-  
-//   applicationStatusDesc : String,
-//   schemaId: { type : Schema.Types.ObjectId, ref: 'data_request_schemas' },
-//   jsonSchema: {
-//     type: String,
-//     default: "{}"
-//   },
-//   questionAnswers: {
-//     type: String,
-//     default: "{}"
-//   },
-//   aboutApplication: {
-//     type: Object,
-//     default: {}
-//   },
-//   dateSubmitted: {
-//     type: Date
-//   },
-//   dateFinalStatus: {
-//     type: Date
-//   },
-//   dateReviewStart: {
-//     type: Date
-//   },
-//   publisher: {
-//     type: String,
-//     default: ""
-//   },
-//   files: [{ 
-//     name: { type: String },
-//     size: { type: Number },
-//     description: { type: String },
-//     status: { type: String },
-//     fileId: { type: String },
-//     error: { type: String, default: '' },
-//     owner: {
-//       type: Schema.Types.ObjectId,
-//       ref: 'User' 
-//     }
-//   }],
-//   amendmentIterations: [{
-//     dateCreated: { type: Date },
-//     createdBy: { type : Schema.Types.ObjectId, ref: 'User' },
-//     dateReturned: { type: Date },
-//     returnedBy: { type : Schema.Types.ObjectId, ref: 'User' },
-//     dateSubmitted: { type: Date }, 
-//     submittedBy: { type : Schema.Types.ObjectId, ref: 'User' },
-//     questionAnswers: { type: Object, default: {} }
-//   }]
 
-
-	
-
-	// 1. create new application
-
-	// 2. 
-
-	console.log(application);
-
-	return clonedApplication;
+	// 3. Return schema
+	return schema;
 };
 
 export default {
@@ -292,5 +260,6 @@ export default {
 	updateQuestion: updateQuestion,
 	buildQuestionAlert: buildQuestionAlert,
 	setQuestionState: setQuestionState,
-	cloneApplication: cloneApplication
+	cloneIntoExistingApplication: cloneIntoExistingApplication,
+	cloneIntoNewApplication: cloneIntoNewApplication,
 };
