@@ -162,9 +162,9 @@ module.exports = {
 
 	//GET api/v1/data-access-request/dataset/:datasetId
 	getAccessRequestByUserAndDataset: async (req, res) => {
-		let accessRecord;
+		let accessRecord, dataset;
+		let formType = constants.FormTypes.Extended5Safe;
 		let data = {};
-		let dataset;
 		try {
 			// 1. Get dataSetId from params
 			let {
@@ -205,7 +205,11 @@ module.exports = {
 				}
 				// 2. Build up the accessModel for the user
 				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
-				// 3. create new DataRequestModel
+				// 3. check for the type of form [enquiry - 5safes]
+				if(schemaId.toString() === constants.enquiryFormId) 
+					formType = constants.FormTypes.Enquiry;
+								
+				// 4. create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
 					userId,
@@ -219,13 +223,14 @@ module.exports = {
 					questionAnswers: '{}',
 					aboutApplication: {},
 					applicationStatus: constants.applicationStatuses.INPROGRESS,
+					formType
 				});
-				// 4. save record
+				// 5. save record
 				const newApplication = await record.save();
 				newApplication.projectId = helper.generateFriendlyId(newApplication._id);
 				await newApplication.save();
 
-				// 5. return record
+				// 6. return record
 				data = {
 					...newApplication._doc,
 					mainApplicant: { firstname, lastname },
@@ -233,11 +238,11 @@ module.exports = {
 			} else {
 				data = { ...accessRecord.toObject() };
 			}
-			// 6. Parse json to allow us to modify schema
+			// 7. Parse json to allow us to modify schema
 			data.jsonSchema = JSON.parse(data.jsonSchema);
-			// 7. Append question actions depending on user type and application status
+			// 8. Append question actions depending on user type and application status
 			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
-			// 8. Return payload
+			// 9. Return payload
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -262,6 +267,7 @@ module.exports = {
 	//GET api/v1/data-access-request/datasets/:datasetIds
 	getAccessRequestByUserAndMultipleDatasets: async (req, res) => {
 		let accessRecord;
+		let formType = constants.FormTypes.Extended5Safe;
 		let data = {};
 		let datasets = [];
 		try {
@@ -314,7 +320,10 @@ module.exports = {
 				}
 				// 3. Build up the accessModel for the user
 				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
-				// 4. Create new DataRequestModel
+				// 4. Check form is enquiry
+				if(schemaId.toString() === constants.enquiryFormId) 
+					formType = FormType.Enquiry;
+				// 5. Create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
 					userId,
@@ -327,12 +336,13 @@ module.exports = {
 					questionAnswers: '{}',
 					aboutApplication: {},
 					applicationStatus: constants.applicationStatuses.INPROGRESS,
+					formType
 				});
-				// 4. save record
+				// 6. save record
 				const newApplication = await record.save();
 				newApplication.projectId = helper.generateFriendlyId(newApplication._id);
 				await newApplication.save();
-				// 5. return record
+				// 7. return record
 				data = {
 					...newApplication._doc,
 					mainApplicant: { firstname, lastname },
@@ -340,11 +350,11 @@ module.exports = {
 			} else {
 				data = { ...accessRecord.toObject() };
 			}
-			// 6. Parse json to allow us to modify schema
+			// 8. Parse json to allow us to modify schema
 			data.jsonSchema = JSON.parse(data.jsonSchema);
-			// 7. Append question actions depending on user type and application status
+			// 9. Append question actions depending on user type and application status
 			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
-			// 8. Return payload
+			// 10. Return payload
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -2030,8 +2040,9 @@ module.exports = {
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
 						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
-						'data access request',
-						accessRecord._id
+						'data access request received',
+						accessRecord._id,
+						accessRecord.datasets[0].publisher.name
 					);
 				} else {
 					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;

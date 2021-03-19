@@ -3,7 +3,7 @@ import { RecordSearchData } from '../search/record.search.model';
 import { Data } from '../tool/data.model';
 import { DataRequestModel } from '../datarequests/datarequests.model';
 import { getHdrDatasetId } from './kpis.router';
-
+import { Course } from '../course/course.model';
 const router = express.Router();
 
 /**
@@ -89,6 +89,16 @@ router.get('', async (req, res) => {
 					{ $group: { _id: '$type', count: { $sum: 1 } } },
 				];
 
+				//set the aggregate queries
+				const courseQuery = [
+					{
+						$match: {
+							$and: [{ activeflag: 'active' }],
+						},
+					},
+					{ $group: { _id: '$type', count: { $sum: 1 } } },
+				];
+
 				var q = RecordSearchData.aggregate(aggregateQuerySearches);
 
 				var aggregateAccessRequests = [
@@ -106,6 +116,15 @@ router.get('', async (req, res) => {
 				];
 
 				var y = DataRequestModel.aggregate(aggregateAccessRequests);
+				let courseData = Course.aggregate(courseQuery);
+
+				let counts = {}; //hold the type (i.e. tool, person, project, access requests) counts data
+				await courseData.exec((err, res) => {
+					if (err) return res.json({ success: false, error: err });
+
+					let { count = 0 } = res[0];
+					counts['course'] = count;
+				});
 
 				q.exec((err, dataSearches) => {
 					if (err) return res.json({ success: false, error: err });
@@ -114,7 +133,6 @@ router.get('', async (req, res) => {
 					x.exec((errx, dataTypes) => {
 						if (errx) return res.json({ success: false, error: errx });
 
-						var counts = {}; //hold the type (i.e. tool, person, project, access requests) counts data
 						for (var i = 0; i < dataTypes.length; i++) {
 							//format the result in a clear and dynamic way
 							counts[dataTypes[i]._id] = dataTypes[i].count;
