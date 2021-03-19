@@ -1,9 +1,5 @@
 import { model, Schema } from 'mongoose';
-
-const FormTypes = Object.freeze({
-  Enquiry : 'enquiry',
-  Extended5Safe : '5 safes'
-});
+import constants from '../utilities/constants.util';
 
 const DataRequestSchemas = new Schema({
   id: Number,
@@ -22,16 +18,12 @@ const DataRequestSchemas = new Schema({
   },
   formType: {
     type: String,
-    default: '5 safes',
-    enum: Object.values(FormTypes),
+    default: constants.FormTypes.Extended5Safe,
+    enum: Object.values(constants.FormTypes)
   },
   jsonSchema: String,
 }, {
   timestamps: true 
-});
-
-Object.assign(DataRequestSchemas.statics, {
-  FormTypes,
 });
 
 
