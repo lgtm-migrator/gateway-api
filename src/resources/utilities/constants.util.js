@@ -4,6 +4,8 @@ const _userTypes = {
 	APPLICANT: 'applicant',
 };
 
+const _enquiryFormId = '5f0c4af5d138d3e486270031';
+
 const _userQuestionActions = {
 	custodian: {
 		reviewer: {
@@ -326,6 +328,7 @@ const _hdrukEmail = 'enquiry@healthdatagateway.org';
 
 export default {
 	userTypes: _userTypes,
+	enquiryFormId: _enquiryFormId,
 	userQuestionActions: _userQuestionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
