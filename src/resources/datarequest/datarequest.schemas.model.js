@@ -21,7 +21,10 @@ const DataRequestSchemas = new Schema({
     default: constants.FormTypes.Extended5Safe,
     enum: Object.values(constants.FormTypes)
   },
-  jsonSchema: String,
+  jsonSchema: { 
+    type: Object, 
+    default: {} 
+  },
   isCloneable: Boolean
 }, {
   timestamps: true 
