@@ -594,12 +594,12 @@ const _generateDARClonedEmail = options => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                      Data access request application has been copied
+                      Data access request application has been duplicated
                     </th>
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     ${firstname} ${lastname} has copied the contents of the following application into a new form.  
+                     ${firstname} ${lastname} has duplicated the contents of the following application into a new form.  
                      <p>
                         You will have received this message if you were a contributor to the original form, 
                         but you will not have access to the new form unless granted by the creator, 

@@ -2471,7 +2471,7 @@ module.exports = {
 				// 1. Create notifications
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully copied into a new form for ${newDatasetTitles.join(
+					`Your Data Access Request for ${datasetTitles} was successfully duplicated into a new form for ${newDatasetTitles.join(
 						','
 					)}, which can now be edited`,
 					'data access request',
@@ -2481,7 +2481,7 @@ module.exports = {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						authors.map(author => author.id),
-						`A Data Access Request you contributed to for ${datasetTitles} has been copied into a new form by ${firstname} ${lastname}`,
+						`A Data Access Request you contributed to for ${datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
 						'data access request unlinked',
 						newApplicationId
 					);
@@ -2506,7 +2506,7 @@ module.exports = {
 				await emailGenerator.sendEmail(
 					emailRecipients,
 					constants.hdrukEmail,
-					`Data Access Request for ${datasetTitles} has been copied into a new form by ${firstname} ${lastname}`,
+					`Data Access Request for ${datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
 					html,
 					false
 				);
