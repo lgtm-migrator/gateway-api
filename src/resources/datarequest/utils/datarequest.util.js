@@ -215,7 +215,7 @@ const cloneIntoNewApplication = async (appToClone, context) => {
 	const { questionAnswers } = appToClone;
 
 	// 2. Get latest publisher schema
-	const { jsonSchema, version, _id: schemaId, isCloneable = false } = await getLatestPublisherSchema(publisher);
+	const { jsonSchema, version, _id: schemaId, isCloneable = false, formType } = await getLatestPublisherSchema(publisher);
 
 	// 3. Create new application with combined details
 	let newApplication = {
@@ -224,6 +224,7 @@ const cloneIntoNewApplication = async (appToClone, context) => {
 		datasetIds,
 		datasetTitles,
 		isCloneable,
+		formType,
 		jsonSchema,
 		schemaId,
 		publisher,
