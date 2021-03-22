@@ -18,8 +18,8 @@ const DataRequestSchemas = new Schema({
   },
   formType: {
     type: String,
-    default: constants.FormTypes.Extended5Safe,
-    enum: Object.values(constants.FormTypes)
+    default: constants.formTypes.Extended5Safe,
+    enum: Object.values(constants.formTypes)
   },
   jsonSchema: { 
     type: Object, 

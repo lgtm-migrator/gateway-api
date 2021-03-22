@@ -159,7 +159,7 @@ module.exports = {
 	//GET api/v1/data-access-request/dataset/:datasetId
 	getAccessRequestByUserAndDataset: async (req, res) => {
 		let accessRecord, dataset;
-		let formType = constants.FormTypes.Extended5Safe;
+		let formType = constants.formTypes.Extended5Safe;
 		let data = {};
 		try {
 			// 1. Get dataSetId from params
@@ -203,7 +203,7 @@ module.exports = {
 				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
 				// 3. check for the type of form [enquiry - 5safes]
 				if(schemaId.toString() === constants.enquiryFormId) 
-					formType = constants.FormTypes.Enquiry;
+					formType = constants.formTypes.Enquiry;
 								
 				// 4. create new DataRequestModel
 				let record = new DataRequestModel({
@@ -259,7 +259,7 @@ module.exports = {
 	//GET api/v1/data-access-request/datasets/:datasetIds
 	getAccessRequestByUserAndMultipleDatasets: async (req, res) => {
 		let accessRecord;
-		let formType = constants.FormTypes.Extended5Safe;
+		let formType = constants.formTypes.Extended5Safe;
 		let data = {};
 		let datasets = [];
 		try {
@@ -314,7 +314,7 @@ module.exports = {
 				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
 				// 4. Check form is enquiry
 				if(schemaId.toString() === constants.enquiryFormId) 
-					formType = constants.FormTypes.Enquiry;
+					formType = constants.formTypes.Enquiry;
 				// 5. Create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
