@@ -30,7 +30,7 @@ const getTeamById = async (req, res) => {
 		return res.status(200).json({ success: true, team });
 	} catch (err) {
 		console.error(err.message);
-		return res.status(500).json(err);
+		return res.status(500).json(err.message);
 	}
 };
 
@@ -60,7 +60,7 @@ const getTeamMembers = async (req, res) => {
 		return res.status(200).json({ success: true, members: users });
 	} catch (err) {
 		console.error(err.message);
-		return res.status(500).json(err);
+		return res.status(500).json(err.message);
 	}
 };
 
@@ -144,7 +144,7 @@ const addTeamMembers = async (req, res) => {
 		// 9. Save members handling error callback if validation fails
 		team.save(async (err) => {
 			if (err) {
-				console.error(err);
+				console.error(err.message);
 				return res.status(400).json({
 					success: false,
 					message: err.message,
@@ -254,7 +254,7 @@ const deleteTeamMember = async (req, res) => {
 		team.members = updatedMembers;
 		team.save(function (err) {
 			if (err) {
-				console.error(err);
+				console.error(err.message);
 				return res.status(400).json({
 					success: false,
 					message: err.message,

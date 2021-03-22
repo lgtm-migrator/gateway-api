@@ -88,7 +88,7 @@ module.exports = {
             return res.status(201).json({ success: true, message });
         } catch (err) {
             console.error(err.message);
-            return res.status(500).json(err);
+            return res.status(500).json(err.message);
         }
     },
     // DELETE /api/v1/messages/:id
@@ -121,7 +121,7 @@ module.exports = {
             return res.status(204).json({ success: true });
         } catch (err) {
             console.error(err.message);
-            return res.status(500).json(err);
+            return res.status(500).json(err.message);
         }
     },
     // PUT /api/v1/messages
@@ -153,7 +153,7 @@ module.exports = {
             return res.status(204).json({ success:true });
         } catch(err) {
             console.error(err.message);
-            return res.status(500).json(err);
+            return res.status(500).json(err.message);
         }
     },
     // GET api/v1/messages/unread/count
@@ -180,7 +180,7 @@ module.exports = {
         }
         catch (err) {
             console.error(err.message);
-            return res.status(500).json(err);
+            return res.status(500).json(err.message);
         }
     }
 }

@@ -42,8 +42,8 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 			}
 		}
 		return { authorised, userType };
-	} catch (error) {
-		console.error(error);
+	} catch (err) {
+		console.error(err.message);
 		return { authorised: false, userType: '' };
 	}
 };

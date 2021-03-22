@@ -63,39 +63,6 @@ router.get('/admin', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Adm
 });
 
 /**
- * {get} /api/v1/accounts/admin/collections
- *
- * Returns list of all collections.
- */
-router.get('/admin/collections', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
-	var result;
-	var startIndex = 0;
-	var maxResults = 25;
-
-	if (req.query.startIndex) {
-		startIndex = req.query.startIndex;
-	}
-	if (req.query.maxResults) {
-		maxResults = req.query.maxResults;
-	}
-
-	var q = Collections.aggregate([
-		{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
-		{ $sort: { updatedAt: -1 } },
-	]); //.skip(parseInt(startIndex)).limit(parseInt(maxResults));
-	q.exec((err, data) => {
-		if (err) return res.json({ success: false, error: err });
-
-		data.map(dat => {
-			dat.persons = helper.hidePrivateProfileDetails(dat.persons);
-		});
-		result = res.json({ success: true, data: data });
-	});
-
-	return result;
-});
-
-/**
  * {get} /api/v1/accounts
  *
  * Return list of tools, this can be with filters or/and search criteria. This will also include pagination on results.
@@ -202,7 +169,7 @@ router.put('/status', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Ad
 
 		return res.json({ success: true });
 	} catch (err) {
-		console.log(err);
+		console.error(err.message);
 		return res.status(500).json({ success: false, error: err });
 	}
 });

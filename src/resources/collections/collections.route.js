@@ -2,21 +2,51 @@ import express from 'express';
 import { ROLES } from '../user/user.roles';
 import passport from 'passport';
 import { utils } from '../auth';
-// import { UserModel } from '../user/user.model'
 import { Collections } from '../collections/collections.model';
+import { Data } from '../tool/data.model';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model';
-import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
 import escape from 'escape-html';
+import {
+	getCollectionObjects,
+	getCollectionsAdmin,
+	getCollections,
+	sendEmailNotifications,
+	generateCollectionEmailSubject,
+} from './collections.repository';
+
 const inputSanitizer = require('../utilities/inputSanitizer');
 
 const urlValidator = require('../utilities/urlValidator');
 
-const hdrukEmail = `enquiry@healthdatagateway.org`;
-
 const router = express.Router();
+
+// @router   GET /api/v1/collections/getList
+// @desc     Returns List of Collections
+// @access   Private
+router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+	let role = req.user.role;
+
+	if (role === ROLES.Admin) {
+		await getCollectionsAdmin(req)
+			.then(data => {
+				return res.json({ success: true, data });
+			})
+			.catch(err => {
+				return res.json({ success: false, err });
+			});
+	} else if (role === ROLES.Creator) {
+		await getCollections(req)
+			.then(data => {
+				return res.json({ success: true, data });
+			})
+			.catch(err => {
+				return res.json({ success: false, err });
+			});
+	}
+});
 
 router.get('/:collectionID', async (req, res) => {
 	var q = Collections.aggregate([
@@ -34,7 +64,22 @@ router.get('/:collectionID', async (req, res) => {
 	});
 });
 
+router.get('/relatedobjects/:collectionID', async (req, res) => {
+	await getCollectionObjects(req)
+		.then(data => {
+			return res.json({ success: true, data });
+		})
+		.catch(err => {
+			return res.json({ success: false, err });
+		});
+});
+
 router.get('/entityid/:entityID', async (req, res) => {
+	let entityID = req.params.entityID;
+	let dataVersions = await Data.find({ pid: entityID }, { _id: 0, datasetid: 1 });
+	let dataVersionsArray = dataVersions.map(a => a.datasetid);
+	dataVersionsArray.push(entityID);
+
 	var q = Collections.aggregate([
 		{
 			$match: {
@@ -44,10 +89,10 @@ router.get('/entityid/:entityID', async (req, res) => {
 							$elemMatch: {
 								$or: [
 									{
-										objectId: req.params.entityID,
+										objectId: { $in: dataVersionsArray },
 									},
 									{
-										pid: req.params.entityID,
+										pid: entityID,
 									},
 								],
 							},
@@ -72,10 +117,10 @@ router.get('/entityid/:entityID', async (req, res) => {
 
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const collectionCreator = req.body.collectionCreator;
-	var { id, name, description, imageLink, authors, relatedObjects } = req.body;
+	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
 
-	Collections.findOneAndUpdate(
+	await Collections.findOneAndUpdate(
 		{ id: id },
 		{
 			name: inputSanitizer.removeNonBreakingSpaces(name),
@@ -83,6 +128,8 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 			imageLink: imageLink,
 			authors: authors,
 			relatedObjects: relatedObjects,
+			publicflag: publicflag,
+			keywords: keywords,
 		},
 		err => {
 			if (err) {
@@ -92,6 +139,20 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	).then(() => {
 		return res.json({ success: true });
 	});
+
+	await Collections.find({ id: id }, { publicflag: 1, id: 1, activeflag: 1, authors: 1, name: 1 }).then(async res => {
+		if (previousPublicFlag === false && publicflag === true) {
+			await sendEmailNotifications(res[0], res[0].activeflag, collectionCreator, true);
+
+			if (res[0].authors) {
+				res[0].authors.forEach(async authorId => {
+					await createMessage(authorId, res[0], res[0].activeflag, collectionCreator, true);
+				});
+			}
+
+			await createMessage(0, res[0], res[0].activeflag, collectionCreator, true);
+		}
+	});
 });
 
 router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
@@ -99,7 +160,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 
 	const collectionCreator = req.body.collectionCreator;
 
-	const { name, description, imageLink, authors, relatedObjects } = req.body;
+	const { name, description, imageLink, authors, relatedObjects, publicflag, keywords } = req.body;
 
 	collections.id = parseInt(Math.random().toString().replace('0.', ''));
 	collections.name = inputSanitizer.removeNonBreakingSpaces(name);
@@ -108,21 +169,18 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	collections.authors = authors;
 	collections.relatedObjects = relatedObjects;
 	collections.activeflag = 'active';
+	collections.publicflag = publicflag;
+	collections.keywords = keywords;
 
-	try {
-		if (collections.authors) {
-			collections.authors.forEach(async authorId => {
-				await createMessage(authorId, collections, collections.activeflag, collectionCreator);
-			});
-		}
-		await createMessage(0, collections, collections.activeflag, collectionCreator);
-
-		// Send email notifications to all admins and authors who have opted in
-		await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
-	} catch (err) {
-		console.log(err);
-		// return res.status(500).json({ success: false, error: err });
+	if (collections.authors) {
+		collections.authors.forEach(async authorId => {
+			await createMessage(authorId, collections, collections.activeflag, collectionCreator);
+		});
 	}
+
+	await createMessage(0, collections, collections.activeflag, collectionCreator);
+
+	await sendEmailNotifications(collections, collections.activeflag, collectionCreator);
 
 	collections.save(err => {
 		if (err) {
@@ -193,7 +251,7 @@ router.delete('/delete/:id', passport.authenticate('jwt'), utils.checkIsInRole(R
 
 module.exports = router;
 
-async function createMessage(authorId, collections, activeflag, collectionCreator) {
+async function createMessage(authorId, collections, activeflag, collectionCreator, isEdit) {
 	let message = new MessagesModel();
 
 	const collectionLink = process.env.homeURL + '/collection/' + collections.id;
@@ -209,80 +267,21 @@ async function createMessage(authorId, collections, activeflag, collectionCreato
 
 	if (authorId === 0) {
 		message.messageType = 'added collection';
-		message.messageDescription = `${collectionCreator.name} added a new collection: ${collections.name}.`;
+		message.messageDescription = generateCollectionEmailSubject('Admin', collections.publicflag, collections.name, false, isEdit);
 		saveMessage();
 	}
 
 	for (let messageRecipient of messageRecipients) {
-		if (activeflag === 'active' && authorId === messageRecipient.id && authorId === collectionCreator.id) {
+		if (activeflag === 'active' && authorId === messageRecipient.id) {
 			message.messageType = 'added collection';
-			message.messageDescription = `Your new collection ${collections.name} has been added.`;
-			saveMessage();
-		} else if (activeflag === 'active' && authorId === messageRecipient.id && authorId !== collectionCreator.id) {
-			message.messageType = 'added collection';
-			message.messageDescription = `${collectionCreator.name} added you as a collaborator on the new collection ${collections.name}.`;
+			message.messageDescription = generateCollectionEmailSubject(
+				'Creator',
+				collections.publicflag,
+				collections.name,
+				authorId === collectionCreator.id ? true : false,
+				isEdit
+			);
 			saveMessage();
 		}
 	}
-
-	//UPDATE WHEN ARCHIVE/DELETE IS AVAILABLE FOR COLLECTIONS
-	// else if (activeflag === 'archive') {
-	//   message.messageType = 'rejected';
-	//   message.messageDescription = `Your ${toolType} ${toolName} has been rejected ${collectionLink}`
-	// }
-}
-
-async function sendEmailNotifications(collections, activeflag, collectionCreator) {
-	let subject;
-	let html;
-	// 1. Generate URL for linking collection in email
-	const collectionLink = process.env.homeURL + '/collection/' + collections.id;
-
-	// 2. Build email body
-	emailRecipients.map(emailRecipient => {
-		if (activeflag === 'active' && emailRecipient.role === 'Admin') {
-			subject = `New collection ${collections.name} has been added and is now live`;
-			html = `New collection ${collections.name} has been added and is now live <br /><br />  ${collectionLink}`;
-		}
-
-		collections.authors.map(author => {
-			if (activeflag === 'active' && author === emailRecipient.id && author === collectionCreator.id) {
-				subject = `Your collection ${collections.name} has been added and is now live`;
-				html = `Your collection ${collections.name} has been added and is now live <br /><br />  ${collectionLink}`;
-			} else if (activeflag === 'active' && author === emailRecipient.id && author !== collectionCreator.id) {
-				subject = `You have been added as a collaborator on collection ${collections.name}`;
-				html = `${collectionCreator.name} has added you as a collaborator to the collection ${collections.name} which is now live <br /><br />  ${collectionLink}`;
-			}
-		});
-	});
-
-	if (activeflag === 'active') {
-		subject = `Your collection ${collections.name} has been approved and is now live`;
-		html = `Your collection ${collections.name} has been approved and is now live <br /><br />  ${collectionLink}`;
-	}
-	//UPDATE WHEN ARCHIVE/DELETE IS AVAILABLE FOR COLLECTIONS
-	// else if (activeflag === 'archive') {
-	//   subject = `Your collection ${collections.name} has been rejected`
-	//   html = `Your collection ${collections.name} has been rejected <br /><br />  ${collectionLink}`
-	// }
-
-	// 3. Query Db for all admins or authors of the collection who have opted in to email updates
-	var q = UserModel.aggregate([
-		// Find all users who are admins or authors of this collection
-		{ $match: { $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] } },
-		// Perform lookup to check opt in/out flag in tools schema
-		{ $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
-		// Filter out any user who has opted out of email notifications
-		{ $match: { 'tool.emailNotifications': true } },
-		// Reduce response payload size to required fields
-		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
-	]);
-
-	// 4. Use the returned array of email recipients to generate and send emails with SendGrid
-	q.exec((err, emailRecipients) => {
-		if (err) {
-			return new Error({ success: false, error: err });
-		}
-		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html);
-	});
 }

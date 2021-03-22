@@ -50,6 +50,11 @@ const DataSchema = new Schema(
 		journal: String,
 		journalYear: Number,
 		isPreprint: Boolean,
+		document_links: {
+			doi: [String],
+			pdf: [String],
+			html: [String],
+		},
 
 		//person related fields
 		firstname: String,
@@ -69,6 +74,8 @@ const DataSchema = new Schema(
 		profileComplete: Boolean,
 
 		//dataset related fields
+		source: String,
+		is5Safes: Boolean,
 		datasetid: String,
 		pid: String,
 		datasetVersion: String,
@@ -133,6 +140,12 @@ DataSchema.virtual('tools', {
 	ref: 'Data',
 	foreignField: 'authors',
 	localField: 'id',
+});
+
+DataSchema.virtual('persons', {
+	ref: 'Data',
+	foreignField: 'id',
+	localField: 'authors',
 });
 
 export const Data = model('Data', DataSchema);

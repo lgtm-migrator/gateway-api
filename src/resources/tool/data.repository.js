@@ -4,7 +4,7 @@ import { UserModel } from '../user/user.model';
 import { createDiscourseTopic } from '../discourse/discourse.service';
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
-const asyncModule = require('async'); 
+const asyncModule = require('async');
 import { utils } from '../auth';
 import { ROLES } from '../user/user.roles';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
@@ -34,6 +34,7 @@ const addTool = async (req, res) => {
 			relatedObjects,
 			programmingLanguage,
 			isPreprint,
+			document_links,
 		} = req.body;
 		data.id = parseInt(Math.random().toString().replace('0.', ''));
 		data.type = inputSanitizer.removeNonBreakingSpaces(type);
@@ -64,6 +65,9 @@ const addTool = async (req, res) => {
 
 		data.isPreprint = isPreprint;
 		data.uploader = req.user.id;
+
+		data.document_links = validateDocumentLinks(document_links);
+
 		let newDataObj = await data.save();
 		if (!newDataObj) reject(new Error(`Can't persist data object to DB.`));
 
@@ -129,6 +133,7 @@ const editTool = async (req, res) => {
 			journalYear,
 			relatedObjects,
 			isPreprint,
+			document_links,
 		} = req.body;
 		let id = req.params.id;
 		let programmingLanguage = req.body.programmingLanguage;
@@ -142,6 +147,8 @@ const editTool = async (req, res) => {
 				p.version = inputSanitizer.removeNonBreakingSpaces(p.version);
 			});
 		}
+
+		let documentLinksValidated = validateDocumentLinks(document_links);
 
 		let data = {
 			id: id,
@@ -173,6 +180,7 @@ const editTool = async (req, res) => {
 				},
 				relatedObjects: relatedObjects,
 				isPreprint: isPreprint,
+				document_links: documentLinksValidated,
 			},
 			err => {
 				if (err) {
@@ -206,7 +214,7 @@ const deleteTool = async (req, res) => {
 		});
 	});
 };
- 
+
 const getAllTools = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
 		let startIndex = 0;
@@ -233,19 +241,18 @@ const getAllTools = async (req, res) => {
 		if (searchString.length > 0) {
 			searchQuery['$and'].push({ $text: { $search: searchString } });
 		} else {
-			searchAll = true; 
+			searchAll = true;
 		}
 		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit)]).then(values => {
 			resolve(values[0]);
 		});
 	});
-}; 
- 
-const getToolsAdmin = async (req, res) => {
+};
 
+const getToolsAdmin = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
 		let startIndex = 0;
-		let limit = 40; 
+		let limit = 40;
 		let typeString = '';
 		let searchString = '';
 		let status = 'all';
@@ -263,27 +270,29 @@ const getToolsAdmin = async (req, res) => {
 			searchString = req.query.q || '';
 		}
 		if (req.query.status) {
-			status = req.query.status
+			status = req.query.status;
 		}
 
 		let searchQuery;
-		if(status === 'all'){ 
+		if (status === 'all') {
 			searchQuery = { $and: [{ type: typeString }] };
 		} else {
 			searchQuery = { $and: [{ type: typeString }, { activeflag: status }] };
 		}
- 
+
 		let searchAll = false;
 
 		if (searchString.length > 0) {
-			searchQuery['$and'].push({ $text: { $search: searchString } }); 
+			searchQuery['$and'].push({ $text: { $search: searchString } });
 		} else {
 			searchAll = true;
 		}
 
-		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit), getCountsByStatus(typeString)]).then(values => {
-		resolve(values);
-		});
+		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit), getCountsByStatus(typeString)]).then(
+			values => {
+				resolve(values);
+			}
+		);
 	});
 };
 
@@ -308,40 +317,40 @@ const getTools = async (req, res) => {
 			idString = req.query.id;
 		}
 		if (req.query.status) {
-			status = req.query.status
+			status = req.query.status;
 		}
 
 		let searchQuery;
-		if(status === 'all'){ 
-			searchQuery = [{ type: typeString }, { authors: parseInt(idString) }] 
-		  } else {
-			searchQuery = [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: status }] 
-		  }
+		if (status === 'all') {
+			searchQuery = [{ type: typeString }, { authors: parseInt(idString) }];
+		} else {
+			searchQuery = [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: status }];
+		}
 
 		let query = Data.aggregate([
 			{ $match: { $and: searchQuery } },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 			{ $sort: { updatedAt: -1 } },
 		])
-		.skip(parseInt(startIndex))
-		.limit(parseInt(limit));
+			.skip(parseInt(startIndex))
+			.limit(parseInt(limit));
 
 		await Promise.all([getUserTools(query), getCountsByStatusCreator(typeString, idString)]).then(values => {
 			resolve(values);
 		});
-		
-		function getUserTools(query) { 
+
+		function getUserTools(query) {
 			return new Promise((resolve, reject) => {
 				query.exec((err, data) => {
-					data && data.map(dat => {
-						dat.persons = helper.hidePrivateProfileDetails(dat.persons);
-					});
+					data &&
+						data.map(dat => {
+							dat.persons = helper.hidePrivateProfileDetails(dat.persons);
+						});
 					if (typeof data === 'undefined') resolve([]);
 					else resolve(data);
 				});
 			});
 		}
-
 	});
 };
 
@@ -493,7 +502,7 @@ async function storeNotificationsForAuthors(tool, toolOwner) {
 	toolCopy.authors.push(0);
 	asyncModule.eachSeries(toolCopy.authors, async author => {
 		let message = new MessagesModel();
-		message.messageType = 'author'; 
+		message.messageType = 'author';
 		message.messageSent = Date.now();
 		message.messageDescription = `${toolOwner.name} added you as an author of the ${toolCopy.type} ${toolCopy.name}`;
 		message.isRead = false;
@@ -521,7 +530,7 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 			{ $lookup: { from: 'tools', localField: 'id', foreignField: 'authors', as: 'objects' } },
 			{ $lookup: { from: 'reviews', localField: 'id', foreignField: 'toolID', as: 'reviews' } },
 		])
-			.sort({ updatedAt: -1 })
+			.sort({ updatedAt: -1, _id: 1 })
 			.skip(parseInt(startIndex))
 			.limit(parseInt(limit));
 	} else {
@@ -546,46 +555,90 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 	});
 }
 
-function getCountsByStatus(type) { 
-	let q = Data.find({ type: type}, { id: 1, name: 1, activeflag: 1 });
-  
+function getCountsByStatus(type) {
+	let q = Data.find({ type: type }, { id: 1, name: 1, activeflag: 1 });
+
 	return new Promise((resolve, reject) => {
 		q.exec((err, data) => {
-			const activeCount = data.filter(dat => dat.activeflag === 'active').length
-			const reviewCount = data.filter(dat => dat.activeflag === 'review').length
-			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length
-			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length
+			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
+			const reviewCount = data.filter(dat => dat.activeflag === 'review').length;
+			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length;
+			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length;
 
-			let countSummary = {'activeCount': activeCount,
-								'reviewCount': reviewCount,
-								'rejectedCount': rejectedCount,
-								'archiveCount': archiveCount
-								}
+			let countSummary = { activeCount: activeCount, reviewCount: reviewCount, rejectedCount: rejectedCount, archiveCount: archiveCount };
 
 			resolve(countSummary);
-		})
+		});
 	});
 }
 
-function getCountsByStatusCreator(type, idString) { 
+function getCountsByStatusCreator(type, idString) {
 	let q = Data.find({ $and: [{ type: type }, { authors: parseInt(idString) }] }, { id: 1, name: 1, activeflag: 1 });
-  
+
 	return new Promise((resolve, reject) => {
 		q.exec((err, data) => {
-			const activeCount = data.filter(dat => dat.activeflag === 'active').length
-			const reviewCount = data.filter(dat => dat.activeflag === 'review').length
-			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length
-			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length
+			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
+			const reviewCount = data.filter(dat => dat.activeflag === 'review').length;
+			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length;
+			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length;
 
-			let countSummary = {'activeCount': activeCount,
-								'reviewCount': reviewCount,
-								'rejectedCount': rejectedCount,
-								'archiveCount': archiveCount
-								}
- 
+			let countSummary = { activeCount: activeCount, reviewCount: reviewCount, rejectedCount: rejectedCount, archiveCount: archiveCount };
+
 			resolve(countSummary);
-		})
+		});
 	});
 }
 
-export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin, getAllTools };
+function validateDocumentLinks(document_links) {
+	let documentLinksValidated = { doi: [], pdf: [], html: [] };
+	if (document_links) {
+		document_links.doi.forEach(url => {
+			if (urlValidator.isDOILink(url)) {
+				documentLinksValidated.doi.push(urlValidator.validateURL(url));
+			} else {
+				documentLinksValidated.html.push(urlValidator.validateURL(url));
+			}
+		});
+		document_links.pdf.forEach(url => {
+			if (urlValidator.isDOILink(url)) {
+				documentLinksValidated.doi.push(urlValidator.validateURL(url));
+			} else {
+				documentLinksValidated.pdf.push(urlValidator.validateURL(url));
+			}
+		});
+		document_links.html.forEach(url => {
+			if (urlValidator.isDOILink(url)) {
+				documentLinksValidated.doi.push(urlValidator.validateURL(url));
+			} else {
+				documentLinksValidated.html.push(urlValidator.validateURL(url));
+			}
+		});
+	}
+	return documentLinksValidated;
+}
+
+function formatRetroDocumentLinks(document_links) {
+	let documentLinksValidated = { doi: [], pdf: [], html: [] };
+
+	document_links.forEach(obj => {
+		for (const [key, value] of Object.entries(obj)) {
+			switch (key) {
+				case 'doi':
+					documentLinksValidated.doi.push(value);
+					break;
+				case 'pdf':
+					documentLinksValidated.pdf.push(value);
+					break;
+				case 'html':
+					documentLinksValidated.html.push(value);
+					break;
+				default:
+					break;
+			}
+		}
+	});
+
+	return documentLinksValidated;
+}
+
+export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks };
