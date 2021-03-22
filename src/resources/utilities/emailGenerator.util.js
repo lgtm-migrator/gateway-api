@@ -1,4 +1,4 @@
-import _, { isNil } from 'lodash';
+import { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
@@ -12,13 +12,13 @@ let excludedQuestionSetIds = ['addRepeatableSection', 'removeRepeatableSection']
 let autoCompleteLookups = { fullname: ['email'] };
 
 const _getStepReviewers = (reviewers = []) => {
-	if (!_.isEmpty(reviewers)) return [...reviewers].map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+	if (!isEmpty(reviewers)) return [...reviewers].map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
 
 	return '';
 };
 
 const _getStepSections = (sections = []) => {
-	if (!_.isEmpty(sections)) return [...sections].map(section => constants.darPanelMapper[section]).join(', ');
+	if (!isEmpty(sections)) return [...sections].map(section => constants.darPanelMapper[section]).join(', ');
 
 	return '';
 };
@@ -182,7 +182,7 @@ const _getAllQuestionsFlattened = allQuestions => {
 
 const _formatSectionTitle = value => {
 	let [questionId] = value.split('_');
-	return _.capitalize(questionId);
+	return capitalize(questionId);
 };
 
 const _buildSubjectTitle = (user, title, submissionType) => {
@@ -356,13 +356,13 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
  */
 const _groupByPageSection = allQuestions => {
 	// group by page [Safe People, Safe Project]
-	let groupedByPage = _.groupBy(allQuestions, item => {
+	let groupedByPage = groupBy(allQuestions, item => {
 		return item.page;
 	});
 
 	// within grouped [Safe People: {Applicant, Applicant1, Something}]
-	let grouped = _.forEach(groupedByPage, (value, key) => {
-		groupedByPage[key] = _.groupBy(groupedByPage[key], item => {
+	let grouped = forEach(groupedByPage, (value, key) => {
+		groupedByPage[key] = groupBy(groupedByPage[key], item => {
 			return item.questionSetId;
 		});
 	});
