@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+import constants from '../utilities/constants.util';
 
 const DataRequestSchemas = new Schema({
   id: Number,
@@ -15,9 +16,21 @@ const DataRequestSchemas = new Schema({
     type: String,
     default: ''
   },
-  jsonSchema: String,
+  formType: {
+    type: String,
+    default: constants.formTypes.Extended5Safe,
+    enum: Object.values(constants.formTypes)
+  },
+  jsonSchema: { 
+    type: Object, 
+    default: {} 
+  },
+  isCloneable: Boolean
 }, {
   timestamps: true 
 });
 
+
 export const DataRequestSchemaModel = model('data_request_schemas', DataRequestSchemas); 
+
+

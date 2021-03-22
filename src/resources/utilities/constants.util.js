@@ -4,6 +4,13 @@ const _userTypes = {
 	APPLICANT: 'applicant',
 };
 
+const _formTypes = Object.freeze({
+  Enquiry : 'enquiry',
+  Extended5Safe : '5 safes'
+});
+
+const _enquiryFormId = '5f0c4af5d138d3e486270031';
+
 const _userQuestionActions = {
 	custodian: {
 		reviewer: {
@@ -272,7 +279,8 @@ const _notificationTypes = {
 	MEMBERROLECHANGED: 'MemberRoleChanged',
 	WORKFLOWASSIGNED: 'WorkflowAssigned',
 	WORKFLOWCREATED: 'WorkflowCreated',
-	INPROGRESS: 'InProgress'
+	INPROGRESS: 'InProgress',
+	APPLICATIONCLONED: 'ApplicationCloned'
 };
 
 const _applicationStatuses = {
@@ -326,6 +334,8 @@ const _hdrukEmail = 'enquiry@healthdatagateway.org';
 
 export default {
 	userTypes: _userTypes,
+	enquiryFormId: _enquiryFormId,
+	formTypes: _formTypes,
 	userQuestionActions: _userQuestionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
