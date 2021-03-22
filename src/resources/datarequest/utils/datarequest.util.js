@@ -35,7 +35,7 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 		}
 		// If user is not authenticated as a custodian, check if they are an author or the main applicant
 		if (application.applicationStatus === constants.applicationStatuses.INPROGRESS || isEmpty(userType)) {
-			if (application.authorIds.includes(userId) || application.userId === userId) {
+			if (application.userId === userId || (application.authorIds && application.authorIds.includes(userId))) {
 				userType = constants.userTypes.APPLICANT;
 				authorised = true;
 			}

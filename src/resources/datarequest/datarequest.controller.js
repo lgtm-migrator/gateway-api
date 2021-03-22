@@ -216,7 +216,7 @@ module.exports = {
 					jsonSchema,
 					schemaId,
 					publisher,
-					questionAnswers: '{}',
+					questionAnswers: {},
 					aboutApplication: {},
 					applicationStatus: constants.applicationStatuses.INPROGRESS,
 					formType
@@ -314,7 +314,7 @@ module.exports = {
 				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
 				// 4. Check form is enquiry
 				if(schemaId.toString() === constants.enquiryFormId) 
-					formType = FormType.Enquiry;
+					formType = constants.FormTypes.Enquiry;
 				// 5. Create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
@@ -325,7 +325,7 @@ module.exports = {
 					jsonSchema,
 					schemaId,
 					publisher,
-					questionAnswers: '{}',
+					questionAnswers: {},
 					aboutApplication: {},
 					applicationStatus: constants.applicationStatuses.INPROGRESS,
 					formType
@@ -1625,15 +1625,17 @@ module.exports = {
 			if (!authorised || userType !== constants.userTypes.APPLICANT) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
-			// 6. Perform different action depending on mode passed
+			// 6. Extract schema and answers
+			let { jsonSchema, questionAnswers } = _.cloneDeep(accessRecord);
+			// 7. Perform different action depending on mode passed
 			switch (mode) {
 				case constants.formActions.ADDREPEATABLESECTION:
-					let duplicateQuestionSet = dynamicForm.duplicateQuestionSet(questionSetId, accessRecord.jsonSchema);
-					accessRecord.jsonSchema = dynamicForm.insertQuestionSet(questionSetId, duplicateQuestionSet, accessRecord.jsonSchema);
+					let duplicateQuestionSet = dynamicForm.duplicateQuestionSet(questionSetId, jsonSchema);
+					jsonSchema = dynamicForm.insertQuestionSet(questionSetId, duplicateQuestionSet, jsonSchema);
 					break;
 				case constants.formActions.REMOVEREPEATABLESECTION:
-					accessRecord.jsonSchema = dynamicForm.removeQuestionSetReferences(questionSetId, questionId, accessRecord.jsonSchema);
-					accessRecord.questionAnswers = dynamicForm.removeQuestionSetAnswers(questionId, accessRecord.questionAnswers);
+					jsonSchema = dynamicForm.removeQuestionSetReferences(questionSetId, questionId, jsonSchema);
+					questionAnswers = dynamicForm.removeQuestionSetAnswers(questionId, questionAnswers);
 					break;
 				case constants.formActions.ADDREPEATABLEQUESTIONS:
 					if (_.isEmpty(questionIds)) {
@@ -1642,8 +1644,8 @@ module.exports = {
 							message: 'You must supply the question identifiers to duplicate when performing this action',
 						});
 					}
-					let duplicateQuestions = dynamicForm.duplicateQuestions(questionSetId, questionIds, separatorText, accessRecord.jsonSchema);
-					accessRecord.jsonSchema = dynamicForm.insertQuestions(questionSetId, questionId, duplicateQuestions, accessRecord.jsonSchema);
+					let duplicateQuestions = dynamicForm.duplicateQuestions(questionSetId, questionIds, separatorText, jsonSchema);
+					jsonSchema = dynamicForm.insertQuestions(questionSetId, questionId, duplicateQuestions, jsonSchema);
 					break;
 				case constants.formActions.REMOVEREPEATABLEQUESTIONS:
 					if (_.isEmpty(questionIds)) {
@@ -1652,10 +1654,9 @@ module.exports = {
 							message: 'You must supply the question identifiers to remove when performing this action',
 						});
 					}
-					// Add clicked 'remove' button to questions to delete (questionId)
 					questionIds = [...questionIds, questionId];
-					accessRecord.jsonSchema = dynamicForm.removeQuestionReferences(questionSetId, questionIds, accessRecord.jsonSchema);
-					accessRecord.questionAnswers = dynamicForm.removeQuestionAnswers(questionIds, accessRecord.questionAnswers);
+					jsonSchema = dynamicForm.removeQuestionReferences(questionSetId, questionIds, jsonSchema);
+					questionAnswers = dynamicForm.removeQuestionAnswers(questionIds, questionAnswers);
 					break;
 				default:
 					return res.status(400).json({
@@ -1663,25 +1664,28 @@ module.exports = {
 						message: 'You must supply a valid action to perform',
 					});
 			}
-			// 7. Save changes to database
+			// 8. Update record
+			accessRecord.jsonSchema = jsonSchema;
+			accessRecord.questionAnswers = questionAnswers;
+			// 9. Save changes to database
 			await accessRecord.save(async err => {
 				if (err) {
 					console.error(err.message);
 					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
-					// 8. Append question actions for in progress applicant
+					// 10. Append question actions for in progress applicant
 					jsonSchema = datarequestUtil.injectQuestionActions(
 						jsonSchema,
 						constants.userTypes.APPLICANT, // current user type
 						constants.applicationStatuses.INPROGRESS,
 						constants.userTypes.APPLICANT // active party
 					);
-					// 9. Return necessary object to reflect schema update
+					// 11. Return necessary object to reflect schema update
 					return res.status(200).json({
 						success: true,
 						accessRecord: {
 							jsonSchema,
-							questionAnswers,
+							questionAnswers
 						},
 					});
 				}
@@ -1752,7 +1756,35 @@ module.exports = {
 				});
 			} else {
 				findQuery = { _id: appIdToCloneInto };
-				let appToCloneInto = await DataRequestModel.findOne(findQuery).lean();
+				let appToCloneInto = await DataRequestModel.findOne(findQuery)
+				.populate([
+					{
+						path: 'datasets dataset authors',
+					},
+					{
+						path: 'mainApplicant',
+					},
+					{
+						path: 'publisherObj',
+						populate: {
+							path: 'team',
+							populate: {
+								path: 'users',
+							},
+						},
+					},
+				])
+				.lean();
+				// Ensure application to clone into was found
+				if (!appToCloneInto) {
+					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
+				}
+				// Get permissions for application to clone into
+				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToCloneInto, req.user.id, req.user._id);
+				//  Return unauthorised message if the requesting user is not authorised to the new application
+				if (!authorised || userType !== constants.userTypes.APPLICANT) {
+					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+				}
 				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
 			}
 
