@@ -35,7 +35,7 @@ module.exports = {
 			let applications = await DataRequestModel.find({
 				$and: [{ ...query }, { $or: [{ userId: parseInt(userId) }, { authorIds: userId }] }],
 			})
-				.select("-jsonSchema -questionAnswers -files")
+				.select('-jsonSchema -questionAnswers -files')
 				.populate('datasets mainApplicant')
 				.lean();
 
@@ -120,8 +120,6 @@ module.exports = {
 				}
 			}
 			// 11. Update json schema and question answers with modifications since original submission
-			accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
-			accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
 			accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
 			// 12. Determine the current active party handling the form
 			let activeParty = amendmentController.getAmendmentIterationParty(accessRecord);
@@ -139,8 +137,6 @@ module.exports = {
 				status: 'success',
 				data: {
 					...accessRecord,
-					aboutApplication:
-						typeof accessRecord.aboutApplication === 'string' ? JSON.parse(accessRecord.aboutApplication) : accessRecord.aboutApplication,
 					datasets: accessRecord.datasets,
 					readOnly,
 					...countUnsubmittedAmendments,
@@ -162,9 +158,9 @@ module.exports = {
 
 	//GET api/v1/data-access-request/dataset/:datasetId
 	getAccessRequestByUserAndDataset: async (req, res) => {
-		let accessRecord;
+		let accessRecord, dataset;
+		let formType = constants.formTypes.Extended5Safe;
 		let data = {};
-		let dataset;
 		try {
 			// 1. Get dataSetId from params
 			let {
@@ -204,27 +200,33 @@ module.exports = {
 					});
 				}
 				// 2. Build up the accessModel for the user
-				let { jsonSchema, version, _id: schemaId } = accessRequestTemplate;
-				// 3. create new DataRequestModel
+				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
+				// 3. check for the type of form [enquiry - 5safes]
+				if(schemaId.toString() === constants.enquiryFormId) 
+					formType = constants.formTypes.Enquiry;
+								
+				// 4. create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
 					userId,
 					dataSetId,
 					datasetIds: [dataSetId],
 					datasetTitles: [dataset.name],
+					isCloneable,
 					jsonSchema,
 					schemaId,
 					publisher,
-					questionAnswers: '{}',
+					questionAnswers: {},
 					aboutApplication: {},
 					applicationStatus: constants.applicationStatuses.INPROGRESS,
+					formType
 				});
-				// 4. save record
+				// 5. save record
 				const newApplication = await record.save();
 				newApplication.projectId = helper.generateFriendlyId(newApplication._id);
 				await newApplication.save();
 
-				// 5. return record
+				// 6. return record
 				data = {
 					...newApplication._doc,
 					mainApplicant: { firstname, lastname },
@@ -232,8 +234,6 @@ module.exports = {
 			} else {
 				data = { ...accessRecord.toObject() };
 			}
-			// 6. Parse json to allow us to modify schema
-			data.jsonSchema = JSON.parse(data.jsonSchema);
 			// 7. Append question actions depending on user type and application status
 			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
 			// 8. Return payload
@@ -241,8 +241,6 @@ module.exports = {
 				status: 'success',
 				data: {
 					...data,
-					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
 					dataset,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: constants.userTypes.APPLICANT,
@@ -261,6 +259,7 @@ module.exports = {
 	//GET api/v1/data-access-request/datasets/:datasetIds
 	getAccessRequestByUserAndMultipleDatasets: async (req, res) => {
 		let accessRecord;
+		let formType = constants.formTypes.Extended5Safe;
 		let data = {};
 		let datasets = [];
 		try {
@@ -312,25 +311,30 @@ module.exports = {
 					});
 				}
 				// 3. Build up the accessModel for the user
-				let { jsonSchema, version, _id: schemaId } = accessRequestTemplate;
-				// 4. Create new DataRequestModel
+				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
+				// 4. Check form is enquiry
+				if(schemaId.toString() === constants.enquiryFormId) 
+					formType = constants.formTypes.Enquiry;
+				// 5. Create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
 					userId,
 					datasetIds: arrDatasetIds,
 					datasetTitles: arrDatasetNames,
+					isCloneable,
 					jsonSchema,
 					schemaId,
 					publisher,
-					questionAnswers: '{}',
+					questionAnswers: {},
 					aboutApplication: {},
 					applicationStatus: constants.applicationStatuses.INPROGRESS,
+					formType
 				});
-				// 4. save record
+				// 6. save record
 				const newApplication = await record.save();
 				newApplication.projectId = helper.generateFriendlyId(newApplication._id);
 				await newApplication.save();
-				// 5. return record
+				// 7. return record
 				data = {
 					...newApplication._doc,
 					mainApplicant: { firstname, lastname },
@@ -338,17 +342,13 @@ module.exports = {
 			} else {
 				data = { ...accessRecord.toObject() };
 			}
-			// 6. Parse json to allow us to modify schema
-			data.jsonSchema = JSON.parse(data.jsonSchema);
-			// 7. Append question actions depending on user type and application status
+			// 8. Append question actions depending on user type and application status
 			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
-			// 8. Return payload
+			// 9. Return payload
 			return res.status(200).json({
 				status: 'success',
 				data: {
 					...data,
-					questionAnswers: JSON.parse(data.questionAnswers),
-					aboutApplication: typeof data.aboutApplication === 'string' ? JSON.parse(data.aboutApplication) : data.aboutApplication,
 					datasets,
 					projectId: data.projectId || helper.generateFriendlyId(data._id),
 					userType: constants.userTypes.APPLICANT,
@@ -389,7 +389,6 @@ module.exports = {
 			module.exports.updateApplication(accessRequestRecord, updateObj).then(accessRequestRecord => {
 				const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRequestRecord;
 				if (dirtySchema) {
-					accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
 					accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
 				}
 				let data = {
@@ -416,9 +415,6 @@ module.exports = {
 		let updateObj = {};
 		let { aboutApplication, questionAnswers, updatedQuestionId, user, jsonSchema = '' } = data;
 		if (aboutApplication) {
-			if (typeof aboutApplication === 'string') {
-				aboutApplication = JSON.parse(aboutApplication);
-			}
 			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce(
 				(newObj, dataset) => {
 					newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
@@ -462,7 +458,7 @@ module.exports = {
 			if (_.isNil(updateObj.questionAnswers)) {
 				return accessRecord;
 			}
-			let updatedAnswer = JSON.parse(updateObj.questionAnswers)[updatedQuestionId];
+			let updatedAnswer = updateObj.questionAnswers[updatedQuestionId];
 			accessRecord = amendmentController.handleApplicantAmendment(accessRecord.toObject(), updatedQuestionId, '', updatedAnswer, user);
 			await DataRequestModel.replaceOne({ _id }, accessRecord, err => {
 				if (err) {
@@ -1425,8 +1421,6 @@ module.exports = {
 					});
 				} else {
 					// 8. Send notifications and emails with amendments
-					accessRecord.questionAnswers = JSON.parse(accessRecord.questionAnswers);
-					accessRecord.jsonSchema = JSON.parse(accessRecord.jsonSchema);
 					accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
 					await module.exports.createNotifications(
 						accessRecord.submissionType === constants.submissionTypes.INITIAL
@@ -1436,7 +1430,7 @@ module.exports = {
 						accessRecord,
 						req.user
 					);
-					// 8. Start workflow process in Camunda if publisher requires it and it is the first submission
+					// 9. Start workflow process in Camunda if publisher requires it and it is the first submission
 					if (accessRecord.workflowEnabled && accessRecord.submissionType === constants.submissionTypes.INITIAL) {
 						let {
 							publisherObj: { name: publisher },
@@ -1452,7 +1446,7 @@ module.exports = {
 					}
 				}
 			});
-			// 9. Return aplication and successful response
+			// 10. Return aplication and successful response
 			return res.status(200).json({ status: 'success', data: accessRecord._doc });
 		} catch (err) {
 			console.error(err.message);
@@ -1631,9 +1625,8 @@ module.exports = {
 			if (!authorised || userType !== constants.userTypes.APPLICANT) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
-			// 6. Parse the json schema to be modified
-			let jsonSchema = JSON.parse(accessRecord.jsonSchema);
-			let questionAnswers = JSON.parse(accessRecord.questionAnswers);
+			// 6. Extract schema and answers
+			let { jsonSchema, questionAnswers } = _.cloneDeep(accessRecord);
 			// 7. Perform different action depending on mode passed
 			switch (mode) {
 				case constants.formActions.ADDREPEATABLESECTION:
@@ -1661,7 +1654,6 @@ module.exports = {
 							message: 'You must supply the question identifiers to remove when performing this action',
 						});
 					}
-					// Add clicked 'remove' button to questions to delete (questionId)
 					questionIds = [...questionIds, questionId];
 					jsonSchema = dynamicForm.removeQuestionReferences(questionSetId, questionIds, jsonSchema);
 					questionAnswers = dynamicForm.removeQuestionAnswers(questionIds, questionAnswers);
@@ -1672,28 +1664,28 @@ module.exports = {
 						message: 'You must supply a valid action to perform',
 					});
 			}
-			// 8. Save changes to database
-			accessRecord.jsonSchema = JSON.stringify(jsonSchema);
-			accessRecord.questionAnswers = JSON.stringify(questionAnswers);
-
+			// 8. Update record
+			accessRecord.jsonSchema = jsonSchema;
+			accessRecord.questionAnswers = questionAnswers;
+			// 9. Save changes to database
 			await accessRecord.save(async err => {
 				if (err) {
 					console.error(err.message);
 					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
-					// 9. Append question actions for in progress applicant
+					// 10. Append question actions for in progress applicant
 					jsonSchema = datarequestUtil.injectQuestionActions(
 						jsonSchema,
 						constants.userTypes.APPLICANT, // current user type
 						constants.applicationStatuses.INPROGRESS,
 						constants.userTypes.APPLICANT // active party
 					);
-					// 10. Return necessary object to reflect schema update
+					// 11. Return necessary object to reflect schema update
 					return res.status(200).json({
 						success: true,
 						accessRecord: {
 							jsonSchema,
-							questionAnswers,
+							questionAnswers
 						},
 					});
 				}
@@ -1703,6 +1695,128 @@ module.exports = {
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred updating the application amendment',
+			});
+		}
+	},
+
+	//POST api/v1/data-access-request/:id/clone
+	cloneApplication: async (req, res) => {
+		try {
+			// 1. Get the required request and body params
+			const {
+				params: { id: appIdToClone },
+			} = req;
+			const { datasetIds = [], datasetTitles = [], publisher = '', appIdToCloneInto = '' } = req.body;
+
+			// 2. Retrieve DAR to clone from database
+			let appToClone = await DataRequestModel.findOne({ _id: appIdToClone })
+				.populate([
+					{
+						path: 'datasets dataset authors',
+					},
+					{
+						path: 'mainApplicant',
+					},
+					{
+						path: 'publisherObj',
+						populate: {
+							path: 'team',
+							populate: {
+								path: 'users',
+							},
+						},
+					},
+				])
+				.lean();
+			if (!appToClone) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, req.user.id, req.user._id);
+
+			// 4. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 5. Update question answers with modifications since original submission
+			appToClone = amendmentController.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
+
+			// 6. Set up new access record or load presubmission application as provided in request
+			let clonedAccessRecord = {},
+				findQuery = {};
+			if (_.isEmpty(appIdToCloneInto)) {
+				findQuery = { _id: mongoose.Types.ObjectId(0) };
+				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
+					userId: req.user.id,
+					datasetIds,
+					datasetTitles,
+					publisher,
+				});
+			} else {
+				findQuery = { _id: appIdToCloneInto };
+				let appToCloneInto = await DataRequestModel.findOne(findQuery)
+				.populate([
+					{
+						path: 'datasets dataset authors',
+					},
+					{
+						path: 'mainApplicant',
+					},
+					{
+						path: 'publisherObj',
+						populate: {
+							path: 'team',
+							populate: {
+								path: 'users',
+							},
+						},
+					},
+				])
+				.lean();
+				// Ensure application to clone into was found
+				if (!appToCloneInto) {
+					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
+				}
+				// Get permissions for application to clone into
+				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToCloneInto, req.user.id, req.user._id);
+				//  Return unauthorised message if the requesting user is not authorised to the new application
+				if (!authorised || userType !== constants.userTypes.APPLICANT) {
+					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+				}
+				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
+			}
+
+			// 7. Save into existing record
+			let accessRecord = await DataRequestModel.findOneAndUpdate(
+				findQuery,
+				clonedAccessRecord,
+				{ upsert: true, new: true },
+				async (err, doc) => {
+					if (err) {
+						console.error(err.message);
+						return res.status(500).json({ status: 'error', message: err.message });
+					}
+
+					// 8. Create notifications
+					await module.exports.createNotifications(
+						constants.notificationTypes.APPLICATIONCLONED,
+						{ newDatasetTitles: datasetTitles, newApplicationId: doc._id.toString() },
+						appToClone,
+						req.user
+					);
+					return res.status(200).json({
+						success: true,
+						accessRecord,
+					});
+				}
+			);
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred cloning the existing application',
 			});
 		}
 	},
@@ -1758,20 +1872,10 @@ module.exports = {
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
 		let { aboutApplication = {} } = accessRecord;
-		if (typeof aboutApplication === 'string') {
-			aboutApplication = JSON.parse(accessRecord.aboutApplication);
-		}
 		let { projectName = 'No project name set' } = aboutApplication;
 		let { projectId, _id, workflow = {}, dateSubmitted = '', jsonSchema, questionAnswers } = accessRecord;
 		if (_.isEmpty(projectId)) {
 			projectId = _id;
-		}
-		// Parse the schema
-		if (typeof jsonSchema === 'string') {
-			jsonSchema = JSON.parse(accessRecord.jsonSchema);
-		}
-		if (typeof questionAnswers === 'string') {
-			questionAnswers = JSON.parse(accessRecord.questionAnswers);
 		}
 		let { pages, questionPanels, questionSets: questions } = jsonSchema;
 		// Publisher details from single dataset
@@ -1932,8 +2036,9 @@ module.exports = {
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
 						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
-						'data access request',
-						accessRecord._id
+						'data access request received',
+						accessRecord._id,
+						accessRecord.datasets[0].publisher.name
 					);
 				} else {
 					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
@@ -2356,6 +2461,52 @@ module.exports = {
 					false
 				);
 				break;
+			case constants.notificationTypes.APPLICATIONCLONED:
+				// Deconstruct required variables from context object
+				const { newDatasetTitles, newApplicationId } = context;
+				// 1. Create notifications
+				await notificationBuilder.triggerNotificationMessage(
+					[accessRecord.userId],
+					`Your Data Access Request for ${datasetTitles} was successfully duplicated into a new form for ${newDatasetTitles.join(
+						','
+					)}, which can now be edited`,
+					'data access request',
+					newApplicationId
+				);
+				// Create authors notification
+				if (!_.isEmpty(authors)) {
+					await notificationBuilder.triggerNotificationMessage(
+						authors.map(author => author.id),
+						`A Data Access Request you contributed to for ${datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
+						'data access request unlinked',
+						newApplicationId
+					);
+				}
+				// 2. Send emails to relevant users
+				// Aggregate objects for custodian and applicant
+				emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
+				// Create object to pass through email data
+				options = {
+					id: accessRecord._id,
+					projectId,
+					projectName,
+					datasetTitles,
+					dateSubmitted,
+					applicants,
+					firstname,
+					lastname,
+				};
+				// Create email body content
+				html = emailGenerator.generateDARClonedEmail(options);
+				// Send email
+				await emailGenerator.sendEmail(
+					emailRecipients,
+					constants.hdrukEmail,
+					`Data Access Request for ${datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
+					html,
+					false
+				);
+				break;
 		}
 	},
 
@@ -2462,17 +2613,13 @@ module.exports = {
 		let { aboutApplication, questionAnswers } = app;
 
 		if (aboutApplication) {
-			if (typeof aboutApplication === 'string') {
-				aboutApplication = JSON.parse(aboutApplication);
-			}
 			({ projectName } = aboutApplication);
 		}
 		if (_.isEmpty(projectName)) {
 			projectName = `${publisher} - ${name}`;
 		}
 		if (questionAnswers) {
-			let questionAnswersObj = JSON.parse(questionAnswers);
-			applicants = datarequestUtil.extractApplicantNames(questionAnswersObj).join(', ');
+			applicants = datarequestUtil.extractApplicantNames(questionAnswers).join(', ');
 		}
 		if (_.isEmpty(applicants)) {
 			let { firstname, lastname } = app.mainApplicant;
