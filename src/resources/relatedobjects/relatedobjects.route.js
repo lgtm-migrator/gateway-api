@@ -5,6 +5,33 @@ import { Course } from '../course/course.model';
 
 const router = express.Router();
 
+router.get('/linkeddatasets/:datasetName', async (req, res) => {
+	let { datasetName } = req.params;
+
+	let data = {
+		datasetFound: false,
+		pid: null,
+		name: '',
+		publisher: '',
+	};
+
+	try {
+		if (_.isNil(datasetName)) {
+			return res.json({ success: false, error: 'No dataset name supplied' });
+		}
+		await Data.findOne({ name: datasetName }).then(async dataset => {
+			if (dataset) {
+				data.datasetFound = true;
+				data.pid = dataset.pid;
+				data.name = dataset.name;
+				data.publisher = dataset.datasetfields.publisher;
+			}
+			return res.json({ success: true, ...data });
+		});
+	} catch (err) {
+		return res.json({ success: false, error: err });
+	}
+});
 /**
  * {get} /relatedobjects/:id
  *
@@ -26,18 +53,18 @@ router.get('/:id', async (req, res) => {
 			// Get related dataset
 			let dataVersion = await Data.findOne({ datasetid: id });
 
-            if (!_.isNil(dataVersion)) {
-                id = dataVersion.pid;
-            }
-            
-            let data = await Data.findOne({ pid: id, activeflag: 'active' });
+			if (!_.isNil(dataVersion)) {
+				id = dataVersion.pid;
+			}
 
-            if (_.isNil(data)) {
-                data = await Data.findOne({ pid: id, activeflag: 'archive'}).sort({createdAt:-1});
-                if (_.isNil(data)) {
-                    data = dataVersion;
-                }
-            }
+			let data = await Data.findOne({ pid: id, activeflag: 'active' });
+
+			if (_.isNil(data)) {
+				data = await Data.findOne({ pid: id, activeflag: 'archive' }).sort({ createdAt: -1 });
+				if (_.isNil(data)) {
+					data = dataVersion;
+				}
+			}
 
 			return res.json({ success: true, data: [data] });
 		} catch (err) {
