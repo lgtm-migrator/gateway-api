@@ -11,6 +11,8 @@ router.get('/linkeddatasets/:datasetName', async (req, res) => {
 	let data = {
 		datasetFound: false,
 		pid: null,
+		name: '',
+		publisher: '',
 	};
 
 	try {
@@ -21,6 +23,8 @@ router.get('/linkeddatasets/:datasetName', async (req, res) => {
 			if (dataset) {
 				data.datasetFound = true;
 				data.pid = dataset.pid;
+				data.name = dataset.name;
+				data.publisher = dataset.datasetfields.publisher;
 			}
 			return res.json({ success: true, ...data });
 		});
