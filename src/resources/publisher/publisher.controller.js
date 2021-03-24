@@ -234,9 +234,6 @@ module.exports = {
 
 				applications = applications.map(app => {
 					let { aboutApplication = {}, _id } = app;
-					if (typeof aboutApplication === 'string') {
-						aboutApplication = JSON.parse(aboutApplication) || {};
-					}
 					let { projectName = 'No project name' } = aboutApplication;
 					return { projectName, _id };
 				});

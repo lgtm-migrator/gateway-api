@@ -104,6 +104,11 @@ router.post('/:id/requestAmendments', passport.authenticate('jwt'), amendmentCon
 // @access  Private - Applicant
 router.post('/:id/actions', passport.authenticate('jwt'), datarequestController.performAction);
 
+// @route   POST api/v1/data-access-request/:id/clone
+// @desc    Clone an existing application forms answers into a new one potentially for a different custodian
+// @access  Private - Applicant
+router.post('/:id/clone', passport.authenticate('jwt'), datarequestController.cloneApplication);
+
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record
 // @access  Private - Applicant (Gateway User)
