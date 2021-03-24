@@ -342,9 +342,28 @@ router.get('', async (req, res) => {
 				return res.json({ success: true, data: popularData });
 
 			case 'updates':
-				let recentlyUpdated = Data.find({ activeflag: 'active' }).sort({ updatedAt: -1 }).limit(10);
+				let recentlyUpdated = Data.find({ activeflag: 'active' }).sort({ updatedon: -1 }).limit(10);
 
-				if (req.query.type && req.query.type !== 'course') {
+				if (req.query.type && req.query.type === 'course') {
+					recentlyUpdated = Course.find(
+						{ activeflag: 'active' },
+						{
+							_id: 0,
+							type: 1,
+							title: 1,
+							provider: 1,
+							courseOptions: 1,
+							award: 1,
+							domains: 1,
+							description: 1,
+							id: 1,
+							counter: 1,
+							updatedon: 1,
+						}
+					)
+						.sort({ updatedon: -1, title: 1 })
+						.limit(10);
+				} else if (req.query.type && req.query.type === 'dataset') {
 					recentlyUpdated = Data.find(
 						{
 							$and: [
@@ -360,45 +379,48 @@ router.get('', async (req, res) => {
 						{
 							_id: 0,
 							type: 1,
+							name: 1,
+							pid: 1,
+							id: 1,
+							counter: 1,
+							activeflag: 1,
+							datasetv2: 1,
+							datasetfields: 1,
+							updatedAt: 1,
+						}
+					)
+						.sort({ updatedAt: -1, name: 1 })
+						.limit(10);
+				} else if (req.query.type && req.query.type !== 'course' && req.query.type !== 'dataset') {
+					recentlyUpdated = Data.find(
+						{
+							$and: [
+								{
+									type: req.query.type,
+									activeflag: 'active',
+								},
+							],
+						},
+						{
+							_id: 0,
+							type: 1,
 							bio: 1,
 							firstname: 1,
 							lastname: 1,
 							name: 1,
 							categories: 1,
-							pid: 1,
 							id: 1,
 							counter: 1,
 							programmingLanguage: 1,
 							tags: 1,
 							description: 1,
 							activeflag: 1,
-							datasetv2: 1,
-							datasetfields: 1,
 							authors: 1,
-							updatedAt: 1,
+							updatedon: 1,
 						}
 					)
 						.populate([{ path: 'persons', options: { select: { id: 1, firstname: 1, lastname: 1 } } }])
-						.sort({ updatedAt: -1, name: 1 })
-						.limit(10);
-				} else if (req.query.type && req.query.type === 'course') {
-					recentlyUpdated = Course.find(
-						{ activeflag: 'active' },
-						{
-							_id: 0,
-							type: 1,
-							title: 1,
-							provider: 1,
-							courseOptions: 1,
-							award: 1,
-							domains: 1,
-							description: 1,
-							id: 1,
-							counter: 1,
-							updatedAt: 1,
-						}
-					)
-						.sort({ updatedAt: -1, title: 1 })
+						.sort({ updatedon: -1, name: 1 })
 						.limit(10);
 				}
 
