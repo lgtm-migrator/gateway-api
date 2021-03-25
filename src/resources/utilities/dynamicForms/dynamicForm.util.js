@@ -1,5 +1,5 @@
 import randomstring from 'randomstring';
-import _, { uniqueId } from 'lodash';
+import _ from 'lodash';
 
 let findQuestion = (questionId = '', questionSet = []) => {
 	if (!_.isEmpty(questionId) && !_.isEmpty(questionSet)) {

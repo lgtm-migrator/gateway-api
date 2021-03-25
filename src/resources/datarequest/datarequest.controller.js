@@ -1774,7 +1774,7 @@ module.exports = {
 					publisher,
 				});
 				// Save new record
-				accessRecord = await DataRequestModel.create(clonedAccessRecord, saveCallBack);
+				await DataRequestModel.create(clonedAccessRecord, saveCallBack);
 			} else {
 				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto })
 					.populate([
@@ -1808,7 +1808,7 @@ module.exports = {
 				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
 
 				// Save into existing record
-				accessRecord = await DataRequestModel.findOneAndUpdate({ _id: appIdToCloneInto }, clonedAccessRecord, { new: true }, saveCallBack);
+				await DataRequestModel.findOneAndUpdate({ _id: appIdToCloneInto }, clonedAccessRecord, { new: true }, saveCallBack);
 			}
 		} catch (err) {
 			console.error(err.message);
