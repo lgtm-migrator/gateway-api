@@ -6,7 +6,7 @@ const _userTypes = {
 
 const _formTypes = Object.freeze({
   Enquiry : 'enquiry',
-  Extended5Safe : '5 safes'
+  Extended5Safe : '5 safe'
 });
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
