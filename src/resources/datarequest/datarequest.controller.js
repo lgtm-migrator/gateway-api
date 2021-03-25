@@ -1699,7 +1699,6 @@ module.exports = {
 
 	//POST api/v1/data-access-request/:id/clone
 	cloneApplication: async (req, res) => {
-		let accessRecord = {};
 		try {
 			// 1. Get the required request and body params
 			const {
