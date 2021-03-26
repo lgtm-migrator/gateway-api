@@ -1876,25 +1876,23 @@ module.exports = {
 			} = req;
 
 			// 2. Retrieve DAR to clone from database
-			let appToDelete = await DataRequestModel.findOne({ _id: appIdToDelete })
-				.populate([
-					{
-						path: 'datasets dataset authors',
-					},
-					{
-						path: 'mainApplicant',
-					},
-					{
-						path: 'publisherObj',
+			let appToDelete = await DataRequestModel.findOne({ _id: appIdToDelete }).populate([
+				{
+					path: 'datasets dataset authors',
+				},
+				{
+					path: 'mainApplicant',
+				},
+				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
 						populate: {
-							path: 'team',
-							populate: {
-								path: 'users',
-							},
+							path: 'users',
 						},
 					},
-				])
-				.lean();
+				},
+			]);
 
 			// 3. Get the requesting users permission levels
 			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToDelete, req.user.id, req.user._id);
