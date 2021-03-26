@@ -1,9 +1,11 @@
 import { Data } from '../tool/data.model';
+import { PublisherModel } from '../publisher/publisher.model';
 import { v4 as uuidv4 } from 'uuid';
 import _, { forEach } from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
 import Ajv from 'ajv';
+import moment from 'moment';
 var fs = require('fs');
 
 import constants from '../utilities/constants.util';
@@ -27,7 +29,7 @@ module.exports = {
 				// get all pids for publisherID
 				dataset = await Data.find({
 					$and: [
-						{ 'datasetfields.publisher': 'ALLIANCE > HQIP' },
+						{ 'datasetv2.summary.publisher.identifier': publisherID },
 						{
 							$or: [{ activeflag: 'active' }, { activeflag: 'inReview' }, { activeflag: 'draft' }, { activeflag: 'rejected' }],
 						},
@@ -87,6 +89,17 @@ module.exports = {
 			//If no publisher then return error
 			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Dataset publisher could not be found.' });
 
+			const publisherData = await PublisherModel.find({ _id: publisherID }).lean();
+			let publisherObject = {
+				summary: {
+					publisher: {
+						identifier: publisherID,
+						name: publisherData[0].publisherDetails.name,
+						memberOf: publisherData[0].publisherDetails.memberOf,
+					},
+				},
+			};
+
 			//If publisher but no pid then new dataset - create new pid and version is 1.0.0
 			if (!pid) {
 				let uuid = '';
@@ -106,19 +119,13 @@ module.exports = {
 				data.datasetVersion = '1.0.0';
 				data.id = uniqueID;
 				data.datasetid = 'New dataset';
-				(data.datasetfields.publisher = 'ALLIANCE > HQIP'), //to be updated
-					(data.type = 'dataset');
+				data.name = `New dataset ${moment(Date.now()).format('D MMM YYYY HH:mm')}`;
+				data.datasetv2 = publisherObject;
+				data.type = 'dataset';
 				data.activeflag = 'draft';
 				data.createdAt = Date.now();
+				data.questionAnswers = JSON.stringify({ 'summary/title': `New dataset ${moment(Date.now()).format('D MMM YYYY HH:mm')}` });
 				await data.save();
-
-				//pid 2cd71120-a787-4d4d-8ad3-a6543974d1f8
-				//http://localhost:3000/dataset-onboarding/5ffdbb1247b6f529a72be3e0
-
-				/* questionAnswers: {
-                    type: String,
-                    default: "{}"
-                }, */
 
 				return res.status(200).json({ success: true, data: { id: data._id } });
 			} else {
@@ -153,8 +160,8 @@ module.exports = {
 				data.id = uniqueID;
 				data.datasetid = 'New dataset version';
 				data.name = datasetToCopy.name;
-				(data.datasetfields.publisher = 'ALLIANCE > HQIP'), //to be updated
-					(data.type = 'dataset');
+				data.datasetv2 = publisherObject;
+				data.type = 'dataset';
 				data.activeflag = 'draft';
 				data.questionAnswers = datasetToCopy.questionAnswers;
 				data.structuralMetadata = datasetToCopy.structuralMetadata;
@@ -885,8 +892,9 @@ module.exports = {
 				if (!dataset) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
 
 				dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
-				//1. create new version on MDC with version number and take datasetid and store
+				const publisherData = await PublisherModel.find({ _id: dataset.datasetv2.summary.publisher.identifier }).lean();
 
+				//1. create new version on MDC with version number and take datasetid and store
 				const loginDetails = {
 					username: 'paul.mccafferty@paconsulting.com',
 					password: 'blueLetterGlass47',
@@ -903,7 +911,7 @@ module.exports = {
 						fs.writeFileSync(__dirname + `/datasetfiles/${dataset._id}.json`, jsonData);
 
 						var data = new FormData();
-						data.append('folderId', '5bf09bf5-3464-4e2d-99b3-c8f39344fff4');
+						data.append('folderId', publisherData[0].mdcFolderId);
 						data.append('importFile', fs.createReadStream(__dirname + `/datasetfiles/${dataset._id}.json`));
 						data.append('finalised', 'false');
 						data.append('importAsNewDocumentationVersion', 'true');
@@ -959,18 +967,18 @@ module.exports = {
 										title: dataset.questionAnswers['summary/title'] || '',
 										abstract: dataset.questionAnswers['summary/abstract'] || '',
 										publisher: {
-											identifier: dataset.questionAnswers['organisation/identifier'] || '',
-											name: 'HQIP', //dataset.questionAnswers['organisation/name'] || '',
-											logo: dataset.questionAnswers['organisation/logo'] || '',
-											description: dataset.questionAnswers['organisation/description'] || '',
-											contactPoint: dataset.questionAnswers['organisation/contactPoint'] || [],
-											memberOf: 'ALLIANCE', //dataset.questionAnswers['organisation/memberOf'] || '',
-											accessRights: dataset.questionAnswers['organisation/accessRights'] || [],
-											deliveryLeadTime: dataset.questionAnswers['member/deliveryLeadTime'] || '',
-											accessService: dataset.questionAnswers['member/accessService'] || '',
-											accessRequestCost: dataset.questionAnswers['member/accessRequestCost'] || '',
-											dataUseLimitation: dataset.questionAnswers['member/dataUseLimitation'] || [],
-											dataUseRequirements: dataset.questionAnswers['member/dataUseRequirements'] || [],
+											identifier: publisherData[0]._id.toString(),
+											name: publisherData[0].publisherDetails.name,
+											logo: publisherData[0].publisherDetails.logo || '',
+											description: publisherData[0].publisherDetails.description || '',
+											contactPoint: publisherData[0].publisherDetails.contactPoint || [],
+											memberOf: publisherData[0].publisherDetails.memberOf,
+											accessRights: publisherData[0].publisherDetails.accessRights || [],
+											deliveryLeadTime: publisherData[0].publisherDetails.deliveryLeadTime || '',
+											accessService: publisherData[0].publisherDetails.accessService || '',
+											accessRequestCost: publisherData[0].publisherDetails.accessRequestCost || '',
+											dataUseLimitation: publisherData[0].publisherDetails.dataUseLimitation || [],
+											dataUseRequirements: publisherData[0].publisherDetails.dataUseRequirements || [],
 										},
 										contactPoint: dataset.questionAnswers['summary/contactPoint'] || '',
 										keywords: dataset.questionAnswers['summary/keywords'] || [],
@@ -1054,7 +1062,7 @@ module.exports = {
 											features: dataset.questionAnswers['summary/keywords'] || [],
 										},
 										datasetfields: {
-											publisher: 'ALLIANCE > HQIP', //datasetMDC.publisher,
+											publisher: `${publisherData[0].publisherDetails.memberOf} > ${publisherData[0].publisherDetails.name}`,
 											geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || '',
 											physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
 											abstract: dataset.questionAnswers['summary/abstract'] || '',
