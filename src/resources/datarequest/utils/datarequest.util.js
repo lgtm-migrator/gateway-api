@@ -10,7 +10,6 @@ const repeatedSectionRegex = /_[a-zA-Z|\d]{5}$/gm;
 const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '', activeParty) => {
 	let formattedSchema = {};
 	if (userType === constants.userTypes.CUSTODIAN) {
-		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus] };
 		if (applicationStatus === constants.applicationStatuses.INREVIEW) {
 			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus][activeParty] };
 		} else {
