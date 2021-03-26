@@ -647,7 +647,7 @@ const _generateDARDeletedEmail = options => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                    Data Access Request Application Deleted.
+                    Data Access Request Application Deleted
                     </th>
                   </tr>
                   <tr>
