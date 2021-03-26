@@ -6,7 +6,7 @@ const _userTypes = {
 
 const _formTypes = Object.freeze({
   Enquiry : 'enquiry',
-  Extended5Safe : '5 safes'
+  Extended5Safe : '5 safe'
 });
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
@@ -280,7 +280,8 @@ const _notificationTypes = {
 	WORKFLOWASSIGNED: 'WorkflowAssigned',
 	WORKFLOWCREATED: 'WorkflowCreated',
 	INPROGRESS: 'InProgress',
-	APPLICATIONCLONED: 'ApplicationCloned'
+	APPLICATIONCLONED: 'ApplicationCloned',
+	APPLICATIONDELETED: 'ApplicationDeleted',
 };
 
 const _applicationStatuses = {
@@ -310,7 +311,7 @@ const _formActions = {
 	REMOVEREPEATABLESECTION: 'removeRepeatableSection',
 	ADDREPEATABLEQUESTIONS: 'addRepeatableQuestions',
 	REMOVEREPEATABLEQUESTIONS: 'removeRepeatableQuestions',
-}
+};
 
 const _darPanelMapper = {
 	safesettings: 'Safe settings',

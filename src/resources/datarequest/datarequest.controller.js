@@ -202,9 +202,8 @@ module.exports = {
 				// 2. Build up the accessModel for the user
 				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
 				// 3. check for the type of form [enquiry - 5safes]
-				if(schemaId.toString() === constants.enquiryFormId) 
-					formType = constants.formTypes.Enquiry;
-								
+				if (schemaId.toString() === constants.enquiryFormId) formType = constants.formTypes.Enquiry;
+
 				// 4. create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
@@ -219,7 +218,7 @@ module.exports = {
 					questionAnswers: {},
 					aboutApplication: {},
 					applicationStatus: constants.applicationStatuses.INPROGRESS,
-					formType
+					formType,
 				});
 				// 5. save record
 				const newApplication = await record.save();
@@ -313,8 +312,7 @@ module.exports = {
 				// 3. Build up the accessModel for the user
 				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
 				// 4. Check form is enquiry
-				if(schemaId.toString() === constants.enquiryFormId) 
-					formType = constants.formTypes.Enquiry;
+				if (schemaId.toString() === constants.enquiryFormId) formType = constants.formTypes.Enquiry;
 				// 5. Create new DataRequestModel
 				let record = new DataRequestModel({
 					version,
@@ -328,7 +326,7 @@ module.exports = {
 					questionAnswers: {},
 					aboutApplication: {},
 					applicationStatus: constants.applicationStatuses.INPROGRESS,
-					formType
+					formType,
 				});
 				// 6. save record
 				const newApplication = await record.save();
@@ -1685,7 +1683,7 @@ module.exports = {
 						success: true,
 						accessRecord: {
 							jsonSchema,
-							questionAnswers
+							questionAnswers,
 						},
 					});
 				}
@@ -1743,38 +1741,59 @@ module.exports = {
 			// 5. Update question answers with modifications since original submission
 			appToClone = amendmentController.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
 
-			// 6. Set up new access record or load presubmission application as provided in request
-			let clonedAccessRecord = {},
-				findQuery = {};
+			// 6. Create callback function used to complete the save process
+			const saveCallBack = (err, doc) => {
+				if (err) {
+					console.error(err.message);
+					return res.status(500).json({ status: 'error', message: err.message });
+				}
+
+				// Create notifications
+				module.exports.createNotifications(
+					constants.notificationTypes.APPLICATIONCLONED,
+					{ newDatasetTitles: datasetTitles, newApplicationId: doc._id.toString() },
+					appToClone,
+					req.user
+				);
+
+				// Return successful response
+				return res.status(200).json({
+					success: true,
+					accessRecord: doc,
+				});
+			};
+
+			// 7. Set up new access record or load presubmission application as provided in request and save
+			let clonedAccessRecord = {};
 			if (_.isEmpty(appIdToCloneInto)) {
-				findQuery = { _id: mongoose.Types.ObjectId(0) };
 				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
 					userId: req.user.id,
 					datasetIds,
 					datasetTitles,
 					publisher,
 				});
+				// Save new record
+				await DataRequestModel.create(clonedAccessRecord, saveCallBack);
 			} else {
-				findQuery = { _id: appIdToCloneInto };
-				let appToCloneInto = await DataRequestModel.findOne(findQuery)
-				.populate([
-					{
-						path: 'datasets dataset authors',
-					},
-					{
-						path: 'mainApplicant',
-					},
-					{
-						path: 'publisherObj',
-						populate: {
-							path: 'team',
+        
+				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto }).populate([
+						{
+							path: 'datasets dataset authors',
+						},
+						{
+							path: 'mainApplicant',
+						},
+						{
+							path: 'publisherObj',
 							populate: {
-								path: 'users',
+								path: 'team',
+								populate: {
+									path: 'users',
+								},
 							},
 						},
-					},
-				])
-				.lean();
+					])
+					.lean();
 				// Ensure application to clone into was found
 				if (!appToCloneInto) {
 					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
@@ -1786,32 +1805,10 @@ module.exports = {
 					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 				}
 				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
+
+				// Save into existing record
+				await DataRequestModel.findOneAndUpdate({ _id: appIdToCloneInto }, clonedAccessRecord, { new: true }, saveCallBack);
 			}
-
-			// 7. Save into existing record
-			let accessRecord = await DataRequestModel.findOneAndUpdate(
-				findQuery,
-				clonedAccessRecord,
-				{ upsert: true, new: true },
-				async (err, doc) => {
-					if (err) {
-						console.error(err.message);
-						return res.status(500).json({ status: 'error', message: err.message });
-					}
-
-					// 8. Create notifications
-					await module.exports.createNotifications(
-						constants.notificationTypes.APPLICATIONCLONED,
-						{ newDatasetTitles: datasetTitles, newApplicationId: doc._id.toString() },
-						appToClone,
-						req.user
-					);
-					return res.status(200).json({
-						success: true,
-						accessRecord,
-					});
-				}
-			);
 		} catch (err) {
 			console.error(err.message);
 			return res.status(500).json({
@@ -1869,11 +1866,74 @@ module.exports = {
 		}
 	},
 
+	// API DELETE api/v1/data-access-request/:id
+	deleteDraftAccessRequest: async (req, res) => {
+		try {
+			// 1. Get the required request and body params
+			const {
+				params: { id: appIdToDelete },
+			} = req;
+
+			// 2. Retrieve DAR to clone from database
+			let appToDelete = await DataRequestModel.findOne({ _id: appIdToDelete }).populate([
+				{
+					path: 'datasets dataset authors',
+				},
+				{
+					path: 'mainApplicant',
+				},
+				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
+						populate: {
+							path: 'users',
+						},
+					},
+				},
+			]);
+
+			// 3. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToDelete, req.user.id, req.user._id);
+
+			// 4. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 5. If application is not in progress, actions cannot be performed
+			if (appToDelete.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
+				return res.status(400).json({
+					success: false,
+					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
+				});
+			}
+
+			// 6. Delete applicatioin
+			DataRequestModel.findOneAndDelete({ _id: appIdToDelete }, err => {
+				if (err) console.error(err.message);
+			});
+
+			// 7. Create notifications
+			await module.exports.createNotifications(constants.notificationTypes.APPLICATIONDELETED, {}, appToDelete, req.user);
+
+			return res.status(200).json({
+				success: true,
+			});
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred deleting the existing application',
+			});
+		}
+	},
+
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
 		let { aboutApplication = {} } = accessRecord;
 		let { projectName = 'No project name set' } = aboutApplication;
-		let { projectId, _id, workflow = {}, dateSubmitted = '', jsonSchema, questionAnswers } = accessRecord;
+		let { projectId, _id, workflow = {}, dateSubmitted = '', jsonSchema, questionAnswers, createdAt } = accessRecord;
 		if (_.isEmpty(projectId)) {
 			projectId = _id;
 		}
@@ -2503,6 +2563,47 @@ module.exports = {
 					emailRecipients,
 					constants.hdrukEmail,
 					`Data Access Request for ${datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
+					html,
+					false
+				);
+				break;
+			case constants.notificationTypes.APPLICATIONDELETED:
+				// 1. Create notifications
+				await notificationBuilder.triggerNotificationMessage(
+					[accessRecord.userId],
+					`Your Data Access Request for ${datasetTitles} was successfully deleted`,
+					'data access request unlinked',
+					accessRecord._id
+				);
+				// Create authors notification
+				if (!_.isEmpty(authors)) {
+					await notificationBuilder.triggerNotificationMessage(
+						authors.map(author => author.id),
+						`A draft Data Access Request you contributed to for ${datasetTitles} has been deleted by ${firstname} ${lastname}`,
+						'data access request unlinked',
+						accessRecord._id
+					);
+				}
+				// 2. Send emails to relevant users
+				// Aggregate objects for custodian and applicant
+				emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
+				// Create object to pass through email data
+				options = {
+					publisher,
+					projectName,
+					datasetTitles,
+					createdAt,
+					applicants,
+					firstname,
+					lastname,
+				};
+				// Create email body content
+				html = emailGenerator.generateDARDeletedEmail(options);
+				// Send email
+				await emailGenerator.sendEmail(
+					emailRecipients,
+					constants.hdrukEmail,
+					` ${firstname} ${lastname} has deleted a data access request application`,
 					html,
 					false
 				);
