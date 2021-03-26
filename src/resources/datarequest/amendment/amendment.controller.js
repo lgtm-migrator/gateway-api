@@ -113,7 +113,8 @@ const setAmendment = async (req, res) => {
 					accessRecordObj.jsonSchema,
 					userType,
 					accessRecordObj.applicationStatus,
-					userRole
+					userRole,
+					activeParty
 				);
 				// 12. Count the number of answered/unanswered amendments
 				const { answeredAmendments = 0, unansweredAmendments = 0 } = countUnsubmittedAmendments(accessRecord, userType);

@@ -22,7 +22,13 @@ describe('injectQuestionActions', () => {
 		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.INREVIEW, '', [guidance]],
 		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.WITHDRAWN, '', [guidance]],
 		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.SUBMITTED, '', [guidance]],
-		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.APPROVED, constants.roleTypes.MANAGER, [guidance]],
+		[
+			data[0].jsonSchema,
+			constants.userTypes.CUSTODIAN,
+			constants.applicationStatuses.APPROVED,
+			constants.roleTypes.MANAGER,
+			[guidance],
+		],
 		[
 			data[0].jsonSchema,
 			constants.userTypes.CUSTODIAN,
@@ -35,7 +41,16 @@ describe('injectQuestionActions', () => {
 			constants.userTypes.CUSTODIAN,
 			constants.applicationStatuses.INREVIEW,
 			constants.roleTypes.MANAGER,
+			constants.userTypes.CUSTODIAN,
 			[guidance, requestAmendment],
+		],
+		[
+			data[0].jsonSchema,
+			constants.userTypes.CUSTODIAN,
+			constants.applicationStatuses.INREVIEW,
+			constants.roleTypes.MANAGER,
+			constants.userTypes.APPLICANT,
+			[guidance],
 		],
 		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.WITHDRAWN, constants.roleTypes.MANAGER, [guidance]],
 		[
@@ -43,7 +58,8 @@ describe('injectQuestionActions', () => {
 			constants.userTypes.CUSTODIAN,
 			constants.applicationStatuses.SUBMITTED,
 			constants.roleTypes.MANAGER,
-			[guidance, requestAmendment],
+			constants.userTypes.CUSTODIAN,
+			[guidance],
 		],
 		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.APPROVED, constants.roleTypes.REVIEWER, [guidance]],
 		[
@@ -59,9 +75,9 @@ describe('injectQuestionActions', () => {
 	];
 	test.each(cases)(
 		'given a jsonSchema object %p and the user is a/an %p, and the application status is %p, it returns the correct question actions',
-		(data, userType, applicationStatus, role, expectedResults) => {
+		(data, userType, applicationStatus, role, activeParty, expectedResults) => {
 			// Act
-			const result = datarequestUtil.injectQuestionActions(data, userType, applicationStatus, role);
+			const result = datarequestUtil.injectQuestionActions(data, userType, applicationStatus, role, activeParty);
 			// Assert
 			expectedResults.forEach(expectedResult => {
 				expect(result.questionActions).toContainEqual(expectedResult);
