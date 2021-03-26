@@ -2573,7 +2573,7 @@ module.exports = {
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
 					`Your Data Access Request for ${datasetTitles} was successfully deleted`,
-					'data access request',
+					'data access request unlinked',
 					accessRecord._id
 				);
 				// Create authors notification
@@ -2581,7 +2581,7 @@ module.exports = {
 					await notificationBuilder.triggerNotificationMessage(
 						authors.map(author => author.id),
 						`A draft Data Access Request you contributed to for ${datasetTitles} has been deleted by ${firstname} ${lastname}`,
-						'data access request',
+						'data access request unlinked',
 						accessRecord._id
 					);
 				}
