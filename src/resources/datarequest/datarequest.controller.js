@@ -1741,21 +1741,42 @@ module.exports = {
 			// 5. Update question answers with modifications since original submission
 			appToClone = amendmentController.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
 
-			// 6. Set up new access record or load presubmission application as provided in request
-			let clonedAccessRecord = {},
-				findQuery = {};
+			// 6. Create callback function used to complete the save process
+			const saveCallBack = (err, doc) => {
+				if (err) {
+					console.error(err.message);
+					return res.status(500).json({ status: 'error', message: err.message });
+				}
+
+				// Create notifications
+				module.exports.createNotifications(
+					constants.notificationTypes.APPLICATIONCLONED,
+					{ newDatasetTitles: datasetTitles, newApplicationId: doc._id.toString() },
+					appToClone,
+					req.user
+				);
+
+				// Return successful response
+				return res.status(200).json({
+					success: true,
+					accessRecord: doc,
+				});
+			};
+
+			// 7. Set up new access record or load presubmission application as provided in request and save
+			let clonedAccessRecord = {};
 			if (_.isEmpty(appIdToCloneInto)) {
-				findQuery = { _id: mongoose.Types.ObjectId(0) };
 				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
 					userId: req.user.id,
 					datasetIds,
 					datasetTitles,
 					publisher,
 				});
+				// Save new record
+				await DataRequestModel.create(clonedAccessRecord, saveCallBack);
 			} else {
-				findQuery = { _id: appIdToCloneInto };
-				let appToCloneInto = await DataRequestModel.findOne(findQuery)
-					.populate([
+        
+				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto }).populate([
 						{
 							path: 'datasets dataset authors',
 						},
@@ -1784,32 +1805,10 @@ module.exports = {
 					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 				}
 				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
+
+				// Save into existing record
+				await DataRequestModel.findOneAndUpdate({ _id: appIdToCloneInto }, clonedAccessRecord, { new: true }, saveCallBack);
 			}
-
-			// 7. Save into existing record
-			let accessRecord = await DataRequestModel.findOneAndUpdate(
-				findQuery,
-				clonedAccessRecord,
-				{ upsert: true, new: true },
-				async (err, doc) => {
-					if (err) {
-						console.error(err.message);
-						return res.status(500).json({ status: 'error', message: err.message });
-					}
-
-					// 8. Create notifications
-					await module.exports.createNotifications(
-						constants.notificationTypes.APPLICATIONCLONED,
-						{ newDatasetTitles: datasetTitles, newApplicationId: doc._id.toString() },
-						appToClone,
-						req.user
-					);
-					return res.status(200).json({
-						success: true,
-						accessRecord,
-					});
-				}
-			);
 		} catch (err) {
 			console.error(err.message);
 			return res.status(500).json({
