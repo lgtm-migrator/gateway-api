@@ -16,15 +16,26 @@ const _userQuestionActions = {
 					order: 1,
 				},
 			],
-			inReview: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
+			inReview: {
+				custodian: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+				applicant: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+			},
 			approved: [
 				{
 					key: 'guidance',
@@ -96,7 +107,7 @@ const _userQuestionActions = {
 						color: '#475da7',
 						toolTip: 'Guidance',
 						order: 1,
-					}
+					},
 				],
 			},
 			approved: [

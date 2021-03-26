@@ -16,17 +16,18 @@ describe('injectQuestionActions', () => {
 		order: 2,
 	};
 	const cases = [
-		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.INPROGRESS, '', [guidance]],
-		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.APPROVED, '', [guidance]],
-		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.APPROVEDWITHCONDITIONS, '', [guidance]],
-		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.INREVIEW, '', [guidance]],
-		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.WITHDRAWN, '', [guidance]],
-		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.SUBMITTED, '', [guidance]],
+		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.INPROGRESS, '', constants.userTypes.APPLICANT, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.APPROVED, '', constants.userTypes.CUSTODIAN, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.APPROVEDWITHCONDITIONS, '', constants.userTypes.CUSTODIAN, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.INREVIEW, '', constants.userTypes.CUSTODIAN, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.WITHDRAWN, '', constants.userTypes.CUSTODIAN, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.APPLICANT, constants.applicationStatuses.SUBMITTED, '', constants.userTypes.CUSTODIAN, [guidance]],
 		[
 			data[0].jsonSchema,
 			constants.userTypes.CUSTODIAN,
 			constants.applicationStatuses.APPROVED,
 			constants.roleTypes.MANAGER,
+			constants.userTypes.CUSTODIAN,
 			[guidance],
 		],
 		[
@@ -34,6 +35,7 @@ describe('injectQuestionActions', () => {
 			constants.userTypes.CUSTODIAN,
 			constants.applicationStatuses.APPROVEDWITHCONDITIONS,
 			constants.roleTypes.MANAGER,
+			constants.userTypes.CUSTODIAN,
 			[guidance],
 		],
 		[
@@ -52,7 +54,7 @@ describe('injectQuestionActions', () => {
 			constants.userTypes.APPLICANT,
 			[guidance],
 		],
-		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.WITHDRAWN, constants.roleTypes.MANAGER, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.WITHDRAWN, constants.roleTypes.MANAGER, constants.userTypes.CUSTODIAN, [guidance]],
 		[
 			data[0].jsonSchema,
 			constants.userTypes.CUSTODIAN,
@@ -61,17 +63,18 @@ describe('injectQuestionActions', () => {
 			constants.userTypes.CUSTODIAN,
 			[guidance],
 		],
-		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.APPROVED, constants.roleTypes.REVIEWER, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.APPROVED, constants.roleTypes.REVIEWER, constants.userTypes.CUSTODIAN, [guidance]],
 		[
 			data[0].jsonSchema,
 			constants.userTypes.CUSTODIAN,
 			constants.applicationStatuses.APPROVEDWITHCONDITIONS,
 			constants.roleTypes.REVIEWER,
+			constants.userTypes.CUSTODIAN,
 			[guidance],
 		],
-		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.INREVIEW, constants.roleTypes.REVIEWER, [guidance]],
-		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.WITHDRAWN, constants.roleTypes.REVIEWER, [guidance]],
-		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.SUBMITTED, constants.roleTypes.REVIEWER, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.INREVIEW, constants.roleTypes.REVIEWER, constants.userTypes.CUSTODIAN, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.WITHDRAWN, constants.roleTypes.REVIEWER, constants.userTypes.CUSTODIAN, [guidance]],
+		[data[0].jsonSchema, constants.userTypes.CUSTODIAN, constants.applicationStatuses.SUBMITTED, constants.roleTypes.REVIEWER, constants.userTypes.CUSTODIAN, [guidance]],
 	];
 	test.each(cases)(
 		'given a jsonSchema object %p and the user is a/an %p, and the application status is %p, it returns the correct question actions',
