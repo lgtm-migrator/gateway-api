@@ -1,5 +1,6 @@
 import { getUserByUserId } from '../resources/user/user.repository';
 import { to } from 'await-to-js';
+import _ from 'lodash';
 
 const store = new Map();
 const logins = new Map();
@@ -26,15 +27,19 @@ class Account {
 		let claim = {
 			sub: this.accountId, // it is essential to always return a sub claim
 		};
-		if (claimsToSend.includes('profile')) {
-			claim.firstname = this.profile.firstname;
-			claim.lastname = this.profile.lastname;
-		}
-		if (claimsToSend.includes('email')) {
-			claim.email = this.profile.email;
-		}
-		if (claimsToSend.includes('rquestroles')) {
-			claim.rquestroles = this.profile.advancedSearchRoles;
+
+		let [err, user] = await to(getUserByUserId(parseInt(this.accountId)));
+		if (!_.isNil(user)) {
+			if (claimsToSend.includes('profile')) {
+				claim.firstname = user.firstname;
+				claim.lastname = user.lastname;
+			}
+			if (claimsToSend.includes('email')) {
+				claim.email = user.email;
+			}
+			if (claimsToSend.includes('rquestroles')) {
+				claim.rquestroles = user.advancedSearchRoles;
+			}
 		}
 
 		return claim;

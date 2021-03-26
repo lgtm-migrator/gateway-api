@@ -271,7 +271,7 @@ let insertQuestions = (questionSetId, targetQuestionId, duplicatedQuestions, sch
 			});
 		}
     });
-    // 7. return updated schema
+    // 6. return updated schema
     return schema;
 };
 

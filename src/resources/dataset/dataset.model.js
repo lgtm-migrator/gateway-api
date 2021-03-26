@@ -13,6 +13,8 @@ const datasetSchema = new Schema(
 		name: String,
 		description: String,
 		source: String,
+		is5Safes: Boolean,
+		hasTechnicalDetails: Boolean,
 		resultsInsights: String,
 		link: String,
 		type: String,

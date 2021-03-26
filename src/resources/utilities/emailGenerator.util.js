@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
@@ -12,13 +12,13 @@ let excludedQuestionSetIds = ['addRepeatableSection', 'removeRepeatableSection']
 let autoCompleteLookups = { fullname: ['email'] };
 
 const _getStepReviewers = (reviewers = []) => {
-	if (!_.isEmpty(reviewers)) return [...reviewers].map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
+	if (!isEmpty(reviewers)) return [...reviewers].map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
 
 	return '';
 };
 
 const _getStepSections = (sections = []) => {
-	if (!_.isEmpty(sections)) return [...sections].map(section => constants.darPanelMapper[section]).join(', ');
+	if (!isEmpty(sections)) return [...sections].map(section => constants.darPanelMapper[section]).join(', ');
 
 	return '';
 };
@@ -142,7 +142,7 @@ const _getAllQuestionsFlattened = allQuestions => {
 				// set the parent page and parent section as nested wont have reference to its parent
 				parent = { page, section, questionSetId: qsId, questionSetHeader };
 			}
-			let { questionId, question } = questionObj;
+			let { questionId, question, input } = questionObj;
 			// split up questionId
 			let [qId, uniqueId] = questionId.split('_');
 			// actual quesitonId
@@ -158,6 +158,7 @@ const _getAllQuestionsFlattened = allQuestions => {
 						questionSetId: qsId,
 						page: parent.page,
 						section: parent.section,
+            input
 					},
 				];
 			}
@@ -181,7 +182,7 @@ const _getAllQuestionsFlattened = allQuestions => {
 
 const _formatSectionTitle = value => {
 	let [questionId] = value.split('_');
-	return _.capitalize(questionId);
+	return capitalize(questionId);
 };
 
 const _buildSubjectTitle = (user, title, submissionType) => {
@@ -189,9 +190,9 @@ const _buildSubjectTitle = (user, title, submissionType) => {
 	if (user.toUpperCase() === 'DATACUSTODIAN') {
 		subject = `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
 	} else {
-    if ( submissionType === constants.submissionTypes.INPROGRESS){
+		if (submissionType === constants.submissionTypes.INPROGRESS) {
 			subject = `You are in progress with a request access to ${title}. The custodian will be in contact after you submit the application.`;
-    } else if (submissionType === constants.submissionTypes.INITIAL) {
+		} else if (submissionType === constants.submissionTypes.INITIAL) {
 			subject = `You have requested access to ${title}. The custodian will be in contact about the application.`;
 		} else {
 			subject = `You have made updates to your Data Access Request for ${title}. The custodian will be in contact about the application.`;
@@ -216,9 +217,11 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
 	let linkNationalCoreStudies = nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
 	let heading =
-		submissionType === constants.submissionTypes.INPROGRESS ? 'Data access request application in progress' : (constants.submissionTypes.INITIAL
+		submissionType === constants.submissionTypes.INPROGRESS
+			? 'Data access request application in progress'
+			: constants.submissionTypes.INITIAL
 			? `New data access request application`
-			: `Existing data access request application with new updates`);
+			: `Existing data access request application with new updates`;
 	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
@@ -322,12 +325,20 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 										}">${sectionTitle}</h3></td>
                 </tr>`;
 			// render question
-			for (let question of questionsArr) {
-				let answer = answers[question.questionId] || `-`;
-				table += `<tr>
-                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${question.question}</td>
+			const excludedInputTypes = ['buttonInput'];
+			for (let currentQuestion of questionsArr) {
+				let {
+					question,
+					questionId,
+					input: { type = '' } = {},
+				} = currentQuestion;
+				if (!excludedInputTypes.includes(type)) {
+					let answer = answers[questionId] || `-`;
+					table += `<tr>
+                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4">${question}</td>
                     <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom:1px solid #d0d3d4; word-break: break-all;">${answer}</td>
                   </tr>`;
+				}
 			}
 		}
 		table += `</table></td></tr>`;
@@ -345,13 +356,13 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
  */
 const _groupByPageSection = allQuestions => {
 	// group by page [Safe People, Safe Project]
-	let groupedByPage = _.groupBy(allQuestions, item => {
+	let groupedByPage = groupBy(allQuestions, item => {
 		return item.page;
 	});
 
 	// within grouped [Safe People: {Applicant, Applicant1, Something}]
-	let grouped = _.forEach(groupedByPage, (value, key) => {
-		groupedByPage[key] = _.groupBy(groupedByPage[key], item => {
+	let grouped = forEach(groupedByPage, (value, key) => {
+		groupedByPage[key] = groupBy(groupedByPage[key], item => {
 			return item.questionSetId;
 		});
 	});
@@ -555,6 +566,81 @@ const _generateDARStatusChangedEmail = options => {
             ${_displayConditionalStatusDesc(applicationStatus, applicationStatusDesc)}
             ${_displayDARLink(id)}
             </div>
+          </div>`;
+	return body;
+};
+
+const _generateDARClonedEmail = options => {
+  let {
+		id,
+		projectId,
+		projectName,
+		datasetTitles,
+		dateSubmitted,
+		applicants,
+    firstname,
+    lastname
+	} = options;
+  dateSubmitted = isNil(dateSubmitted) ? 'Not yet submitted' : moment(dateSubmitted).format('D MMM YYYY');
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Data access request application has been duplicated
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${firstname} ${lastname} has duplicated the contents of the following application into a new form.  
+                     <p>
+                        You will have received this message if you were a contributor to the original form, 
+                        but you will not have access to the new form unless granted by the creator, 
+                        at which point you will receive an additional notification.
+                     </p>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													projectName || 'No project name set'
+												}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project ID</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													projectId || id
+												}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateSubmitted}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>`;
 	return body;
 };
@@ -1582,6 +1668,7 @@ export default {
 	generateEmail: _generateEmail,
 	generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
+  generateDARClonedEmail: _generateDARClonedEmail,
 	generateContributorEmail: _generateContributorEmail,
 	generateStepOverrideEmail: _generateStepOverrideEmail,
 	generateNewReviewPhaseEmail: _generateNewReviewPhaseEmail,

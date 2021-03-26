@@ -21,6 +21,8 @@ steps:
         '--allow-unauthenticated',
       ]
   - name: 'node'
+    args: ['npm', 'install']
+  - name: 'node'
     args: ['npm', 'test']
     env:
       - 'URL=https://${_TEST_URL}'
