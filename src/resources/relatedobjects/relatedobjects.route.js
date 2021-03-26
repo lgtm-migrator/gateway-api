@@ -5,6 +5,33 @@ import { Course } from '../course/course.model';
 
 const router = express.Router();
 
+router.get('/linkeddatasets/:datasetName', async (req, res) => {
+	let { datasetName } = req.params;
+
+	let data = {
+		datasetFound: false,
+		pid: null,
+		name: '',
+		publisher: '',
+	};
+
+	try {
+		if (_.isNil(datasetName)) {
+			return res.json({ success: false, error: 'No dataset name supplied' });
+		}
+		await Data.findOne({ name: datasetName }).then(async dataset => {
+			if (dataset) {
+				data.datasetFound = true;
+				data.pid = dataset.pid;
+				data.name = dataset.name;
+				data.publisher = dataset.datasetfields.publisher;
+			}
+			return res.json({ success: true, ...data });
+		});
+	} catch (err) {
+		return res.json({ success: false, error: err });
+	}
+});
 /**
  * {get} /relatedobjects/:id
  *
