@@ -12,6 +12,7 @@ const TeamSchema = new Schema(
 				roles: { type: [String], enum: ['reviewer', 'manager'], required: true },
 				dateCreated: Date,
 				dateUpdated: Date,
+				optInNotifications: { type: Boolean, default: true }
 			},
 		],
 		type: String,
@@ -19,6 +20,15 @@ const TeamSchema = new Schema(
 			type: Boolean,
 			default: true,
 		},
+		notifications: {
+			optInTeam: { type: Boolean, default: false },
+			subscribers: [
+				{
+					email: String,
+					subscriptions: { type: [String], enum: ['dataaccessrequest', 'metadataonboarding'] }
+				}
+			]
+		}
 	},
 	{
 		toJSON: { virtuals: true },
