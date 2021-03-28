@@ -50,10 +50,7 @@ const getWorkflowById = async (req, res) => {
 		// 4. Build workflow response
 		let { active, _id, id, workflowName, version, steps, applications = [] } = workflow.toObject();
 		applications = applications.map(app => {
-			let { aboutApplication, _id } = app;
-			if (typeof aboutApplication === 'string') {
-				aboutApplication = JSON.parse(aboutApplication) || {};
-			}
+			let { aboutApplication = {}, _id } = app;
 			let { projectName = 'No project name' } = aboutApplication;
 			return { projectName, _id };
 		});

@@ -137,6 +137,7 @@ const editTool = async (req, res) => {
 		} = req.body;
 		let id = req.params.id;
 		let programmingLanguage = req.body.programmingLanguage;
+		let updatedon = Date.now();
 
 		if (!categories || typeof categories === undefined)
 			categories = { category: '', programmingLanguage: [], programmingLanguageVersion: '' };
@@ -181,6 +182,7 @@ const editTool = async (req, res) => {
 				relatedObjects: relatedObjects,
 				isPreprint: isPreprint,
 				document_links: documentLinksValidated,
+				updatedon: updatedon,
 			},
 			err => {
 				if (err) {

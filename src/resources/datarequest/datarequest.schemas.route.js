@@ -17,7 +17,7 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 	dataRequestSchema.version = version;
 	dataRequestSchema.dataSetId = dataSetId;
 	dataRequestSchema.publisher = publisher;
-	dataRequestSchema.jsonSchema = JSON.stringify(jsonSchema);
+	dataRequestSchema.jsonSchema = jsonSchema;
 
 	await dataRequestSchema.save(async err => {
 		if (err) return res.json({ success: false, error: err });

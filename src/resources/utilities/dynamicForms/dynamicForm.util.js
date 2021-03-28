@@ -53,7 +53,7 @@ let findQuestionPanel = (panelId = '', questionPanels = []) => {
     return {};
 };
 
-let duplicateQuestionSet = (questionSetId, schema) => {
+let duplicateQuestionSet = (questionSetId, schema, uniqueId = randomstring.generate(5)) => {
     let { questionSets } = schema;
     // 1. find questionSet
     let qSet = findQuestionSet(questionSetId, schema);
@@ -65,14 +65,14 @@ let duplicateQuestionSet = (questionSetId, schema) => {
         // 3. duplicate questionSet ensure we take a copy
         let qSetDuplicate = [...questionSets].find(q => q.questionSetId === question.input.panelId);
         // 4. modify the questions array questionIds
-        let qSetModified = modifyQuestionSetIds(qSetDuplicate);
+        let qSetModified = modifyQuestionSetIds(qSetDuplicate, uniqueId);
         // 5. return the modified questionSet
         return qSetModified;
     }
     return {};
 };
 
-let duplicateQuestions = (questionSetId, questionIdsToDuplicate, separatorText = '', schema) => {
+let duplicateQuestions = (questionSetId, questionIdsToDuplicate, separatorText = '', schema, uniqueId = randomstring.generate(5)) => {
     // 1. find question set containing questions to duplicate
     let qSet = findQuestionSet(questionSetId, schema);
     // 2. map array of questions to duplicate
@@ -84,7 +84,7 @@ let duplicateQuestions = (questionSetId, questionIdsToDuplicate, separatorText =
         }
     });
     // 4. modify question ids with unique values
-    let modifiedQuestions = modifyQuestionIds(questionSetId, duplicatedQuestions); 
+    let modifiedQuestions = modifyQuestionIds(questionSetId, duplicatedQuestions, uniqueId); 
     // 5. insert separator text before new duplicated questions
     if(!_.isEmpty(separatorText)) {
         modifiedQuestions = insertQuestionSeparator(modifiedQuestions, separatorText);
@@ -93,9 +93,8 @@ let duplicateQuestions = (questionSetId, questionIdsToDuplicate, separatorText =
     return modifiedQuestions;
 };
 
-let modifyQuestionSetIds = questionSet => {
+let modifyQuestionSetIds = (questionSet, uniqueId) => {
     let { questionSetId, questions } = { ...questionSet };
-    let uniqueId = randomstring.generate(5);
     questionSetId = `${questionSetId}_${uniqueId}`;
     // 1.loop over each qObj and if questionId update
     let questionsModified = [...questions].reduce((arr, qValue) => {
@@ -133,8 +132,7 @@ let modifyQuestionSetIds = questionSet => {
     };
 };
 
-let modifyQuestionIds = (questionSetId, questions) => {
-    let uniqueId = randomstring.generate(5);
+let modifyQuestionIds = (questionSetId, questions, uniqueId) => {
     // 1.loop over each qObj and if questionId update
     let questionsModified = [...questions].reduce((arr, qValue) => {
         // 2. ensure we copy the original question deep
@@ -271,7 +269,7 @@ let insertQuestions = (questionSetId, targetQuestionId, duplicatedQuestions, sch
 			});
 		}
     });
-    // 7. return updated schema
+    // 6. return updated schema
     return schema;
 };
 
