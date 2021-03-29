@@ -244,6 +244,7 @@ const cloneIntoNewApplication = async (appToClone, context) => {
 		publisher,
 		questionAnswers,
 		aboutApplication: {},
+		amendmentIterations: [],
 		applicationStatus: constants.applicationStatuses.INPROGRESS,
 	};
 
