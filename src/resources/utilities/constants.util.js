@@ -280,7 +280,8 @@ const _notificationTypes = {
 	WORKFLOWASSIGNED: 'WorkflowAssigned',
 	WORKFLOWCREATED: 'WorkflowCreated',
 	INPROGRESS: 'InProgress',
-	APPLICATIONCLONED: 'ApplicationCloned'
+	APPLICATIONCLONED: 'ApplicationCloned',
+	APPLICATIONDELETED: 'ApplicationDeleted',
 };
 
 const _applicationStatuses = {
@@ -310,7 +311,7 @@ const _formActions = {
 	REMOVEREPEATABLESECTION: 'removeRepeatableSection',
 	ADDREPEATABLEQUESTIONS: 'addRepeatableQuestions',
 	REMOVEREPEATABLEQUESTIONS: 'removeRepeatableQuestions',
-}
+};
 
 const _darPanelMapper = {
 	safesettings: 'Safe settings',

@@ -8,13 +8,13 @@ const datarequestController = require('./datarequest.controller');
 const fs = require('fs');
 const path = './tmp';
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    if (!fs.existsSync(path)) {
-      fs.mkdirSync(path);
-    }
-    cb(null, path)
-  }
-})
+	destination: function (req, file, cb) {
+		if (!fs.existsSync(path)) {
+			fs.mkdirSync(path);
+		}
+		cb(null, path);
+	},
+});
 const multerMid = multer({ storage: storage });
 
 const router = express.Router();
@@ -40,12 +40,19 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), datarequestContr
 router.get('/datasets/:datasetIds', passport.authenticate('jwt'), datarequestController.getAccessRequestByUserAndMultipleDatasets);
 
 // @route   GET api/v1/data-access-request/:id/file/:fileId
-// @desc    GET 
+// @desc    GET
 // @access  Private
-router.get('/:id/file/:fileId', param('id').customSanitizer(value => {return value}), passport.authenticate('jwt'), datarequestController.getFile);
+router.get(
+	'/:id/file/:fileId',
+	param('id').customSanitizer(value => {
+		return value;
+	}),
+	passport.authenticate('jwt'),
+	datarequestController.getFile
+);
 
 // @route   GET api/v1/data-access-request/:id/file/:fileId/status
-// @desc    GET Status of a file 
+// @desc    GET Status of a file
 // @access  Private
 router.get('/:id/file/:fileId/status', passport.authenticate('jwt'), datarequestController.getFileStatus);
 
@@ -80,13 +87,13 @@ router.put('/:id/startreview', passport.authenticate('jwt'), datarequestControll
 router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestController.updateAccessRequestStepOverride);
 
 // @route   PUT api/v1/data-access-request/:id/deletefile
-// @desc    Update access request deleting a file by Id 
+// @desc    Update access request deleting a file by Id
 // @access  Private - Applicant (Gateway User)
 router.put('/:id/deletefile', passport.authenticate('jwt'), datarequestController.updateAccessRequestDeleteFile);
 
 // @route   POST api/v1/data-access-request/:id/upload
 // @desc    POST application files to scan bucket
-// @access  Private - Applicant (Gateway User / Custodian Manager) 
+// @access  Private - Applicant (Gateway User / Custodian Manager)
 router.post('/:id/upload', passport.authenticate('jwt'), multerMid.array('assets'), datarequestController.uploadFiles);
 
 // @route   POST api/v1/data-access-request/:id/amendments
@@ -125,8 +132,13 @@ router.post('/:id/notify', passport.authenticate('jwt'), datarequestController.n
 router.post('/:id/file/:fileId/status', passport.authenticate('jwt'), datarequestController.updateFileStatus);
 
 // @route   POST api/v1/data-access-request/:id/email
-// @desc    Mail a Data Access Request information in presubmission 
+// @desc    Mail a Data Access Request information in presubmission
 // @access  Private - Applicant
 router.post('/:id/email', passport.authenticate('jwt'), datarequestController.mailDataAccessRequestInfoById);
+
+// @route   DELETE api/v1/data-access-request/:id
+// @desc    Delete an application in a presubmissioin
+// @access  Private - Applicant
+router.delete('/:id', passport.authenticate('jwt'), datarequestController.deleteDraftAccessRequest);
 
 module.exports = router;

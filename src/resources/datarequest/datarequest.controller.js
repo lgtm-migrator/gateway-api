@@ -1775,8 +1775,8 @@ module.exports = {
 				// Save new record
 				await DataRequestModel.create(clonedAccessRecord, saveCallBack);
 			} else {
-				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto })
-					.populate([
+        
+				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto }).populate([
 						{
 							path: 'datasets dataset authors',
 						},
@@ -1866,11 +1866,74 @@ module.exports = {
 		}
 	},
 
+	// API DELETE api/v1/data-access-request/:id
+	deleteDraftAccessRequest: async (req, res) => {
+		try {
+			// 1. Get the required request and body params
+			const {
+				params: { id: appIdToDelete },
+			} = req;
+
+			// 2. Retrieve DAR to clone from database
+			let appToDelete = await DataRequestModel.findOne({ _id: appIdToDelete }).populate([
+				{
+					path: 'datasets dataset authors',
+				},
+				{
+					path: 'mainApplicant',
+				},
+				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
+						populate: {
+							path: 'users',
+						},
+					},
+				},
+			]);
+
+			// 3. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToDelete, req.user.id, req.user._id);
+
+			// 4. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 5. If application is not in progress, actions cannot be performed
+			if (appToDelete.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
+				return res.status(400).json({
+					success: false,
+					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
+				});
+			}
+
+			// 6. Delete applicatioin
+			DataRequestModel.findOneAndDelete({ _id: appIdToDelete }, err => {
+				if (err) console.error(err.message);
+			});
+
+			// 7. Create notifications
+			await module.exports.createNotifications(constants.notificationTypes.APPLICATIONDELETED, {}, appToDelete, req.user);
+
+			return res.status(200).json({
+				success: true,
+			});
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred deleting the existing application',
+			});
+		}
+	},
+
 	createNotifications: async (type, context, accessRecord, user) => {
 		// Project details from about application if 5 Safes
 		let { aboutApplication = {} } = accessRecord;
 		let { projectName = 'No project name set' } = aboutApplication;
-		let { projectId, _id, workflow = {}, dateSubmitted = '', jsonSchema, questionAnswers } = accessRecord;
+		let { projectId, _id, workflow = {}, dateSubmitted = '', jsonSchema, questionAnswers, createdAt } = accessRecord;
 		if (_.isEmpty(projectId)) {
 			projectId = _id;
 		}
@@ -2500,6 +2563,47 @@ module.exports = {
 					emailRecipients,
 					constants.hdrukEmail,
 					`Data Access Request for ${datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
+					html,
+					false
+				);
+				break;
+			case constants.notificationTypes.APPLICATIONDELETED:
+				// 1. Create notifications
+				await notificationBuilder.triggerNotificationMessage(
+					[accessRecord.userId],
+					`Your Data Access Request for ${datasetTitles} was successfully deleted`,
+					'data access request unlinked',
+					accessRecord._id
+				);
+				// Create authors notification
+				if (!_.isEmpty(authors)) {
+					await notificationBuilder.triggerNotificationMessage(
+						authors.map(author => author.id),
+						`A draft Data Access Request you contributed to for ${datasetTitles} has been deleted by ${firstname} ${lastname}`,
+						'data access request unlinked',
+						accessRecord._id
+					);
+				}
+				// 2. Send emails to relevant users
+				// Aggregate objects for custodian and applicant
+				emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
+				// Create object to pass through email data
+				options = {
+					publisher,
+					projectName,
+					datasetTitles,
+					createdAt,
+					applicants,
+					firstname,
+					lastname,
+				};
+				// Create email body content
+				html = emailGenerator.generateDARDeletedEmail(options);
+				// Send email
+				await emailGenerator.sendEmail(
+					emailRecipients,
+					constants.hdrukEmail,
+					` ${firstname} ${lastname} has deleted a data access request application`,
 					html,
 					false
 				);
