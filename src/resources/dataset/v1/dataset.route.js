@@ -170,10 +170,13 @@ router.get('/:datasetID', async (req, res) => {
 		let newListofQualifiedRelation = [];
 		for (const relation of qualifiedRelation) {
 			if (relation.toLowerCase() === 'all') {
-				let relatedDatasets = await Data.find({
-					'datasetfields.publisher': dataset.datasetfields.publisher,
-					activeflag: 'active',
-				}).lean();
+				let relatedDatasets = await Data.find(
+					{
+						'datasetfields.publisher': dataset.datasetfields.publisher,
+						activeflag: 'active',
+					},
+					{ name: 1 }
+				).lean();
 
 				for (const datasets of relatedDatasets) {
 					newListofQualifiedRelation.push(datasets.name);
