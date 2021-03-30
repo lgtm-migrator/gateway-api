@@ -229,9 +229,7 @@ export async function loadDatasets(override) {
 	var datasetsHDRCount = await Data.countDocuments({ type: 'dataset', activeflag: 'active' });
 
 	// Get active custodians on HDR Gateway
-	const publishers = await PublisherModel.find()
-		.select('name')
-		.lean();
+	const publishers = await PublisherModel.find().select('name').lean();
 	const onboardedCustodians = publishers.map(publisher => publisher.name);
 
 	if ((datasetsMDCCount / datasetsHDRCount) * 100 < 90 && !override) {

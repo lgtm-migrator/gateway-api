@@ -1,5 +1,6 @@
 import { Data } from '../tool/data.model';
 import { PublisherModel } from '../publisher/publisher.model';
+import { filtersService } from '../filters/dependency';
 import { v4 as uuidv4 } from 'uuid';
 import _, { forEach } from 'lodash';
 import axios from 'axios';
@@ -20,31 +21,53 @@ module.exports = {
 
 			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Publisher ID could not be found.' });
 
-			let dataset = [];
+			let datasetIds = [];
 
 			if (publisherID === 'admin') {
 				// get all datasets in review for admin
-				dataset = await Data.find({ activeflag: 'inReview' }).sort({ updatedAt: -1 });
+				datasetIds = await Data.find({ activeflag: 'inReview' }).sort({ updatedAt: -1 });
 			} else {
 				// get all pids for publisherID
-				dataset = await Data.find({
+				datasetIds = await Data.find({
 					$and: [
 						{ 'datasetv2.summary.publisher.identifier': publisherID },
 						{
 							$or: [{ activeflag: 'active' }, { activeflag: 'inReview' }, { activeflag: 'draft' }, { activeflag: 'rejected' }],
 						},
 					],
-				}).sort({ updatedAt: -1 });
+				})
+					.sort({ updatedAt: -1 })
+					.distinct('pid');
 			}
 
-			//active tab - live and draft
-			//pending - in review
-			//rejected - rejected
-			//archived - no live or draft versions
+			let listOfDatasets = [];
+			for (const datasetId of datasetIds) {
+				let datasetDetails = await Data.findOne({
+					pid: datasetId,
+				})
+					.sort({ updatedAt: -1 })
+					.lean();
+
+				let datasetVersions = await Data.find(
+					{
+						pid: datasetId,
+					},
+					{
+						_id: 1,
+						datasetVersion: 1,
+						activeflag: 1,
+					}
+				)
+					.sort({ updatedAt: -1 })
+					.lean();
+
+				datasetDetails.listOfVersions = datasetVersions;
+				listOfDatasets.push(datasetDetails);
+			}
 
 			return res.status(200).json({
 				success: true,
-				data: { dataset },
+				data: { listOfDatasets },
 			});
 		} catch (err) {
 			console.log(err.message);
@@ -1103,6 +1126,8 @@ module.exports = {
 					.catch(err => {
 						console.log('Error when trying to logout of the MDC - ' + err.message);
 					});
+
+				filtersService.optimiseFilters('dataset');
 
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'rejected') {
