@@ -14,6 +14,7 @@ const UserSchema = new Schema(
 		displayname: String,
 		providerId: { type: String, required: true },
 		provider: String,
+		affiliation: String,
 		role: String,
 		redirectURL: String,
 		discourseUsername: String,

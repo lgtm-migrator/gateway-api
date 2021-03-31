@@ -42,7 +42,7 @@ class Account {
 				claim.rquestroles = user.advancedSearchRoles;
 			}
 			if (claimsToSend.includes('ga4gh_passport_v1')) {
-				claim.ga4gh_passport_v1 = ga4ghUtils.buildGa4ghVisas(user);
+				claim.ga4gh_passport_v1 = await ga4ghUtils.buildGa4ghVisas(user);
 			}
 		}
 
