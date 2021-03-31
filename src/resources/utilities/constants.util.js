@@ -23,15 +23,26 @@ const _userQuestionActions = {
 					order: 1,
 				},
 			],
-			inReview: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
+			inReview: {
+				custodian: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+				applicant: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+			},
 			approved: [
 				{
 					key: 'guidance',
@@ -78,30 +89,34 @@ const _userQuestionActions = {
 					toolTip: 'Guidance',
 					order: 1,
 				},
-				{
-					key: 'requestAmendment',
-					icon: 'fas fa-exclamation-circle',
-					color: '#F0BB24',
-					toolTip: 'Request applicant updates answer',
-					order: 2,
-				},
 			],
-			inReview: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-				{
-					key: 'requestAmendment',
-					icon: 'fas fa-exclamation-circle',
-					color: '#F0BB24',
-					toolTip: 'Request applicant updates answer',
-					order: 2,
-				},
-			],
+			inReview: {
+				custodian: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+					{
+						key: 'requestAmendment',
+						icon: 'fas fa-exclamation-circle',
+						color: '#F0BB24',
+						toolTip: 'Request applicant updates answer',
+						order: 2,
+					},
+				],
+				applicant: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+			},
 			approved: [
 				{
 					key: 'guidance',

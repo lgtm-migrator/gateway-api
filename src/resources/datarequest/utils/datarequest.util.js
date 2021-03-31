@@ -7,10 +7,14 @@ import dynamicForm from '../../utilities/dynamicForms/dynamicForm.util';
 
 const repeatedSectionRegex = /_[a-zA-Z|\d]{5}$/gm;
 
-const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '') => {
+const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '', activeParty) => {
 	let formattedSchema = {};
 	if (userType === constants.userTypes.CUSTODIAN) {
-		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus] };
+		if (applicationStatus === constants.applicationStatuses.INREVIEW) {
+			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus][activeParty] };
+		} else {
+			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus]};
+		}
 	} else {
         //let test = JSON.stringify(constants.userQuestionActions[userType][applicationStatus]);
         //questionActions: [{"key":"guidance","icon":"far fa-question-circle","color":"#475da7","toolTip":"Guidance","order":1}]
@@ -242,6 +246,7 @@ const cloneIntoNewApplication = async (appToClone, context) => {
 		publisher,
 		questionAnswers,
 		aboutApplication: {},
+		amendmentIterations: [],
 		applicationStatus: constants.applicationStatuses.INPROGRESS,
 	};
 
