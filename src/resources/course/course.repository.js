@@ -101,6 +101,7 @@ const editCourse = async (req, res) => {
 		let relatedObjects = req.body.relatedObjects;
 		let courseOptions = req.body.courseOptions;
 		let entries = req.body.entries;
+		let updatedon = Date.now();
 
 		Course.findOneAndUpdate(
 			{ id: id },
@@ -120,6 +121,7 @@ const editCourse = async (req, res) => {
 				award: inputSanitizer.removeNonBreakingSpaces(req.body.award),
 				competencyFramework: inputSanitizer.removeNonBreakingSpaces(req.body.competencyFramework),
 				nationalPriority: inputSanitizer.removeNonBreakingSpaces(req.body.nationalPriority),
+				updatedon: updatedon,
 			},
 			err => {
 				if (err) {
