@@ -130,7 +130,8 @@ module.exports = {
 				accessRecord.jsonSchema,
 				userType,
 				accessRecord.applicationStatus,
-				userRole
+				userRole,
+				activeParty
 			);
 			// 14. Return application form
 			return res.status(200).json({
@@ -234,7 +235,7 @@ module.exports = {
 				data = { ...accessRecord.toObject() };
 			}
 			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus, null, constants.userTypes.APPLICANT);
 			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -341,7 +342,7 @@ module.exports = {
 				data = { ...accessRecord.toObject() };
 			}
 			// 8. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus, null, constants.userTypes.APPLICANT);
 			// 9. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -1676,6 +1677,7 @@ module.exports = {
 						jsonSchema,
 						constants.userTypes.APPLICANT, // current user type
 						constants.applicationStatuses.INPROGRESS,
+						null,
 						constants.userTypes.APPLICANT // active party
 					);
 					// 11. Return necessary object to reflect schema update
