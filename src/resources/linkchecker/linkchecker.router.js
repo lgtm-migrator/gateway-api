@@ -1,4 +1,5 @@
 import express from 'express';
+import * as Sentry from '@sentry/node';
 import { getObjectResult } from './linkchecker.repository';
 import { getUserByUserId } from '../user/user.repository';
 import { Data } from '../tool/data.model';
@@ -109,7 +110,16 @@ router.post('/', async (req, res) => {
                            <br /> <br /> ${footer}`,
 				};
 
-				await sgMail.send(msg);
+				await sgMail.send(msg, false, err => {
+					if (err) {
+						Sentry.addBreadcrumb({
+							category: 'SendGrid',
+							message: 'Sending email failed',
+							level: Sentry.Severity.Warning,
+						});
+						Sentry.captureException(err);
+					}
+				});
 			}
 		}
 	};
