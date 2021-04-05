@@ -284,11 +284,9 @@ export async function loadDatasets(override) {
 	var counter = 0;
 
 	//Logout first to clear any previous logins
-	await axios
-		.post(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/logout`, { withCredentials: true, timeout: 10000 })
-		.catch(err => {
-			console.log('Error when trying to logout of the MDC - ' + err.message);
-		});
+	await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 10000 }).catch(err => {
+		console.log('Error when trying to logout of the MDC - ' + err.message);
+	});
 
 	const loginDetails = {
 		username: process.env.MDCUsername,
@@ -577,11 +575,9 @@ export async function loadDatasets(override) {
 			console.error('Unable to complete the run ' + err.message);
 		});
 
-	await axios
-		.post(`https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod/api/authentication/logout`, { withCredentials: true, timeout: 10000 })
-		.catch(err => {
-			console.log('Error when trying to logout of the MDC - ' + err.message);
-		});
+	await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 10000 }).catch(err => {
+		console.log('Error when trying to logout of the MDC - ' + err.message);
+	});
 
 	var datasetsHDRIDs = await Data.aggregate([
 		{ $match: { type: 'dataset', activeflag: 'active', source: 'HDRUK MDC' } },
