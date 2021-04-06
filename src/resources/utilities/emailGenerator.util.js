@@ -2,8 +2,8 @@ import { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
-import teamController from '../team/team.controller';
 import constants from '../utilities/constants.util';
+import * as Sentry from '@sentry/node';
 
 const sgMail = require('@sendgrid/mail');
 let parent, qsId;
@@ -1652,7 +1652,16 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 		};
 
 		// 4. Send email using SendGrid
-		await sgMail.send(msg);
+		await sgMail.send(msg, false, err => {
+			if (err) {
+				Sentry.addBreadcrumb({
+					category: 'SendGrid',
+					message: 'Sending email failed',
+					level: Sentry.Severity.Warning,
+				});
+				Sentry.captureException(err);
+			}
+		});
 	}
 };
 
