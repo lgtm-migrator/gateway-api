@@ -363,5 +363,5 @@ export default {
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
-	hdrukEmail: _hdrukEmail,
+	hdrukEmail: _hdrukEmail
 };
