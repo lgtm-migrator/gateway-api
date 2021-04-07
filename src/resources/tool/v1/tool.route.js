@@ -12,6 +12,7 @@ import inputSanitizer from '../../utilities/inputSanitizer';
 import _ from 'lodash';
 import helper from '../../utilities/helper.util';
 import escape from 'escape-html';
+import helperUtil from '../../utilities/helper.util';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const router = express.Router();
 
@@ -348,13 +349,15 @@ router.delete('/review/delete', passport.authenticate('jwt'), utils.checkIsInRol
 //     }
 // );
 
-// @router   GET /api/v1/project/tag/name
+// @router   GET /api/v1/project/tag/
 // @desc     Get tools by tag search
 // @access   Private
-router.get('/:type/tag/:name', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/:type/tag', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	try {
 		// 1. Destructure tag name parameter passed
-		let { type, name } = req.params;
+		let { type } = req.params;
+		let { name } = req.query;
+
 		// 2. Check if parameters are empty
 		if (_.isEmpty(name) || _.isEmpty(type)) {
 			return res.status(400).json({
@@ -362,10 +365,21 @@ router.get('/:type/tag/:name', passport.authenticate('jwt'), utils.checkIsInRole
 				message: 'Entity type and tag are required',
 			});
 		}
+
 		// 3. Find matching projects in MongoDb selecting name and id
-		let entities = await Data.find({
-			$and: [{ type }, { $or: [{ 'tags.topics': name }, { 'tags.features': name }] }],
-		}).select('id name');
+		let filterValues = name.split(',');
+		let searchQuery = { $and: [{ type }] };
+		searchQuery['$and'].push({
+			$or: filterValues.map(value => {
+				return {
+					$or: [
+						{ 'tags.topics': { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } },
+						{ 'tags.features': { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } },
+					],
+				};
+			}),
+		});
+		let entities = await Data.find(searchQuery).select('id name');
 		// 4. Return projects
 		return res.status(200).json({ success: true, entities });
 	} catch (err) {
