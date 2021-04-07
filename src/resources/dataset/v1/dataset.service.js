@@ -226,7 +226,7 @@ export async function importCatalogues(cataloguesToImport, override = false, lim
 			console.error('Catalogue failed to run due to incorrect or incomplete parameters');
 			continue;
 		}
-		const { metadataUrl, username, password, source, instanceType } = metadataCatalogues[catalogue];
+		const { metadataUrl, dataModelExportRoute, username, password, source, instanceType } = metadataCatalogues[catalogue];
 		const options = {
 			instanceType,
 			credentials: {
@@ -237,8 +237,63 @@ export async function importCatalogues(cataloguesToImport, override = false, lim
 			limit,
 		};
 		initialiseImporter();
-		await importMetadataFromCatalogue(metadataUrl, source, options);
+		await importMetadataFromCatalogue(metadataUrl, dataModelExportRoute, source, options);
 	}
+}
+
+export async function saveUptime() {
+	const monitoring = require('@google-cloud/monitoring');
+	const projectId = 'hdruk-gateway';
+	const client = new monitoring.MetricServiceClient();
+
+	var selectedMonthStart = new Date();
+	selectedMonthStart.setMonth(selectedMonthStart.getMonth() - 1);
+	selectedMonthStart.setDate(1);
+	selectedMonthStart.setHours(0, 0, 0, 0);
+
+	var selectedMonthEnd = new Date();
+	selectedMonthEnd.setDate(0);
+	selectedMonthEnd.setHours(23, 59, 59, 999);
+
+	const request = {
+		name: client.projectPath(projectId),
+		filter:
+			'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-production-web-app-qsxe8fXRrBo" AND metric.label."checker_location"="eur-belgium"',
+
+		interval: {
+			startTime: {
+				seconds: selectedMonthStart.getTime() / 1000,
+			},
+			endTime: {
+				seconds: selectedMonthEnd.getTime() / 1000,
+			},
+		},
+		aggregation: {
+			alignmentPeriod: {
+				seconds: '86400s',
+			},
+			crossSeriesReducer: 'REDUCE_NONE',
+			groupByFields: ['metric.label."checker_location"', 'resource.label."instance_id"'],
+			perSeriesAligner: 'ALIGN_FRACTION_TRUE',
+		},
+	};
+
+	// Writes time series data
+	const [timeSeries] = await client.listTimeSeries(request);
+	var dailyUptime = [];
+	var averageUptime;
+
+	timeSeries.forEach(data => {
+		data.points.forEach(data => {
+			dailyUptime.push(data.value.doubleValue);
+		});
+
+		averageUptime = (dailyUptime.reduce((a, b) => a + b, 0) / dailyUptime.length) * 100;
+	});
+
+	var metricsData = new MetricsData();
+	metricsData.uptime = averageUptime;
+	await metricsData.save();
 }
 
 /**
@@ -255,7 +310,7 @@ function initialiseImporter() {
 	counter = 0;
 }
 
-async function importMetadataFromCatalogue(baseUri, source, { instanceType, credentials, override = false, limit }) {
+async function importMetadataFromCatalogue(baseUri, dataModelExportRoute, source, { instanceType, credentials, override = false, limit }) {
 	const startCacheTime = Date.now();
 	console.log(
 		`Starting metadata import for ${source} on ${instanceType} at ${Date()} with base URI ${baseUri}, override:${override}, limit:${
@@ -274,7 +329,7 @@ async function importMetadataFromCatalogue(baseUri, source, { instanceType, cred
 
 	await logoutCatalogue(baseUri);
 	await loginCatalogue(baseUri, credentials);
-	await loadDatasets(baseUri, datasetsMDCList.items, datasetsMDCList.count, source, limit).catch(err => {
+	await loadDatasets(baseUri, dataModelExportRoute, datasetsMDCList.items, datasetsMDCList.count, source, limit).catch(err => {
 		Sentry.addBreadcrumb({
 			category: 'Caching',
 			message: `Unable to complete the metadata import for ${source} ${err.message}`,
@@ -290,7 +345,7 @@ async function importMetadataFromCatalogue(baseUri, source, { instanceType, cred
 	console.log(`Run Completed for ${source} at ${Date()} - Run took ${totalCacheTime}s`);
 }
 
-async function loadDatasets(baseUri, datasetsToImport, datasetsToImportCount, source, limit) {
+async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, datasetsToImportCount, source, limit) {
 	if (limit) {
 		datasetsToImport = [...datasetsToImport.slice(0, limit)];
 		datasetsToImportCount = datasetsToImport.length;
@@ -308,7 +363,7 @@ async function loadDatasets(baseUri, datasetsToImport, datasetsToImportCount, so
 
 		const startImportTime = Date.now();
 
-		const exportUri = `${baseUri}/api/dataModels/${datasetMDC.id}/export/ox.softeng.metadatacatalogue.core.spi.json/JsonExporterService/1.1`;
+		const exportUri = `${baseUri}${dataModelExportRoute}`.replace('@datasetid@', datasetMDC.id);
 		const datasetMDCJSON = await axios
 			.get(exportUri, {
 				timeout: 10000,
@@ -322,6 +377,8 @@ async function loadDatasets(baseUri, datasetsToImport, datasetsToImportCount, so
 				Sentry.captureException(err);
 				console.error('Unable to get metadata JSON ' + err.message);
 			});
+
+		console.log(JSON.stringify(datasetMDCJSON.data));
 
 		const elapsedTime = ((Date.now() - startImportTime) / 1000).toFixed(3);
 		console.log(`Time taken to import JSON  ${elapsedTime} (${datasetMDC.id})`);
@@ -1013,59 +1070,4 @@ function splitString(array) {
 		}
 	}
 	return returnArray;
-}
-
-export async function saveUptime() {
-	const monitoring = require('@google-cloud/monitoring');
-	const projectId = 'hdruk-gateway';
-	const client = new monitoring.MetricServiceClient();
-
-	var selectedMonthStart = new Date();
-	selectedMonthStart.setMonth(selectedMonthStart.getMonth() - 1);
-	selectedMonthStart.setDate(1);
-	selectedMonthStart.setHours(0, 0, 0, 0);
-
-	var selectedMonthEnd = new Date();
-	selectedMonthEnd.setDate(0);
-	selectedMonthEnd.setHours(23, 59, 59, 999);
-
-	const request = {
-		name: client.projectPath(projectId),
-		filter:
-			'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-production-web-app-qsxe8fXRrBo" AND metric.label."checker_location"="eur-belgium"',
-
-		interval: {
-			startTime: {
-				seconds: selectedMonthStart.getTime() / 1000,
-			},
-			endTime: {
-				seconds: selectedMonthEnd.getTime() / 1000,
-			},
-		},
-		aggregation: {
-			alignmentPeriod: {
-				seconds: '86400s',
-			},
-			crossSeriesReducer: 'REDUCE_NONE',
-			groupByFields: ['metric.label."checker_location"', 'resource.label."instance_id"'],
-			perSeriesAligner: 'ALIGN_FRACTION_TRUE',
-		},
-	};
-
-	// Writes time series data
-	const [timeSeries] = await client.listTimeSeries(request);
-	var dailyUptime = [];
-	var averageUptime;
-
-	timeSeries.forEach(data => {
-		data.points.forEach(data => {
-			dailyUptime.push(data.value.doubleValue);
-		});
-
-		averageUptime = (dailyUptime.reduce((a, b) => a + b, 0) / dailyUptime.length) * 100;
-	});
-
-	var metricsData = new MetricsData();
-	metricsData.uptime = averageUptime;
-	await metricsData.save();
 }
