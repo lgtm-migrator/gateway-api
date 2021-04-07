@@ -386,6 +386,7 @@ router.get('', async (req, res) => {
 							activeflag: 1,
 							datasetv2: 1,
 							datasetfields: 1,
+							description: 1,
 							updatedAt: 1,
 						}
 					)
