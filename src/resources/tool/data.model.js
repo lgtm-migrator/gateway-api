@@ -109,7 +109,14 @@ const DataSchema = new Schema(
 		structuralMetadata: {},
 		percentageCompleted: {},
 		applicationStatusDesc: String,
-		lastActivity: Date,
+		timestamps: {
+			updated: Date,
+			created: Date,
+			submitted: Date,
+			published: Date,
+			rejected: Date,
+			archived: Date,
+		},
 
 		//not used
 		rating: Number,

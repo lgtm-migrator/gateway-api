@@ -1627,6 +1627,54 @@ const _generateAddedToTeam = options => {
 	return body;
 };
 
+const _generateMetadataOnboardingSumbitted = options => {
+	let { teamName, role } = options;
+	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
+	let subheader = ``;
+	if (role === constants.roleTypes.MANAGER) {
+		subheader = `You will now be able to create and manage Data Access Request workflows, process applications, send messages, and manage the profile area relating to this team, including the ability to add and remove new members.`;
+	} else if (role === constants.roleTypes.REVIEWER) {
+		subheader = `You will now be able to review assigned Data Access Requests, send messages and visit the profile area relating to this team.`;
+	}
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${header}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${subheader}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Team</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">
+													${teamName}
+												</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+	return body;
+};
+
 /**
  * [_sendEmail]
  *
@@ -1711,6 +1759,11 @@ const _generateAttachment = (filename, content, type) => {
 };
 
 export default {
+	//General
+	sendEmail: _sendEmail,
+	generateEmailFooter: _generateEmailFooter,
+	generateAttachment: _generateAttachment,
+	//DAR
 	generateEmail: _generateEmail,
 	generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
@@ -1722,11 +1775,17 @@ export default {
 	generateReviewDeadlineWarning: _generateReviewDeadlineWarning,
 	generateReviewDeadlinePassed: _generateReviewDeadlinePassed,
 	generateFinalDecisionRequiredEmail: _generateFinalDecisionRequiredEmail,
-	generateRemovedFromTeam: _generateRemovedFromTeam,
-	generateAddedToTeam: _generateAddedToTeam,
-	sendEmail: _sendEmail,
-	generateEmailFooter: _generateEmailFooter,
-	generateAttachment: _generateAttachment,
+	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
+	//Teams
+	generateRemovedFromTeam: _generateRemovedFromTeam,
+	generateAddedToTeam: _generateAddedToTeam,
+	//Metadata Onboarding
+	generateMetadataOnboardingSumbitted: _generateMetadataOnboardingSumbitted,
+	//generateMetadataOnboardingSumbittedVersion: _generateMetadataOnboardingSumbittedVersion,
+	//generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
+	//generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
+	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
+	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 };
