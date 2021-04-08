@@ -11,7 +11,7 @@ import { ROLES } from '../../user/user.roles';
 import queryString from 'query-string';
 import Url from 'url';
 import { discourseLogin } from '../sso/sso.discourse.service';
-import { isNil } from lodash;
+import { isNil } from 'lodash';
 const OidcStrategy = passportOidc.Strategy;
 const baseAuthUrl = process.env.AUTH_PROVIDER_URI;
 const eventLogController = require('../../eventlog/eventlog.controller');
