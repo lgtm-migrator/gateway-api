@@ -9,6 +9,16 @@ const _formTypes = Object.freeze({
   Extended5Safe : '5 safe'
 });
 
+const _teamNotificationTypes = Object.freeze({
+  DATAACCESSREQUEST : 'dataAccessRequest',
+  METADATAONBOARDING : 'metaDataOnboarding'
+});
+
+const _teamNotificationTypesHuman = Object.freeze({
+  dataAccessRequest : 'Data access request',
+  metaDataOnboarding : 'Meta data on-boarding'
+});
+
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
 
 const _userQuestionActions = {
@@ -352,6 +362,8 @@ export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
 	formTypes: _formTypes,
+	teamNotificationTypes: _teamNotificationTypes,
+	teamNotificationTypesHuman: _teamNotificationTypesHuman,
 	userQuestionActions: _userQuestionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
