@@ -275,10 +275,9 @@ const updateNotifications = async (req, res) => {
 			// 4. get member details
 			let member = [...members].find(el => el.memberid.toString() === _id.toString());
 			// 5. get member roles and notifications
-			let { roles = [], notifications = [] } = member;
+			let { roles = [] } = member;
 			// 6. get user role
 			let isManager = roles.includes('manager');
-			let isReviewer = roles.includes('reviewer');
 			// 7. req data from FE
 			let { memberNotifications = [], teamNotifications = [] } = data;
 			// want to optIn's for false values- 
@@ -580,7 +579,6 @@ const formatTeamNotifications  = (team) => {
 
 export default {
 	getTeamById: getTeamById,
-	getTeamMembers: getTeamMembers,
 	getTeamMembers: getTeamMembers,
 	getTeamNotifications: getTeamNotifications,
 	addTeamMembers: addTeamMembers,
