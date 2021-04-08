@@ -46,15 +46,14 @@ export const clients = [
 		post_logout_redirect_uris: ['https://web.uatbeta.healthdatagateway.org/search?search=&logout=true'],
 	},
 	{
-		//Test client for GA4GH passports
-		client_id: 'C18D8962DF987361', //process.env.BCPClientID || '',
-		client_secret: 'DDF5B8127C75D828B8DB12D5FEB27', //,process.env.BCPClientSecret || '',
+		//GA4GH passports
+		client_id: process.env.GA4GHClientID,
+		client_secret: process.env.GA4GHClientSecret,
 		grant_types: ['authorization_code', 'implicit'],
 		response_types: ['code id_token'],
-		redirect_uris: ['https://www.google.co.uk'], //process.env.BCPRedirectURI.split(',') || [''],
+		redirect_uris: process.env.GA4GHRedirectURI.split(',') || [''],
 		id_token_signed_response_alg: 'HS256',
 		post_logout_redirect_uris: ['https://web.uatbeta.healthdatagateway.org/search?search=&logout=true'],
-		//Basic QzE4RDg5NjJERjk4NzM2MTpEREY1QjgxMjdDNzVEODI4QjhEQjEyRDVGRUIyNw==
 	},
 ];
 
