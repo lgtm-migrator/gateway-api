@@ -191,6 +191,144 @@ const addTeamMembers = async (req, res) => {
  */
 const updateTeamMember = async (req, res) => {};
 
+
+/**
+ * GET api/v1/teams/:id/notifications
+ * 
+ * @desc Get team notifications by :id
+ */
+const getTeamNotifications = async (req, res) => {
+	try {
+		const team = await TeamModel.findOne({ _id: req.params.id });
+		if (!team) {
+			return res.status(404).json({ success: false });
+		}
+		// 2. Check the current user is a member of the team
+		const {
+			user: { _id }
+		} = req;
+
+		let { members } = team;
+		let authorised = false;
+		// 3. check if member is inside the team of members
+		if (members) {
+			authorised = members.some(
+				(el) => el.memberid.toString() === _id.toString()
+			);
+		}
+		// 4. If not return unauthorised
+		if (!authorised) 
+			return res.status(401).json({ success: false });
+
+		// 5. get member details
+		let member = [...members].find(el => el.memberid.toString() === _id.toString());
+
+		// 6. format teamNotifications for FE
+		const teamNotifications = formatTeamNotifications(team);
+		// 7. return optimal payload needed for FE containing memberNotifications and teamNotifications
+		let notifications = {
+			memberNotifications: member.notifications ? member.notifications : [],
+			teamNotifications
+		}
+		// 8. return 200 success
+		return res.status(200).json(notifications);
+	}
+	catch (err) {
+		console.error(err.message);
+		return res.status(500).json({
+			success: false,
+			message: 'An error occurred retrieving team notifications',
+		});
+	}
+}
+
+/**
+ * PUT api/v1/team/:id/notifications
+ *
+ * @desc Update Team notification preferences
+ *
+ */
+const updateNotifications = async (req, res) => {
+	try {
+			// 1. Get the team from the database
+			const team = await TeamModel.findOne({ _id: req.params.id });
+			if (!team) {
+				return res.status(404).json({ success: false });
+			}
+			// 2. Check the current user is a member of the team
+			const {
+				user: { _id },
+				body: data,
+			} = req;
+
+			let { members } = team;
+			let authorised = false;
+
+			if (members) {
+				authorised = members.some(
+					(el) => el.memberid.toString() === _id.toString()
+				);
+			}
+			// 3. If not return unauthorised
+			if (!authorised) 
+				return res.status(401).json({ success: false });
+			// 4. get member details
+			let member = [...members].find(el => el.memberid.toString() === _id.toString());
+			// 5. get member roles and notifications
+			let { roles = [] } = member;
+			// 6. get user role
+			let isManager = roles.includes('manager');
+			// 7. req data from FE
+			let { memberNotifications = [], teamNotifications = [] } = data;
+			// want to optIn's for false values- 
+			// if false we need to check the teamNotifications incoming for req to see if any are false
+			// if any teamNotifications for same type false return error with message obj
+
+			// 7. commonality = can only turn off personal notification for each type if team has subscribed emails for desired type **As of M2 DAR**
+			let missingOptIns = {};
+			// 8. if member has notifications
+			if (!_.isEmpty(memberNotifications) && !_.isEmpty(teamNotifications)) {
+				missingOptIns = [...memberNotifications].reduce((neededOptIns, memberNotification) => {
+					let { notificationType: memberNotificationType, optIn: memberOptIn } = memberNotification;
+					// find the matching notification type within the teams notification
+					let teamNotification = [...teamNotifications].find(teamNotification => teamNotification.notificationType === memberNotificationType) || {};
+					// if the team has the same notification type test
+					if(!_.isEmpty(teamNotification)) {
+						let {notificationType, optIn: teamOptIn, subscribedEmails} = teamNotification;
+						// if both are turned off build and return new error
+						if((!teamOptIn && !memberOptIn) || (!memberOptIn && subscribedEmails.length <= 0)) {
+							neededOptIns = {
+								...neededOptIns,
+								[`${notificationType}`]:  `Notifications must be enabled for ${constants.teamNotificationTypesHuman[notificationType]}`
+							}
+						}
+					}
+					return neededOptIns;
+				}, {});
+			}
+			// 9. return missingOptIns to FE and do not update
+			if(!_.isEmpty(missingOptIns))
+				return res.status(400).json({ success: false, message: missingOptIns });
+			// 10. if manager update team notifications
+			if(isManager) {
+				// update team notifications
+				team.notifications = teamNotifications;
+			} 
+			// 11. update member notifications
+			member.notifications = memberNotifications;
+			// 12. save changes to team
+			await team.save();
+			// 13. return 201 with new team
+			return res.status(201).json(team);
+	} catch(err) {
+		console.error(err.message);
+		return res.status(500).json({
+			success: false,
+			message: 'An error occurred updating team notifications',
+		});
+	}
+};
+
 /**
  * Deletes a team member from a team
  *
@@ -278,10 +416,7 @@ const deleteTeamMember = async (req, res) => {
 		});
 	} catch (err) {
 		console.error(err.message);
-		return res.status(500).json({
-			success: false,
-			message: 'An error occurred deleting the team member',
-		});
+		res.status(500).json({ status: 'error', message: err.message });
 	}
 };
 
@@ -416,11 +551,39 @@ const createNotifications = async (type, context, team, user) => {
 	}
 };
 
+const formatTeamNotifications  = (team) => {
+	let { notifications = [] } = team;
+	if(!_.isEmpty(notifications)) {
+		// 1. reduce for mapping over team notifications
+		return [...notifications].reduce((arr, notification) => { 
+			let teamNotificationEmails = [];
+			let { notificationType = '', optIn = false, subscribedEmails = []} = notification;
+			// 2. check subscribedEmails has length
+			if(!_.isEmpty(subscribedEmails))
+				teamNotificationEmails = [...subscribedEmails].map(email => ({ value: email, error: ''}));
+			// 3. return optimal payload for formated notification
+			let formattedNotification = {
+				notificationType,
+				optIn,
+				subscribedEmails: teamNotificationEmails
+			}
+
+			arr = [...arr, formattedNotification];
+
+			return arr;
+		}, []);
+	} else {
+		return [];
+	}
+};
+
 export default {
 	getTeamById: getTeamById,
 	getTeamMembers: getTeamMembers,
+	getTeamNotifications: getTeamNotifications,
 	addTeamMembers: addTeamMembers,
 	updateTeamMember: updateTeamMember,
+	updateNotifications: updateNotifications,
 	deleteTeamMember: deleteTeamMember,
 	checkTeamPermissions: checkTeamPermissions,
 	getTeamMembersByRole: getTeamMembersByRole,
