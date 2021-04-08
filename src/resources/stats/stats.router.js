@@ -214,23 +214,195 @@ router.get('', async (req, res) => {
 			case 'popular':
 				let popularType = {};
 				if (query.type) popularType = { type: query.type };
-				const popularData = await Data.aggregate([
-					{
-						$match: {
-							...popularType,
-							counter: {
-								$gt: 0,
-							},
-							name: {
-								$exists: true,
-							},
-							pid: {
-								$ne: 'fd8d0743-344a-4758-bb97-f8ad84a37357', //PID for HDR-UK Papers dataset
+				let popularData;
+
+				if (popularType.type !== 'course') {
+					popularData = await Data.aggregate([
+						{
+							$match: {
+								...popularType,
+								counter: {
+									$gt: 0,
+								},
+								name: {
+									$exists: true,
+								},
+								pid: {
+									$ne: 'fd8d0743-344a-4758-bb97-f8ad84a37357', //PID for HDR-UK Papers dataset
+								},
 							},
 						},
-					},
-					{
-						$project: {
+						{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+						{
+							$project: {
+								_id: 0,
+								type: 1,
+								bio: 1,
+								firstname: 1,
+								lastname: 1,
+								name: 1,
+								categories: 1,
+								pid: 1,
+								id: 1,
+								counter: 1,
+								programmingLanguage: 1,
+								tags: 1,
+								description: 1,
+								activeflag: 1,
+								datasetv2: 1,
+								datasetfields: 1,
+								'persons.id': 1,
+								'persons.firstname': 1,
+								'persons.lastname': 1,
+							},
+						},
+						{
+							$group: {
+								_id: '$name',
+								type: { $first: '$type' },
+								name: { $first: '$name' },
+								pid: { $first: '$pid' },
+								bio: { $first: '$bio' },
+								firstname: { $first: '$firstname' },
+								lastname: { $first: '$lastname' },
+								id: { $first: '$id' },
+								categories: { $first: '$categories' },
+								counter: { $sum: '$counter' },
+								programmingLanguage: { $first: '$programmingLanguage' },
+								tags: { $first: '$tags' },
+								description: { $first: '$description' },
+								activeflag: { $first: '$activeflag' },
+								datasetv2: { $first: '$datasetv2' },
+								datasetfields: { $first: '$datasetfields' },
+								persons: { $first: '$persons' },
+							},
+						},
+						{
+							$sort: {
+								counter: -1,
+								name: 1,
+							},
+						},
+						{
+							$limit: 10,
+						},
+					]);
+				} else if (popularType.type === 'course') {
+					popularData = await Course.aggregate([
+						{
+							$match: {
+								counter: {
+									$gt: 0,
+								},
+								title: {
+									$exists: true,
+								},
+							},
+						},
+						{
+							$project: {
+								_id: 0,
+								type: 1,
+								title: 1,
+								provider: 1,
+								courseOptions: 1,
+								award: 1,
+								domains: 1,
+								description: 1,
+								id: 1,
+								counter: 1,
+							},
+						},
+						{
+							$group: {
+								_id: '$title',
+								type: { $first: '$type' },
+								title: { $first: '$title' },
+								provider: { $first: '$provider' },
+								courseOptions: { $first: '$courseOptions' },
+								award: { $first: '$award' },
+								domains: { $first: '$domains' },
+								description: { $first: '$description' },
+								id: { $first: '$id' },
+								counter: { $sum: '$counter' },
+							},
+						},
+						{
+							$sort: {
+								counter: -1,
+								title: 1,
+							},
+						},
+						{
+							$limit: 10,
+						},
+					]);
+				}
+
+				return res.json({ success: true, data: popularData });
+
+			case 'updates':
+				let recentlyUpdated = Data.find({ activeflag: 'active' }).sort({ updatedon: -1 }).limit(10);
+
+				if (req.query.type && req.query.type === 'course') {
+					recentlyUpdated = Course.find(
+						{ activeflag: 'active' },
+						{
+							_id: 0,
+							type: 1,
+							title: 1,
+							provider: 1,
+							courseOptions: 1,
+							award: 1,
+							domains: 1,
+							description: 1,
+							id: 1,
+							counter: 1,
+							updatedon: 1,
+						}
+					)
+						.sort({ updatedon: -1, title: 1 })
+						.limit(10);
+				} else if (req.query.type && req.query.type === 'dataset') {
+					recentlyUpdated = Data.find(
+						{
+							$and: [
+								{
+									type: req.query.type,
+									activeflag: 'active',
+									pid: {
+										$ne: 'fd8d0743-344a-4758-bb97-f8ad84a37357', //Production PID for HDR-UK Papers dataset
+									},
+								},
+							],
+						},
+						{
+							_id: 0,
+							type: 1,
+							name: 1,
+							pid: 1,
+							id: 1,
+							counter: 1,
+							activeflag: 1,
+							datasetv2: 1,
+							datasetfields: 1,
+							description: 1,
+							updatedAt: 1,
+						}
+					)
+						.sort({ updatedAt: -1, name: 1 })
+						.limit(10);
+				} else if (req.query.type && req.query.type !== 'course' && req.query.type !== 'dataset') {
+					recentlyUpdated = Data.find(
+						{
+							$and: [
+								{
+									type: req.query.type,
+									activeflag: 'active',
+								},
+							],
+						},
+						{
 							_id: 0,
 							type: 1,
 							bio: 1,
@@ -238,50 +410,22 @@ router.get('', async (req, res) => {
 							lastname: 1,
 							name: 1,
 							categories: 1,
-							pid: 1,
 							id: 1,
 							counter: 1,
-						},
-					},
-					{
-						$group: {
-							_id: '$name',
-							type: { $first: '$type' },
-							name: { $first: '$name' },
-							pid: { $first: '$pid' },
-							bio: { $first: '$bio' },
-							firstname: { $first: '$firstname' },
-							lastname: { $first: '$lastname' },
-							id: { $first: '$id' },
-							categories: { $first: '$categories' },
-							counter: { $sum: '$counter' },
-						},
-					},
-					{
-						$sort: {
-							counter: -1,
-							name: 1,
-						},
-					},
-					{
-						$limit: 10,
-					},
-				]);
-
-				return res.json({ success: true, data: popularData });
-
-			case 'updates':
-				var q = Data.find({ activeflag: 'active', counter: { $gt: 0 } })
-					.sort({ updatedon: -1 })
-					.limit(10);
-
-				if (req.query.type) {
-					q = Data.find({ $and: [{ type: req.query.type, activeflag: 'active', updatedon: { $gt: 0 } }] })
-						.sort({ counter: -1 })
+							programmingLanguage: 1,
+							tags: 1,
+							description: 1,
+							activeflag: 1,
+							authors: 1,
+							updatedon: 1,
+						}
+					)
+						.populate([{ path: 'persons', options: { select: { id: 1, firstname: 1, lastname: 1 } } }])
+						.sort({ updatedon: -1, name: 1 })
 						.limit(10);
 				}
 
-				q.exec((err, data) => {
+				recentlyUpdated.exec((err, data) => {
 					if (err) return res.json({ success: false, error: err });
 					return res.json({ success: true, data: data });
 				});

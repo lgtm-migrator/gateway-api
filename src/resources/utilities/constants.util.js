@@ -6,7 +6,7 @@ const _userTypes = {
 
 const _formTypes = Object.freeze({
   Enquiry : 'enquiry',
-  Extended5Safe : '5 safes'
+  Extended5Safe : '5 safe'
 });
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
@@ -23,15 +23,26 @@ const _userQuestionActions = {
 					order: 1,
 				},
 			],
-			inReview: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
+			inReview: {
+				custodian: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+				applicant: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+			},
 			approved: [
 				{
 					key: 'guidance',
@@ -78,30 +89,34 @@ const _userQuestionActions = {
 					toolTip: 'Guidance',
 					order: 1,
 				},
-				{
-					key: 'requestAmendment',
-					icon: 'fas fa-exclamation-circle',
-					color: '#F0BB24',
-					toolTip: 'Request applicant updates answer',
-					order: 2,
-				},
 			],
-			inReview: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-				{
-					key: 'requestAmendment',
-					icon: 'fas fa-exclamation-circle',
-					color: '#F0BB24',
-					toolTip: 'Request applicant updates answer',
-					order: 2,
-				},
-			],
+			inReview: {
+				custodian: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+					{
+						key: 'requestAmendment',
+						icon: 'fas fa-exclamation-circle',
+						color: '#F0BB24',
+						toolTip: 'Request applicant updates answer',
+						order: 2,
+					},
+				],
+				applicant: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+			},
 			approved: [
 				{
 					key: 'guidance',
@@ -280,7 +295,8 @@ const _notificationTypes = {
 	WORKFLOWASSIGNED: 'WorkflowAssigned',
 	WORKFLOWCREATED: 'WorkflowCreated',
 	INPROGRESS: 'InProgress',
-	APPLICATIONCLONED: 'ApplicationCloned'
+	APPLICATIONCLONED: 'ApplicationCloned',
+	APPLICATIONDELETED: 'ApplicationDeleted',
 };
 
 const _applicationStatuses = {
@@ -310,7 +326,7 @@ const _formActions = {
 	REMOVEREPEATABLESECTION: 'removeRepeatableSection',
 	ADDREPEATABLEQUESTIONS: 'addRepeatableQuestions',
 	REMOVEREPEATABLEQUESTIONS: 'removeRepeatableQuestions',
-}
+};
 
 const _darPanelMapper = {
 	safesettings: 'Safe settings',

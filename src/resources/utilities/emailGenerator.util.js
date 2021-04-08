@@ -2,8 +2,8 @@ import { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
-import teamController from '../team/team.controller';
 import constants from '../utilities/constants.util';
+import * as Sentry from '@sentry/node';
 
 const sgMail = require('@sendgrid/mail');
 let parent, qsId;
@@ -158,7 +158,7 @@ const _getAllQuestionsFlattened = allQuestions => {
 						questionSetId: qsId,
 						page: parent.page,
 						section: parent.section,
-            input
+						input,
 					},
 				];
 			}
@@ -327,11 +327,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 			// render question
 			const excludedInputTypes = ['buttonInput'];
 			for (let currentQuestion of questionsArr) {
-				let {
-					question,
-					questionId,
-					input: { type = '' } = {},
-				} = currentQuestion;
+				let { question, questionId, input: { type = '' } = {} } = currentQuestion;
 				if (!excludedInputTypes.includes(type)) {
 					let answer = answers[questionId] || `-`;
 					table += `<tr>
@@ -571,17 +567,8 @@ const _generateDARStatusChangedEmail = options => {
 };
 
 const _generateDARClonedEmail = options => {
-  let {
-		id,
-		projectId,
-		projectName,
-		datasetTitles,
-		dateSubmitted,
-		applicants,
-    firstname,
-    lastname
-	} = options;
-  dateSubmitted = isNil(dateSubmitted) ? 'Not yet submitted' : moment(dateSubmitted).format('D MMM YYYY');
+	let { id, projectId, projectName, datasetTitles, dateSubmitted, applicants, firstname, lastname } = options;
+	dateSubmitted = isNil(dateSubmitted) ? 'Not yet submitted' : moment(dateSubmitted).format('D MMM YYYY');
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -635,6 +622,65 @@ const _generateDARClonedEmail = options => {
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Submitted</td>
                         <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateSubmitted}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+	return body;
+};
+
+const _generateDARDeletedEmail = options => {
+	let { publisher, projectName, datasetTitles, applicants, firstname, lastname, createdAt } = options;
+	createdAt = moment(createdAt).format('D MMM YYYY');
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Data Access Request Application Deleted
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    ${firstname} ${lastname} has deleted a data access request application.  
+                  </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													projectName || 'No project name set'
+												}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Data custodian</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${publisher}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Created</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${createdAt}</td>
                       </tr>
                     </table>
                   </td>
@@ -1606,7 +1652,16 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 		};
 
 		// 4. Send email using SendGrid
-		await sgMail.send(msg);
+		await sgMail.send(msg, false, err => {
+			if (err) {
+				Sentry.addBreadcrumb({
+					category: 'SendGrid',
+					message: 'Sending email failed',
+					level: Sentry.Severity.Warning,
+				});
+				Sentry.captureException(err);
+			}
+		});
 	}
 };
 
@@ -1668,7 +1723,8 @@ export default {
 	generateEmail: _generateEmail,
 	generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
-  generateDARClonedEmail: _generateDARClonedEmail,
+	generateDARClonedEmail: _generateDARClonedEmail,
+	generateDARDeletedEmail: _generateDARDeletedEmail,
 	generateContributorEmail: _generateContributorEmail,
 	generateStepOverrideEmail: _generateStepOverrideEmail,
 	generateNewReviewPhaseEmail: _generateNewReviewPhaseEmail,
