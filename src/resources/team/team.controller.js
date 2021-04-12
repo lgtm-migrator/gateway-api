@@ -561,6 +561,9 @@ const formatTeamNotifications  = (team) => {
 			// 2. check subscribedEmails has length
 			if(!_.isEmpty(subscribedEmails))
 				teamNotificationEmails = [...subscribedEmails].map(email => ({ value: email, error: ''}));
+			else
+				teamNotificationEmails = [{ value: '', error: ''}]
+				
 			// 3. return optimal payload for formated notification
 			let formattedNotification = {
 				notificationType,
