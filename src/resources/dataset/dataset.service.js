@@ -9,13 +9,13 @@ export default class DatasetService {
 		this.courseRepository = courseRepository;
 	}
 
-	async getDataset(id, query = {}) {
+	async getDataset(id, query = {}, options = {}) {
 		// Protect for no id passed
-		if(!id) return;
+		if (!id) return;
 
 		// Get dataset from Db by datasetid first
 		query = { ...query, datasetid: id };
-		let dataset = await this.datasetRepository.getDataset(query);
+		let dataset = await this.datasetRepository.getDataset(query, options);
 
 		// Return undefined if no dataset found
 		if (!dataset) return;
@@ -37,8 +37,8 @@ export default class DatasetService {
 		return dataset;
 	}
 
-	async getDatasets(query = {}) {
-		return this.datasetRepository.getDatasets(query);
+	async getDatasets(query = {}, options = {} ) {
+		return this.datasetRepository.getDatasets(query, options);
 	}
 
 	async getRelatedObjects(pid) {
@@ -65,7 +65,7 @@ export default class DatasetService {
 			this.paperRepository.find(query, { lean }),
 			this.toolRepository.find(query, { lean }),
 			this.projectRepository.find(query, { lean }),
-			this.courseRepository.find(query, { lean })
+			this.courseRepository.find(query, { lean }),
 		]);
 
 		// Flatten and reduce related entities into related objects
@@ -79,7 +79,7 @@ export default class DatasetService {
 					objectType: entity.type,
 					user: obj.user,
 					updated: obj.updated,
-				}
+				};
 			});
 			arr = [...arr, ...formattedEntityRelatedObjects];
 			return arr;
@@ -87,7 +87,7 @@ export default class DatasetService {
 		return relatedObjects;
 	}
 
-	 reformatTechnicalDetails (dataset) {
+	reformatTechnicalDetails(dataset) {
 		// Return if no technical details found
 		if (_.isNil(dataset.structuralMetadata) || _.isNil(dataset.structuralMetadata.dataClasses)) {
 			return dataset;
@@ -109,5 +109,5 @@ export default class DatasetService {
 			return { id, description, name, dataElementsCount: dataElements.length || 0, dataElements };
 		});
 		return dataset;
-	};
+	}
 }

@@ -3,6 +3,7 @@ import { MetricsData } from '../../stats/metrics.model';
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
+import { PublisherModel } from '../../publisher/publisher.model';
 
 export async function loadDataset(datasetID) {
 	var metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
@@ -197,7 +198,7 @@ export async function loadDataset(datasetID) {
 }
 
 export async function loadDatasets(override) {
-	console.error('Starting run at ' + Date());
+	console.log('Starting run at ' + Date());
 	let metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
 
 	let datasetsMDCCount = await new Promise(function (resolve, reject) {
@@ -224,8 +225,12 @@ export async function loadDatasets(override) {
 
 	if (datasetsMDCCount === 'Update failed') return;
 
-	//Compare counts from HDR and MDC, if greater drop of 10%+ then stop process and email support queue
+	// Compare counts from HDR and MDC, if greater drop of 10%+ then stop process and email support queue
 	var datasetsHDRCount = await Data.countDocuments({ type: 'dataset', activeflag: 'active' });
+
+	// Get active custodians on HDR Gateway
+	const publishers = await PublisherModel.find().select('name').lean();
+	const onboardedCustodians = publishers.map(publisher => publisher.name);
 
 	if ((datasetsMDCCount / datasetsHDRCount) * 100 < 90 && !override) {
 		Sentry.addBreadcrumb({
@@ -239,7 +244,7 @@ export async function loadDatasets(override) {
 		return;
 	}
 
-	//datasetsMDCCount = 10; //For testing to limit the number brought down
+	//datasetsMDCCount = 1; //For testing to limit the number brought down
 
 	var datasetsMDCList = await new Promise(function (resolve, reject) {
 		axios
@@ -275,7 +280,7 @@ export async function loadDatasets(override) {
 				level: Sentry.Severity.Error,
 			});
 			Sentry.captureException(err);
-			console.error("Unable to get metadata quality value " + err.message);
+			console.error('Unable to get metadata quality value ' + err.message);
 		});
 
 	const phenotypesList = await axios
@@ -287,7 +292,7 @@ export async function loadDatasets(override) {
 				level: Sentry.Severity.Error,
 			});
 			Sentry.captureException(err);
-			console.error("Unable to get metadata quality value " + err.message);
+			console.error('Unable to get metadata quality value ' + err.message);
 		});
 
 	const dataUtilityList = await axios
@@ -299,7 +304,7 @@ export async function loadDatasets(override) {
 				level: Sentry.Severity.Error,
 			});
 			Sentry.captureException(err);
-			console.error("Unable to get data utility " + err.message);
+			console.error('Unable to get data utility ' + err.message);
 		});
 
 	var datasetsMDCIDs = [];
@@ -422,6 +427,10 @@ export async function loadDatasets(override) {
 
 								let datasetv2Object = populateV2datasetObject(datasetV2.data.items);
 
+								// Detect if dataset uses 5 Safes form for access
+								const is5Safes = onboardedCustodians.includes(datasetMDC.publisher);
+								const hasTechnicalDetails = technicaldetails.length > 0;
+
 								if (datasetHDR) {
 									//Edit
 									if (!datasetHDR.pid) {
@@ -454,7 +463,7 @@ export async function loadDatasets(override) {
 									let keywordArray = splitString(datasetMDC.keywords);
 									let physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability);
 									let geographicCoverageArray = splitString(datasetMDC.geographicCoverage);
-
+									// Update dataset
 									await Data.findOneAndUpdate(
 										{ datasetid: datasetMDC.id },
 										{
@@ -463,6 +472,8 @@ export async function loadDatasets(override) {
 											name: datasetMDC.title,
 											description: datasetMDC.description,
 											source: 'HDRUK MDC',
+											is5Safes,
+											hasTechnicalDetails,
 											activeflag: 'active',
 											license: datasetMDC.license,
 											tags: {
@@ -545,6 +556,8 @@ export async function loadDatasets(override) {
 									data.type = 'dataset';
 									data.activeflag = 'active';
 									data.source = 'HDRUK MDC';
+									data.is5Safes = is5Safes;
+									data.hasTechnicalDetails = hasTechnicalDetails;
 
 									data.name = datasetMDC.title;
 									data.description = datasetMDC.description;
@@ -610,7 +623,6 @@ export async function loadDatasets(override) {
 	);
 
 	saveUptime();
-
 	console.log('Update Completed at ' + Date());
 	return;
 }

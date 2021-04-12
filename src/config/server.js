@@ -63,8 +63,10 @@ connectToDatabase();
 
 // (optional) only made for logging and
 // bodyParser, parses the request body to be a readable json format
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+
+app.use(bodyParser.json({ limit: '10mb', extended: true }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }));
+
 app.use(logger('dev'));
 app.use(cookieParser());
 app.use(passport.initialize());
@@ -214,6 +216,7 @@ app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.rout
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
+app.use('/api/v1/dataset-onboarding', require('../resources/dataset/datasetonboarding.route'));
 app.use('/api/v1/datasets', require('../resources/dataset/v1/dataset.route'));
 app.use('/api/v2/datasets', require('../resources/dataset/v2/dataset.route'));
 
@@ -225,6 +228,8 @@ app.use('/api/v1/collections', require('../resources/collections/collections.rou
 app.use('/api/v1/analyticsdashboard', require('../resources/googleanalytics/googleanalytics.router'));
 
 app.use('/api/v1/help', require('../resources/help/help.router'));
+
+app.use('/api/v2/filters', require('../resources/filters/filters.route'));
 
 initialiseAuthentication(app);
 

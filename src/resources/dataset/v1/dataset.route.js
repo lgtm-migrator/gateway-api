@@ -2,9 +2,10 @@ import express from 'express';
 import { Data } from '../../tool/data.model';
 import { loadDataset, loadDatasets } from './dataset.service';
 import { getAllTools } from '../../tool/data.repository';
-import _ from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import escape from 'escape-html';
 import { Course } from '../../course/course.model';
+import { filtersService } from '../../filters/dependency';
 import * as Sentry from '@sentry/node';
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
@@ -33,7 +34,10 @@ router.post('/', async (req, res) => {
 			throw new Error('cache error test');
 		}
 
-		loadDatasets(parsedBody.override || false);
+		loadDatasets(parsedBody.override || false).then(() => {
+			filtersService.optimiseFilters('dataset');
+		});
+
 		return res.status(200).json({ success: true, message: 'Caching started' });
 	} catch (err) {
 		Sentry.captureException(err);
@@ -69,7 +73,7 @@ router.get('/pidList/', datasetLimiter, async (req, res) => {
 // @access   Public
 router.get('/:datasetID', async (req, res) => {
 	let { datasetID = '' } = req.params;
-	if (_.isEmpty(datasetID)) {
+	if (isEmpty(datasetID)) {
 		return res.status(400).json({ success: false });
 	}
 
@@ -80,17 +84,17 @@ router.get('/:datasetID', async (req, res) => {
 	let dataVersion = await Data.findOne({ datasetid: datasetID });
 
 	// if found then set the datasetID to the pid of the found dataset
-	if (!_.isNil(dataVersion)) {
+	if (!isNil(dataVersion)) {
 		datasetID = dataVersion.pid;
 	}
 
 	// find the active dataset using the pid
 	let dataset = await Data.findOne({ pid: datasetID, activeflag: 'active' });
 
-	if (_.isNil(dataset)) {
+	if (isNil(dataset)) {
 		// if no active version found look for the next latest version using the pid and set the isDatasetArchived flag to true
 		dataset = await Data.findOne({ pid: datasetID, activeflag: 'archive' }).sort({ createdAt: -1 });
-		if (_.isNil(dataset)) {
+		if (isNil(dataset)) {
 			try {
 				// if still not found then look up the MDC for the dataset
 				dataset = await loadDataset(datasetID);
@@ -159,6 +163,31 @@ router.get('/:datasetID', async (req, res) => {
 			}
 		});
 	});
+
+	//Check for datasetv2.enrichmentAndLinkage.qualifiedRelation
+	if (!isEmpty(dataset.datasetv2)) {
+		let qualifiedRelation = dataset.datasetv2.enrichmentAndLinkage.qualifiedRelation;
+		let newListofQualifiedRelation = [];
+		for (const relation of qualifiedRelation) {
+			if (relation.toLowerCase() === 'all') {
+				let relatedDatasets = await Data.find(
+					{
+						'datasetfields.publisher': dataset.datasetfields.publisher,
+						activeflag: 'active',
+					},
+					{ name: 1 }
+				).lean();
+
+				for (const datasets of relatedDatasets) {
+					newListofQualifiedRelation.push(datasets.name);
+				}
+				//Paul - Future, will need to update to use publisherID if ever moving dataset to its own collection
+			}
+		}
+
+		const qualifiedRelationFiltered = qualifiedRelation.filter(relation => relation.toLowerCase() !== 'all');
+		dataset.datasetv2.enrichmentAndLinkage.qualifiedRelation = [...qualifiedRelationFiltered, ...newListofQualifiedRelation];
+	}
 
 	return res.json({ success: true, isLatestVersion, isDatasetArchived, data: dataset });
 });

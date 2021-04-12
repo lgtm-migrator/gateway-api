@@ -8,7 +8,7 @@ const courseSchema = new Schema(
 		type: String,
 		creator: Number,
 		activeflag: String,
-		//updatedon: Date,
+		updatedon: Date,
 		counter: Number,
 		discourseTopicId: Number,
 		relatedObjects: [
