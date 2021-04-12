@@ -27,7 +27,7 @@ module.exports = {
 
 			if (publisherID === 'admin') {
 				// get all datasets in review for admin
-				datasetIds = await Data.find({ activeflag: 'inReview' }).sort({ updatedAt: -1 });
+				datasetIds = await Data.find({ activeflag: 'inReview' }).sort({ 'timestamps.submitted': -1 });
 			} else {
 				// get all pids for publisherID
 				datasetIds = await Data.find({
@@ -38,7 +38,7 @@ module.exports = {
 						},
 					],
 				})
-					.sort({ updatedAt: -1 })
+					.sort({ 'timestamps.updated': -1 })
 					.distinct('pid');
 			}
 
@@ -47,7 +47,7 @@ module.exports = {
 				let datasetDetails = await Data.findOne({
 					pid: datasetId,
 				})
-					.sort({ updatedAt: -1 })
+					.sort({ 'timestamps.updated': -1 })
 					.lean();
 
 				let datasetVersions = await Data.find(
@@ -60,7 +60,7 @@ module.exports = {
 						activeflag: 1,
 					}
 				)
-					.sort({ updatedAt: -1 })
+					.sort({ 'timestamps.created': -1 })
 					.lean();
 
 				datasetDetails.listOfVersions = datasetVersions;
@@ -88,7 +88,15 @@ module.exports = {
 			if (dataset.questionAnswers) {
 				dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
 			} else {
-				dataset.questionAnswers = {};
+				//if no questionAnswers then populate from MDC
+				dataset.questionAnswers = module.exports.populateQuestionAnswers(dataset);
+				await Data.findOneAndUpdate({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
+			}
+
+			if (!dataset.structuralMetadata) {
+				//if no structuralMetadata then populate from MDC
+				dataset.structuralMetadata = module.exports.populateStructuralMetadata(dataset);
+				await Data.findOneAndUpdate({ _id: id }, { structuralMetadata: dataset.structuralMetadata });
 			}
 
 			let listOfDatasets = await Data.find({ pid: dataset.pid }, { _id: 1, datasetVersion: 1, activeflag: 1 }).sort({
@@ -104,6 +112,223 @@ module.exports = {
 			console.log(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
+	},
+
+	populateQuestionAnswers: dataset => {
+		let questionAnswers = {};
+
+		//Summary
+		if (!_.isNil(dataset.datasetv2.summary.title) && !_.isEmpty(dataset.datasetv2.summary.title))
+			questionAnswers['summary/title'] = dataset.datasetv2.summary.title;
+		if (_.isNil(questionAnswers['summary/title'])) questionAnswers['summary/title'] = dataset.name;
+		if (!_.isNil(dataset.datasetv2.summary.abstract) && !_.isEmpty(dataset.datasetv2.summary.abstract))
+			questionAnswers['summary/abstract'] = dataset.datasetv2.summary.abstract;
+		if (!_.isNil(dataset.datasetv2.summary.contactPoint) && !_.isEmpty(dataset.datasetv2.summary.contactPoint))
+			questionAnswers['summary/contactPoint'] = dataset.datasetv2.summary.contactPoint;
+		if (!_.isNil(dataset.datasetv2.summary.keywords) && !_.isEmpty(dataset.datasetv2.summary.keywords))
+			questionAnswers['summary/keywords'] = module.exports.returnAsArray(dataset.datasetv2.summary.keywords);
+		if (!_.isNil(dataset.datasetv2.summary.alternateIdentifiers) && !_.isEmpty(dataset.datasetv2.summary.alternateIdentifiers))
+			questionAnswers['summary/alternateIdentifiers'] = dataset.datasetv2.summary.alternateIdentifiers;
+		if (!_.isNil(dataset.datasetv2.summary.doiName) && !_.isEmpty(dataset.datasetv2.summary.doiName))
+			questionAnswers['summary/doiName'] = dataset.datasetv2.summary.doiName;
+		//Documentation
+		if (!_.isNil(dataset.datasetv2.documentation.description) && !_.isEmpty(dataset.datasetv2.documentation.description))
+			questionAnswers['properties/documentation/description'] = dataset.datasetv2.documentation.description;
+		if (!_.isNil(dataset.datasetv2.documentation.associatedMedia) && !_.isEmpty(dataset.datasetv2.documentation.associatedMedia))
+			questionAnswers['properties/documentation/associatedMedia'] = module.exports.returnAsArray(
+				dataset.datasetv2.documentation.associatedMedia
+			);
+		if (!_.isNil(dataset.datasetv2.documentation.isPartOf) && !_.isEmpty(dataset.datasetv2.documentation.isPartOf))
+			questionAnswers['properties/documentation/isPartOf'] = dataset.datasetv2.documentation.isPartOf;
+		//Coverage
+		if (!_.isNil(dataset.datasetv2.coverage.spatial) && !_.isEmpty(dataset.datasetv2.coverage.spatial))
+			questionAnswers['properties/coverage/spatial'] = dataset.datasetv2.coverage.spatial;
+		if (!_.isNil(dataset.datasetv2.coverage.typicalAgeRange) && !_.isEmpty(dataset.datasetv2.coverage.typicalAgeRange))
+			questionAnswers['properties/coverage/typicalAgeRange'] = dataset.datasetv2.coverage.typicalAgeRange;
+		if (
+			!_.isNil(dataset.datasetv2.coverage.physicalSampleAvailability) &&
+			!_.isEmpty(dataset.datasetv2.coverage.physicalSampleAvailability)
+		)
+			questionAnswers['properties/coverage/physicalSampleAvailability'] = module.exports.returnAsArray(
+				dataset.datasetv2.coverage.physicalSampleAvailability
+			);
+		if (!_.isNil(dataset.datasetv2.coverage.followup) && !_.isEmpty(dataset.datasetv2.coverage.followup))
+			questionAnswers['properties/coverage/followup'] = dataset.datasetv2.coverage.followup;
+		if (!_.isNil(dataset.datasetv2.coverage.pathway) && !_.isEmpty(dataset.datasetv2.coverage.pathway))
+			questionAnswers['properties/coverage/pathway'] = dataset.datasetv2.coverage.pathway;
+		//Provenance
+		//Origin
+		if (!_.isNil(dataset.datasetv2.provenance.origin.purpose) && !_.isEmpty(dataset.datasetv2.provenance.origin.purpose))
+			questionAnswers['properties/provenance/origin/purpose'] = module.exports.returnAsArray(dataset.datasetv2.provenance.origin.purpose);
+		if (!_.isNil(dataset.datasetv2.provenance.origin.source) && !_.isEmpty(dataset.datasetv2.provenance.origin.source))
+			questionAnswers['properties/provenance/origin/source'] = module.exports.returnAsArray(dataset.datasetv2.provenance.origin.source);
+		if (
+			!_.isNil(dataset.datasetv2.provenance.origin.collectionSituation) &&
+			!_.isEmpty(dataset.datasetv2.provenance.origin.collectionSituation)
+		)
+			questionAnswers['properties/provenance/origin/collectionSituation'] = module.exports.returnAsArray(
+				dataset.datasetv2.provenance.origin.collectionSituation
+			);
+		//Temporal
+		if (
+			!_.isNil(dataset.datasetv2.provenance.temporal.accrualPeriodicity) &&
+			!_.isEmpty(dataset.datasetv2.provenance.temporal.accrualPeriodicity)
+		)
+			questionAnswers['properties/provenance/temporal/accrualPeriodicity'] = dataset.datasetv2.provenance.temporal.accrualPeriodicity;
+		if (
+			!_.isNil(dataset.datasetv2.provenance.temporal.distributionReleaseDate) &&
+			!_.isEmpty(dataset.datasetv2.provenance.temporal.distributionReleaseDate)
+		)
+			questionAnswers['properties/provenance/temporal/distributionReleaseDate'] = module.exports.returnAsDate(
+				dataset.datasetv2.provenance.temporal.distributionReleaseDate
+			);
+		if (!_.isNil(dataset.datasetv2.provenance.temporal.startDate) && !_.isEmpty(dataset.datasetv2.provenance.temporal.startDate))
+			questionAnswers['properties/provenance/temporal/startDate'] = module.exports.returnAsDate(
+				dataset.datasetv2.provenance.temporal.startDate
+			);
+		if (!_.isNil(dataset.datasetv2.provenance.temporal.endDate) && !_.isEmpty(dataset.datasetv2.provenance.temporal.endDate))
+			questionAnswers['properties/provenance/temporal/endDate'] = module.exports.returnAsDate(
+				dataset.datasetv2.provenance.temporal.endDate
+			);
+		if (!_.isNil(dataset.datasetv2.provenance.temporal.timeLag) && !_.isEmpty(dataset.datasetv2.provenance.temporal.timeLag))
+			questionAnswers['properties/provenance/temporal/timeLag'] = dataset.datasetv2.provenance.temporal.timeLag;
+		//Accessibility
+		//Usage
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.usage.dataUseLimitation) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.usage.dataUseLimitation)
+		)
+			questionAnswers['properties/accessibility/usage/dataUseLimitation'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.usage.dataUseLimitation
+			);
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.usage.dataUseRequirements) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.usage.dataUseRequirements)
+		)
+			questionAnswers['properties/accessibility/usage/dataUseRequirements'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.usage.dataUseRequirements
+			);
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.usage.resourceCreator) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.usage.resourceCreator)
+		)
+			questionAnswers['properties/accessibility/usage/resourceCreator'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.usage.resourceCreator
+			);
+		if (!_.isNil(dataset.datasetv2.accessibility.usage.investigations) && !_.isEmpty(dataset.datasetv2.accessibility.usage.investigations))
+			questionAnswers['properties/accessibility/usage/investigations'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.usage.investigations
+			);
+		if (!_.isNil(dataset.datasetv2.accessibility.usage.isReferencedBy) && !_.isEmpty(dataset.datasetv2.accessibility.usage.isReferencedBy))
+			questionAnswers['properties/accessibility/usage/isReferencedBy'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.usage.isReferencedBy
+			);
+		//Access
+		if (!_.isNil(dataset.datasetv2.accessibility.access.accessRights) && !_.isEmpty(dataset.datasetv2.accessibility.access.accessRights))
+			questionAnswers['properties/accessibility/access/accessRights'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.access.accessRights
+			);
+		if (!_.isNil(dataset.datasetv2.accessibility.access.accessService) && !_.isEmpty(dataset.datasetv2.accessibility.access.accessService))
+			questionAnswers['properties/accessibility/access/accessService'] = dataset.datasetv2.accessibility.access.accessService;
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.access.accessRequestCost) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.access.accessRequestCost)
+		)
+			questionAnswers['properties/accessibility/access/accessRequestCost'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.access.accessRequestCost
+			);
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.access.deliveryLeadTime) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.access.deliveryLeadTime)
+		)
+			questionAnswers['properties/accessibility/access/deliveryLeadTime'] = dataset.datasetv2.accessibility.access.deliveryLeadTime;
+		if (!_.isNil(dataset.datasetv2.accessibility.access.jurisdiction) && !_.isEmpty(dataset.datasetv2.accessibility.access.jurisdiction))
+			questionAnswers['properties/accessibility/access/jurisdiction'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.access.jurisdiction
+			);
+		if (!_.isNil(dataset.datasetv2.accessibility.access.dataProcessor) && !_.isEmpty(dataset.datasetv2.accessibility.access.dataProcessor))
+			questionAnswers['properties/accessibility/access/dataProcessor'] = dataset.datasetv2.accessibility.access.dataProcessor;
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.access.dataController) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.access.dataController)
+		)
+			questionAnswers['properties/accessibility/access/dataController'] = dataset.datasetv2.accessibility.access.dataController;
+		//FormatAndStandards
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.formatAndStandards.vocabularyEncodingScheme) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.formatAndStandards.vocabularyEncodingScheme)
+		)
+			questionAnswers['properties/accessibility/formatAndStandards/vocabularyEncodingScheme'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.formatAndStandards.vocabularyEncodingScheme
+			);
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.formatAndStandards.conformsTo) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.formatAndStandards.conformsTo)
+		)
+			questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.formatAndStandards.conformsTo
+			);
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.formatAndStandards.language) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.formatAndStandards.language)
+		)
+			questionAnswers['properties/accessibility/formatAndStandards/language'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.formatAndStandards.language
+			);
+		if (
+			!_.isNil(dataset.datasetv2.accessibility.formatAndStandards.format) &&
+			!_.isEmpty(dataset.datasetv2.accessibility.formatAndStandards.format)
+		)
+			questionAnswers['properties/accessibility/formatAndStandards/format'] = module.exports.returnAsArray(
+				dataset.datasetv2.accessibility.formatAndStandards.format
+			);
+		//EnrichmentAndLinkage
+		if (
+			!_.isNil(dataset.datasetv2.enrichmentAndLinkage.qualifiedRelation) &&
+			!_.isEmpty(dataset.datasetv2.enrichmentAndLinkage.qualifiedRelation)
+		)
+			questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] = module.exports.returnAsArray(
+				dataset.datasetv2.enrichmentAndLinkage.qualifiedRelation
+			);
+		if (!_.isNil(dataset.datasetv2.enrichmentAndLinkage.derivation) && !_.isEmpty(dataset.datasetv2.enrichmentAndLinkage.derivation))
+			questionAnswers['properties/enrichmentAndLinkage/derivation'] = module.exports.returnAsArray(
+				dataset.datasetv2.enrichmentAndLinkage.derivation
+			);
+		if (!_.isNil(dataset.datasetv2.enrichmentAndLinkage.tools) && !_.isEmpty(dataset.datasetv2.enrichmentAndLinkage.tools))
+			questionAnswers['properties/enrichmentAndLinkage/tools'] = module.exports.returnAsArray(dataset.datasetv2.enrichmentAndLinkage.tools);
+		//Observations
+		if (!_.isNil(dataset.datasetv2.observations.observations) && !_.isEmpty(dataset.datasetv2.observations.observations))
+			questionAnswers['properties/observations/observations'] = dataset.datasetv2.observations.observations;
+
+		return questionAnswers;
+	},
+
+	returnAsArray: value => {
+		if (typeof value === 'string') return [value];
+		return value;
+	},
+
+	returnAsDate: value => {
+		return moment(new Date(value)).format('DD/MM/YYYY');
+	},
+
+	populateStructuralMetadata: dataset => {
+		let structuralMetadata = [];
+
+		for (const dataClass of dataset.datasetfields.technicaldetails) {
+			for (const dataElement of dataClass.elements) {
+				structuralMetadata.push({
+					tableName: dataClass.label,
+					tableDescription: dataClass.description,
+					columnName: dataElement.label,
+					columnDescription: dataElement.description,
+					dataType: dataElement.dataType.label,
+					sensitive: '',
+				});
+			}
+		}
+
+		return structuralMetadata;
 	},
 
 	//POST api/v1/dataset-onboarding

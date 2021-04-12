@@ -106,7 +106,7 @@ const DataSchema = new Schema(
 		},
 		datasetv2: {},
 		questionAnswers: {},
-		structuralMetadata: {},
+		structuralMetadata: [],
 		percentageCompleted: {},
 		applicationStatusDesc: String,
 		timestamps: {
@@ -117,6 +117,7 @@ const DataSchema = new Schema(
 			rejected: Date,
 			archived: Date,
 		},
+		datasetVersionIsV1: { type: Boolean, default: false },
 
 		//not used
 		rating: Number,
