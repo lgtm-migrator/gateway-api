@@ -11,10 +11,11 @@ import { ROLES } from '../../user/user.roles';
 import queryString from 'query-string';
 import Url from 'url';
 import { discourseLogin } from '../sso/sso.discourse.service';
-
+import { isNil } from 'lodash';
 const OidcStrategy = passportOidc.Strategy;
 const baseAuthUrl = process.env.AUTH_PROVIDER_URI;
 const eventLogController = require('../../eventlog/eventlog.controller');
+import { UserModel } from '../../user/user.model';
 
 const strategy = app => {
 	const strategyOptions = {
@@ -34,6 +35,9 @@ const strategy = app => {
 
 		let [err, user] = await to(getUserByProviderId(profile._json.eduPersonTargetedID));
 		if (err || user) {
+			if (user && !user.affiliation) {
+				UserModel.findOneAndUpdate({ id: user.id }, { $set: { affiliation: profile._json.eduPersonScopedAffilation } });
+			}
 			return done(err, user);
 		}
 
@@ -41,6 +45,7 @@ const strategy = app => {
 			createUser({
 				provider: 'oidc',
 				providerId: profile._json.eduPersonTargetedID,
+				affiliation: !isNil(profile._json.eduPersonScopedAffilation) ? profile._json.eduPersonScopedAffilation : 'no.organization',
 				firstname: '',
 				lastname: '',
 				email: '',
