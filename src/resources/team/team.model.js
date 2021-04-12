@@ -9,7 +9,7 @@ const TeamSchema = new Schema(
 		members: [
 			{
 				memberid: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-				roles: { type: [String], enum: ['reviewer', 'manager'], required: true },
+				roles: { type: [String], enum: ['reviewer', 'manager', 'metadata_editor'], required: true },
 				dateCreated: Date,
 				dateUpdated: Date,
 				notifications: [

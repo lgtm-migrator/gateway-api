@@ -5,8 +5,8 @@ const _userTypes = {
 };
 
 const _formTypes = Object.freeze({
-  Enquiry : 'enquiry',
-  Extended5Safe : '5 safe'
+	Enquiry: 'enquiry',
+	Extended5Safe: '5 safe',
 });
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
@@ -344,7 +344,20 @@ const _roleTypes = {
 	REVIEWER: 'reviewer',
 };
 
-// </DAR related enums>
+// </Team related enums>
+
+// <Dataset onboarding related enums>
+
+const _datatsetStatuses = {
+	DRAFT: 'draft',
+	INPROGRESS: 'inProgress',
+	INREVIEW: 'inReview',
+	APPROVED: 'approved',
+	REJECTED: 'rejected',
+	APPROVEDWITHCONDITIONS: 'approved with conditions',
+};
+
+// </Dataset onboarding related enums>
 
 const _hdrukEmail = 'enquiry@healthdatagateway.org';
 
@@ -364,4 +377,5 @@ export default {
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
 	hdrukEmail: _hdrukEmail,
+	datatsetStatuses: _datatsetStatuses,
 };
