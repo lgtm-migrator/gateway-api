@@ -479,6 +479,95 @@ const getTeamName = (team) => {
 	}
 };
 
+/**
+ * [Get teams notification by type ]
+ *
+ * @param   {Object}  team              [team object]
+ * @param   {String}  notificationType  [notificationType dataAccessRequest]
+ * @return  {Object}                    [return team notification object {notificaitonType, optIn, subscribedEmails }]
+ */
+const getTeamNotificationByType = (team = {}, notificationType = '') => {
+	let teamObj = team.toObject();
+	if(_.has(teamObj, 'notifications') && !_.isNull(teamObj.notifications) && !_.isEmpty(notificationType)) {
+		let { notifications } = teamObj;
+		let notification = [...notifications].find(n => n.notificationType.toUpperCase() === notificationType.toUpperCase());
+			if(typeof notification !== 'undefined') 
+				return notification;
+			else return {};
+	} else {
+		return {};
+	}
+}
+
+const findTeamMemberById = (members = [], custodianManager = {}) => {
+	if(!_.isEmpty(members) && !_.isEmpty(custodianManager)) 
+  	return [...members].find(member => member.memberid.toString() === custodianManager._id.toString()) || {};
+
+	return {};
+}
+
+const findByNotificationType = (notificaitons = [], notificationType = '')  => {
+  if (!_.isEmpty(notificaitons) && !_.isEmpty(notificationType)) {
+    return [...notificaitons].find(notification => notification.notificationType === notificationType) || {};
+  }
+  return {};
+}
+
+const buildOptedInEmailList = (custodianManagers = [], team = {}, notificationType = '') => {
+  let { members = [] } = team;
+  if(!_.isEmpty(custodianManagers)) {
+    // loop over custodianManagers
+    return [...custodianManagers].reduce((acc, custodianManager) => {
+      let custodianNotificationObj, member, notifications, optIn;
+      // if memebers exist only do the following
+      if (!_.isEmpty(members)) {
+        // find member in team.members array
+        member = findTeamMemberById(members, custodianManager);
+        // console.log(member);
+        if (!_.isEmpty(member) ) {
+          // deconstruct members
+          ({notifications = []} = member);
+          // if the custodian has notifications
+          if (!_.isEmpty(notifications)) {
+            // console.log(notifications);
+            // find the notification type in the notifications array
+            custodianNotificationObj = findByNotificationType(notifications, notificationType);
+            if (!_.isEmpty(custodianNotificationObj)) {
+              ({optIn} = custodianNotificationObj);
+                if(optIn)
+                  return [...acc, {email: custodianManager.email}];
+                else 
+                  return acc;
+            }
+          }  else {
+            console.log(acc);
+            // if no notifications found optIn by default (safeguard)
+            return [...acc, {email: custodianManager.email}];
+          }
+        }
+      }
+    }, []);
+  } else {
+  	return [];
+	}
+}
+
+
+/**
+ * [Get subscribedEmails from optIn status ]
+ *
+ * @param   {Boolean}  optIn            	[optIn Status ]
+ * @param   {Array}  	 subscribedEmails  	[the list of subscribed emails for notification type]
+ * @return  {Array}                    		[formatted array of [{email: email}]]
+ */
+const getTeamNotificationEmails = (optIn = false, subscribedEmails) => {
+	if (optIn && !_.isEmpty(subscribedEmails)) {
+		return [...subscribedEmails].map(email => ({ email }));
+	}
+	
+	return [];
+}
+
 const createNotifications = async (type, context, team, user) => {
 	const teamName = getTeamName(team);
 	let options = {};
@@ -582,6 +671,11 @@ const formatTeamNotifications  = (team) => {
 
 export default {
 	getTeamById: getTeamById,
+	getTeamNotificationByType: getTeamNotificationByType,
+	getTeamNotificationEmails: getTeamNotificationEmails,
+	findTeamMemberById: findTeamMemberById,
+	findByNotificationType: findByNotificationType,
+	buildOptedInEmailList: buildOptedInEmailList,
 	getTeamMembers: getTeamMembers,
 	getTeamNotifications: getTeamNotifications,
 	addTeamMembers: addTeamMembers,
