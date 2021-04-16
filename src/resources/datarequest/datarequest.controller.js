@@ -235,7 +235,13 @@ module.exports = {
 				data = { ...accessRecord.toObject() };
 			}
 			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus, null, constants.userTypes.APPLICANT);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(
+				data.jsonSchema,
+				constants.userTypes.APPLICANT,
+				data.applicationStatus,
+				null,
+				constants.userTypes.APPLICANT
+			);
 			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -342,7 +348,13 @@ module.exports = {
 				data = { ...accessRecord.toObject() };
 			}
 			// 8. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus, null, constants.userTypes.APPLICANT);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(
+				data.jsonSchema,
+				constants.userTypes.APPLICANT,
+				data.applicationStatus,
+				null,
+				constants.userTypes.APPLICANT
+			);
 			// 9. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -1777,8 +1789,8 @@ module.exports = {
 				// Save new record
 				await DataRequestModel.create(clonedAccessRecord, saveCallBack);
 			} else {
-        
-				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto }).populate([
+				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto })
+					.populate([
 						{
 							path: 'datasets dataset authors',
 						},
@@ -2100,16 +2112,23 @@ module.exports = {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
 					// Retrieve notifications for the team based on type return {notificationType, subscribedEmails, optIn}
-					teamNotifications = teamController.getTeamNotificationByType(accessRecord.datasets[0].publisher.team, constants.teamNotificationTypes.DATAACCESSREQUEST);
+					teamNotifications = teamController.getTeamNotificationByType(
+						accessRecord.datasets[0].publisher.team,
+						constants.teamNotificationTypes.DATAACCESSREQUEST
+					);
 					// only deconstruct if team notifications object returns - safeguard code
 					if (!_.isEmpty(teamNotifications)) {
 						// Get teamNotification emails if optIn true
-						({optIn = false, subscribedEmails = [] } = teamNotifications);
+						({ optIn = false, subscribedEmails = [] } = teamNotifications);
 						// check subscribedEmails and optIn send back emails or blank []
 						teamNotificationEmails = teamController.getTeamNotificationEmails(optIn, subscribedEmails);
 					}
 					// check the custodianManagers personal emails preferences against the team notifications settings exclude if necessary
-          memberOptedInEmails = teamController.buildOptedInEmailList(custodianManagers, accessRecord.datasets[0].publisher.team, constants.teamNotificationTypes.DATAACCESSREQUEST);
+					memberOptedInEmails = teamController.buildOptedInEmailList(
+						custodianManagers,
+						accessRecord.datasets[0].publisher.team,
+						constants.teamNotificationTypes.DATAACCESSREQUEST
+					);
 					// check if publisher.team has email notifications
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -2168,7 +2187,7 @@ module.exports = {
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						// Get all custodian managers for the team / team Notifications
-						if(!_.isEmpty(teamNotificationEmails)) {
+						if (!_.isEmpty(teamNotificationEmails)) {
 							emailRecipients = [...memberOptedInEmails, ...teamNotificationEmails];
 						} else {
 							emailRecipients = [...memberOptedInEmails];
