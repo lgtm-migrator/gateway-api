@@ -10,7 +10,7 @@ import { has } from 'lodash';
 let metadataQualityList = [],
 	phenotypesList = [],
 	dataUtilityList = [],
-	onboardedCustodians = [],
+	dataAccessRequestCustodians = [],
 	datasetsMDCList = [],
 	datasetsMDCIDs = [],
 	counter = 0;
@@ -216,7 +216,7 @@ export async function loadDataset(datasetID) {
  * @param 	{Number} 			limit 				The maximum number of datasets to import from each catalogue requested
  */
 export async function importCatalogues(cataloguesToImport, override = false, limit) {
-	onboardedCustodians = await getCustodians();
+	dataAccessRequestCustodians = await getDataAccessRequestCustodians();
 	for (const catalogue in metadataCatalogues) {
 		if (!cataloguesToImport.includes(catalogue)) {
 			continue;
@@ -447,7 +447,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 		}
 
 		// Detect if dataset uses 5 Safes form for access
-		const is5Safes = onboardedCustodians.includes(datasetMDC.publisher);
+		const is5Safes = dataAccessRequestCustodians.includes(datasetMDC.publisher);
 		const hasTechnicalDetails = technicaldetails.length > 0;
 
 		if (datasetHDR) {
@@ -714,8 +714,8 @@ async function checkDifferentialValid(incomingMetadataCount, source, override) {
 	return true;
 }
 
-async function getCustodians() {
-	const publishers = await PublisherModel.find().select('name').lean();
+async function getDataAccessRequestCustodians() {
+	const publishers = await PublisherModel.find({ allowAccessRequestManagement: true }).select('name').lean();
 	return publishers.map(publisher => publisher.name);
 }
 
