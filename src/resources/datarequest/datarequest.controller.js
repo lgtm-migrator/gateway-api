@@ -235,7 +235,13 @@ module.exports = {
 				data = { ...accessRecord.toObject() };
 			}
 			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus, null, constants.userTypes.APPLICANT);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(
+				data.jsonSchema,
+				constants.userTypes.APPLICANT,
+				data.applicationStatus,
+				null,
+				constants.userTypes.APPLICANT
+			);
 			// 8. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -342,7 +348,13 @@ module.exports = {
 				data = { ...accessRecord.toObject() };
 			}
 			// 8. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(data.jsonSchema, constants.userTypes.APPLICANT, data.applicationStatus, null, constants.userTypes.APPLICANT);
+			data.jsonSchema = datarequestUtil.injectQuestionActions(
+				data.jsonSchema,
+				constants.userTypes.APPLICANT,
+				data.applicationStatus,
+				null,
+				constants.userTypes.APPLICANT
+			);
 			// 9. Return payload
 			return res.status(200).json({
 				status: 'success',
@@ -1777,8 +1789,8 @@ module.exports = {
 				// Save new record
 				await DataRequestModel.create(clonedAccessRecord, saveCallBack);
 			} else {
-        
-				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto }).populate([
+				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto })
+					.populate([
 						{
 							path: 'datasets dataset authors',
 						},
@@ -2091,7 +2103,10 @@ module.exports = {
 			case constants.notificationTypes.SUBMITTED:
 				// 1. Create notifications
 				// Custodian notification
-				if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
+				if (
+					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users') &&
+					accessRecord.datasets[0].publisher.allowAccessRequestManagement
+				) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
 					custodianUserIds = custodianManagers.map(user => user.id);

@@ -1,4 +1,4 @@
-import { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
+import _, { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
@@ -1627,6 +1627,137 @@ const _generateAddedToTeam = options => {
 	return body;
 };
 
+const _generateMetadataOnboardingSumbitted = options => {
+	let { name, publisher } = options;
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Dataset version available for review
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    The dataset, ${name}, has been submitted to the Gateway by ${publisher}. You can review and approve or reject this dataset version from application view.
+                  </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=admin">View datasets pending approval</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingApproved = options => {
+	let { name, publisherId, comment } = options;
+
+	let commentHTML = '';
+
+	if (!_.isEmpty(comment)) {
+		commentHTML = `<tr>
+      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+        Approval comment
+      </th>
+    </tr>
+    <tr>
+      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+        ${comment}
+      </th>
+    </tr>`;
+	}
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Your dataset version has been approved and is now active
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    The submitted version of ${name} has been reviewed and approved by the HDRUK admins. It is now active, searchable and available to request access to on the Innovation Gateway. You may view and create a new version of the dataset in your dataset dashboard.
+                  </th>
+                  </tr>
+                  ${commentHTML}
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisherId}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingRejected = options => {
+	let { name, publisherId, comment } = options;
+
+	let commentHTML = '';
+
+	if (!_.isEmpty(comment)) {
+		commentHTML = `<tr>
+      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+        Reason for rejection
+      </th>
+    </tr>
+    <tr>
+      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+        ${comment}
+      </th>
+    </tr>`;
+	}
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Your dataset version has been reviewed and rejected
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    The submitted version of ${name} has been reviewed and rejected by the HDRUK admins. Please view and create a new version of this dataset and make the necessary changes if you would like to make another submission to the Gateway.
+                  </th>
+                  </tr>
+                  ${commentHTML}
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisherId}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
 /**
  * [_sendEmail]
  *
@@ -1711,6 +1842,11 @@ const _generateAttachment = (filename, content, type) => {
 };
 
 export default {
+	//General
+	sendEmail: _sendEmail,
+	generateEmailFooter: _generateEmailFooter,
+	generateAttachment: _generateAttachment,
+	//DAR
 	generateEmail: _generateEmail,
 	generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
@@ -1724,9 +1860,13 @@ export default {
 	generateFinalDecisionRequiredEmail: _generateFinalDecisionRequiredEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
-	sendEmail: _sendEmail,
-	generateEmailFooter: _generateEmailFooter,
-	generateAttachment: _generateAttachment,
+	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
+	//Metadata Onboarding
+	generateMetadataOnboardingSumbitted: _generateMetadataOnboardingSumbitted,
+	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
+	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
+	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
+	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 };

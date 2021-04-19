@@ -297,6 +297,9 @@ const _notificationTypes = {
 	INPROGRESS: 'InProgress',
 	APPLICATIONCLONED: 'ApplicationCloned',
 	APPLICATIONDELETED: 'ApplicationDeleted',
+	DATASETSUBMITTED: 'DatasetSubmitted',
+	DATASETAPPROVED: 'DatasetApproved',
+	DATASETREJECTED: 'DatasetRejected',
 };
 
 const _applicationStatuses = {
@@ -342,6 +345,8 @@ const _darPanelMapper = {
 const _roleTypes = {
 	MANAGER: 'manager',
 	REVIEWER: 'reviewer',
+	METADATA_EDITOR: 'metadata_editor',
+	ADMIN_DATASET: 'admin_dataset',
 };
 
 // </Team related enums>

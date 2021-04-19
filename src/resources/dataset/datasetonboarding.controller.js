@@ -1,5 +1,8 @@
 import { Data } from '../tool/data.model';
 import { PublisherModel } from '../publisher/publisher.model';
+import { TeamModel } from '../team/team.model';
+import { UserModel } from '../user/user.model';
+import teamController from '../team/team.controller';
 import { filtersService } from '../filters/dependency';
 import notificationBuilder from '../utilities/notificationBuilder';
 import emailGenerator from '../utilities/emailGenerator.util';
@@ -27,7 +30,11 @@ module.exports = {
 
 			if (publisherID === 'admin') {
 				// get all datasets in review for admin
-				datasetIds = await Data.find({ activeflag: 'inReview' }).sort({ 'timestamps.submitted': -1 });
+				datasetIds = await Data.find({
+					activeflag: 'inReview',
+				})
+					.sort({ 'timestamps.updated': -1 })
+					.distinct('pid');
 			} else {
 				// get all pids for publisherID
 				datasetIds = await Data.find({
@@ -576,20 +583,8 @@ module.exports = {
 				{ activeflag: constants.datatsetStatuses.INREVIEW, 'timestamps.updated': Date.now(), 'timestamps.submitted': Date.now() }
 			);
 
-			/* , err => {
-				if (err) return res.send(err);
-				return res.json({ success: true });
-			}); */
-
 			//emails / notifications
-			/* await module.exports.createNotifications(
-				accessRecord.submissionType === constants.submissionTypes.INITIAL
-					? constants.notificationTypes.SUBMITTED
-					: constants.notificationTypes.RESUBMITTED,
-				{},
-				accessRecord,
-				req.user
-			); */
+			await module.exports.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
 
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
@@ -665,7 +660,8 @@ module.exports = {
 				const loginDetails = {
 					username: process.env.MDC_Config_HDRUK_username || '',
 					password: process.env.MDC_Config_HDRUK_password || '',
-				}; //Paul - move to env variables
+				};
+
 				await axios
 					.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
 						withCredentials: true,
@@ -819,7 +815,7 @@ module.exports = {
 								let technicalDetails = await module.exports.buildTechnicalDetails(dataset.structuralMetadata);
 								let metadataQuality = await module.exports.buildMetadataQuality(datasetv2Object);
 
-								await Data.findOneAndUpdate(
+								let updatedDataset = await Data.findOneAndUpdate(
 									{ _id: id },
 									{
 										datasetid: newDatasetVersionId,
@@ -860,8 +856,14 @@ module.exports = {
 										},
 										datasetv2: datasetv2Object,
 										applicationStatusDesc: applicationStatusDesc,
-									}
+									},
+									{ new: true }
 								);
+
+								filtersService.optimiseFilters('dataset');
+
+								//emails / notifications
+								await module.exports.createNotifications(constants.notificationTypes.DATASETAPPROVED, updatedDataset);
 							})
 							.catch(err => {
 								console.log('Error when trying to create new dataset on the MDC - ' + err.message);
@@ -875,19 +877,21 @@ module.exports = {
 					console.log('Error when trying to logout of the MDC - ' + err.message);
 				});
 
-				filtersService.optimiseFilters('dataset');
-
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'rejected') {
-				await Data.findOneAndUpdate(
+				let updatedDataset = await Data.findOneAndUpdate(
 					{ _id: id },
 					{
 						activeflag: constants.datatsetStatuses.REJECTED,
 						applicationStatusDesc: applicationStatusDesc,
 						'timestamps.rejected': Date.now(),
 						'timestamps.updated': Date.now(),
-					}
+					},
+					{ new: true }
 				);
+
+				//emails / notifications
+				await module.exports.createNotifications(constants.notificationTypes.DATASETREJECTED, updatedDataset);
 
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'archived') {
@@ -1271,583 +1275,123 @@ module.exports = {
 		}, dataset);
 	},
 
-	createNotifications: async (type, context, team) => {
-		const teamName = getTeamName(team);
-		let options = {};
-		let html = '';
+	createNotifications: async (type, context) => {
+		let options = {},
+			html = '',
+			team,
+			teamMembers = [],
+			teamMembersDetails,
+			teamMembersIds = [];
 
 		switch (type) {
-			case constants.notificationTypes.MEMBERREMOVED:
+			case constants.notificationTypes.DATASETSUBMITTED:
 				// 1. Get user removed
-				const { removedUser } = context;
+				let adminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+
+				let adminMembers = [];
+				for (let member of adminTeam.members) {
+					adminMembers.push(member.memberid);
+				}
+
+				let adminMembersDetails = await UserModel.find({ _id: { $in: adminMembers } })
+					.populate('additionalInfo')
+					.lean();
+
+				let adminMembersIds = [];
+				for (let member of adminMembersDetails) {
+					adminMembersIds.push(member.id);
+				}
+
 				// 2. Create user notifications
 				notificationBuilder.triggerNotificationMessage(
-					[removedUser.id],
-					`You have been removed from the team ${teamName}`,
-					'team unlinked',
-					teamName
+					adminMembersIds,
+					context.datasetVersion !== '1.0.0'
+						? `A new dataset version for "${context.name}" is available for review`
+						: `A new dataset "${context.name}" is available for review`,
+					'dataset submitted',
+					context._id
 				);
 				// 3. Create email
 				options = {
-					teamName,
+					name: context.name,
+					publisher: context.datasetv2.summary.publisher.name,
 				};
-				html = emailGenerator.generateRemovedFromTeam(options);
-				emailGenerator.sendEmail([removedUser], constants.hdrukEmail, `You have been removed from the team ${teamName}`, html, false);
+				html = emailGenerator.generateMetadataOnboardingSumbitted(options);
+				emailGenerator.sendEmail(adminMembersDetails, constants.hdrukEmail, `Dataset version available for review`, html, false);
 				break;
-			case constants.notificationTypes.MEMBERADDED:
-				// 1. Get users added
-				const { newUsers } = context;
-				const newUserIds = newUsers.map(user => user.id);
+			case constants.notificationTypes.DATASETAPPROVED:
+				// 1. Get user removed
+				team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
+
+				for (let member of team.members) {
+					teamMembers.push(member.memberid);
+				}
+
+				teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
+					.populate('additionalInfo')
+					.lean();
+
+				for (let member of teamMembersDetails) {
+					teamMembersIds.push(member.id);
+				}
 				// 2. Create user notifications
 				notificationBuilder.triggerNotificationMessage(
-					newUserIds,
-					`You have been added to the team ${teamName} on the HDR UK Innovation Gateway`,
-					'team',
-					teamName
+					teamMembersIds,
+					context.datasetVersion !== '1.0.0'
+						? `Your dataset version for "${context.name}" has been approved and is now active`
+						: `A dataset "${context.name}" has been approved and is now active`,
+					'dataset approved',
+					context.pid
 				);
-				// 3. Create email for reviewers
+				// 3. Create email
 				options = {
-					teamName,
-					role: constants.roleTypes.REVIEWER,
+					name: context.name,
+					publisherId: context.datasetv2.summary.publisher.identifier,
+					comment: context.applicationStatusDesc,
 				};
-				html = emailGenerator.generateAddedToTeam(options);
+				html = emailGenerator.generateMetadataOnboardingApproved(options);
 				emailGenerator.sendEmail(
-					newUsers,
+					teamMembersDetails,
 					constants.hdrukEmail,
-					`You have been added as a reviewer to the team ${teamName} on the HDR UK Innovation Gateway`,
-					html,
-					false
-				);
-				// 4. Create email for managers
-				options = {
-					teamName,
-					role: constants.roleTypes.MANAGER,
-				};
-				html = emailGenerator.generateAddedToTeam(options);
-				emailGenerator.sendEmail(
-					newUsers,
-					constants.hdrukEmail,
-					`You have been added as a manager to the team ${teamName} on the HDR UK Innovation Gateway`,
+					`Your dataset version has been approved and is now active`,
 					html,
 					false
 				);
 				break;
-			case constants.notificationTypes.MEMBERROLECHANGED:
-				break;
-		}
-	},
+			case constants.notificationTypes.DATASETREJECTED:
+				// 1. Get user removed
+				team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
 
-	createNotifications: async (type, context, accessRecord, user) => {
-		// Project details from about application if 5 Safes
-		let { aboutApplication = {} } = accessRecord;
-		if (typeof aboutApplication === 'string') {
-			aboutApplication = JSON.parse(accessRecord.aboutApplication);
-		}
-		let { projectName = 'No project name set' } = aboutApplication;
-		let { projectId, _id, workflow = {}, dateSubmitted = '', jsonSchema, questionAnswers } = accessRecord;
-		if (_.isEmpty(projectId)) {
-			projectId = _id;
-		}
-		// Parse the schema
-		if (typeof jsonSchema === 'string') {
-			jsonSchema = JSON.parse(accessRecord.jsonSchema);
-		}
-		if (typeof questionAnswers === 'string') {
-			questionAnswers = JSON.parse(accessRecord.questionAnswers);
-		}
-		let { pages, questionPanels, questionSets: questions } = jsonSchema;
-		// Publisher details from single dataset
-		let {
-			datasetfields: { contactPoint, publisher },
-		} = accessRecord.datasets[0];
-		let datasetTitles = accessRecord.datasets.map(dataset => dataset.name).join(', ');
-		// Main applicant (user obj)
-		let { firstname: appFirstName, lastname: appLastName, email: appEmail } = accessRecord.mainApplicant;
-		// Requesting user
-		let { firstname, lastname } = user;
-		// Instantiate default params
-		let custodianManagers = [],
-			custodianUserIds = [],
-			managerUserIds = [],
-			emailRecipients = [],
-			options = {},
-			html = '',
-			attachmentContent = '',
-			filename = '',
-			jsonContent = {},
-			authors = [],
-			attachments = [];
-		let applicants = datarequestUtil.extractApplicantNames(questionAnswers).join(', ');
-		// Fall back for single applicant on short application form
-		if (_.isEmpty(applicants)) {
-			applicants = `${appFirstName} ${appLastName}`;
-		}
-		// Get authors/contributors (user obj)
-		if (!_.isEmpty(accessRecord.authors)) {
-			authors = accessRecord.authors.map(author => {
-				let { firstname, lastname, email, id } = author;
-				return { firstname, lastname, email, id };
-			});
-		}
-		// Deconstruct workflow context if passed
-		let {
-			workflowName = '',
-			stepName = '',
-			reviewerNames = '',
-			reviewSections = '',
-			nextStepName = '',
-			stepReviewers = [],
-			stepReviewerUserIds = [],
-			currentDeadline = '',
-			remainingReviewers = [],
-			remainingReviewerUserIds = [],
-			dateDeadline,
-		} = context;
-
-		switch (type) {
-			case constants.notificationTypes.STATUSCHANGE:
-				// 1. Create notifications
-				// Custodian manager and current step reviewer notifications
-				if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
-					// Retrieve all custodian manager user Ids and active step reviewers
-					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
-					let activeStep = workflowController.getActiveWorkflowStep(workflow);
-					stepReviewers = workflowController.getStepReviewers(activeStep);
-					// Create custodian notification
-					let statusChangeUserIds = [...custodianManagers, ...stepReviewers].map(user => user.id);
-					await notificationBuilder.triggerNotificationMessage(
-						statusChangeUserIds,
-						`${appFirstName} ${appLastName}'s Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,
-						'data access request',
-						accessRecord._id
-					);
-				}
-				// Create applicant notification
-				await notificationBuilder.triggerNotificationMessage(
-					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
-					'data access request',
-					accessRecord._id
-				);
-
-				// Create authors notification
-				if (!_.isEmpty(authors)) {
-					await notificationBuilder.triggerNotificationMessage(
-						authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
-						'data access request',
-						accessRecord._id
-					);
+				for (let member of team.members) {
+					teamMembers.push(member.memberid);
 				}
 
-				// 2. Send emails to relevant users
-				// Aggregate objects for custodian and applicant
-				emailRecipients = [accessRecord.mainApplicant, ...custodianManagers, ...stepReviewers, ...accessRecord.authors];
-				if (!dateSubmitted) ({ updatedAt: dateSubmitted } = accessRecord);
-				// Create object to pass through email data
-				options = {
-					id: accessRecord._id,
-					applicationStatus: context.applicationStatus,
-					applicationStatusDesc: context.applicationStatusDesc,
-					publisher,
-					projectId,
-					projectName,
-					datasetTitles,
-					dateSubmitted,
-					applicants,
-				};
-				// Create email body content
-				html = emailGenerator.generateDARStatusChangedEmail(options);
-				// Send email
-				await emailGenerator.sendEmail(
-					emailRecipients,
-					constants.hdrukEmail,
-					`Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
-					html,
-					false
-				);
-				break;
-			case constants.notificationTypes.SUBMITTED:
-				// 1. Create notifications
-				// Custodian notification
-				if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
-					// Retrieve all custodian user Ids to generate notifications
-					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
-					custodianUserIds = custodianManagers.map(user => user.id);
-					await notificationBuilder.triggerNotificationMessage(
-						custodianUserIds,
-						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
-						'data access request',
-						accessRecord._id
-					);
-				} else {
-					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
-					custodianManagers = [{ email: dataCustodianEmail }];
+				teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
+					.populate('additionalInfo')
+					.lean();
+				for (let member of teamMembersDetails) {
+					teamMembersIds.push(member.id);
 				}
-				// Applicant notification
-				await notificationBuilder.triggerNotificationMessage(
-					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully submitted to ${publisher}`,
-					'data access request',
-					accessRecord._id
-				);
-				// Contributors/authors notification
-				if (!_.isEmpty(authors)) {
-					await notificationBuilder.triggerNotificationMessage(
-						accessRecord.authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${datasetTitles} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,
-						'data access request',
-						accessRecord._id
-					);
-				}
-				// 2. Send emails to custodian and applicant
-				// Create object to pass to email generator
-				options = {
-					userType: '',
-					userEmail: appEmail,
-					publisher,
-					datasetTitles,
-					userName: `${appFirstName} ${appLastName}`,
-				};
-				// Iterate through the recipient types
-				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
-					// Establish email context object
-					options = {
-						...options,
-						userType: emailRecipientType,
-						submissionType: constants.submissionTypes.INITIAL,
-					};
-					// Build email template
-					({ html, jsonContent } = await emailGenerator.generateEmail(questions, pages, questionPanels, questionAnswers, options));
-					// Send emails to custodian team members who have opted in to email notifications
-					if (emailRecipientType === 'dataCustodian') {
-						emailRecipients = [...custodianManagers];
-						// Generate json attachment for external system integration
-						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
-						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
-						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
-					} else {
-						// Send email to main applicant and contributors if they have opted in to email notifications
-						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
-					}
-					// Send email
-					if (!_.isEmpty(emailRecipients)) {
-						await emailGenerator.sendEmail(
-							emailRecipients,
-							constants.hdrukEmail,
-							`Data Access Request has been submitted to ${publisher} for ${datasetTitles}`,
-							html,
-							false,
-							attachments
-						);
-					}
-				}
-				break;
-			case constants.notificationTypes.RESUBMITTED:
-				// 1. Create notifications
-				// Custodian notification
-				if (_.has(accessRecord.datasets[0], 'publisher.team.users')) {
-					// Retrieve all custodian user Ids to generate notifications
-					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
-					custodianUserIds = custodianManagers.map(user => user.id);
-					await notificationBuilder.triggerNotificationMessage(
-						custodianUserIds,
-						`A Data Access Request has been resubmitted with updates to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
-						'data access request',
-						accessRecord._id
-					);
-				} else {
-					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
-					custodianManagers = [{ email: dataCustodianEmail }];
-				}
-				// Applicant notification
-				await notificationBuilder.triggerNotificationMessage(
-					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully resubmitted with updates to ${publisher}`,
-					'data access request',
-					accessRecord._id
-				);
-				// Contributors/authors notification
-				if (!_.isEmpty(authors)) {
-					await notificationBuilder.triggerNotificationMessage(
-						accessRecord.authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${datasetTitles} was successfully resubmitted with updates to ${publisher} by ${firstname} ${lastname}`,
-						'data access request',
-						accessRecord._id
-					);
-				}
-				// 2. Send emails to custodian and applicant
-				// Create object to pass to email generator
-				options = {
-					userType: '',
-					userEmail: appEmail,
-					publisher,
-					datasetTitles,
-					userName: `${appFirstName} ${appLastName}`,
-				};
-				// Iterate through the recipient types
-				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
-					// Establish email context object
-					options = {
-						...options,
-						userType: emailRecipientType,
-						submissionType: constants.submissionTypes.RESUBMISSION,
-					};
-					// Build email template
-					({ html, jsonContent } = await emailGenerator.generateEmail(questions, pages, questionPanels, questionAnswers, options));
-					// Send emails to custodian team members who have opted in to email notifications
-					if (emailRecipientType === 'dataCustodian') {
-						emailRecipients = [...custodianManagers];
-						// Generate json attachment for external system integration
-						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
-						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
-						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
-					} else {
-						// Send email to main applicant and contributors if they have opted in to email notifications
-						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
-					}
-					// Send email
-					if (!_.isEmpty(emailRecipients)) {
-						await emailGenerator.sendEmail(
-							emailRecipients,
-							constants.hdrukEmail,
-							`Data Access Request to ${publisher} for ${datasetTitles} has been updated with updates`,
-							html,
-							false,
-							attachments
-						);
-					}
-				}
-				break;
-			case constants.notificationTypes.CONTRIBUTORCHANGE:
-				// 1. Deconstruct authors array from context to compare with existing Mongo authors
-				const { newAuthors, currentAuthors } = context;
-				// 2. Determine authors who have been removed
-				let addedAuthors = [...newAuthors].filter(author => !currentAuthors.includes(author));
-				// 3. Determine authors who have been added
-				let removedAuthors = [...currentAuthors].filter(author => !newAuthors.includes(author));
-				// 4. Create emails and notifications for added/removed contributors
-				// Set required data for email generation
-				options = {
-					id: accessRecord._id,
-					projectName,
-					projectId,
-					datasetTitles,
-					userName: `${appFirstName} ${appLastName}`,
-					actioner: `${firstname} ${lastname}`,
-					applicants,
-				};
-				// Notifications for added contributors
-				if (!_.isEmpty(addedAuthors)) {
-					options.change = 'added';
-					html = emailGenerator.generateContributorEmail(options);
-					// Find related user objects and filter out users who have not opted in to email communications
-					let addedUsers = await UserModel.find({
-						id: { $in: addedAuthors },
-					}).populate('additionalInfo');
-
-					await notificationBuilder.triggerNotificationMessage(
-						addedUsers.map(user => user.id),
-						`You have been added as a contributor for a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
-						'data access request',
-						accessRecord._id
-					);
-					await emailGenerator.sendEmail(
-						addedUsers,
-						constants.hdrukEmail,
-						`You have been added as a contributor for a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
-						html,
-						false
-					);
-				}
-				// Notifications for removed contributors
-				if (!_.isEmpty(removedAuthors)) {
-					options.change = 'removed';
-					html = await emailGenerator.generateContributorEmail(options);
-					// Find related user objects and filter out users who have not opted in to email communications
-					let removedUsers = await UserModel.find({
-						id: { $in: removedAuthors },
-					}).populate('additionalInfo');
-
-					await notificationBuilder.triggerNotificationMessage(
-						removedUsers.map(user => user.id),
-						`You have been removed as a contributor from a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
-						'data access request unlinked',
-						accessRecord._id
-					);
-					await emailGenerator.sendEmail(
-						removedUsers,
-						constants.hdrukEmail,
-						`You have been removed as a contributor from a Data Access Request to ${publisher} by ${firstname} ${lastname}`,
-						html,
-						false
-					);
-				}
-				break;
-			case constants.notificationTypes.STEPOVERRIDE:
-				// 1. Create reviewer notifications
+				// 2. Create user notifications
 				notificationBuilder.triggerNotificationMessage(
-					stepReviewerUserIds,
-					`${firstname} ${lastname} has approved a Data Access Request application phase that you were assigned to review`,
-					'data access request',
-					accessRecord._id
+					teamMembersIds,
+					context.datasetVersion !== '1.0.0'
+						? `Your dataset version for "${context.name}" has been reviewed and rejected`
+						: `A dataset "${context.name}" has been reviewed and rejected`,
+					'dataset rejected',
+					context.pid
 				);
-				// 2. Create reviewer emails
+				// 3. Create email
 				options = {
-					id: accessRecord._id,
-					projectName,
-					projectId,
-					datasetTitles,
-					userName: `${appFirstName} ${appLastName}`,
-					actioner: `${firstname} ${lastname}`,
-					applicants,
-					dateSubmitted,
-					...context,
+					name: context.name,
+					publisherId: context.datasetv2.summary.publisher.identifier,
+					comment: context.applicationStatusDesc,
 				};
-				html = emailGenerator.generateStepOverrideEmail(options);
+				html = emailGenerator.generateMetadataOnboardingRejected(options);
 				emailGenerator.sendEmail(
-					stepReviewers,
+					teamMembersDetails,
 					constants.hdrukEmail,
-					`${firstname} ${lastname} has approved a Data Access Request application phase that you were assigned to review`,
-					html,
-					false
-				);
-				break;
-			case constants.notificationTypes.REVIEWSTEPSTART:
-				// 1. Create reviewer notifications
-				notificationBuilder.triggerNotificationMessage(
-					stepReviewerUserIds,
-					`You are required to review a new Data Access Request application for ${publisher} by ${moment(currentDeadline).format(
-						'D MMM YYYY HH:mm'
-					)}`,
-					'data access request',
-					accessRecord._id
-				);
-				// 2. Create reviewer emails
-				options = {
-					id: accessRecord._id,
-					projectName,
-					projectId,
-					datasetTitles,
-					userName: `${appFirstName} ${appLastName}`,
-					actioner: `${firstname} ${lastname}`,
-					applicants,
-					dateSubmitted,
-					...context,
-				};
-				html = emailGenerator.generateNewReviewPhaseEmail(options);
-				emailGenerator.sendEmail(
-					stepReviewers,
-					constants.hdrukEmail,
-					`You are required to review a new Data Access Request application for ${publisher} by ${moment(currentDeadline).format(
-						'D MMM YYYY HH:mm'
-					)}`,
-					html,
-					false
-				);
-				break;
-			case constants.notificationTypes.FINALDECISIONREQUIRED:
-				// 1. Get managers for publisher
-				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
-				managerUserIds = custodianManagers.map(user => user.id);
-
-				// 2. Create manager notifications
-				notificationBuilder.triggerNotificationMessage(
-					managerUserIds,
-					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
-					'data access request',
-					accessRecord._id
-				);
-				// 3. Create manager emails
-				options = {
-					id: accessRecord._id,
-					projectName,
-					projectId,
-					datasetTitles,
-					userName: `${appFirstName} ${appLastName}`,
-					actioner: `${firstname} ${lastname}`,
-					applicants,
-					dateSubmitted,
-					...context,
-				};
-				html = emailGenerator.generateFinalDecisionRequiredEmail(options);
-				emailGenerator.sendEmail(
-					custodianManagers,
-					constants.hdrukEmail,
-					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
-					html,
-					false
-				);
-				break;
-			case constants.notificationTypes.DEADLINEWARNING:
-				// 1. Create reviewer notifications
-				await notificationBuilder.triggerNotificationMessage(
-					remainingReviewerUserIds,
-					`The deadline is approaching for a Data Access Request application you are reviewing`,
-					'data access request',
-					accessRecord._id
-				);
-				// 2. Create reviewer emails
-				options = {
-					id: accessRecord._id,
-					projectName,
-					projectId,
-					datasetTitles,
-					userName: `${appFirstName} ${appLastName}`,
-					actioner: `${firstname} ${lastname}`,
-					applicants,
-					workflowName,
-					stepName,
-					reviewSections,
-					reviewerNames,
-					nextStepName,
-					dateDeadline,
-				};
-				html = await emailGenerator.generateReviewDeadlineWarning(options);
-				await emailGenerator.sendEmail(
-					remainingReviewers,
-					constants.hdrukEmail,
-					`The deadline is approaching for a Data Access Request application you are reviewing`,
-					html,
-					false
-				);
-				break;
-			case constants.notificationTypes.DEADLINEPASSED:
-				// 1. Get all managers
-				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
-				managerUserIds = custodianManagers.map(user => user.id);
-				// 2. Combine managers and reviewers remaining
-				let deadlinePassedUserIds = [...remainingReviewerUserIds, ...managerUserIds];
-				let deadlinePassedUsers = [...remainingReviewers, ...custodianManagers];
-
-				// 3. Create notifications
-				await notificationBuilder.triggerNotificationMessage(
-					deadlinePassedUserIds,
-					`The deadline for a Data Access Request review phase has now elapsed`,
-					'data access request',
-					accessRecord._id
-				);
-				// 4. Create emails
-				options = {
-					id: accessRecord._id,
-					projectName,
-					projectId,
-					datasetTitles,
-					userName: `${appFirstName} ${appLastName}`,
-					actioner: `${firstname} ${lastname}`,
-					applicants,
-					workflowName,
-					stepName,
-					reviewSections,
-					reviewerNames,
-					nextStepName,
-					dateDeadline,
-				};
-				html = await emailGenerator.generateReviewDeadlinePassed(options);
-				await emailGenerator.sendEmail(
-					deadlinePassedUsers,
-					constants.hdrukEmail,
-					`The deadline for a Data Access Request review phase has now elapsed`,
+					`Your dataset version has been reviewed and rejected`,
 					html,
 					false
 				);
