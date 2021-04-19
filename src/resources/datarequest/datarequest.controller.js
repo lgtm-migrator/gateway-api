@@ -2103,7 +2103,10 @@ module.exports = {
 			case constants.notificationTypes.SUBMITTED:
 				// 1. Create notifications
 				// Custodian notification
-				if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
+				if (
+					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users') &&
+					accessRecord.datasets[0].publisher.allowAccessRequestManagement
+				) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
 					custodianUserIds = custodianManagers.map(user => user.id);
