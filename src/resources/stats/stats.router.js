@@ -113,6 +113,7 @@ router.get('', async (req, res) => {
 							],
 						},
 					},
+					{ $project: { datasetIds: 1 } },
 				];
 
 				var y = DataRequestModel.aggregate(aggregateAccessRequests);
