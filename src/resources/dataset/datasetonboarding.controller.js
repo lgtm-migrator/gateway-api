@@ -100,7 +100,7 @@ module.exports = {
 				await Data.findOneAndUpdate({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
 			}
 
-			if (!dataset.structuralMetadata) {
+			if (_.isEmpty(dataset.structuralMetadata)) {
 				//if no structuralMetadata then populate from MDC
 				dataset.structuralMetadata = module.exports.populateStructuralMetadata(dataset);
 				await Data.findOneAndUpdate({ _id: id }, { structuralMetadata: dataset.structuralMetadata });
