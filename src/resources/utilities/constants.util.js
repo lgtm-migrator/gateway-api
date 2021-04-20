@@ -14,6 +14,18 @@ const _teamNotificationTypes = Object.freeze({
   METADATAONBOARDING : 'metaDataOnboarding'
 });
 
+const _teamNotificationMessages = {
+  DATAACCESSREQUEST : 'A team manager removed team email addresses. Your email notifications are now being sent to your gateway email',
+};
+
+const _teamNotificationEmailContentTypes = {
+	TEAMEMAILHEADERADD : 'A team manager has added a new team email address',
+	TEAMEMAILHEADEREMOVE : 'A team manager has removed a team email address',
+	TEAMEMAILSUBHEADERADD: 'has added a new team email address. All emails relating to pre-submission messages from researchers will be sent to the following email addresses:',
+	TEAMEMAILSUBHEADEREMOVE: 'has removed a team email address. All emails relating to pre-submission messages from researchers will no longer be sent to the following email addresses:',
+	TEAMEMAILFOOTERREMOVE: 'If you had stopped emails being sent to your gateway log in email address and no team email address is now active, your emails will have reverted back to your gateway log in email.'
+};
+
 const _teamNotificationTypesHuman = Object.freeze({
   dataAccessRequest : 'Data access request',
   metaDataOnboarding : 'Meta data on-boarding'
@@ -363,7 +375,9 @@ export default {
 	enquiryFormId: _enquiryFormId,
 	formTypes: _formTypes,
 	teamNotificationTypes: _teamNotificationTypes,
+	teamNotificationMessages:_teamNotificationMessages,
 	teamNotificationTypesHuman: _teamNotificationTypesHuman,
+	teamNotificationEmailContentTypes: _teamNotificationEmailContentTypes,
 	userQuestionActions: _userQuestionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
