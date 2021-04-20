@@ -378,8 +378,6 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 				console.error('Unable to get metadata JSON ' + err.message);
 			});
 
-		console.log(JSON.stringify(datasetMDCJSON.data));
-
 		const elapsedTime = ((Date.now() - startImportTime) / 1000).toFixed(3);
 		console.log(`Time taken to import JSON  ${elapsedTime} (${datasetMDC.id})`);
 
