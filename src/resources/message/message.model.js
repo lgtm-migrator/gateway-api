@@ -38,6 +38,10 @@ const MessageSchema = new Schema(
 			default: '',
 			trim: true,
 		},
+		datasetID: {
+			type: String,
+			default: '',
+		},
 		createdBy: {
 			type: Schema.Types.ObjectId,
 			ref: 'User',
