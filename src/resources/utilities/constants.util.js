@@ -360,6 +360,7 @@ const _datatsetStatuses = {
 	APPROVED: 'approved',
 	REJECTED: 'rejected',
 	APPROVEDWITHCONDITIONS: 'approved with conditions',
+	ARCHIVE: 'archive',
 };
 
 // </Dataset onboarding related enums>

@@ -3,6 +3,7 @@ import { PublisherModel } from '../publisher/publisher.model';
 import { TeamModel } from '../team/team.model';
 import { UserModel } from '../user/user.model';
 import teamController from '../team/team.controller';
+import randomstring from 'randomstring';
 import { filtersService } from '../filters/dependency';
 import notificationBuilder from '../utilities/notificationBuilder';
 import emailGenerator from '../utilities/emailGenerator.util';
@@ -41,11 +42,17 @@ module.exports = {
 					$and: [
 						{ 'datasetv2.summary.publisher.identifier': publisherID },
 						{
-							$or: [{ activeflag: 'active' }, { activeflag: 'inReview' }, { activeflag: 'draft' }, { activeflag: 'rejected' }],
+							$or: [
+								{ activeflag: 'active' },
+								{ activeflag: 'inReview' },
+								{ activeflag: 'draft' },
+								{ activeflag: 'rejected' },
+								{ activeflag: 'archive' },
+							],
 						},
 					],
 				})
-					.sort({ 'timestamps.updated': -1 })
+					.sort({ 'timestamps.updated': 1 })
 					.distinct('pid');
 			}
 
@@ -304,8 +311,18 @@ module.exports = {
 		if (!_.isNil(dataset.datasetv2.enrichmentAndLinkage.tools) && !_.isEmpty(dataset.datasetv2.enrichmentAndLinkage.tools))
 			questionAnswers['properties/enrichmentAndLinkage/tools'] = module.exports.returnAsArray(dataset.datasetv2.enrichmentAndLinkage.tools);
 		//Observations
-		if (!_.isNil(dataset.datasetv2.observations.observations) && !_.isEmpty(dataset.datasetv2.observations.observations))
-			questionAnswers['properties/observations/observations'] = dataset.datasetv2.observations.observations;
+		if (!_.isNil(dataset.datasetv2.observations) && !_.isEmpty(dataset.datasetv2.observations)) {
+			let observations = module.exports.returnAsArray(dataset.datasetv2.observations);
+			let uniqueId = '';
+			for (let observation of observations) {
+				questionAnswers[`properties/observation/observedNode${uniqueId}`] = observation.observedNode.toUpperCase();
+				questionAnswers[`properties/observation/measuredValue${uniqueId}`] = observation.measuredValue;
+				questionAnswers[`properties/observation/disambiguatingDescription${uniqueId}`] = observation.disambiguatingDescription;
+				questionAnswers[`properties/observation/observationDate${uniqueId}`] = module.exports.returnAsDate(observation.observationDate);
+				questionAnswers[`properties/observation/measuredProperty${uniqueId}`] = observation.measuredProperty;
+				uniqueId = `_${randomstring.generate(5)}`;
+			}
+		}
 
 		return questionAnswers;
 	},
@@ -316,6 +333,7 @@ module.exports = {
 	},
 
 	returnAsDate: value => {
+		if (moment(value, 'DD/MM/YYYY').isValid()) return value;
 		return moment(new Date(value)).format('DD/MM/YYYY');
 	},
 
@@ -894,26 +912,92 @@ module.exports = {
 				await module.exports.createNotifications(constants.notificationTypes.DATASETREJECTED, updatedDataset);
 
 				return res.status(200).json({ status: 'success' });
-			} else if (applicationStatus === 'archived') {
-				//await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.ARCHIVED });
-			} else if (applicationStatus === 'unarchived') {
-				//await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.ARCHIVED });
+			} else if (applicationStatus === 'archive') {
+				let dataset = await Data.findOne({ _id: id }).lean();
+
+				if (dataset.timestamps.submitted) {
+					//soft delete from MDC
+					let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
+
+					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
+						console.log('Error when trying to logout of the MDC - ' + err.message);
+					});
+					const loginDetails = {
+						username: process.env.MDC_Config_HDRUK_username || '',
+						password: process.env.MDC_Config_HDRUK_password || '',
+					};
+
+					await axios
+						.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
+							withCredentials: true,
+							timeout: 5000,
+						})
+						.then(async session => {
+							axios.defaults.headers.Cookie = session.headers['set-cookie'][0]; // get cookie from request
+
+							await axios
+								.delete(metadataCatalogueLink + `/api/dataModels/${dataset.datasetid}`, { withCredentials: true, timeout: 5000 })
+								.catch(err => {
+									console.log('Error when trying to delete(archive) a dataset - ' + err.message);
+								});
+						})
+						.catch(err => {
+							console.log('Error when trying to login to MDC - ' + err.message);
+						});
+
+					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
+						console.log('Error when trying to logout of the MDC - ' + err.message);
+					});
+				}
+				await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.ARCHIVE });
+				return res.status(200).json({ status: 'success' });
+			} else if (applicationStatus === 'unarchive') {
+				let dataset = await Data.findOne({ _id: id }).lean();
+				let flagIs = 'draft';
+				if (dataset.timestamps.submitted) {
+					let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
+
+					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
+						console.log('Error when trying to logout of the MDC - ' + err.message);
+					});
+					const loginDetails = {
+						username: process.env.MDC_Config_HDRUK_username || '',
+						password: process.env.MDC_Config_HDRUK_password || '',
+					};
+
+					await axios
+						.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
+							withCredentials: true,
+							timeout: 5000,
+						})
+						.then(async session => {
+							axios.defaults.headers.Cookie = session.headers['set-cookie'][0]; // get cookie from request
+
+							const updatedDatasetDetails = {
+								deleted: 'false',
+							};
+							await axios
+								.put(metadataCatalogueLink + `/api/dataModels/${dataset.datasetid}`, updatedDatasetDetails, {
+									withCredentials: true,
+									timeout: 5000,
+								})
+								.catch(err => {
+									console.log('Error when trying to update the version number on the MDC - ' + err.message);
+								});
+						})
+						.catch(err => {
+							console.log('Error when trying to login to MDC - ' + err.message);
+						});
+
+					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
+						console.log('Error when trying to logout of the MDC - ' + err.message);
+					});
+
+					flagIs = 'active';
+				}
+				await Data.findOneAndUpdate({ _id: id }, { activeflag: flagIs }); //active or draft
+				return res.status(200).json({ status: 'success' });
 			}
-
-			if (applicationStatusDesc) {
-				accessRecord.applicationStatusDesc = inputSanitizer.removeNonBreakingSpaces(applicationStatusDesc);
-				isDirty = true;
-			}
-
-			// 3. Check user type and authentication to submit application
-			/* let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
-			if (!authorised) {
-				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			} */
-
-			//update dataset to inreview - constants.datatsetStatuses.INREVIEW
-
-			//let updatedDataset = await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.INREVIEW });
 		} catch (err) {
 			console.error(err.message);
 			res.status(500).json({
@@ -1379,7 +1463,7 @@ module.exports = {
 						? `Your dataset version for "${context.name}" has been reviewed and rejected`
 						: `A dataset "${context.name}" has been reviewed and rejected`,
 					'dataset rejected',
-					context.pid
+					context.datasetv2.summary.publisher.identifier
 				);
 				// 3. Create email
 				options = {
