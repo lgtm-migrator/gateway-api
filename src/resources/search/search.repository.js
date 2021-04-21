@@ -105,6 +105,13 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					activeflag: 1,
 					counter: 1,
 					'datasetfields.metadataquality.quality_score': 1,
+					latestUpdate: {
+						$cond: {
+							if: { $gte: ['$createdAt', '$updatedon'] },
+							then: '$createdAt',
+							else: '$updatedon',
+						},
+					},
 				},
 			},
 		];
@@ -132,6 +139,11 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	} else if (sort === 'startdate') {
 		if (searchAll) queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
 		else queryObject.push({ $sort: { 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'latest') {
+		if (type === 'person') {
+			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+			else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+		}
 	}
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));

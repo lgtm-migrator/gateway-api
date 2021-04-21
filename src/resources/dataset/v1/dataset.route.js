@@ -1,6 +1,6 @@
 import express from 'express';
 import { Data } from '../../tool/data.model';
-import { loadDataset, loadDatasets } from './dataset.service';
+import { loadDataset, saveUptime, importCatalogues } from './dataset.service';
 import { getAllTools } from '../../tool/data.repository';
 import { isEmpty, isNil } from 'lodash';
 import escape from 'escape-html';
@@ -18,26 +18,29 @@ const datasetLimiter = rateLimit({
 
 router.post('/', async (req, res) => {
 	try {
-		//Check to see if header is in json format
+		// Check to see if header is in json format
 		let parsedBody = {};
 		if (req.header('content-type') === 'application/json') {
 			parsedBody = req.body;
 		} else {
 			parsedBody = JSON.parse(req.body);
 		}
-		//Check for key
+		// Check for key
 		if (parsedBody.key !== process.env.cachingkey) {
 			return res.status(400).json({ success: false, error: 'Caching could not be started' });
 		}
-
+		// Throw error if parsing failed
 		if (parsedBody.error === true) {
 			throw new Error('cache error test');
 		}
-
-		loadDatasets(parsedBody.override || false).then(() => {
+		// Deconstruct body params
+		const { catalogues = [], override = false, limit } = parsedBody;
+		// Run catalogue importer
+		importCatalogues(catalogues, override, limit).then(() => {
 			filtersService.optimiseFilters('dataset');
+			saveUptime();
 		});
-
+		// Return response indicating job has started (do not await async import)
 		return res.status(200).json({ success: true, message: 'Caching started' });
 	} catch (err) {
 		Sentry.captureException(err);

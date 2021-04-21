@@ -63,7 +63,7 @@ const DataSchema = new Schema(
 		showBio: Boolean,
 		orcid: String,
 		showOrcid: Boolean,
-		emailNotifications: Boolean,
+		emailNotifications: { type: Boolean, default: true },
 		terms: Boolean,
 		sector: String,
 		showSector: Boolean,
