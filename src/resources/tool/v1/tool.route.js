@@ -44,15 +44,15 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
 });
 
 // @router   GET /api/v1/get/admin
-// @desc     Returns List of Tool objects 
+// @desc     Returns List of Tool objects
 // @access   Private
 router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	req.params.type = 'tool';
 	let role = req.user.role;
 
 	if (role === ROLES.Admin) {
-		await getToolsAdmin(req) 
-			.then(data => { 
+		await getToolsAdmin(req)
+			.then(data => {
 				return res.json({ success: true, data });
 			})
 			.catch(err => {
@@ -69,7 +69,7 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
-// @router   GET /api/v1/ 
+// @router   GET /api/v1/
 // @desc     Returns List of Tool Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
@@ -95,7 +95,7 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 		.catch(err => {
 			return res.json({ success: false, error: err.message });
 		});
-}); 
+});
 
 /**
  * {get} /tool/:id Tool
@@ -469,7 +469,8 @@ async function sendEmailNotifications(review) {
 			emailRecipients,
 			`${hdrukEmail}`,
 			`Someone reviewed your tool`,
-			`${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`
+			`${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`,
+			false
 		);
 	});
 }
