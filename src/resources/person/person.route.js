@@ -89,7 +89,7 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			profileComplete,
 		},
 		{ new: true }
-	); 
+	);
 	await UserModel.findOneAndUpdate({ id: id }, { $set: { firstname: firstname, lastname: lastname, email: email } })
 		.then(person => {
 			return res.json({ success: true, data: person });
@@ -127,6 +127,20 @@ router.put('/unsubscribe/:userObjectId', async (req, res) => {
 		});
 });
 
+// @router   PATCH /api/v1/person/profileComplete/:id
+// @desc     Set profileComplete to true
+// @access   Private
+router.patch('/profileComplete/:id', passport.authenticate('jwt'), async (req, res) => {
+	const id = req.params.id;
+	await Data.findOneAndUpdate({ id }, { profileComplete: true })
+		.then(response => {
+			return res.json({ success: true, response });
+		})
+		.catch(err => {
+			return res.json({ success: false, error: err.message });
+		});
+});
+
 // @router   GET /api/v1/person/:id
 // @desc     Get person info based on personID
 router.get('/:id', async (req, res) => {
@@ -161,13 +175,13 @@ router.get('/profile/:id', async (req, res) => {
 	});
 });
 
-// @router   GET /api/v1/person 
+// @router   GET /api/v1/person
 // @desc     Get paper for an author
 // @access   Private
 router.get('/', async (req, res) => {
 	let personArray = [];
-	req.params.type = 'person'; 
-	await getAllTools(req) 
+	req.params.type = 'person';
+	await getAllTools(req)
 		.then(data => {
 			data.map(personObj => {
 				personArray.push({
