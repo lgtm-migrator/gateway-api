@@ -47,6 +47,8 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 		showLink,
 		showOrcid,
 		emailNotifications,
+		feedback,
+		news,
 		terms,
 		sector,
 		showSector,
@@ -79,6 +81,8 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			orcid,
 			showOrcid,
 			emailNotifications,
+			feedback,
+			news,
 			terms,
 			sector,
 			showSector,
@@ -161,13 +165,13 @@ router.get('/profile/:id', async (req, res) => {
 	});
 });
 
-// @router   GET /api/v1/person 
+// @router   GET /api/v1/person
 // @desc     Get paper for an author
 // @access   Private
 router.get('/', async (req, res) => {
 	let personArray = [];
-	req.params.type = 'person'; 
-	await getAllTools(req) 
+	req.params.type = 'person';
+	await getAllTools(req)
 		.then(data => {
 			data.map(personObj => {
 				personArray.push({
