@@ -93,7 +93,7 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			profileComplete,
 		},
 		{ new: true }
-	); 
+	);
 	await UserModel.findOneAndUpdate({ id: id }, { $set: { firstname: firstname, lastname: lastname, email: email } })
 		.then(person => {
 			return res.json({ success: true, data: person });
@@ -128,6 +128,20 @@ router.put('/unsubscribe/:userObjectId', async (req, res) => {
 		.catch(() => {
 			// 3b. Return generic failure message in all cases without disclosing reason or data structure
 			return res.status(500).send({ success: false, msg: 'A problem occurred unsubscribing from email notifications.' });
+		});
+});
+
+// @router   PATCH /api/v1/person/profileComplete/:id
+// @desc     Set profileComplete to true
+// @access   Private
+router.patch('/profileComplete/:id', passport.authenticate('jwt'), async (req, res) => {
+	const id = req.params.id;
+	await Data.findOneAndUpdate({ id }, { profileComplete: true })
+		.then(response => {
+			return res.json({ success: true, response });
+		})
+		.catch(err => {
+			return res.json({ success: false, error: err.message });
 		});
 });
 
