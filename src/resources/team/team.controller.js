@@ -225,7 +225,7 @@ const getTeamNotifications = async (req, res) => {
 const updateNotifications = async (req, res) => {
 	try {
 			// 1. Get the team from the database include user documents for each member
-			const team = await TeamModel.findOne({ _id: req.params.id }).populate([{ path: 'users' }]);
+			const team = await TeamModel.findOne({ _id: req.params.id }).populate([{ path: 'users' }, { path: 'publisher', select: 'name' }]);
 
 			if (!team) {
 				return res.status(404).json({ success: false });
@@ -327,7 +327,7 @@ const updateNotifications = async (req, res) => {
 								// build cleaner array of memberIds from subscribedMembersByType
 								const memberIds = [...subscribedMembersByType].map(m => m.memberid);								
 								// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object in team
-								const memberEmails = getMemberEmails([...memberIds], [...users]);
+								const { memberEmails, userIds } = getMemberDetails([...memberIds], [...users]);
 								// email options and html template
 								let html = '';
 								let options = {
@@ -337,6 +337,7 @@ const updateNotifications = async (req, res) => {
 								};
 								// check if removed emails and send email subscribedEmails or if the emails are turned off 
 								if(!_.isEmpty(removedEmails) || (dbOptIn && !payLoadOptIn)) {
+									
 									// update the options
 									options = { 
 										...options, 
@@ -349,10 +350,17 @@ const updateNotifications = async (req, res) => {
 									emailGenerator.sendEmail(
 										memberEmails,
 										constants.hdrukEmail,
-										`A team manager has removed a team email address`,
+										`A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${dbOptIn && !payLoadOptIn ? 'disabled all' : 'removed a'} generic team email address(es)`,
 										html,
 										true
 									);
+
+									notificationBuilder.triggerNotificationMessage(
+                    [...userIds],
+                    `A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${dbOptIn && !payLoadOptIn ? 'disabled all' : 'removed a'} generic team email address(es)`,
+                    'team',
+                    team.publisher ? team.publisher.name : 'Undefined'
+               	 	);
 
 								}
 								// check if added emails and send email to subscribedEmails or if the dbOpt is false but the manager is turning back on team notifications
@@ -365,10 +373,17 @@ const updateNotifications = async (req, res) => {
 									emailGenerator.sendEmail(
 										memberEmails,
 										constants.hdrukEmail,
-										`A team manager has added a team email address`,
+										`A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${!dbOptIn && payLoadOptIn ? 'enabled all' : 'added a'} generic team email address(es)`,
 										html,
 										true
 									);
+
+									notificationBuilder.triggerNotificationMessage(
+                    [...userIds],
+										`A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${!dbOptIn && payLoadOptIn ? 'enabled all' : 'added a'} generic team email address(es)`,
+                    'team',
+                    team.publisher ? team.publisher.name : 'Undefined'
+               	 	);
 								}
 							}
 						}
@@ -609,22 +624,25 @@ const filterMembersByNoticationTypesOptIn = (members, notificationTypes) =>  {
 }
 
 /**
- * getMemberEmails
+ * getMemberDetails
  *
  * @param   {Array}  memberIds          [memberIds from team.members]
  * @param   {Array}  users  						[array of user objects that are in the team]
  * @return  {Array}                     [return all emails for memberIds from user aray]
  */
-const getMemberEmails = (memberIds = [], users = []) => {
+const getMemberDetails = (memberIds = [], users = []) => {
 	if(!_.isEmpty(memberIds) && !_.isEmpty(users)) {
 		return [...users].reduce((arr, user) => {
 			const member = [...memberIds].find(m => m.toString() === user._id.toString()) || {};
 			if(!_.isEmpty(member)) {
-					let { email } = user;
-					return [...arr, { email }];
+					let { email, id } = user;
+					return {
+						'memberEmails': [...arr['memberEmails'], { email }], 
+						'userIds': [...arr['userIds'], id] 
+					}
 			}
 			return arr;
-	}, []);
+	}, {'memberEmails': [], 'userIds': []});
 	}
 	return [];
 }
@@ -801,7 +819,7 @@ export default {
 	filterMembersByNoticationTypesOptIn: filterMembersByNoticationTypesOptIn,
 	buildOptedInEmailList: buildOptedInEmailList,
 	getTeamMembers: getTeamMembers,
-	getMemberEmails: getMemberEmails,
+	getMemberDetails: getMemberDetails,
 	getTeamNotifications: getTeamNotifications,
 	addTeamMembers: addTeamMembers,
 	updateTeamMember: updateTeamMember,
