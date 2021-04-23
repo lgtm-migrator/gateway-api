@@ -333,6 +333,7 @@ const updateNotifications = async (req, res) => {
 								let options = {
 									managerName: `${manager.firstname} ${manager.lastname}`,
 									notificationRemoved: false,
+									header: '',
 									emailAddresses: []
 								};
 								// check if removed emails and send email subscribedEmails or if the emails are turned off 
@@ -342,6 +343,7 @@ const updateNotifications = async (req, res) => {
 									options = { 
 										...options, 
 										notificationRemoved: true, 
+										header: `A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${dbOptIn && !payLoadOptIn ? 'disabled all' : 'removed a'} generic team email address(es)`,
 										emailAddresses: dbOptIn && !payLoadOptIn ? payLoadSubscribedEmails : removedEmails  
 									}
 									// get html template
@@ -366,7 +368,12 @@ const updateNotifications = async (req, res) => {
 								// check if added emails and send email to subscribedEmails or if the dbOpt is false but the manager is turning back on team notifications
 								if(!_.isEmpty(addedEmails) || (!dbOptIn && payLoadOptIn)) {
 									// update options
-									options = {...options, notificationRemoved: false, emailAddresses: payLoadSubscribedEmails}
+									options = {
+										...options, 
+										notificationRemoved: false,
+										header: `A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${!dbOptIn && payLoadOptIn ? 'enabled all' : 'added a'} generic team email address(es)`,
+										emailAddresses: 
+									}
 									// get html template
 									html =  emailGenerator.generateTeamNotificationEmail(options);
 									// send email

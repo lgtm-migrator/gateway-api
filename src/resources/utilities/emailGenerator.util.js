@@ -1596,7 +1596,7 @@ const _formatEmails = (emails) => {
 }
 
 const _generateTeamNotificationEmail = options => {
-	let { managerName,  notificationRemoved, emailAddresses} = options;
+	let { managerName,  notificationRemoved, emailAddresses, team, header} = options;
   let formattedEmails = _formatEmails(emailAddresses);
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; max-width:700px; margin: 0 auto;">
@@ -1610,7 +1610,7 @@ const _generateTeamNotificationEmail = options => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                      ${notificationRemoved ? constants.teamNotificationEmailContentTypes.TEAMEMAILHEADEREMOVE : constants.teamNotificationEmailContentTypes.TEAMEMAILHEADERADD}
+                      ${header}
                     </th>
                   </tr>
                   <tr>
