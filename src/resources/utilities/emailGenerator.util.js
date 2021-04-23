@@ -1581,23 +1581,22 @@ const _generateRemovedFromTeam = options => {
 
 const _displayViewEmailNotifications = () => {
 	let link = `${process.env.homeURL}/account?tab=teamManagement&innertab=notifications`;
-  return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
             <tr>
               <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
                 <a style="color: #475da7;" href="${link}">View email notifications</a>
               </td>
             </tr>
-          </table>`
-
+          </table>`;
 };
 
-const _formatEmails = (emails) => {
-  return [...emails].map((email, i) => ` ${email}`);
-}
+const _formatEmails = emails => {
+	return [...emails].map((email, i) => ` ${email}`);
+};
 
 const _generateTeamNotificationEmail = options => {
-	let { managerName,  notificationRemoved, emailAddresses, team, header} = options;
-  let formattedEmails = _formatEmails(emailAddresses);
+	let { managerName, notificationRemoved, emailAddresses, header } = options;
+	let formattedEmails = _formatEmails(emailAddresses);
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; max-width:700px; margin: 0 auto;">
                 <table
@@ -1615,7 +1614,11 @@ const _generateTeamNotificationEmail = options => {
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     ${notificationRemoved ? `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADEREMOVE}` : `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADERADD}`}
+                     ${
+												notificationRemoved
+													? `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADEREMOVE}`
+													: `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADERADD}`
+											}
                     </th>
                   </tr>
                 </thead>
@@ -1630,7 +1633,7 @@ const _generateTeamNotificationEmail = options => {
 												</td>
                       </tr>
                     </table>
-                    ${notificationRemoved  ? _generateTeamEmailRevert(notificationRemoved) : ''}
+                    ${notificationRemoved ? _generateTeamEmailRevert(notificationRemoved) : ''}
                     ${_displayViewEmailNotifications()}
                   </td>
                 </tr>
@@ -1640,15 +1643,15 @@ const _generateTeamNotificationEmail = options => {
 	return body;
 };
 
-const _generateTeamEmailRevert = (notificationRemoved) => {
-  return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+const _generateTeamEmailRevert = notificationRemoved => {
+	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
             <tr>
               <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
                 If you had stopped emails being sent to your gateway log in email address and no team email address is now active, your emails will have reverted back to your gateway log in email.
               </td>
             </tr>
-          </table>`
-}
+          </table>`;
+};
 
 const _generateAddedToTeam = options => {
 	let { teamName, role } = options;
@@ -1802,7 +1805,7 @@ export default {
 	generateReviewDeadlineWarning: _generateReviewDeadlineWarning,
 	generateReviewDeadlinePassed: _generateReviewDeadlinePassed,
 	generateFinalDecisionRequiredEmail: _generateFinalDecisionRequiredEmail,
-  generateTeamNotificationEmail: _generateTeamNotificationEmail,
+	generateTeamNotificationEmail: _generateTeamNotificationEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
 	sendEmail: _sendEmail,
