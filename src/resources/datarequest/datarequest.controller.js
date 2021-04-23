@@ -1972,11 +1972,6 @@ module.exports = {
 			filename = '',
 			jsonContent = {},
 			authors = [],
-			teamNotifications = {},
-			teamNotificationEmails = [],
-			subscribedEmails = [],
-			memberOptedInEmails = [],
-			optIn = false,
 			attachments = [];
 		let applicants = datarequestUtil.extractApplicantNames(questionAnswers).join(', ');
 		// Fall back for single applicant on short application form
