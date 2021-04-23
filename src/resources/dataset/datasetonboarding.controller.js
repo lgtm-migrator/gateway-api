@@ -559,7 +559,7 @@ module.exports = {
 						let questionAnswers = JSON.parse(updateObj.questionAnswers);
 						let title = questionAnswers['summary/title'];
 
-						if (title.length >= 2) {
+						if (title && title.length >= 2) {
 							Data.findByIdAndUpdate({ _id: id }, { name: title, 'timestamps.updated': Date.now() }, { new: true }, err => {
 								if (err) {
 									console.error(err);
@@ -703,7 +703,7 @@ module.exports = {
 								data,
 								{
 									withCredentials: true,
-									timeout: 5000,
+									timeout: 60000,
 									headers: {
 										...data.getHeaders(),
 									},
@@ -720,7 +720,7 @@ module.exports = {
 								await axios
 									.put(metadataCatalogueLink + `/api/dataModels/${newDatasetVersionId}`, updatedDatasetDetails, {
 										withCredentials: true,
-										timeout: 5000,
+										timeout: 20000,
 									})
 									.catch(err => {
 										console.log('Error when trying to update the version number on the MDC - ' + err.message);
@@ -729,7 +729,7 @@ module.exports = {
 								await axios
 									.put(metadataCatalogueLink + `/api/dataModels/${newDatasetVersionId}/finalise`, {
 										withCredentials: true,
-										timeout: 5000,
+										timeout: 20000,
 									})
 									.catch(err => {
 										console.log('Error when trying to finalise the dataset on the MDC - ' + err.message);
@@ -1408,7 +1408,7 @@ module.exports = {
 				team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
 
 				for (let member of team.members) {
-					teamMembers.push(member.memberid);
+					if (member.roles.some(role => ['manager', 'metadata_editor'].includes(role))) teamMembers.push(member.memberid);
 				}
 
 				teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
@@ -1453,8 +1453,9 @@ module.exports = {
 				teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
 					.populate('additionalInfo')
 					.lean();
-				for (let member of teamMembersDetails) {
-					teamMembersIds.push(member.id);
+
+				for (let member of team.members) {
+					if (member.roles.some(role => ['manager', 'metadata_editor'].includes(role))) teamMembers.push(member.memberid);
 				}
 				// 2. Create user notifications
 				notificationBuilder.triggerNotificationMessage(
