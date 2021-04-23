@@ -338,7 +338,7 @@ const updateNotifications = async (req, res) => {
 								};
 								// check if removed emails and send email subscribedEmails or if the emails are turned off 
 								if(!_.isEmpty(removedEmails) || (dbOptIn && !payLoadOptIn)) {
-									
+
 									// update the options
 									options = { 
 										...options, 
@@ -372,7 +372,7 @@ const updateNotifications = async (req, res) => {
 										...options, 
 										notificationRemoved: false,
 										header: `A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${!dbOptIn && payLoadOptIn ? 'enabled all' : 'added a'} generic team email address(es)`,
-										emailAddresses: 
+										emailAddresses: payLoadSubscribedEmails,
 									}
 									// get html template
 									html =  emailGenerator.generateTeamNotificationEmail(options);
