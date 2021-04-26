@@ -64,8 +64,6 @@ const DataSchema = new Schema(
 		orcid: String,
 		showOrcid: Boolean,
 		emailNotifications: { type: Boolean, default: true },
-		feedback: Boolean,
-		news: Boolean,
 		terms: Boolean,
 		sector: String,
 		showSector: Boolean,
@@ -144,6 +142,13 @@ DataSchema.virtual('persons', {
 	ref: 'Data',
 	foreignField: 'id',
 	localField: 'authors',
+});
+
+DataSchema.virtual('user', {
+	ref: 'User',
+	foreignField: 'id',
+	localField: 'id',
+	justOne: true
 });
 
 export const Data = model('Data', DataSchema);

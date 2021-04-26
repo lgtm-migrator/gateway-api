@@ -5,8 +5,10 @@ import passport from 'passport';
 import { ROLES } from '../user/user.roles';
 import { getAllTools } from '../tool/data.repository';
 import { UserModel } from '../user/user.model';
+import mailchimpConnector from '../../services/mailchimp/mailchimp';
+import constants from '../utilities/constants.util';
 import helper from '../utilities/helper.util';
-import _ from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
 
@@ -68,8 +70,12 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 	organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
 	tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
 
+	const { news: newsOriginalValue, feedback: feedbackOriginalValue } = await UserModel.findOne({ id }, 'news feedback').lean();
+	const newsDirty = newsOriginalValue !== news && !isNil(news);
+	const feedbackDirty = feedbackOriginalValue !== feedback && !isNil(feedback);
+
 	await Data.findOneAndUpdate(
-		{ id: id },
+		{ id },
 		{
 			firstname,
 			lastname,
@@ -81,8 +87,6 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			orcid,
 			showOrcid,
 			emailNotifications,
-			feedback,
-			news,
 			terms,
 			sector,
 			showSector,
@@ -91,10 +95,23 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			tags,
 			showDomain,
 			profileComplete,
-		},
-		{ new: true }
+		}
 	);
-	await UserModel.findOneAndUpdate({ id: id }, { $set: { firstname: firstname, lastname: lastname, email: email } })
+
+	if (newsDirty) {
+		const newsSubscriptionId = process.env.MAILCHIMP_NEWS_AUDIENCE_ID;
+		const newsStatus = news ? constants.mailchimpSubscriptionStatuses.SUBSCRIBED : constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
+		await mailchimpConnector.updateSubscriptionUsers(newsSubscriptionId, [req.user], newsStatus);
+	}
+	if (feedbackDirty) {
+		const feedbackSubscriptionId = process.env.MAILCHIMP_FEEDBACK_AUDIENCE_ID;
+		const feedbackStatus = feedback
+			? constants.mailchimpSubscriptionStatuses.SUBSCRIBED
+			: constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
+		await mailchimpConnector.updateSubscriptionUsers(feedbackSubscriptionId, [req.user], feedbackStatus);
+	}
+
+	await UserModel.findOneAndUpdate({ id }, { $set: { firstname, lastname, email, feedback, news } })
 		.then(person => {
 			return res.json({ success: true, data: person });
 		})
@@ -157,7 +174,7 @@ router.get('/:id', async (req, res) => {
 			return res.json({ success: false, error: err });
 		});
 
-	if (_.isEmpty(person)) {
+	if (isEmpty(person)) {
 		return res.status(404).send(`Person not found for Id: ${escape(req.params.id)}`);
 	} else {
 		person = helper.hidePrivateProfileDetails([person])[0];
@@ -168,15 +185,20 @@ router.get('/:id', async (req, res) => {
 // @router   GET /api/v1/person/profile/:id
 // @desc     Get person info for their account
 router.get('/profile/:id', async (req, res) => {
-	let profileData = Data.aggregate([
-		{ $match: { $and: [{ id: parseInt(req.params.id) }] } },
-		{ $lookup: { from: 'tools', localField: 'id', foreignField: 'authors', as: 'tools' } },
-		{ $lookup: { from: 'reviews', localField: 'id', foreignField: 'reviewerID', as: 'reviews' } },
-	]);
-	profileData.exec((err, data) => {
-		if (err) return res.json({ success: false, error: err });
+	try {
+		let person = await Data.findOne({ id: parseInt(req.params.id) }).populate([
+			{ path: 'tools' },
+			{ path: 'reviews' },
+			{ path: 'user', select: 'feedback news' },
+		]).lean();
+		const { feedback, news } = person.user;
+		person = { ...person, feedback, news};
+		let data = [person];
 		return res.json({ success: true, data: data });
-	});
+	} catch (err) {
+		console.error(err.message);
+		return res.json({ success: false, error: err.message });
+	}
 });
 
 // @router   GET /api/v1/person
