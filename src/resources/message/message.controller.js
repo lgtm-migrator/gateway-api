@@ -80,39 +80,42 @@ module.exports = {
                     return emailNotifications === true && _id.toString() !== createdBy.toString();
                 });
 
-                // 9. team all users for notificationType + generic email
-                // Retrieve notifications for the team based on type return {notificationType, subscribedEmails, optIn}
-			    let teamNotifications = teamController.getTeamNotificationByType(
-						team,
-						constants.teamNotificationTypes.DATAACCESSREQUEST
-					);
-					// only deconstruct if team notifications object returns - safeguard code
-					if (!_.isEmpty(teamNotifications)) {
-						// Get teamNotification emails if optIn true
-						({ optIn = false, subscribedEmails = [] } = teamNotifications);
-						// check subscribedEmails and optIn send back emails or blank []
-						let teamNotificationEmails = teamController.getTeamNotificationEmails(optIn, subscribedEmails);
-                        // get users from team.members with notification type and optedIn only
-                        const subscribedMembersByType = teamController.filterMembersByNoticationTypesOptIn([...team.members], [constants.teamNotificationTypes.DATAACCESSREQUEST]);
-                        if(!_.isEmpty(subscribedMembersByType)) {
-                            // build cleaner array of memberIds from subscribedMembersByType
-                            const memberIds = [...subscribedMembersByType].map(m => m.memberid);								
-                            // returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object 
-                            const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
-                            optedInEmailRecipients = [...teamNotificationEmails, ...memberEmails];
-                        } else {
-                            // only if not membersByType but has a team email setup
-                            optedInEmailRecipients = [...optedInEmailRecipients, ...teamNotificationEmails];
-                        }
-					} 
-                // 9. Send email
-                emailGenerator.sendEmail(
-                    optedInEmailRecipients,
-                    constants.hdrukEmail,
-                    `You have received a new message on the HDR UK Innovation Gateway`,
-                    `You have received a new message on the HDR UK Innovation Gateway. <br> Log in to view your messages here : <a href='${process.env.homeURL}'>HDR UK Innovation Gateway</a>`,
-                    false
-                );
+								if(!_.isEmpty(team) || !_.isNil(team)) {
+									// 9. team all users for notificationType + generic email
+									// Retrieve notifications for the team based on type return {notificationType, subscribedEmails, optIn}
+									let teamNotifications = teamController.getTeamNotificationByType(
+										team,
+										constants.teamNotificationTypes.DATAACCESSREQUEST
+									);
+									// only deconstruct if team notifications object returns - safeguard code
+									if (!_.isEmpty(teamNotifications)) {
+										// Get teamNotification emails if optIn true
+										({ optIn = false, subscribedEmails = [] } = teamNotifications);
+										// check subscribedEmails and optIn send back emails or blank []
+										let teamNotificationEmails = teamController.getTeamNotificationEmails(optIn, subscribedEmails);
+										// get users from team.members with notification type and optedIn only
+										const subscribedMembersByType = teamController.filterMembersByNoticationTypesOptIn([...team.members], [constants.teamNotificationTypes.DATAACCESSREQUEST]);
+										if(!_.isEmpty(subscribedMembersByType)) {
+												// build cleaner array of memberIds from subscribedMembersByType
+												const memberIds = [...subscribedMembersByType].map(m => m.memberid);								
+												// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object 
+												const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
+												optedInEmailRecipients = [...teamNotificationEmails, ...memberEmails];
+										} else {
+												// only if not membersByType but has a team email setup
+												optedInEmailRecipients = [...optedInEmailRecipients, ...teamNotificationEmails];
+										}
+									} 
+								}
+                
+								// 9. Send email
+								emailGenerator.sendEmail(
+										optedInEmailRecipients,
+										constants.hdrukEmail,
+										`You have received a new message on the HDR UK Innovation Gateway`,
+										`You have received a new message on the HDR UK Innovation Gateway. <br> Log in to view your messages here : <a href='${process.env.homeURL}'>HDR UK Innovation Gateway</a>`,
+										false
+								);
             }
             // 10. Return successful response with message data
             message.createdByName = { firstname, lastname };
