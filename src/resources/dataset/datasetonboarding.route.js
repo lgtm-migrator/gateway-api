@@ -8,6 +8,11 @@ const datasetOnboardingController = require('./datasetonboarding.controller');
 // @access  Private - Custodian Manager/Reviewer ?
 router.get('/checkUniqueTitle', passport.authenticate('jwt'), datasetOnboardingController.checkUniqueTitle);
 
+// @route   GET api/v1/dataset-onboarding/metaddataQuality
+// @desc    GET Get the metadataQuality for a dataset
+// @access  Public
+router.get('/metaddataQuality', datasetOnboardingController.getMetadataQuality);
+
 // @route   GET api/v1/dataset-onboarding/:id
 // @desc    GET Dataset version based on _id
 // @access  Private - Custodian Manager/Reviewer ?

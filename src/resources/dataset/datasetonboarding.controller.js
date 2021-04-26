@@ -12,6 +12,7 @@ import _ from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
 import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 import moment from 'moment';
 var fs = require('fs');
 
@@ -434,6 +435,9 @@ module.exports = {
 				//incremenet the dataset version
 				let newVersion = module.exports.incrementVersion([1, 0, 0], datasetToCopy.datasetVersion);
 
+				if (!datasetToCopy.questionAnswers['properties/documentation/description'] && datasetToCopy.description)
+					datasetToCopy.questionAnswers['properties/documentation/description'] = datasetToCopy.description;
+
 				let data = new Data();
 				data.pid = pid;
 				data.datasetVersion = newVersion;
@@ -630,7 +634,7 @@ module.exports = {
 		let { activeflag, _id } = accessRecord;
 		let { updatedQuestionId = '', user, percentageCompleted } = updateObj;
 		// 2. If application is in progress, update initial question answers
-		if (activeflag === constants.datatsetStatuses.DRAFT) {
+		if (activeflag === constants.datatsetStatuses.DRAFT || activeflag === constants.applicationStatuses.INREVIEW) {
 			await Data.findByIdAndUpdate(_id, updateObj, { new: true }, err => {
 				if (err) {
 					console.error(err);
@@ -639,7 +643,7 @@ module.exports = {
 			});
 			return accessRecord;
 			// 3. Else if application has already been submitted make amendment
-		} else if (activeflag === constants.applicationStatuses.INREVIEW || activeflag === constants.applicationStatuses.SUBMITTED) {
+		} else if (activeflag === constants.applicationStatuses.SUBMITTED) {
 			if (_.isNil(updateObj.questionAnswers)) {
 				return accessRecord;
 			}
@@ -741,8 +745,8 @@ module.exports = {
 								let datasetv2Object = {
 									identifier: newDatasetVersionId,
 									version: dataset.datasetVersion,
-									issued: Date.now(),
-									modified: Date.now(),
+									issued: moment(Date.now()).format('DD/MM/YYYY'),
+									modified: moment(Date.now()).format('DD/MM/YYYY'),
 									revisions: [],
 									summary: {
 										title: dataset.questionAnswers['summary/title'] || '',
@@ -831,7 +835,7 @@ module.exports = {
 
 								//get technicaldetails and metadataQuality
 								let technicalDetails = await module.exports.buildTechnicalDetails(dataset.structuralMetadata);
-								let metadataQuality = await module.exports.buildMetadataQuality(datasetv2Object);
+								let metadataQuality = await module.exports.buildMetadataQuality(dataset, datasetv2Object, dataset.pid);
 
 								let updatedDataset = await Data.findOneAndUpdate(
 									{ _id: id },
@@ -1099,7 +1103,7 @@ module.exports = {
 				const newDatasetCatalogueItems = {
 					namespace: 'org.healthdatagateway',
 					key: item,
-					value: dataset.questionAnswers[item],
+					value: !_.isString(dataset.questionAnswers[item]) ? JSON.stringify(dataset.questionAnswers[item]) : dataset.questionAnswers[item],
 				};
 				metadata.push(newDatasetCatalogueItems);
 			}
@@ -1174,7 +1178,7 @@ module.exports = {
 		jsonFile = {
 			dataModel: {
 				label: dataset.questionAnswers['summary/title'],
-				description: dataset.questionAnswers['summary/abstract'],
+				description: dataset.questionAnswers['properties/documentation/description'] || dataset.questionAnswers['summary/abstract'],
 				type: 'Data Asset',
 				metadata: metadata,
 				childDataClasses: childDataClasses,
@@ -1184,7 +1188,7 @@ module.exports = {
 		return jsonFile;
 	},
 
-	//GET api/v1/data-access-request/checkUniqueTitle
+	//GET api/v1/dataset-onboarding/checkUniqueTitle
 	checkUniqueTitle: async (req, res) => {
 		let { pid, title = '' } = req.query;
 		let regex = new RegExp(`^${title}$`, 'i');
@@ -1192,9 +1196,37 @@ module.exports = {
 		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
 	},
 
-	//GET api/v1/data-access-request/checkUniqueTitle
-	buildMetadataQuality: async (dataset, pid) => {
-		//VALIDATION_WEIGHTS_PATH = os.path.join(CWD, 'config', 'weights', 'latest', 'weights.v2.json')
+	//GET api/v1/dataset-onboarding/metaddataQuality
+	getMetadataQuality: async (req, res) => {
+		try {
+			let { pid = '', datasetID = '', recalculate = false } = req.query;
+
+			let dataset = {};
+
+			if (!_.isEmpty(pid)) {
+				dataset = await Data.findOne({ pid, activeflag: 'active' }).lean();
+				if (!_.isEmpty(datasetID)) dataset = await Data.findOne({ pid: datasetID, activeflag: 'archive' }).sort({ createdAt: -1 });
+			} else if (!_.isEmpty(datasetID)) dataset = await Data.findOne({ datasetid: { datasetID } }).lean();
+
+			if (_.isEmpty(dataset)) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
+
+			let metaddataQuality = {};
+
+			if (recalculate) {
+				metaddataQuality = await module.exports.buildMetadataQuality(dataset, dataset.datasetv2, dataset.pid);
+				await Data.findOneAndUpdate({ _id: dataset._id }, { 'datasetfields.metadataquality': metaddataQuality });
+			} else {
+				metaddataQuality = dataset.datasetfields.metadataquality;
+			}
+
+			return res.status(200).json({ metaddataQuality });
+		} catch (err) {
+			console.log(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
+		}
+	},
+
+	buildMetadataQuality: async (dataset, v2Object, pid) => {
 		let weights = {
 			//'1: Summary': {
 			identifier: 0.026845638,
@@ -1272,10 +1304,10 @@ module.exports = {
 
 		let metadataquality = {
 			schema_version: '2.0.1',
-			pid: '',
-			id: '',
-			publisher: '',
-			title: '',
+			pid: dataset.pid,
+			id: dataset.datasetid,
+			publisher: dataset.datasetv2.summary.publisher.name,
+			title: dataset.name,
 			weighted_quality_rating: 'Not Rated',
 			weighted_quality_score: 0,
 			weighted_completeness_percent: 0,
@@ -1283,34 +1315,104 @@ module.exports = {
 		};
 
 		metadataquality.pid = pid;
-		metadataquality.id = dataset.identifier;
-		metadataquality.publisher = dataset.summary.publisher.memberOf + ' > ' + dataset.summary.publisher.name;
-		metadataquality.title = dataset.summary.title;
+		metadataquality.id = v2Object.identifier;
+		metadataquality.publisher = v2Object.summary.publisher.memberOf + ' > ' + v2Object.summary.publisher.name;
+		metadataquality.title = v2Object.summary.title;
 
 		let completeness = [];
 		let totalCount = 0,
 			totalWeight = 0;
 
 		Object.entries(weights).forEach(([key, weight]) => {
-			let datasetValue = module.exports.getDatatsetValue(dataset, key);
+			let [parentKey, subKey] = key.split('.');
 
-			if (key === 'identifier') {
-				completeness.push({ weight, value: datasetValue });
-				totalCount++;
-				totalWeight += weight;
-			} else if (key === 'structuralMetadata') {
-				completeness.push({ weight, value: datasetValue });
-				totalCount++;
-				totalWeight += weight;
-			}
-			if (datasetValue) {
-				completeness.push({ value: datasetValue, weight, score: weight });
-				totalCount++;
-				totalWeight += weight;
+			if (parentKey === 'structuralMetadata') {
+				if (subKey === 'dataClassesCount') {
+					if (!_.isEmpty(dataset.structuralMetadata)) {
+						completeness.push({ value: 'structuralMetadata.dataClassesCount', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'tableName') {
+					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.tableName))) {
+						completeness.push({ value: 'structuralMetadata.tableName', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'tableDescription') {
+					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.tableDescription))) {
+						completeness.push({ value: 'structuralMetadata.tableDescription', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'columnName') {
+					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.columnName))) {
+						completeness.push({ value: 'structuralMetadata.columnName', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'columnDescription') {
+					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.columnDescription))) {
+						completeness.push({ value: 'structuralMetadata.columnDescription', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'dataType') {
+					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.dataType))) {
+						completeness.push({ value: 'structuralMetadata.dataType', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'sensitive') {
+					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.sensitive))) {
+						completeness.push({ value: 'structuralMetadata.sensitive', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				}
+			} else if (parentKey === 'observation') {
+				if (subKey === 'observedNode') {
+					if (_.isEmpty(v2Object.observations.filter(data => !data.observedNode))) {
+						completeness.push({ value: 'observation.observedNode', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'measuredValue') {
+					if (_.isEmpty(v2Object.observations.filter(data => !data.measuredValue))) {
+						completeness.push({ value: 'observation.measuredValue', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'disambiguatingDescription') {
+					if (_.isEmpty(v2Object.observations.filter(data => !data.disambiguatingDescription))) {
+						completeness.push({ value: 'observation.disambiguatingDescription', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'observationDate') {
+					if (_.isEmpty(v2Object.observations.filter(data => !data.observationDate))) {
+						completeness.push({ value: 'observation.observationDate', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				} else if (subKey === 'measuredProperty') {
+					if (_.isEmpty(v2Object.observations.filter(data => !data.measuredProperty))) {
+						completeness.push({ value: 'observation.measuredProperty', weight, score: weight });
+						totalCount++;
+						totalWeight += weight;
+					}
+				}
 			} else {
-				completeness.push({ value: datasetValue, weight, score: 0 });
-			}
+				let datasetValue = module.exports.getDatatsetValue(v2Object, key);
 
+				if (datasetValue) {
+					completeness.push({ value: datasetValue, weight, score: weight });
+					totalCount++;
+					totalWeight += weight;
+				} else {
+					completeness.push({ value: datasetValue, weight, score: 0 });
+				}
+			}
 			//special rules around provenance.temporal.accrualPeriodicity = CONTINUOUS
 		});
 
@@ -1320,8 +1422,9 @@ module.exports = {
 		schema = JSON.parse(rawdata);
 
 		const ajv = new Ajv({ strict: false, allErrors: true });
+		addFormats(ajv);
 		const validate = ajv.compile(schema);
-		const valid = validate(dataset);
+		validate(v2Object);
 
 		let errors = [];
 		let errorCount = 0,
@@ -1329,7 +1432,8 @@ module.exports = {
 
 		Object.entries(weights).forEach(([key, weight]) => {
 			let updatedKey = '/' + key.replace(/\./g, '/');
-			let errorIndex = Object.keys(validate.errors).find(key => validate.errors[key].dataPath === updatedKey);
+
+			let errorIndex = Object.keys(validate.errors).find(key => validate.errors[key].instancePath === updatedKey);
 			if (errorIndex) {
 				errors.push({ value: key, scor: weight });
 				errorCount += 1;
