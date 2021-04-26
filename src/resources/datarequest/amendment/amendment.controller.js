@@ -99,13 +99,11 @@ const setAmendment = async (req, res) => {
 		// 9. Save changes to database
 		await accessRecord.save(async err => {
 			if (err) {
-				console.error(err);
-				return res.status(500).json({ status: 'error', message: err });
+				console.error(err.message);
+				return res.status(500).json({ status: 'error', message: err.message });
 			} else {
 				// 10. Update json schema and question answers with modifications since original submission
 				let accessRecordObj = accessRecord.toObject();
-				accessRecordObj.questionAnswers = JSON.parse(accessRecordObj.questionAnswers);
-				accessRecordObj.jsonSchema = JSON.parse(accessRecordObj.jsonSchema);
 				accessRecordObj = injectAmendments(accessRecordObj, userType, req.user);
 				// 11. Append question actions depending on user type and application status
 				let userRole = activeParty === constants.userTypes.CUSTODIAN ? constants.roleTypes.MANAGER : '';
@@ -113,7 +111,8 @@ const setAmendment = async (req, res) => {
 					accessRecordObj.jsonSchema,
 					userType,
 					accessRecordObj.applicationStatus,
-					userRole
+					userRole,
+					activeParty
 				);
 				// 12. Count the number of answered/unanswered amendments
 				const { answeredAmendments = 0, unansweredAmendments = 0 } = countUnsubmittedAmendments(accessRecord, userType);
@@ -214,8 +213,8 @@ const requestAmendments = async (req, res) => {
 		// 9. Save changes to database
 		await accessRecord.save(async err => {
 			if (err) {
-				console.error(err);
-				return res.status(500).json({ status: 'error', message: err });
+				console.error(err.message);
+				return res.status(500).json({ status: 'error', message: err.message });
 			} else {
 				// 10. Send update request notifications
 				createNotifications(constants.notificationTypes.RETURNED, accessRecord);
@@ -524,12 +523,7 @@ const injectNavigationAmendment = (jsonSchema, questionSetId, userType, complete
 
 const getLatestQuestionAnswer = (accessRecord, questionId) => {
 	// 1. Include original submission of question answer
-	let parsedQuestionAnswers = {};
-	if (typeof accessRecord.questionAnswers === 'string') {
-		parsedQuestionAnswers = JSON.parse(accessRecord.questionAnswers);
-	} else {
-		parsedQuestionAnswers = _.cloneDeep(accessRecord.questionAnswers);
-	}
+	let parsedQuestionAnswers = _.cloneDeep(accessRecord.questionAnswers);
 	let initialSubmission = {
 		questionAnswers: {
 			[`${questionId}`]: {
@@ -702,12 +696,6 @@ const revertAmendmentAnswer = (accessRecord, questionId, user) => {
 const createNotifications = async (type, accessRecord) => {
 	// Project details from about application
 	let { aboutApplication = {}, questionAnswers } = accessRecord;
-	if (typeof aboutApplication === 'string') {
-		aboutApplication = JSON.parse(accessRecord.aboutApplication);
-	}
-	if (typeof questionAnswers === 'string') {
-		questionAnswers = JSON.parse(accessRecord.questionAnswers);
-	}
 	let { projectName = 'No project name set' } = aboutApplication;
 	let { dateSubmitted = '' } = accessRecord;
 	// Publisher details from single dataset

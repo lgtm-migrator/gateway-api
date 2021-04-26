@@ -1,10 +1,10 @@
 import express from 'express';
-import { ROLES } from '../user/user.roles';
-import { Data } from '../tool/data.model';
-import { Course } from './course.model';
+import { ROLES } from '../../user/user.roles';
+import { Data } from '../../tool/data.model';
+import { Course } from '../course.model';
 import passport from 'passport';
-import { utils } from '../auth';
-import { addCourse, editCourse, setStatus, getCourseAdmin, getCourse } from './course.repository';
+import { utils } from '../../auth';
+import { addCourse, editCourse, setStatus, getCourseAdmin, getCourse, getAllCourses } from '../course.repository';
 import escape from 'escape-html';
 const router = express.Router();
 
@@ -36,11 +36,11 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
 
 // @router   GET /api/v1/get/admin
 // @desc     Returns List of Tool objects
-// @access   Private
+// @access   Private 
 router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	let role = req.user.role;
 
-	if (role === ROLES.Admin) {
+	if (role === ROLES.Admin) { 
 		await getCourseAdmin(req)
 			.then(data => {
 				return res.json({ success: true, data });
@@ -64,7 +64,7 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
 router.get('/', async (req, res) => {
-	await getCourseAdmin(req)
+	await getAllCourses(req)
 		.then(data => {
 			return res.json({ success: true, data });
 		})
@@ -76,7 +76,7 @@ router.get('/', async (req, res) => {
 // @router   PATCH /api/v1/status
 // @desc     Set course status
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });

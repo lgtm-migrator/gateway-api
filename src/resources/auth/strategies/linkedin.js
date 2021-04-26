@@ -115,7 +115,7 @@ const strategy = app => {
 					try {
 						redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
 					} catch (err) {
-						console.error(err);
+						console.error(err.message);
 						return res.status(500).send('Error authenticating the user.');
 					}
 				}
@@ -132,6 +132,7 @@ const strategy = app => {
 					.status(200)
 					.cookie('jwt', signToken({ _id: req.user._id, id: req.user.id, timeStamp: Date.now() }), {
 						httpOnly: true,
+						secure: process.env.api_url ? true : false,
 					})
 					.redirect(redirectUrl);
 			});

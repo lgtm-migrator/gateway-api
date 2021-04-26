@@ -17,11 +17,11 @@ const setup = () => {
 	});
 };
 
-const signToken = user => {
+const signToken = (user, expiresIn = 604800) => {
 	return jwt.sign({ data: user }, process.env.JWTSecret, {
 		//Here change it so only id
 		algorithm: 'HS256',
-		expiresIn: 604800,
+		expiresIn
 	});
 };
 

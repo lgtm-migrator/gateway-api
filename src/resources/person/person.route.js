@@ -3,7 +3,7 @@ import { Data } from '../tool/data.model';
 import { utils } from '../auth';
 import passport from 'passport';
 import { ROLES } from '../user/user.roles';
-import { getToolsAdmin } from '../tool/data.repository';
+import { getAllTools } from '../tool/data.repository';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
 import _ from 'lodash';
@@ -17,7 +17,6 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 	let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
 	let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
 	let data = Data();
-	console.log(req.body);
 	data.id = parseInt(Math.random().toString().replace('0.', ''));
 	(data.firstname = inputSanitizer.removeNonBreakingSpaces(firstname)),
 		(data.lastname = inputSanitizer.removeNonBreakingSpaces(lastname)),
@@ -48,6 +47,8 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 		showLink,
 		showOrcid,
 		emailNotifications,
+		feedback,
+		news,
 		terms,
 		sector,
 		showSector,
@@ -66,7 +67,6 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 	sector = inputSanitizer.removeNonBreakingSpaces(sector);
 	organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
 	tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
-	console.log(req.body);
 
 	await Data.findOneAndUpdate(
 		{ id: id },
@@ -81,6 +81,8 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			orcid,
 			showOrcid,
 			emailNotifications,
+			feedback,
+			news,
 			terms,
 			sector,
 			showSector,
@@ -91,7 +93,7 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			profileComplete,
 		},
 		{ new: true }
-	);
+	); 
 	await UserModel.findOneAndUpdate({ id: id }, { $set: { firstname: firstname, lastname: lastname, email: email } })
 		.then(person => {
 			return res.json({ success: true, data: person });
@@ -169,7 +171,7 @@ router.get('/profile/:id', async (req, res) => {
 router.get('/', async (req, res) => {
 	let personArray = [];
 	req.params.type = 'person';
-	await getToolsAdmin(req)
+	await getAllTools(req)
 		.then(data => {
 			data.map(personObj => {
 				personArray.push({

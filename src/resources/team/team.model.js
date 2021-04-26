@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+import constants from '../utilities/constants.util';
 
 const TeamSchema = new Schema(
 	{
@@ -12,6 +13,15 @@ const TeamSchema = new Schema(
 				roles: { type: [String], enum: ['reviewer', 'manager'], required: true },
 				dateCreated: Date,
 				dateUpdated: Date,
+				notifications: [
+					{
+						notificationType:{ 
+							type: String,
+							enum: Object.values(constants.teamNotificationTypes)
+						} , // metadataonbarding || dataaccessrequest
+						optIn: { type: Boolean, default: true },
+					},
+				],
 			},
 		],
 		type: String,
@@ -19,6 +29,17 @@ const TeamSchema = new Schema(
 			type: Boolean,
 			default: true,
 		},
+		notifications: [
+			{
+				notificationType: {
+					type: String, // metadataonbarding || dataaccessrequest
+					default: constants.teamNotificationTypes.DATAACCESSREQUEST,
+					enum: Object.values(constants.teamNotificationTypes),
+				}, 
+				optIn: { type: Boolean, default: false },
+				subscribedEmails: [String],
+			},
+		],
 	},
 	{
 		toJSON: { virtuals: true },

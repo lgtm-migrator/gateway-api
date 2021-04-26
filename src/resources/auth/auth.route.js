@@ -1,10 +1,11 @@
 import express from 'express';
+import _ from 'lodash';
 import { to } from 'await-to-js';
-import { verifyPassword } from '../auth/utils';
+import passport from 'passport';
+
+import { verifyPassword, getRedirectUrl } from '../auth/utils';
 import { login } from '../auth/strategies/jwt';
 import { getUserByEmail } from '../user/user.repository';
-import { getRedirectUrl } from '../auth/utils';
-import passport from 'passport';
 
 const router = express.Router();
 
@@ -36,6 +37,7 @@ router.post('/login', async (req, res) => {
 		.status(200)
 		.cookie('jwt', token, {
 			httpOnly: true,
+			secure: process.env.api_url ? true : false,
 		})
 		.json({
 			success: true,
@@ -86,7 +88,11 @@ router.get('/status', function (req, res, next) {
 						id: req.user.id,
 						name: req.user.firstname + ' ' + req.user.lastname,
 						loggedIn: true,
+						email: req.user.email,
 						teams,
+						provider: req.user.provider,
+						advancedSearchRoles: req.user.advancedSearchRoles,
+						acceptedAdvancedSearchTerms: req.user.acceptedAdvancedSearchTerms,
 					},
 				],
 			});

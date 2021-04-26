@@ -1,13 +1,27 @@
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
+import { Collections } from '../collections/collections.model';
+import { findNodeInTree } from '../filters/utils/filters.util';
+import { datasetFilters } from '../filters/filters.mapper';
 import _ from 'lodash';
 import moment from 'moment';
+import helperUtil from '../utilities/helper.util';
 
-export function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort) {
+export async function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort) {
+
 	let collection = Data;
-	if (type === 'course') collection = Course;
-	var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
-	newSearchQuery['$and'].push({ type: type });
+	if (type === 'course') {
+		collection = Course;
+	} else if (type === 'collection') {
+		collection = Collections;
+	}
+	// ie copy deep object
+	let newSearchQuery = _.cloneDeep(searchQuery);
+	if (type !== 'collection') {
+		newSearchQuery['$and'].push({ type: type });
+	} else {
+		newSearchQuery['$and'].push({ publicflag: true });
+	}
 
 	if (type === 'course') {
 		newSearchQuery['$and'].forEach(x => {
@@ -22,11 +36,11 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 		});
 	}
 
-	var queryObject;
+	let queryObject;
 	if (type === 'course') {
 		queryObject = [
-			{ $unwind: '$courseOptions' },
 			{ $match: newSearchQuery },
+			{ $unwind: '$courseOptions' },
 			{
 				$project: {
 					_id: 0,
@@ -43,6 +57,8 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 				},
 			},
 		];
+	} else if (type === 'collection') {
+		queryObject = [{ $match: newSearchQuery }, { $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } }];
 	} else {
 		queryObject = [
 			{ $match: newSearchQuery },
@@ -78,7 +94,9 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 					'datasetfields.abstract': 1,
 					'datasetfields.ageBand': 1,
 					'datasetfields.phenotypes': 1,
-					datasetv2: 1,
+					'datasetv2.summary.publisher.name': 1,
+					'datasetv2.summary.publisher.logo': 1,
+					'datasetv2.summary.publisher.memberOf': 1,
 
 					'persons.id': 1,
 					'persons.firstname': 1,
@@ -87,6 +105,13 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 					activeflag: 1,
 					counter: 1,
 					'datasetfields.metadataquality.quality_score': 1,
+					latestUpdate: {
+						$cond: {
+							if: { $gte: ['$createdAt', '$updatedon'] },
+							then: '$createdAt',
+							else: '$updatedon',
+						},
+					},
 				},
 			},
 		];
@@ -114,22 +139,31 @@ export function getObjectResult(type, searchAll, searchQuery, startIndex, maxRes
 	} else if (sort === 'startdate') {
 		if (searchAll) queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
 		else queryObject.push({ $sort: { 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'latest') {
+		if (type === 'person') {
+			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+			else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+		}
 	}
-
-	var q = collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
-	return new Promise((resolve, reject) => {
-		q.exec((err, data) => {
-			if (typeof data === 'undefined') resolve([]);
-			else resolve(data);
-		});
-	});
+	// Get paged results based on query params
+	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+	// Return data
+	return { data: searchResults };
 }
 
 export function getObjectCount(type, searchAll, searchQuery) {
 	let collection = Data;
-	if (type === 'course') collection = Course;
-	var newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
-	newSearchQuery['$and'].push({ type: type });
+	if (type === 'course') {
+		collection = Course;
+	} else if (type === 'collection') {
+		collection = Collections;
+	}
+	let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
+	if (type !== 'collection') {
+		newSearchQuery['$and'].push({ type: type });
+	} else {
+		newSearchQuery['$and'].push({ publicflag: true });
+	}
 	if (type === 'course') {
 		newSearchQuery['$and'].forEach(x => {
 			if (x.$or) {
@@ -147,7 +181,48 @@ export function getObjectCount(type, searchAll, searchQuery) {
 	if (type === 'course') {
 		if (searchAll) {
 			q = collection.aggregate([
+				{ $match: newSearchQuery },
 				{ $unwind: '$courseOptions' },
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
+						},
+					},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
+					},
+				},
+			]);
+		} else {
+			q = collection
+				.aggregate([
+					{ $match: newSearchQuery },
+					{ $unwind: '$courseOptions' },
+					{
+						$group: {
+							_id: {},
+							count: {
+								$sum: 1,
+							},
+						},
+					},
+					{
+						$project: {
+							count: '$count',
+							_id: 0,
+						},
+					},
+				])
+				.sort({ score: { $meta: 'textScore' } });
+		}
+	} else if (type === 'collection') {
+		if (searchAll) {
+			q = collection.aggregate([
 				{ $match: newSearchQuery },
 				{
 					$group: {
@@ -167,7 +242,6 @@ export function getObjectCount(type, searchAll, searchQuery) {
 		} else {
 			q = collection
 				.aggregate([
-					{ $unwind: '$courseOptions' },
 					{ $match: newSearchQuery },
 					{
 						$group: {
@@ -237,19 +311,12 @@ export function getObjectCount(type, searchAll, searchQuery) {
 }
 
 export function getObjectFilters(searchQueryStart, req, type) {
-	var searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
+	let searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
 
 	let {
-		license = '',
-		sampleavailability = '',
-		keywords = '',
-		publisher = '',
-		ageband = '',
-		geographiccover = '',
-		phenotypes = '',
-		programmingLanguage = '',
+		toolprogrammingLanguage = '',
 		toolcategories = '',
-		features = '',
+		toolfeatures = '',
 		tooltopics = '',
 		projectcategories = '',
 		projectfeatures = '',
@@ -266,93 +333,81 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		courseentrylevel = '',
 		courseframework = '',
 		coursepriority = '',
+		collectionpublisher = '',
+		collectionkeywords = '',
 	} = req.query;
 
 	if (type === 'dataset') {
-		if (license.length > 0) {
-			var filterTermArray = [];
-			license.split('::').forEach(filterTerm => {
-				filterTermArray.push({ license: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (sampleavailability.length > 0) {
-			var filterTermArray = [];
-			sampleavailability.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'datasetfields.physicalSampleAvailability': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (keywords.length > 0) {
-			var filterTermArray = [];
-			keywords.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (publisher.length > 0) {
-			var filterTermArray = [];
-			publisher.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'datasetfields.publisher': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (ageband.length > 0) {
-			var filterTermArray = [];
-			ageband.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'datasetfields.ageBand': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (geographiccover.length > 0) {
-			var filterTermArray = [];
-			geographiccover.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'datasetfields.geographicCoverage': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (phenotypes.length > 0) {
-			var filterTermArray = [];
-			phenotypes.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'datasetfields.phenotypes.name': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
+		// iterate over query string keys
+		for (const key of Object.keys(req.query)) {
+			try {
+				const filterValues = req.query[key].split('::');
+				// check mapper for query type
+				const filterNode = findNodeInTree(datasetFilters, key);
+				if (filterNode) {
+					// switch on query type	and build up query object
+					const { type = '', dataPath = '', matchField = '' } = filterNode;
+					switch (type) {
+						case 'contains':
+							// use regex to match without case sensitivity
+							searchQuery['$and'].push({
+								$or: filterValues.map(value => {
+									return { [`${dataPath}`]: { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } };
+								}),
+							});
+							break;
+						case 'elementMatch':
+							// use regex to match objects within an array without case sensitivity
+							searchQuery['$and'].push({
+								[`${dataPath}`]: {
+									$elemMatch: {
+										$or: filterValues.map(value => {
+											return { [`${matchField}`]: { $regex: value, $options: 'i' } };
+										}),
+									},
+								},
+							});
+							break;
+						case 'boolean':
+							searchQuery['$and'].push({ [`${dataPath}`]: true });
+							break;
+						default:
+							break;
+					}
+				}
+			} catch (err) {
+				console.error(err.message);
+			}
 		}
 	}
 
 	if (type === 'tool') {
-		if (programmingLanguage.length > 0) {
-			var filterTermArray = [];
-			programmingLanguage.split('::').forEach(filterTerm => {
+		if (toolprogrammingLanguage.length > 0) {
+			let filterTermArray = [];
+			toolprogrammingLanguage.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'programmingLanguage.programmingLanguage': filterTerm });
 			});
 			searchQuery['$and'].push({ $or: filterTermArray });
 		}
 
 		if (toolcategories.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			toolcategories.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'categories.category': filterTerm });
 			});
 			searchQuery['$and'].push({ $or: filterTermArray });
 		}
 
-		if (features.length > 0) {
-			var filterTermArray = [];
-			features.split('::').forEach(filterTerm => {
+		if (toolfeatures.length > 0) {
+			let filterTermArray = [];
+			toolfeatures.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'tags.features': filterTerm });
 			});
 			searchQuery['$and'].push({ $or: filterTermArray });
 		}
 
 		if (tooltopics.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			tooltopics.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'tags.topics': filterTerm });
 			});
@@ -360,7 +415,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 	} else if (type === 'project') {
 		if (projectcategories.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			projectcategories.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'categories.category': filterTerm });
 			});
@@ -368,7 +423,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (projectfeatures.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			projectfeatures.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'tags.features': filterTerm });
 			});
@@ -376,7 +431,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (projecttopics.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			projecttopics.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'tags.topics': filterTerm });
 			});
@@ -384,7 +439,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 	} else if (type === 'paper') {
 		if (paperfeatures.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			paperfeatures.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'tags.features': filterTerm });
 			});
@@ -392,7 +447,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (papertopics.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			papertopics.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'tags.topics': filterTerm });
 			});
@@ -400,7 +455,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 	} else if (type === 'course') {
 		if (coursestartdates.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			coursestartdates.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'courseOptions.startDate': filterTerm });
 			});
@@ -408,7 +463,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (courseprovider.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			courseprovider.split('::').forEach(filterTerm => {
 				filterTermArray.push({ provider: filterTerm });
 			});
@@ -416,7 +471,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (courselocation.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			courselocation.split('::').forEach(filterTerm => {
 				filterTermArray.push({ location: filterTerm });
 			});
@@ -424,7 +479,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (coursestudymode.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			coursestudymode.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'courseOptions.studyMode': filterTerm });
 			});
@@ -432,7 +487,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (courseaward.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			courseaward.split('::').forEach(filterTerm => {
 				filterTermArray.push({ award: filterTerm });
 			});
@@ -440,7 +495,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (courseentrylevel.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			courseentrylevel.split('::').forEach(filterTerm => {
 				filterTermArray.push({ 'entries.level': filterTerm });
 			});
@@ -448,7 +503,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (coursedomains.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			coursedomains.split('::').forEach(filterTerm => {
 				filterTermArray.push({ domains: filterTerm });
 			});
@@ -456,7 +511,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (coursekeywords.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			coursekeywords.split('::').forEach(filterTerm => {
 				filterTermArray.push({ keywords: filterTerm });
 			});
@@ -464,7 +519,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (courseframework.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			courseframework.split('::').forEach(filterTerm => {
 				filterTermArray.push({ competencyFramework: filterTerm });
 			});
@@ -472,9 +527,25 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 
 		if (coursepriority.length > 0) {
-			var filterTermArray = [];
+			let filterTermArray = [];
 			coursepriority.split('::').forEach(filterTerm => {
 				filterTermArray.push({ nationalPriority: filterTerm });
+			});
+			searchQuery['$and'].push({ $or: filterTermArray });
+		}
+	} else if (type === 'collection') {
+		if (collectionkeywords.length > 0) {
+			let filterTermArray = [];
+			collectionkeywords.split('::').forEach(filterTerm => {
+				filterTermArray.push({ keywords: filterTerm });
+			});
+			searchQuery['$and'].push({ $or: filterTermArray });
+		}
+
+		if (collectionpublisher.length > 0) {
+			let filterTermArray = [];
+			collectionpublisher.split('::').forEach(filterTerm => {
+				filterTermArray.push({ authors: parseInt(filterTerm) });
 			});
 			searchQuery['$and'].push({ $or: filterTermArray });
 		}
@@ -485,11 +556,16 @@ export function getObjectFilters(searchQueryStart, req, type) {
 export const getFilter = async (searchString, type, field, isArray, activeFiltersQuery) => {
 	return new Promise(async (resolve, reject) => {
 		let collection = Data;
-		if (type === 'course') collection = Course;
-		var q = '',
+		if (type === 'course') {
+			collection = Course;
+		} else if (type === 'collection') {
+			collection = Collections;
+		}
+		let q = '',
 			p = '';
-		var combinedResults = [],
-			activeCombinedResults = [];
+		let combinedResults = [],
+			activeCombinedResults = [],
+			publishers = [];
 
 		if (searchString) q = collection.aggregate(filterQueryGenerator(field, searchString, type, isArray, {}));
 		else q = collection.aggregate(filterQueryGenerator(field, '', type, isArray, {}));
@@ -502,13 +578,21 @@ export const getFilter = async (searchString, type, field, isArray, activeFilter
 					if (dat.result && dat.result !== '') {
 						if (field === 'datasetfields.phenotypes') combinedResults.push(dat.result.name.trim());
 						else if (field === 'courseOptions.startDate') combinedResults.push(moment(dat.result).format('DD MMM YYYY'));
-						else combinedResults.push(dat.result.trim());
+						else {
+							if (_.isString(dat.result)) {
+								combinedResults.push(dat.result.trim());
+							} else if (field === 'authors' && dat.id === dat.result) {
+								combinedResults.push(dat);
+							}
+						}
 					}
 				});
 			}
 
 			var newSearchQuery = JSON.parse(JSON.stringify(activeFiltersQuery));
-			newSearchQuery['$and'].push({ type: type });
+			if (type !== 'collection') {
+				newSearchQuery['$and'].push({ type: type });
+			}
 
 			if (searchString) p = collection.aggregate(filterQueryGenerator(field, searchString, type, isArray, newSearchQuery));
 			else p = collection.aggregate(filterQueryGenerator(field, '', type, isArray, newSearchQuery));
@@ -519,11 +603,17 @@ export const getFilter = async (searchString, type, field, isArray, activeFilter
 						if (dat.result && dat.result !== '') {
 							if (field === 'datasetfields.phenotypes') activeCombinedResults.push(dat.result.name.trim());
 							else if (field === 'courseOptions.startDate') activeCombinedResults.push(moment(dat.result).format('DD MMM YYYY'));
-							else activeCombinedResults.push(dat.result.trim());
+							else {
+								if (_.isString(dat.result)) {
+									activeCombinedResults.push(dat.result.trim());
+								} else if (field === 'authors' && dat.id === dat.result) {
+									activeCombinedResults.push(dat);
+								}
+							}
 						}
 					});
 				}
-				resolve([combinedResults, activeCombinedResults]);
+				resolve([combinedResults, activeCombinedResults, publishers]);
 			});
 		});
 	});
@@ -532,27 +622,48 @@ export const getFilter = async (searchString, type, field, isArray, activeFilter
 export function filterQueryGenerator(filter, searchString, type, isArray, activeFiltersQuery) {
 	var queryArray = [];
 
-	if (type === 'course') {
-		queryArray.push({ $unwind: '$courseOptions' });
-		queryArray.push({
-			$match: { $or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }] },
-		});
-	}
-
 	if (!_.isEmpty(activeFiltersQuery)) {
 		queryArray.push({ $match: activeFiltersQuery });
 	} else {
-		if (searchString !== '')
-			queryArray.push({ $match: { $and: [{ $text: { $search: searchString } }, { type: type }, { activeflag: 'active' }] } });
-		else queryArray.push({ $match: { $and: [{ type: type }, { activeflag: 'active' }] } });
+		if (searchString !== '') {
+			type !== 'collection'
+				? queryArray.push({ $match: { $and: [{ $text: { $search: searchString } }, { type: type }, { activeflag: 'active' }] } })
+				: queryArray.push({ $match: { $and: [{ $text: { $search: searchString } }, { activeflag: 'active' }, { publicflag: true }] } });
+		} else {
+			type !== 'collection'
+				? queryArray.push({ $match: { $and: [{ type: type }, { activeflag: 'active' }] } })
+				: queryArray.push({ $match: { $and: [{ activeflag: 'active' }, { publicflag: true }] } });
+		}
 	}
 
-	queryArray.push({
-		$project: {
-			result: '$' + filter,
-			_id: 0,
-		},
-	});
+	if (type === 'course') {
+		queryArray.push({
+			$match: { $or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }] },
+		});
+		queryArray.push({ $unwind: '$courseOptions' });
+	}
+
+	if (type === 'collection' && filter === 'authors') {
+		queryArray.push({ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } });
+		queryArray.push(
+			{ $unwind: '$persons' },
+			{
+				$project: {
+					result: '$' + filter,
+					_id: 0,
+					value: { $concat: ['$persons.firstname', ' ', '$persons.lastname'] },
+					id: '$persons.id',
+				},
+			}
+		);
+	} else {
+		queryArray.push({
+			$project: {
+				result: '$' + filter,
+				_id: 0,
+			},
+		});
+	}
 
 	if (isArray) {
 		queryArray.push({ $unwind: '$result' });

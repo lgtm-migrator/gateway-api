@@ -15,12 +15,15 @@ const CollectionSchema = new Schema(
 			{
 				objectId: String,
 				reason: String,
+				pid: String,
 				objectType: String,
 				user: String,
 				updated: String,
 			},
 		],
 		activeflag: String,
+		publicflag: Boolean,
+		keywords: [String],
 	},
 	{
 		collection: 'collections', //will be created when first posting

@@ -1,5 +1,9 @@
+import crypto from 'crypto';
+
 const _censorWord = str => {
-	return str[0] + '*'.repeat(str.length - 2) + str.slice(-1);
+	if (str.length === 1) return '*';
+	else if (str.length === 2) return `${str[0]}*`;
+	else return str[0] + '*'.repeat(str.length - 2) + str.slice(-1);
 };
 
 const _censorEmail = email => {
@@ -30,6 +34,10 @@ const _generatedNumericId = () => {
 	return parseInt(Math.random().toString().replace('0.', ''));
 };
 
+const _generateAlphaNumericString = length => {
+	return crypto.randomBytes(length).toString('hex').substring(length);
+};
+
 const _hidePrivateProfileDetails = persons => {
 	return persons.map(person => {
 		let personWithPrivateDetailsRemoved = person;
@@ -46,14 +54,42 @@ const _hidePrivateProfileDetails = persons => {
 };
 
 const _getEnvironment = () => {
-	let environment = 'local';
+	let environment = '';
 
-	if (process.env.environment === 'www') environment = 'prod';
-	else if (process.env.environment === 'uat') environment = 'uat';
-	else if (process.env.environment === 'uatbeta') environment = 'uatbeta';
-	else if (process.env.environment === 'latest') environment = 'latest';
+	switch (process.env.api_url) {
+		case 'https://api.latest.healthdatagateway.org':
+			environment = 'latest';
+			break;
+		case 'https://api.uatbeta.healthdatagateway.org':
+			environment = 'uatbeta';
+			break;
+		case 'https://api.uat.healthdatagateway.org':
+			environment = 'uat';
+			break;
+		case 'https://api.uat2.healthdatagateway.org':
+			environment = 'uat2';
+			break;
+		case 'https://api.preprod.healthdatagateway.org':
+			environment = 'preprod';
+			break;
+		case 'https://api.www.healthdatagateway.org':
+			environment = 'prod';
+			break;
+		default:
+			environment = 'local';
+	}
 
 	return environment;
+};
+
+const _toTitleCase = str => {
+	return str.replace(/\w\S*/g, function (txt) {
+		return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+	});
+};
+
+const _escapeRegexChars = str => {
+	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
 export default {
@@ -61,6 +97,9 @@ export default {
 	arraysEqual: _arraysEqual,
 	generateFriendlyId: _generateFriendlyId,
 	generatedNumericId: _generatedNumericId,
+	generateAlphaNumericString: _generateAlphaNumericString,
 	hidePrivateProfileDetails: _hidePrivateProfileDetails,
 	getEnvironment: _getEnvironment,
+	toTitleCase: _toTitleCase,
+	escapeRegexChars: _escapeRegexChars,
 };

@@ -8,13 +8,13 @@ const datarequestController = require('./datarequest.controller');
 const fs = require('fs');
 const path = './tmp';
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    if (!fs.existsSync(path)) {
-      fs.mkdirSync(path);
-    }
-    cb(null, path)
-  }
-})
+	destination: function (req, file, cb) {
+		if (!fs.existsSync(path)) {
+			fs.mkdirSync(path);
+		}
+		cb(null, path);
+	},
+});
 const multerMid = multer({ storage: storage });
 
 const router = express.Router();
@@ -40,9 +40,21 @@ router.get('/dataset/:dataSetId', passport.authenticate('jwt'), datarequestContr
 router.get('/datasets/:datasetIds', passport.authenticate('jwt'), datarequestController.getAccessRequestByUserAndMultipleDatasets);
 
 // @route   GET api/v1/data-access-request/:id/file/:fileId
-// @desc    GET 
+// @desc    GET
 // @access  Private
-router.get('/:id/file/:fileId', param('id').customSanitizer(value => {return value}), passport.authenticate('jwt'), datarequestController.getFile);
+router.get(
+	'/:id/file/:fileId',
+	param('id').customSanitizer(value => {
+		return value;
+	}),
+	passport.authenticate('jwt'),
+	datarequestController.getFile
+);
+
+// @route   GET api/v1/data-access-request/:id/file/:fileId/status
+// @desc    GET Status of a file
+// @access  Private
+router.get('/:id/file/:fileId/status', passport.authenticate('jwt'), datarequestController.getFileStatus);
 
 // @route   PATCH api/v1/data-access-request/:id
 // @desc    Update application passing single object to update database entry with specified key
@@ -74,9 +86,14 @@ router.put('/:id/startreview', passport.authenticate('jwt'), datarequestControll
 // @access  Private - Custodian Manager
 router.put('/:id/stepoverride', passport.authenticate('jwt'), datarequestController.updateAccessRequestStepOverride);
 
+// @route   PUT api/v1/data-access-request/:id/deletefile
+// @desc    Update access request deleting a file by Id
+// @access  Private - Applicant (Gateway User)
+router.put('/:id/deletefile', passport.authenticate('jwt'), datarequestController.updateAccessRequestDeleteFile);
+
 // @route   POST api/v1/data-access-request/:id/upload
 // @desc    POST application files to scan bucket
-// @access  Private - Applicant (Gateway User / Custodian Manager) 
+// @access  Private - Applicant (Gateway User / Custodian Manager)
 router.post('/:id/upload', passport.authenticate('jwt'), multerMid.array('assets'), datarequestController.uploadFiles);
 
 // @route   POST api/v1/data-access-request/:id/amendments
@@ -89,6 +106,16 @@ router.post('/:id/amendments', passport.authenticate('jwt'), amendmentController
 // @access  Private - Manager
 router.post('/:id/requestAmendments', passport.authenticate('jwt'), amendmentController.requestAmendments);
 
+// @route   POST api/v1/data-access-request/:id/actions
+// @desc    Perform an action on a presubmitted application form e.g. add/remove repeatable section
+// @access  Private - Applicant
+router.post('/:id/actions', passport.authenticate('jwt'), datarequestController.performAction);
+
+// @route   POST api/v1/data-access-request/:id/clone
+// @desc    Clone an existing application forms answers into a new one potentially for a different custodian
+// @access  Private - Applicant
+router.post('/:id/clone', passport.authenticate('jwt'), datarequestController.cloneApplication);
+
 // @route   POST api/v1/data-access-request/:id
 // @desc    Submit request record
 // @access  Private - Applicant (Gateway User)
@@ -98,5 +125,20 @@ router.post('/:id', passport.authenticate('jwt'), datarequestController.submitAc
 // @desc    External facing endpoint to trigger notifications for Data Access Request workflows
 // @access  Private
 router.post('/:id/notify', passport.authenticate('jwt'), datarequestController.notifyAccessRequestById);
+
+// @route   POST api/v1/data-access-request/:id/updatefilestatus
+// @desc    Update the status of a file.
+// @access  Private
+router.post('/:id/file/:fileId/status', passport.authenticate('jwt'), datarequestController.updateFileStatus);
+
+// @route   POST api/v1/data-access-request/:id/email
+// @desc    Mail a Data Access Request information in presubmission
+// @access  Private - Applicant
+router.post('/:id/email', passport.authenticate('jwt'), datarequestController.mailDataAccessRequestInfoById);
+
+// @route   DELETE api/v1/data-access-request/:id
+// @desc    Delete an application in a presubmissioin
+// @access  Private - Applicant
+router.delete('/:id', passport.authenticate('jwt'), datarequestController.deleteDraftAccessRequest);
 
 module.exports = router;

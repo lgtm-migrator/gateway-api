@@ -45,6 +45,16 @@ export const clients = [
 		id_token_signed_response_alg: 'HS256',
 		post_logout_redirect_uris: ['https://web.uatbeta.healthdatagateway.org/search?search=&logout=true'],
 	},
+	{
+		//GA4GH passports
+		client_id: process.env.GA4GHClientID,
+		client_secret: process.env.GA4GHClientSecret,
+		grant_types: ['authorization_code', 'implicit'],
+		response_types: ['code id_token'],
+		redirect_uris: process.env.GA4GHRedirectURI.split(',') || [''],
+		id_token_signed_response_alg: 'HS256',
+		post_logout_redirect_uris: ['https://web.uatbeta.healthdatagateway.org/search?search=&logout=true'],
+	},
 ];
 
 export const interactions = {
@@ -63,6 +73,8 @@ export const cookies = {
 export const claims = {
 	email: ['email'],
 	profile: ['firstname', 'lastname'],
+	rquestroles: ['rquestroles'],
+	ga4gh_passport_v1: ['ga4gh_passport_v1'],
 };
 
 export const features = {

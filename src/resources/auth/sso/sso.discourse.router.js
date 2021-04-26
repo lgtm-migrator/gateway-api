@@ -19,7 +19,7 @@ router.get('/', function (req, res, next) {
 				try {
 					redirectUrl = discourseLogin(req.query.sso, req.query.sig, req.user);
 				} catch (err) {
-					console.error(err);
+					console.error(err.message);
 					return res.status(500).send('Error authenticating the user.');
 				}
 			}
@@ -35,6 +35,7 @@ router.get('/', function (req, res, next) {
 					}),
 					{
 						httpOnly: true,
+						secure: process.env.api_url ? true : false,
 					}
 				)
 				.json({ redirectUrl: redirectUrl });

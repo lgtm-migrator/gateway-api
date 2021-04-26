@@ -1,12 +1,14 @@
 import { model, Schema } from 'mongoose';
 
-const CourseSchema = new Schema(
+import CourseClass from './v2/course.entity';
+
+const courseSchema = new Schema(
 	{
 		id: Number,
 		type: String,
 		creator: Number,
 		activeflag: String,
-		//updatedon: Date,
+		updatedon: Date,
 		counter: Number,
 		discourseTopicId: Number,
 		relatedObjects: [
@@ -14,6 +16,7 @@ const CourseSchema = new Schema(
 				objectId: String,
 				reason: String,
 				objectType: String,
+				pid: String,
 				user: String,
 				updated: String,
 			},
@@ -62,4 +65,7 @@ const CourseSchema = new Schema(
 	}
 );
 
-export const Course = model('Course', CourseSchema);
+// Load entity class
+courseSchema.loadClass(CourseClass);
+
+export const Course = model('Course', courseSchema);

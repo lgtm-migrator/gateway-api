@@ -37,6 +37,8 @@ router.post('/', async (req, res) => {
 		showSector,
 		organisation,
 		emailNotifications,
+		feedback,
+		news,
 		terms,
 		tags,
 		showDomain,
@@ -78,6 +80,8 @@ router.post('/', async (req, res) => {
 			orcid,
 			showOrcid,
 			emailNotifications,
+			feedback,
+			news,
 			terms,
 			sector,
 			showSector,
@@ -122,6 +126,7 @@ router.post('/', async (req, res) => {
 		.status(200)
 		.cookie('jwt', token, {
 			httpOnly: true,
+			secure: process.env.api_url ? true : false,
 		})
 		.json({ success: false, data: redirectURLis });
 });

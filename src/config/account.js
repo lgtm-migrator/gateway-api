@@ -1,5 +1,7 @@
 import { getUserByUserId } from '../resources/user/user.repository';
+import ga4ghUtils from '../resources/utilities/ga4gh.utils';
 import { to } from 'await-to-js';
+import _ from 'lodash';
 
 const store = new Map();
 const logins = new Map();
@@ -21,19 +23,30 @@ class Account {
 	 *   or not return them in id tokens but only userinfo and so on.
 	 */
 	async claims(use, scope) {
+		let claimsToSend = scope.split(' ');
 		// eslint-disable-line no-unused-vars
-		if (this.profile) {
-			return {
-				sub: this.accountId, // it is essential to always return a sub claim
-				email: this.profile.email,
-				firstname: this.profile.firstname,
-				lastname: this.profile.lastname,
-			};
-		}
-
-		return {
+		let claim = {
 			sub: this.accountId, // it is essential to always return a sub claim
 		};
+
+		let [err, user] = await to(getUserByUserId(parseInt(this.accountId)));
+		if (!_.isNil(user)) {
+			if (claimsToSend.includes('profile')) {
+				claim.firstname = user.firstname;
+				claim.lastname = user.lastname;
+			}
+			if (claimsToSend.includes('email')) {
+				claim.email = user.email;
+			}
+			if (claimsToSend.includes('rquestroles')) {
+				claim.rquestroles = user.advancedSearchRoles;
+			}
+			if (claimsToSend.includes('ga4gh_passport_v1')) {
+				claim.ga4gh_passport_v1 = await ga4ghUtils.buildGa4ghVisas(user);
+			}
+		}
+
+		return claim;
 	}
 
 	static async findByFederated(provider, claims) {

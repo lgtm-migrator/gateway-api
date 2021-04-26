@@ -19,8 +19,9 @@ require('dotenv').config();
 
 if (helper.getEnvironment() !== 'local') {
 	Sentry.init({
-		dsn: 'https://c7c564a153884dc0a6b676943b172121@o444579.ingest.sentry.io/5419637',
+		dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
 		environment: helper.getEnvironment(),
+		release: process.env.releaseVersion || 'latest',
 	});
 }
 
@@ -30,6 +31,7 @@ const configuration = require('./configuration');
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
 var app = express();
+app.disable('x-powered-by');
 
 configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
@@ -53,7 +55,7 @@ app.use(
 
 // apply rate limiter of 100 requests per minute
 const RateLimit = require('express-rate-limit');
-let limiter = new RateLimit({ windowMs: 60000, max: 100 });
+let limiter = new RateLimit({ windowMs: 60000, max: 500 });
 app.use(limiter);
 
 const router = express.Router();
@@ -74,6 +76,11 @@ app.use(
 		secret: process.env.JWTSecret,
 		resave: false,
 		saveUninitialized: true,
+		name: 'sessionId',
+		/* cookie: {
+            secure: process.env.api_url ? true : false,
+            httpOnly: true
+        } */
 	})
 );
 
@@ -166,6 +173,7 @@ app.use('/api/v1/openid', oidc.callback);
 app.use('/api', router);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+app.use('/oauth', require('../resources/auth/oauth.route'));
 app.use('/api/v1/auth/sso/discourse', require('../resources/auth/sso/sso.discourse.router'));
 app.use('/api/v1/auth', require('../resources/auth/auth.route'));
 app.use('/api/v1/auth/register', require('../resources/user/user.register.route'));
@@ -178,7 +186,7 @@ app.use('/api/v1/workflows', require('../resources/workflow/workflow.route'));
 app.use('/api/v1/messages', require('../resources/message/message.route'));
 app.use('/api/v1/reviews', require('../resources/tool/review.route'));
 app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
-app.use('/api/v1/tools', require('../resources/tool/tool.route'));
+
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
 app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
@@ -188,18 +196,27 @@ app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.rou
 app.use('/api/v1/stats', require('../resources/stats/stats.router'));
 app.use('/api/v1/kpis', require('../resources/stats/kpis.router'));
 
-app.use('/api/v1/course', require('../resources/course/course.route'));
+app.use('/api/v1/course', require('../resources/course/v1/course.route'));
+app.use('/api/v2/courses', require('../resources/course/v2/course.route'));
 
 app.use('/api/v1/person', require('../resources/person/person.route'));
 
-app.use('/api/v1/projects', require('../resources/project/project.route'));
-app.use('/api/v1/papers', require('../resources/paper/paper.route'));
+app.use('/api/v1/tools', require('../resources/tool/v1/tool.route'));
+app.use('/api/v2/tools', require('../resources/tool/v2/tool.route'));
+
+app.use('/api/v1/projects', require('../resources/project/v1/project.route'));
+app.use('/api/v2/projects', require('../resources/project/v2/project.route'));
+
+app.use('/api/v1/papers', require('../resources/paper/v1/paper.route'));
+app.use('/api/v2/papers', require('../resources/paper/v2/paper.route'));
+
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
-app.use('/api/v1/datasets', require('../resources/dataset/dataset.route'));
+app.use('/api/v1/datasets', require('../resources/dataset/v1/dataset.route'));
+app.use('/api/v2/datasets', require('../resources/dataset/v2/dataset.route'));
 
 app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/datarequest.schemas.route'));
 app.use('/api/v1/data-access-request', require('../resources/datarequest/datarequest.route'));
@@ -209,6 +226,8 @@ app.use('/api/v1/collections', require('../resources/collections/collections.rou
 app.use('/api/v1/analyticsdashboard', require('../resources/googleanalytics/googleanalytics.router'));
 
 app.use('/api/v1/help', require('../resources/help/help.router'));
+
+app.use('/api/v2/filters', require('../resources/filters/filters.route'));
 
 initialiseAuthentication(app);
 

@@ -5,7 +5,8 @@ import { createDiscourseTopic } from '../discourse/discourse.service';
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 const asyncModule = require('async');
-const hdrukEmail = `enquiry@healthdatagateway.org`;
+import { utils } from '../auth';
+import { ROLES } from '../user/user.roles';
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
 
@@ -32,6 +33,7 @@ const addTool = async (req, res) => {
 			relatedObjects,
 			programmingLanguage,
 			isPreprint,
+			document_links,
 		} = req.body;
 		data.id = parseInt(Math.random().toString().replace('0.', ''));
 		data.type = inputSanitizer.removeNonBreakingSpaces(type);
@@ -62,6 +64,9 @@ const addTool = async (req, res) => {
 
 		data.isPreprint = isPreprint;
 		data.uploader = req.user.id;
+
+		data.document_links = validateDocumentLinks(document_links);
+
 		let newDataObj = await data.save();
 		if (!newDataObj) reject(new Error(`Can't persist data object to DB.`));
 
@@ -94,7 +99,7 @@ const addTool = async (req, res) => {
 			}
 			emailGenerator.sendEmail(
 				emailRecipients,
-				`${hdrukEmail}`,
+				`${i18next.t('translation:email.sender')}`,
 				`A new ${data.type} has been added and is ready for review`,
 				`Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`,
 				false
@@ -127,9 +132,11 @@ const editTool = async (req, res) => {
 			journalYear,
 			relatedObjects,
 			isPreprint,
+			document_links,
 		} = req.body;
 		let id = req.params.id;
 		let programmingLanguage = req.body.programmingLanguage;
+		let updatedon = Date.now();
 
 		if (!categories || typeof categories === undefined)
 			categories = { category: '', programmingLanguage: [], programmingLanguageVersion: '' };
@@ -140,6 +147,8 @@ const editTool = async (req, res) => {
 				p.version = inputSanitizer.removeNonBreakingSpaces(p.version);
 			});
 		}
+
+		let documentLinksValidated = validateDocumentLinks(document_links);
 
 		let data = {
 			id: id,
@@ -171,6 +180,8 @@ const editTool = async (req, res) => {
 				},
 				relatedObjects: relatedObjects,
 				isPreprint: isPreprint,
+				document_links: documentLinksValidated,
+				updatedon: updatedon,
 			},
 			err => {
 				if (err) {
@@ -205,7 +216,7 @@ const deleteTool = async (req, res) => {
 	});
 };
 
-const getToolsAdmin = async (req, res) => {
+const getAllTools = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
 		let startIndex = 0;
 		let limit = 1000;
@@ -239,15 +250,63 @@ const getToolsAdmin = async (req, res) => {
 	});
 };
 
+const getToolsAdmin = async (req, res) => {
+	return new Promise(async (resolve, reject) => {
+		let startIndex = 0;
+		let limit = 40;
+		let typeString = '';
+		let searchString = '';
+		let status = 'all';
+
+		if (req.query.offset) {
+			startIndex = req.query.offset;
+		}
+		if (req.query.limit) {
+			limit = req.query.limit;
+		}
+		if (req.params.type) {
+			typeString = req.params.type;
+		}
+		if (req.query.q) {
+			searchString = req.query.q || '';
+		}
+		if (req.query.status) {
+			status = req.query.status;
+		}
+
+		let searchQuery;
+		if (status === 'all') {
+			searchQuery = { $and: [{ type: typeString }] };
+		} else {
+			searchQuery = { $and: [{ type: typeString }, { activeflag: status }] };
+		}
+
+		let searchAll = false;
+
+		if (searchString.length > 0) {
+			searchQuery['$and'].push({ $text: { $search: searchString } });
+		} else {
+			searchAll = true;
+		}
+
+		await Promise.all([getObjectResult(typeString, searchAll, searchQuery, startIndex, limit), getCountsByStatus(typeString)]).then(
+			values => {
+				resolve(values);
+			}
+		);
+	});
+};
+
 const getTools = async (req, res) => {
 	return new Promise(async (resolve, reject) => {
 		let startIndex = 0;
-		let limit = 1000;
+		let limit = 40;
 		let typeString = '';
 		let idString = req.user.id;
+		let status = 'all';
 
-		if (req.query.startIndex) {
-			startIndex = req.query.startIndex;
+		if (req.query.offset) {
+			startIndex = req.query.offset;
 		}
 		if (req.query.limit) {
 			limit = req.query.limit;
@@ -258,19 +317,41 @@ const getTools = async (req, res) => {
 		if (req.query.id) {
 			idString = req.query.id;
 		}
+		if (req.query.status) {
+			status = req.query.status;
+		}
+
+		let searchQuery;
+		if (status === 'all') {
+			searchQuery = [{ type: typeString }, { authors: parseInt(idString) }];
+		} else {
+			searchQuery = [{ type: typeString }, { authors: parseInt(idString) }, { activeflag: status }];
+		}
 
 		let query = Data.aggregate([
-			{ $match: { $and: [{ type: typeString }, { authors: parseInt(idString) }] } },
+			{ $match: { $and: searchQuery } },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 			{ $sort: { updatedAt: -1 } },
-		]); //.skip(parseInt(startIndex)).limit(parseInt(maxResults));
-		query.exec((err, data) => {
-			data.map(dat => {
-				dat.persons = helper.hidePrivateProfileDetails(dat.persons);
-			});
-			if (err) reject({ success: false, error: err });
-			resolve(data);
+		])
+			.skip(parseInt(startIndex))
+			.limit(parseInt(limit));
+
+		await Promise.all([getUserTools(query), getCountsByStatusCreator(typeString, idString)]).then(values => {
+			resolve(values);
 		});
+
+		function getUserTools(query) {
+			return new Promise((resolve, reject) => {
+				query.exec((err, data) => {
+					data &&
+						data.map(dat => {
+							dat.persons = helper.hidePrivateProfileDetails(dat.persons);
+						});
+					if (typeof data === 'undefined') resolve([]);
+					else resolve(data);
+				});
+			});
+		}
 	});
 };
 
@@ -279,10 +360,21 @@ const setStatus = async (req, res) => {
 		try {
 			const { activeflag, rejectionReason } = req.body;
 			const id = req.params.id;
+			const userId = req.user.id;
+			let tool;
 
-			let tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
-			if (!tool) {
-				reject(new Error('Tool not found'));
+			if (utils.whatIsRole(req) === ROLES.Admin) {
+				tool = await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
+				if (!tool) {
+					reject(new Error('Tool not found'));
+				}
+			} else if (activeflag === 'archive') {
+				tool = await Data.findOneAndUpdate({ $and: [{ id: id }, { authors: userId }] }, { $set: { activeflag: activeflag } });
+				if (!tool) {
+					reject(new Error('Tool not found or user not authorised to change Tool status'));
+				}
+			} else {
+				reject(new Error('Not authorised to change the status of this Tool'));
 			}
 
 			if (tool.authors) {
@@ -367,7 +459,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
-		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html);
+		emailGenerator.sendEmail(emailRecipients, `${i18next.t('translation:email.sender')}`, subject, html, false);
 	});
 }
 
@@ -394,9 +486,10 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 		}
 		emailGenerator.sendEmail(
 			emailRecipients,
-			`${hdrukEmail}`,
+			`${i18next.t('translation:email.sender')}`,
 			`${toolOwner.name} added you as an author of the tool ${tool.name}`,
-			`${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`
+			`${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`,
+			false
 		);
 	});
 }
@@ -439,7 +532,7 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 			{ $lookup: { from: 'tools', localField: 'id', foreignField: 'authors', as: 'objects' } },
 			{ $lookup: { from: 'reviews', localField: 'id', foreignField: 'toolID', as: 'reviews' } },
 		])
-			.sort({ updatedAt: -1 })
+			.sort({ updatedAt: -1, _id: 1 })
 			.skip(parseInt(startIndex))
 			.limit(parseInt(limit));
 	} else {
@@ -464,4 +557,90 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 	});
 }
 
-export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin };
+function getCountsByStatus(type) {
+	let q = Data.find({ type: type }, { id: 1, name: 1, activeflag: 1 });
+
+	return new Promise((resolve, reject) => {
+		q.exec((err, data) => {
+			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
+			const reviewCount = data.filter(dat => dat.activeflag === 'review').length;
+			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length;
+			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length;
+
+			let countSummary = { activeCount: activeCount, reviewCount: reviewCount, rejectedCount: rejectedCount, archiveCount: archiveCount };
+
+			resolve(countSummary);
+		});
+	});
+}
+
+function getCountsByStatusCreator(type, idString) {
+	let q = Data.find({ $and: [{ type: type }, { authors: parseInt(idString) }] }, { id: 1, name: 1, activeflag: 1 });
+
+	return new Promise((resolve, reject) => {
+		q.exec((err, data) => {
+			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
+			const reviewCount = data.filter(dat => dat.activeflag === 'review').length;
+			const rejectedCount = data.filter(dat => dat.activeflag === 'rejected').length;
+			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length;
+
+			let countSummary = { activeCount: activeCount, reviewCount: reviewCount, rejectedCount: rejectedCount, archiveCount: archiveCount };
+
+			resolve(countSummary);
+		});
+	});
+}
+
+function validateDocumentLinks(document_links) {
+	let documentLinksValidated = { doi: [], pdf: [], html: [] };
+	if (document_links) {
+		document_links.doi.forEach(url => {
+			if (urlValidator.isDOILink(url)) {
+				documentLinksValidated.doi.push(urlValidator.validateURL(url));
+			} else {
+				documentLinksValidated.html.push(urlValidator.validateURL(url));
+			}
+		});
+		document_links.pdf.forEach(url => {
+			if (urlValidator.isDOILink(url)) {
+				documentLinksValidated.doi.push(urlValidator.validateURL(url));
+			} else {
+				documentLinksValidated.pdf.push(urlValidator.validateURL(url));
+			}
+		});
+		document_links.html.forEach(url => {
+			if (urlValidator.isDOILink(url)) {
+				documentLinksValidated.doi.push(urlValidator.validateURL(url));
+			} else {
+				documentLinksValidated.html.push(urlValidator.validateURL(url));
+			}
+		});
+	}
+	return documentLinksValidated;
+}
+
+function formatRetroDocumentLinks(document_links) {
+	let documentLinksValidated = { doi: [], pdf: [], html: [] };
+
+	document_links.forEach(obj => {
+		for (const [key, value] of Object.entries(obj)) {
+			switch (key) {
+				case 'doi':
+					documentLinksValidated.doi.push(value);
+					break;
+				case 'pdf':
+					documentLinksValidated.pdf.push(value);
+					break;
+				case 'html':
+					documentLinksValidated.html.push(value);
+					break;
+				default:
+					break;
+			}
+		}
+	});
+
+	return documentLinksValidated;
+}
+
+export { addTool, editTool, deleteTool, setStatus, getTools, getToolsAdmin, getAllTools, formatRetroDocumentLinks };

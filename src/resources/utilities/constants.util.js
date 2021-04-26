@@ -4,6 +4,23 @@ const _userTypes = {
 	APPLICANT: 'applicant',
 };
 
+const _formTypes = Object.freeze({
+  Enquiry : 'enquiry',
+  Extended5Safe : '5 safe'
+});
+
+const _teamNotificationTypes = Object.freeze({
+  DATAACCESSREQUEST : 'dataAccessRequest',
+  METADATAONBOARDING : 'metaDataOnboarding'
+});
+
+const _teamNotificationTypesHuman = Object.freeze({
+  dataAccessRequest : 'Data access request',
+  metaDataOnboarding : 'Meta data on-boarding'
+});
+
+const _enquiryFormId = '5f0c4af5d138d3e486270031';
+
 const _userQuestionActions = {
 	custodian: {
 		reviewer: {
@@ -16,15 +33,26 @@ const _userQuestionActions = {
 					order: 1,
 				},
 			],
-			inReview: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
+			inReview: {
+				custodian: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+				applicant: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+			},
 			approved: [
 				{
 					key: 'guidance',
@@ -71,30 +99,34 @@ const _userQuestionActions = {
 					toolTip: 'Guidance',
 					order: 1,
 				},
-				{
-					key: 'requestAmendment',
-					icon: 'fas fa-exclamation-circle',
-					color: '#F0BB24',
-					toolTip: 'Request applicant updates answer',
-					order: 2,
-				},
 			],
-			inReview: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-				{
-					key: 'requestAmendment',
-					icon: 'fas fa-exclamation-circle',
-					color: '#F0BB24',
-					toolTip: 'Request applicant updates answer',
-					order: 2,
-				},
-			],
+			inReview: {
+				custodian: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+					{
+						key: 'requestAmendment',
+						icon: 'fas fa-exclamation-circle',
+						color: '#F0BB24',
+						toolTip: 'Request applicant updates answer',
+						order: 2,
+					},
+				],
+				applicant: [
+					{
+						key: 'guidance',
+						icon: 'far fa-question-circle',
+						color: '#475da7',
+						toolTip: 'Guidance',
+						order: 1,
+					},
+				],
+			},
 			approved: [
 				{
 					key: 'guidance',
@@ -270,6 +302,11 @@ const _notificationTypes = {
 	MEMBERADDED: 'MemberAdded',
 	MEMBERREMOVED: 'MemberRemoved',
 	MEMBERROLECHANGED: 'MemberRoleChanged',
+	WORKFLOWASSIGNED: 'WorkflowAssigned',
+	WORKFLOWCREATED: 'WorkflowCreated',
+	INPROGRESS: 'InProgress',
+	APPLICATIONCLONED: 'ApplicationCloned',
+	APPLICATIONDELETED: 'ApplicationDeleted',
 };
 
 const _applicationStatuses = {
@@ -289,8 +326,16 @@ const _amendmentModes = {
 };
 
 const _submissionTypes = {
+	INPROGRESS: 'inProgress',
 	INITIAL: 'initial',
 	RESUBMISSION: 'resubmission',
+};
+
+const _formActions = {
+	ADDREPEATABLESECTION: 'addRepeatableSection',
+	REMOVEREPEATABLESECTION: 'removeRepeatableSection',
+	ADDREPEATABLEQUESTIONS: 'addRepeatableQuestions',
+	REMOVEREPEATABLEQUESTIONS: 'removeRepeatableQuestions',
 };
 
 const _darPanelMapper = {
@@ -315,6 +360,10 @@ const _hdrukEmail = 'enquiry@icodaresearch.org';
 
 export default {
 	userTypes: _userTypes,
+	enquiryFormId: _enquiryFormId,
+	formTypes: _formTypes,
+	teamNotificationTypes: _teamNotificationTypes,
+	teamNotificationTypesHuman: _teamNotificationTypesHuman,
 	userQuestionActions: _userQuestionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
@@ -322,8 +371,9 @@ export default {
 	applicationStatuses: _applicationStatuses,
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
+	formActions: _formActions,
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
-	hdrukEmail: _hdrukEmail,
+	hdrukEmail: _hdrukEmail
 };
