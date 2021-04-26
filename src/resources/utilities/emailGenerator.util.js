@@ -1595,7 +1595,7 @@ const _formatEmails = emails => {
 };
 
 const _generateTeamNotificationEmail = options => {
-	let { managerName, notificationRemoved, emailAddresses, header } = options;
+	let { managerName, notificationRemoved, emailAddresses, header, disabled } = options;
 	let formattedEmails = _formatEmails(emailAddresses);
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; max-width:700px; margin: 0 auto;">
@@ -1633,7 +1633,7 @@ const _generateTeamNotificationEmail = options => {
 												</td>
                       </tr>
                     </table>
-                    ${notificationRemoved ? _generateTeamEmailRevert(notificationRemoved) : ''}
+                    ${disabled ? _generateTeamEmailRevert(notificationRemoved) : ''}
                     ${_displayViewEmailNotifications()}
                   </td>
                 </tr>
