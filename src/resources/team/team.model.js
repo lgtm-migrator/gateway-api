@@ -20,6 +20,7 @@ const TeamSchema = new Schema(
 							enum: Object.values(constants.teamNotificationTypes)
 						} , // metadataonbarding || dataaccessrequest
 						optIn: { type: Boolean, default: true },
+						message: String
 					},
 				],
 			},

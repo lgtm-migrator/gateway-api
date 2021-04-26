@@ -1972,11 +1972,6 @@ module.exports = {
 			filename = '',
 			jsonContent = {},
 			authors = [],
-			teamNotifications = {},
-			teamNotificationEmails = [],
-			subscribedEmails = [],
-			memberOptedInEmails = [],
-			optIn = false,
 			attachments = [];
 		let applicants = datarequestUtil.extractApplicantNames(questionAnswers).join(', ');
 		// Fall back for single applicant on short application form
@@ -2111,24 +2106,6 @@ module.exports = {
 				if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
-					// Retrieve notifications for the team based on type return {notificationType, subscribedEmails, optIn}
-					teamNotifications = teamController.getTeamNotificationByType(
-						accessRecord.datasets[0].publisher.team,
-						constants.teamNotificationTypes.DATAACCESSREQUEST
-					);
-					// only deconstruct if team notifications object returns - safeguard code
-					if (!_.isEmpty(teamNotifications)) {
-						// Get teamNotification emails if optIn true
-						({ optIn = false, subscribedEmails = [] } = teamNotifications);
-						// check subscribedEmails and optIn send back emails or blank []
-						teamNotificationEmails = teamController.getTeamNotificationEmails(optIn, subscribedEmails);
-					}
-					// check the custodianManagers personal emails preferences against the team notifications settings exclude if necessary
-					memberOptedInEmails = teamController.buildOptedInEmailList(
-						custodianManagers,
-						accessRecord.datasets[0].publisher.team,
-						constants.teamNotificationTypes.DATAACCESSREQUEST
-					);
 					// check if publisher.team has email notifications
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -2186,12 +2163,7 @@ module.exports = {
 					));
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
-						// Get all custodian managers for the team / team Notifications
-						if (!_.isEmpty(teamNotificationEmails)) {
-							emailRecipients = [...memberOptedInEmails, ...teamNotificationEmails];
-						} else {
-							emailRecipients = [...memberOptedInEmails];
-						}
+						emailRecipients = [...custodianManagers];
 						// Generate json attachment for external system integration
 						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
 						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;

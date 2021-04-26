@@ -398,7 +398,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
-			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html);
+			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, false);
 		});
 	} else {
 		// 3. Find the creator of the course if they have opted in to email updates
@@ -418,7 +418,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
-			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html);
+			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, false);
 		});
 
 		// 5. Find all admins regardless of email opt-in preference
