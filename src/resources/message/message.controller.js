@@ -98,7 +98,7 @@ module.exports = {
                             // build cleaner array of memberIds from subscribedMembersByType
                             const memberIds = [...subscribedMembersByType].map(m => m.memberid);								
                             // returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object 
-                            const memberEmails = teamController.getMemberEmails([...memberIds], [...messageRecipients]);
+                            const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
                             optedInEmailRecipients = [...teamNotificationEmails, ...memberEmails];
                         } else {
                             // only if not membersByType but has a team email setup
