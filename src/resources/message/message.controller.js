@@ -19,6 +19,23 @@ module.exports = {
             let { messageType = 'message', topic = '', messageDescription, relatedObjectIds } = req.body;
             let topicObj = {};
             let team;
+						const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate({ path: 'publisher', populate: { path: 'team' }});
+						 // 5. Return undefined if no object(s) exists
+						 if(_.isEmpty(tools))
+						 return undefined;
+				 
+						// 6. Get recipients for new message
+						let { publisher = '' } = tools[0];
+						if(_.isEmpty(publisher)) {
+								console.error(`No publisher associated to this dataset`);
+								return res.status(500).json({ success: false, message: 'No publisher associated to this dataset' });
+						}
+						({ team = [] } = publisher);
+						if(_.isEmpty(team)) {
+								console.error(`No team associated to publisher, cannot message`);
+								return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
+						}
+
             // 1. If the message type is 'message' and topic id is empty
             if(messageType === 'message') {
                 if(_.isEmpty(topic)) {
@@ -37,22 +54,22 @@ module.exports = {
                         return res.status(404).json({ success: false, message: 'The topic specified could not be found' });
                     }
                     // 4. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
-                    const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate({ path: 'publisher', populate: { path: 'team' }});
-                    // 5. Return undefined if no object(s) exists
-                    if(_.isEmpty(tools))
-                        return undefined;
+                    // const tools = await ToolModel.find().where('_id').in(relatedObjectIds).populate({ path: 'publisher', populate: { path: 'team' }});
+                    // // 5. Return undefined if no object(s) exists
+                    // if(_.isEmpty(tools))
+                    //     return undefined;
                     
-                    // 6. Get recipients for new message
-                    let { publisher = '' } = tools[0];
-                    if(_.isEmpty(publisher)) {
-                        console.error(`No publisher associated to this dataset`);
-                        return res.status(500).json({ success: false, message: 'No publisher associated to this dataset' });
-                    }
-                    ({ team = [] } = publisher);
-                    if(_.isEmpty(team)) {
-                        console.error(`No team associated to publisher, cannot message`);
-                        return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
-                    }
+                    // // 6. Get recipients for new message
+                    // let { publisher = '' } = tools[0];
+                    // if(_.isEmpty(publisher)) {
+                    //     console.error(`No publisher associated to this dataset`);
+                    //     return res.status(500).json({ success: false, message: 'No publisher associated to this dataset' });
+                    // }
+                    // ({ team = [] } = publisher);
+                    // if(_.isEmpty(team)) {
+                    //     console.error(`No team associated to publisher, cannot message`);
+                    //     return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
+                    // }
                     topicObj.recipients = await topicController.buildRecipients(team, topicObj.createdBy);
                     await topicObj.save();
                 }
