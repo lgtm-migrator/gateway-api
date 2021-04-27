@@ -19,29 +19,31 @@ module.exports = {
 			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds } = req.body;
 			let topicObj = {};
 			let team;
-			// 1. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
-			const tools = await ToolModel.find()
-				.where('_id')
-				.in(relatedObjectIds)
-				.populate({ path: 'publisher', populate: { path: 'team' } });
-			// 2. Return undefined if no object(s) exists
-			if (_.isEmpty(tools)) return undefined;
 
-			// 3. Get recipients for new message
-			let { publisher = '' } = tools[0];
-			if (_.isEmpty(publisher)) {
-				console.error(`No publisher associated to this dataset`);
-				return res.status(500).json({ success: false, message: 'No publisher associated to this dataset' });
-			}
-			// 4. get team
-			({ team = [] } = publisher);
-			if (_.isEmpty(team)) {
-				console.error(`No team associated to publisher, cannot message`);
-				return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
-			}
-
-			// 5. If the message type is 'message' and topic id is empty
+			// 1. If the message type is 'message' and topic id is empty
 			if (messageType === 'message') {
+				// 2. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
+				const tools = await ToolModel.find()
+					.where('_id')
+					.in(relatedObjectIds)
+					.populate({ path: 'publisher', populate: { path: 'team' } });
+				// 3. Return undefined if no object(s) exists
+				if (_.isEmpty(tools)) return undefined;
+
+				// 4. Get recipients for new message
+				let { publisher = '' } = tools[0];
+				
+				if (_.isEmpty(publisher)) {
+					console.error(`No publisher associated to this dataset`);
+					return res.status(500).json({ success: false, message: 'No publisher associated to this dataset' });
+				}
+				// 5. get team
+				({ team = [] } = publisher);
+				if (_.isEmpty(team)) {
+					console.error(`No team associated to publisher, cannot message`);
+					return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
+				}
+
 				if (_.isEmpty(topic)) {
 					// 6. Create new topic
 					topicObj = await topicController.buildTopic({ createdBy, relatedObjectIds });
