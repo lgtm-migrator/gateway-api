@@ -80,6 +80,7 @@ const DataRequestSchema = new Schema(
 				questionAnswers: { type: Object, default: {} },
 			},
 		],
+		originId: { type: Schema.Types.ObjectId, ref: 'data_request' }
 	},
 	{
 		timestamps: true,
