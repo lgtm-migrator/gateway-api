@@ -5,30 +5,33 @@ const _userTypes = {
 };
 
 const _formTypes = Object.freeze({
-  Enquiry : 'enquiry',
-  Extended5Safe : '5 safe'
+	Enquiry: 'enquiry',
+	Extended5Safe: '5 safe',
 });
 
 const _teamNotificationTypes = Object.freeze({
-  DATAACCESSREQUEST : 'dataAccessRequest',
-  METADATAONBOARDING : 'metaDataOnboarding'
+	DATAACCESSREQUEST: 'dataAccessRequest',
+	METADATAONBOARDING: 'metaDataOnboarding',
 });
 
 const _teamNotificationMessages = {
-  DATAACCESSREQUEST : 'A team manager removed team email addresses. Your email notifications are now being sent to your gateway email',
+	DATAACCESSREQUEST: 'A team manager removed team email addresses. Your email notifications are now being sent to your gateway email',
 };
 
 const _teamNotificationEmailContentTypes = {
-	TEAMEMAILHEADERADD : 'A team manager has added a new team email address',
-	TEAMEMAILHEADEREMOVE : 'A team manager has removed a team email address',
-	TEAMEMAILSUBHEADERADD: 'has added a new team email address. All emails relating to pre-submission messages from researchers will be sent to the following email addresses:',
-	TEAMEMAILSUBHEADEREMOVE: 'has removed a team email address. All emails relating to pre-submission messages from researchers will no longer be sent to the following email addresses:',
-	TEAMEMAILFOOTERREMOVE: 'If you had stopped emails being sent to your gateway log in email address and no team email address is now active, your emails will have reverted back to your gateway log in email.'
+	TEAMEMAILHEADERADD: 'A team manager has added a new team email address',
+	TEAMEMAILHEADEREMOVE: 'A team manager has removed a team email address',
+	TEAMEMAILSUBHEADERADD:
+		'has added a new team email address. All emails relating to pre-submission messages from researchers will be sent to the following email addresses:',
+	TEAMEMAILSUBHEADEREMOVE:
+		'has removed a team email address. All emails relating to pre-submission messages from researchers will no longer be sent to the following email addresses:',
+	TEAMEMAILFOOTERREMOVE:
+		'If you had stopped emails being sent to your gateway log in email address and no team email address is now active, your emails will have reverted back to your gateway log in email.',
 };
 
 const _teamNotificationTypesHuman = Object.freeze({
-  dataAccessRequest : 'Data access request',
-  metaDataOnboarding : 'Meta data on-boarding'
+	dataAccessRequest: 'Data access request',
+	metaDataOnboarding: 'Meta data on-boarding',
 });
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
@@ -319,6 +322,9 @@ const _notificationTypes = {
 	INPROGRESS: 'InProgress',
 	APPLICATIONCLONED: 'ApplicationCloned',
 	APPLICATIONDELETED: 'ApplicationDeleted',
+	DATASETSUBMITTED: 'DatasetSubmitted',
+	DATASETAPPROVED: 'DatasetApproved',
+	DATASETREJECTED: 'DatasetRejected',
 };
 
 const _applicationStatuses = {
@@ -364,9 +370,25 @@ const _darPanelMapper = {
 const _roleTypes = {
 	MANAGER: 'manager',
 	REVIEWER: 'reviewer',
+	METADATA_EDITOR: 'metadata_editor',
+	ADMIN_DATASET: 'admin_dataset',
 };
 
-// </DAR related enums>
+// </Team related enums>
+
+// <Dataset onboarding related enums>
+
+const _datatsetStatuses = {
+	DRAFT: 'draft',
+	INPROGRESS: 'inProgress',
+	INREVIEW: 'inReview',
+	APPROVED: 'approved',
+	REJECTED: 'rejected',
+	APPROVEDWITHCONDITIONS: 'approved with conditions',
+	ARCHIVE: 'archive',
+};
+
+// </Dataset onboarding related enums>
 
 const _hdrukEmail = 'enquiry@healthdatagateway.org';
 
@@ -375,7 +397,7 @@ export default {
 	enquiryFormId: _enquiryFormId,
 	formTypes: _formTypes,
 	teamNotificationTypes: _teamNotificationTypes,
-	teamNotificationMessages:_teamNotificationMessages,
+	teamNotificationMessages: _teamNotificationMessages,
 	teamNotificationTypesHuman: _teamNotificationTypesHuman,
 	teamNotificationEmailContentTypes: _teamNotificationEmailContentTypes,
 	userQuestionActions: _userQuestionActions,
@@ -389,5 +411,6 @@ export default {
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
-	hdrukEmail: _hdrukEmail
+	hdrukEmail: _hdrukEmail,
+	datatsetStatuses: _datatsetStatuses,
 };
