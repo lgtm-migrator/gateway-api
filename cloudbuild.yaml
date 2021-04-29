@@ -21,7 +21,7 @@ steps:
         '--allow-unauthenticated',
       ]
   - name: 'node'
-    args: ['npm', 'install']
+    args: ['npm', 'install', '--package-lock-only']
   - name: 'node'
     args: ['npm', 'test']
     env:
