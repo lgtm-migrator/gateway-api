@@ -28,66 +28,49 @@ module.exports = {
 
 			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Publisher ID could not be found.' });
 
-			let datasetIds = [];
+			let query = {};
 
 			if (publisherID === 'admin') {
 				// get all datasets in review for admin
-				datasetIds = await Data.find({
+				query = {
 					activeflag: 'inReview',
-				})
-					.sort({ 'timestamps.updated': -1 })
-					.distinct('pid');
+					type: 'dataset',
+				}
 			} else {
 				// get all pids for publisherID
-				datasetIds = await Data.find({
-					$and: [
-						{ 'datasetv2.summary.publisher.identifier': publisherID },
-						{
-							$or: [
-								{ activeflag: 'active' },
-								{ activeflag: 'inReview' },
-								{ activeflag: 'draft' },
-								{ activeflag: 'rejected' },
-								{ activeflag: 'archive' },
-							],
-						},
-					],
-				})
-					.sort({ 'timestamps.updated': 1 })
-					.distinct('pid');
+				query = {
+					'datasetv2.summary.publisher.identifier': publisherID,
+					type: 'dataset',
+					activeflag: { $in: ['active', 'inReview', 'draft', 'rejected', 'archive'] },
+				};
 			}
 
-			let listOfDatasets = [];
-			for (const datasetId of datasetIds) {
-				let datasetDetails = await Data.findOne({
-					pid: datasetId,
-				})
-					.sort({ 'timestamps.updated': -1 })
-					.lean();
+			const datasets = await Data.find(query).select('_id pid name datasetVersion activeflag timestamps applicationStatusDesc percentageCompleted datasetv2.summary.publisher.name')
+				.sort({ 'timestamps.updated': -1 })
+				.lean();
 
-				let datasetVersions = await Data.find(
-					{
-						pid: datasetId,
-					},
-					{
-						_id: 1,
-						datasetVersion: 1,
-						activeflag: 1,
-					}
-				)
-					.sort({ 'timestamps.created': -1 })
-					.lean();
-
-				datasetDetails.listOfVersions = datasetVersions;
-				listOfDatasets.push(datasetDetails);
-			}
+			const listOfDatasets = datasets.reduce((arr, dataset) => {
+				dataset.listOfVersions = [];
+				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
+				if (datasetIdx === -1) {
+					arr = [...arr, dataset];
+				} else {
+					const { _id, datasetVersion, activeflag } = dataset;
+					const versionDetails = { _id, datasetVersion, activeflag }; 
+					arr[datasetIdx].listOfVersions = [
+						...arr[datasetIdx].listOfVersions, 
+						versionDetails
+					];
+				}
+				return arr;
+			}, []);
 
 			return res.status(200).json({
 				success: true,
 				data: { listOfDatasets },
 			});
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
