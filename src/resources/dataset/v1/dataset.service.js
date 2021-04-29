@@ -15,196 +15,51 @@ let metadataQualityList = [],
 	datasetsMDCIDs = [],
 	counter = 0;
 
-export async function loadDataset(datasetID) {
-	let metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
-	const datasetCall = axios
-		.get(metadataCatalogueLink + '/api/facets/' + datasetID + '/profile/uk.ac.hdrukgateway/HdrUkProfilePluginService', { timeout: 5000 })
-		.catch(err => {
-			console.error('Unable to get dataset details ' + err.message);
-		});
-	const metadataQualityCall = axios
-		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/metadata_quality.json', { timeout: 5000 })
-		.catch(err => {
-			console.error('Unable to get metadata quality value ' + err.message);
-		});
-	const metadataSchemaCall = axios
-		.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/' + datasetID, { timeout: 5000 })
-		.catch(err => {
-			console.error('Unable to get metadata schema ' + err.message);
-		});
-	const dataClassCall = axios.get(metadataCatalogueLink + '/api/dataModels/' + datasetID + '/dataClasses', { timeout: 5000 }).catch(err => {
-		console.error('Unable to get dataclass ' + err.message);
-	});
-	const versionLinksCall = axios
-		.get(metadataCatalogueLink + '/api/catalogueItems/' + datasetID + '/semanticLinks', { timeout: 5000 })
-		.catch(err => {
-			console.error('Unable to get version links ' + err.message);
-		});
-	const phenotypesCall = await axios
-		.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout: 5000 })
-		.catch(err => {
-			console.error('Unable to get phenotypes ' + err.message);
-		});
-	const dataUtilityCall = await axios
-		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout: 5000 })
-		.catch(err => {
-			console.error('Unable to get data utility ' + err.message);
-		});
-	const datasetV2Call = axios
-		.get(metadataCatalogueLink + '/api/facets/' + datasetID + '/metadata?all=true', { timeout: 5000 })
-		.catch(err => {
-			console.error('Unable to get dataset version 2 ' + err.message);
-		});
-	const [
-		dataset,
-		metadataQualityList,
-		metadataSchema,
-		dataClass,
-		versionLinks,
-		phenotypesList,
-		dataUtilityList,
-		datasetV2,
-	] = await axios.all([
-		datasetCall,
-		metadataQualityCall,
-		metadataSchemaCall,
-		dataClassCall,
-		versionLinksCall,
-		phenotypesCall,
-		dataUtilityCall,
-		datasetV2Call,
-	]);
+export async function updateExternalDatasetServices(services) {
+	for (let service of services) {
+		if (service === 'phenotype') {
+			const phenotypesList = await axios
+				.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenotype-library/master/_data/dataset2phenotypes.json', {
+					timeout: 10000,
+				})
+				.catch(err => {
+					Sentry.addBreadcrumb({
+						category: 'Caching',
+						message: 'Unable to get metadata quality value ' + err.message,
+						level: Sentry.Severity.Error,
+					});
+					Sentry.captureException(err);
+					console.error('Unable to get metadata quality value ' + err.message);
+				});
 
-	let technicaldetails = [];
-
-	await dataClass.data.items.reduce(
-		(p, dataclassMDC) =>
-			p.then(
-				() =>
-					new Promise(resolve => {
-						setTimeout(async function () {
-							const dataClassElementCall = axios
-								.get(metadataCatalogueLink + '/api/dataModels/' + datasetID + '/dataClasses/' + dataclassMDC.id + '/dataElements', {
-									timeout: 5000,
-								})
-								.catch(err => {
-									console.error('Unable to get dataclass element ' + err.message);
-								});
-							const [dataClassElement] = await axios.all([dataClassElementCall]);
-							var dataClassElementArray = [];
-
-							dataClassElement.data.items.forEach(element => {
-								dataClassElementArray.push({
-									id: element.id,
-									domainType: element.domainType,
-									label: element.label,
-									description: element.description,
-									dataType: {
-										id: element.dataType.id,
-										domainType: element.dataType.domainType,
-										label: element.dataType.label,
-									},
-								});
-							});
-
-							technicaldetails.push({
-								id: dataclassMDC.id,
-								domainType: dataclassMDC.domainType,
-								label: dataclassMDC.label,
-								description: dataclassMDC.description,
-								elements: dataClassElementArray,
-							});
-
-							resolve(null);
-						}, 500);
-					})
-			),
-		Promise.resolve(null)
-	);
-
-	let datasetv2Object = populateV2datasetObject(datasetV2.data.items);
-
-	let uuid = uuidv4();
-	let listOfVersions = [];
-	let pid = uuid;
-	let datasetVersion = '0.0.1';
-
-	if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
-		versionLinks.data.items.forEach(item => {
-			if (!listOfVersions.find(x => x.id === item.source.id)) {
-				listOfVersions.push({ id: item.source.id, version: item.source.documentationVersion });
+			for (const pid in phenotypesList.data) {
+				await Data.updateMany({ pid: pid }, { $set: { 'datasetfields.phenotypes': phenotypesList.data[pid] } });
+				console.log(`PID is ${pid} and number of phenotypes is ${phenotypesList.data[pid].length}`);
 			}
-			if (!listOfVersions.find(x => x.id === item.target.id)) {
-				listOfVersions.push({ id: item.target.id, version: item.target.documentationVersion });
-			}
-		});
+		} else if (service === 'dataUtility') {
+			const dataUtilityList = await axios
+				.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout: 10000 })
+				.catch(err => {
+					Sentry.addBreadcrumb({
+						category: 'Caching',
+						message: 'Unable to get data utility ' + err.message,
+						level: Sentry.Severity.Error,
+					});
+					Sentry.captureException(err);
+					console.error('Unable to get data utility ' + err.message);
+				});
 
-		for (const item of listOfVersions) {
-			if (item.id !== dataset.data.id) {
-				let existingDataset = await Data.findOne({ datasetid: item.id });
-				if (existingDataset && existingDataset.pid) pid = existingDataset.pid;
-				else {
-					await Data.findOneAndUpdate({ datasetid: item.id }, { pid: uuid, datasetVersion: item.version });
-				}
-			} else {
-				datasetVersion = item.version;
+			for (const dataUtility of dataUtilityList.data) {
+				await Data.findOneAndUpdate(
+					{ datasetid: dataUtility.id },
+					{
+						'datasetfields.datautility': dataUtility,
+					}
+				);
+				console.log(`DatasetID is ${dataUtility.id} and metadata richness is ${dataUtility.metadata_richness}`);
 			}
 		}
 	}
-
-	var uniqueID = '';
-	while (uniqueID === '') {
-		uniqueID = parseInt(Math.random().toString().replace('0.', ''));
-		if ((await Data.find({ id: uniqueID }).length) === 0) {
-			uniqueID = '';
-		}
-	}
-
-	var keywordArray = splitString(dataset.data.keywords);
-	var physicalSampleAvailabilityArray = splitString(dataset.data.physicalSampleAvailability);
-	var geographicCoverageArray = splitString(dataset.data.geographicCoverage);
-
-	const metadataQuality = metadataQualityList.data.find(x => x.id === datasetID);
-	const phenotypes = phenotypesList.data[datasetID] || [];
-	const dataUtility = dataUtilityList.data.find(x => x.id === datasetID);
-
-	var data = new Data();
-	data.pid = pid;
-	data.datasetVersion = datasetVersion;
-	data.id = uniqueID;
-	data.datasetid = dataset.data.id;
-	data.type = 'dataset';
-	data.activeflag = 'archive';
-
-	data.name = dataset.data.title;
-	data.description = dataset.data.description;
-	data.license = dataset.data.license;
-	data.tags.features = keywordArray;
-	data.datasetfields.publisher = dataset.data.publisher;
-	data.datasetfields.geographicCoverage = geographicCoverageArray;
-	data.datasetfields.physicalSampleAvailability = physicalSampleAvailabilityArray;
-	data.datasetfields.abstract = dataset.data.abstract;
-	data.datasetfields.releaseDate = dataset.data.releaseDate;
-	data.datasetfields.accessRequestDuration = dataset.data.accessRequestDuration;
-	data.datasetfields.conformsTo = dataset.data.conformsTo;
-	data.datasetfields.accessRights = dataset.data.accessRights;
-	data.datasetfields.jurisdiction = dataset.data.jurisdiction;
-	data.datasetfields.datasetStartDate = dataset.data.datasetStartDate;
-	data.datasetfields.datasetEndDate = dataset.data.datasetEndDate;
-	data.datasetfields.statisticalPopulation = dataset.data.statisticalPopulation;
-	data.datasetfields.ageBand = dataset.data.ageBand;
-	data.datasetfields.contactPoint = dataset.data.contactPoint;
-	data.datasetfields.periodicity = dataset.data.periodicity;
-
-	data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
-	data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
-	data.datasetfields.technicaldetails = technicaldetails;
-	data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
-	data.datasetfields.phenotypes = phenotypes;
-	data.datasetfields.datautility = dataUtility ? dataUtility : {};
-	data.datasetv2 = datasetv2Object;
-
-	return await data.save();
 }
 
 /**
@@ -409,7 +264,8 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 
 		const [metadataSchema, versionLinks] = await axios.all([metadataSchemaCall, versionLinksCall]);
 
-		let datasetv1Object = {}, datasetv2Object = {};
+		let datasetv1Object = {},
+			datasetv2Object = {};
 		if (has(datasetMDCJSON, 'data.dataModel.metadata')) {
 			datasetv1Object = populateV1datasetObject(datasetMDCJSON.data.dataModel.metadata);
 			datasetv2Object = populateV2datasetObject(datasetMDCJSON.data.dataModel.metadata);

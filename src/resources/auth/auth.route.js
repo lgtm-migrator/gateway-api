@@ -79,6 +79,14 @@ router.get('/status', function (req, res, next) {
 					return { ...publisher, type, roles };
 				});
 			}
+
+			let adminArray = teams.filter(team => team.type === 'admin');
+			let teamArray = teams
+				.filter(team => team.type !== 'admin')
+				.sort(function (a, b) {
+					return a.name.toUpperCase() < b.name.toUpperCase() ? -1 : a.name.toUpperCase() > b.name.toUpperCase() ? 1 : 0;
+				});
+
 			// 2. Return user info
 			return res.json({
 				success: true,
@@ -89,7 +97,7 @@ router.get('/status', function (req, res, next) {
 						name: req.user.firstname + ' ' + req.user.lastname,
 						loggedIn: true,
 						email: req.user.email,
-						teams,
+						teams: [...adminArray, ...teamArray],
 						provider: req.user.provider,
 						advancedSearchRoles: req.user.advancedSearchRoles,
 						acceptedAdvancedSearchTerms: req.user.acceptedAdvancedSearchTerms,
