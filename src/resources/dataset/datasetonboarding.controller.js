@@ -35,7 +35,7 @@ module.exports = {
 				query = {
 					activeflag: 'inReview',
 					type: 'dataset',
-				}
+				};
 			} else {
 				// get all pids for publisherID
 				query = {
@@ -45,7 +45,10 @@ module.exports = {
 				};
 			}
 
-			const datasets = await Data.find(query).select('_id pid name datasetVersion activeflag timestamps applicationStatusDesc percentageCompleted datasetv2.summary.publisher.name')
+			const datasets = await Data.find(query)
+				.select(
+					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc percentageCompleted datasetv2.summary.publisher.name'
+				)
 				.sort({ 'timestamps.updated': -1 })
 				.lean();
 
@@ -56,11 +59,8 @@ module.exports = {
 					arr = [...arr, dataset];
 				} else {
 					const { _id, datasetVersion, activeflag } = dataset;
-					const versionDetails = { _id, datasetVersion, activeflag }; 
-					arr[datasetIdx].listOfVersions = [
-						...arr[datasetIdx].listOfVersions, 
-						versionDetails
-					];
+					const versionDetails = { _id, datasetVersion, activeflag };
+					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
 				}
 				return arr;
 			}, []);
@@ -107,7 +107,7 @@ module.exports = {
 				listOfDatasets,
 			});
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -403,7 +403,7 @@ module.exports = {
 
 				//else create new version of currentVersionId and send back new id
 				let datasetToCopy = await Data.findOne({ _id: currentVersionId });
-
+				
 				if (_.isNil(datasetToCopy)) {
 					return res.status(404).json({ status: 'error', message: 'Dataset to copy is not found' });
 				}
@@ -418,6 +418,7 @@ module.exports = {
 				//incremenet the dataset version
 				let newVersion = module.exports.incrementVersion([1, 0, 0], datasetToCopy.datasetVersion);
 
+				datasetToCopy.questionAnswers = JSON.parse(datasetToCopy.questionAnswers);
 				if (!datasetToCopy.questionAnswers['properties/documentation/description'] && datasetToCopy.description)
 					datasetToCopy.questionAnswers['properties/documentation/description'] = datasetToCopy.description;
 
@@ -432,7 +433,7 @@ module.exports = {
 				data.activeflag = 'draft';
 				data.source = 'HDRUK MDC';
 				data.is5Safes = publisherData[0].allowAccessRequestManagement;
-				data.questionAnswers = datasetToCopy.questionAnswers;
+				data.questionAnswers = JSON.stringify(datasetToCopy.questionAnswers);
 				data.structuralMetadata = datasetToCopy.structuralMetadata;
 				data.percentageCompleted = datasetToCopy.percentageCompleted;
 				data.timestamps.created = Date.now();
@@ -442,7 +443,7 @@ module.exports = {
 				return res.status(200).json({ success: true, data: { id: data._id } });
 			}
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -562,7 +563,7 @@ module.exports = {
 				});
 			}
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -593,7 +594,7 @@ module.exports = {
 
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -710,7 +711,7 @@ module.exports = {
 										timeout: 20000,
 									})
 									.catch(err => {
-										console.log('Error when trying to update the version number on the MDC - ' + err.message);
+										console.error('Error when trying to update the version number on the MDC - ' + err.message);
 									});
 
 								await axios
@@ -719,7 +720,7 @@ module.exports = {
 										timeout: 20000,
 									})
 									.catch(err => {
-										console.log('Error when trying to finalise the dataset on the MDC - ' + err.message);
+										console.error('Error when trying to finalise the dataset on the MDC - ' + err.message);
 									});
 
 								// Adding to DB
@@ -871,15 +872,15 @@ module.exports = {
 								await module.exports.createNotifications(constants.notificationTypes.DATASETAPPROVED, updatedDataset);
 							})
 							.catch(err => {
-								console.log('Error when trying to create new dataset on the MDC - ' + err.message);
+								console.error('Error when trying to create new dataset on the MDC - ' + err.message);
 							});
 					})
 					.catch(err => {
-						console.log('Error when trying to login to MDC - ' + err.message);
+						console.error('Error when trying to login to MDC - ' + err.message);
 					});
 
 				await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-					console.log('Error when trying to logout of the MDC - ' + err.message);
+					console.error('Error when trying to logout of the MDC - ' + err.message);
 				});
 
 				return res.status(200).json({ status: 'success' });
@@ -907,7 +908,7 @@ module.exports = {
 					let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-						console.log('Error when trying to logout of the MDC - ' + err.message);
+						console.error('Error when trying to logout of the MDC - ' + err.message);
 					});
 					const loginDetails = {
 						username: process.env.MDC_Config_HDRUK_username || '',
@@ -925,15 +926,15 @@ module.exports = {
 							await axios
 								.delete(metadataCatalogueLink + `/api/dataModels/${dataset.datasetid}`, { withCredentials: true, timeout: 5000 })
 								.catch(err => {
-									console.log('Error when trying to delete(archive) a dataset - ' + err.message);
+									console.error('Error when trying to delete(archive) a dataset - ' + err.message);
 								});
 						})
 						.catch(err => {
-							console.log('Error when trying to login to MDC - ' + err.message);
+							console.error('Error when trying to login to MDC - ' + err.message);
 						});
 
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-						console.log('Error when trying to logout of the MDC - ' + err.message);
+						console.error('Error when trying to logout of the MDC - ' + err.message);
 					});
 				}
 				await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.ARCHIVE });
@@ -945,7 +946,7 @@ module.exports = {
 					let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-						console.log('Error when trying to logout of the MDC - ' + err.message);
+						console.error('Error when trying to logout of the MDC - ' + err.message);
 					});
 					const loginDetails = {
 						username: process.env.MDC_Config_HDRUK_username || '',
@@ -969,15 +970,15 @@ module.exports = {
 									timeout: 5000,
 								})
 								.catch(err => {
-									console.log('Error when trying to update the version number on the MDC - ' + err.message);
+									console.error('Error when trying to update the version number on the MDC - ' + err.message);
 								});
 						})
 						.catch(err => {
-							console.log('Error when trying to login to MDC - ' + err.message);
+							console.error('Error when trying to login to MDC - ' + err.message);
 						});
 
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-						console.log('Error when trying to logout of the MDC - ' + err.message);
+						console.error('Error when trying to logout of the MDC - ' + err.message);
 					});
 
 					flagIs = 'active';
@@ -1204,7 +1205,7 @@ module.exports = {
 
 			return res.status(200).json({ metaddataQuality });
 		} catch (err) {
-			console.log(err.message);
+			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
