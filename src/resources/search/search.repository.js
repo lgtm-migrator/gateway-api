@@ -112,6 +112,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 							else: '$updatedon',
 						},
 					},
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 				},
 			},
 		];
@@ -140,10 +141,11 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		if (searchAll) queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
 		else queryObject.push({ $sort: { 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
 	} else if (sort === 'latest') {
-		if (type === 'person') {
-			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
-			else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
-		}
+		if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+		else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'resources') {
+		if (searchAll) queryObject.push({ $sort: { relatedresources: -1 } });
+		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
 	}
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
