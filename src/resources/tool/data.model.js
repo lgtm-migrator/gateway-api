@@ -107,6 +107,19 @@ const DataSchema = new Schema(
 			phenotypes: [],
 		},
 		datasetv2: {},
+		questionAnswers: {},
+		structuralMetadata: [],
+		percentageCompleted: {},
+		applicationStatusDesc: String,
+		timestamps: {
+			updated: Date,
+			created: Date,
+			submitted: Date,
+			published: Date,
+			rejected: Date,
+			archived: Date,
+		},
+		datasetVersionIsV1: { type: Boolean, default: false },
 
 		//not used
 		rating: Number,
