@@ -2011,7 +2011,6 @@ module.exports = {
 				);
 
 				options = {
-					userType: '',
 					userEmail: appEmail,
 					publisher,
 					datasetTitles,
