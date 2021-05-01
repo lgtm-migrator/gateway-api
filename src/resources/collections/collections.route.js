@@ -210,7 +210,7 @@ router.put('/status', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Ad
 		if (isAuthorAdmin) {
 			Collections.findOneAndUpdate(
 				{ id: collectionId },
-				{
+				{ //lgtm [js/sql-injection]
 					activeflag: activeflag,
 				},
 				err => {
