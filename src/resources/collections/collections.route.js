@@ -116,12 +116,13 @@ router.get('/entityid/:entityID', async (req, res) => {
 });
 
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	const collectionCreator = req.body.collectionCreator;
-	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag } = req.body;
+	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag, collectionCreator } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
 
+	let collectionId = parseInt(id);
+
 	await Collections.findOneAndUpdate(
-		{ id: id },
+		{ id: collectionId },
 		{
 			name: inputSanitizer.removeNonBreakingSpaces(name),
 			description: inputSanitizer.removeNonBreakingSpaces(description),
@@ -140,7 +141,7 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 		return res.json({ success: true });
 	});
 
-	await Collections.find({ id: id }, { publicflag: 1, id: 1, activeflag: 1, authors: 1, name: 1 }).then(async res => {
+	await Collections.find({ id: collectionId }, { publicflag: 1, id: 1, activeflag: 1, authors: 1, name: 1 }).then(async res => {
 		if (previousPublicFlag === false && publicflag === true) {
 			await sendEmailNotifications(res[0], res[0].activeflag, collectionCreator, true);
 
