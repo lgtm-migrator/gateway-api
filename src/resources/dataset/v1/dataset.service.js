@@ -3,9 +3,10 @@ import { MetricsData } from '../../stats/metrics.model';
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
+import { filtersService } from '../../filters/dependency';
 import { PublisherModel } from '../../publisher/publisher.model';
 import { metadataCatalogues, validateCatalogueParams } from '../dataset.util';
-import { has } from 'lodash';
+import _ from 'lodash';
 
 let metadataQualityList = [],
 	phenotypesList = [],
@@ -50,13 +51,18 @@ export async function updateExternalDatasetServices(services) {
 				});
 
 			for (const dataUtility of dataUtilityList.data) {
-				await Data.findOneAndUpdate(
-					{ datasetid: dataUtility.id },
-					{
-						'datasetfields.datautility': dataUtility,
-					}
-				);
-				console.log(`DatasetID is ${dataUtility.id} and metadata richness is ${dataUtility.metadata_richness}`);
+				// we only hav dataUtility so will be only checking the score of allowable_uses
+				const dataset = await Data.findOne({ datasetid: dataUtility.id });
+				// deconstruct out datasetv2 if available
+				let { datasetv2 = {} } = dataset;
+				// set commercial use
+				dataset.commercialUse = filtersService.computeCommericalUse(dataUtility, datasetv2);
+				// set datautility
+				datasetfields.datautility = dataUtility,
+				// save dataset into db
+      	await dataset.save();
+				// log details
+				//  console.log(`DatasetID is ${dataUtility.id} and metadata richness is ${dataUtility.metadata_richness}`);
 			}
 		}
 	}
@@ -213,7 +219,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 		datasetsMDCIDs.push({ datasetid: datasetMDC.id });
 
 		const metadataQuality = metadataQualityList.data.find(x => x.id === datasetMDC.id);
-		const dataUtility = dataUtilityList.data.find(x => x.id === datasetMDC.id);
+		const dataUtility = dataUtilityList.data.find(x => x.id === datasetMDC.id) || {};
 		const phenotypes = phenotypesList.data[datasetMDC.id] || [];
 
 		const startImportTime = Date.now();
@@ -303,6 +309,8 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 		// Detect if dataset uses 5 Safes form for access
 		const is5Safes = onboardedCustodians.includes(datasetMDC.publisher);
 		const hasTechnicalDetails = technicaldetails.length > 0;
+		// calculate commercialUse
+		const commercialUse = filterService.computeCommericalUse(dataUtility, datasetv2Object);
 
 		if (datasetHDR) {
 			//Edit
@@ -347,6 +355,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 					source,
 					is5Safes: is5Safes,
 					hasTechnicalDetails,
+					commercialUse,
 					activeflag: 'active',
 					license: datasetv1Object.license,
 					tags: {
@@ -433,6 +442,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 			data.source = source;
 			data.is5Safes = is5Safes;
 			data.hasTechnicalDetails = hasTechnicalDetails;
+			data.commercialUse = commercialUse;
 
 			data.name = datasetMDC.label;
 			data.description = datasetMDC.description;
