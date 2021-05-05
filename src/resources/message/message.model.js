@@ -27,13 +27,20 @@ const MessageSchema = new Schema(
 				'team',
 				'team unlinked',
 				'edit',
-				'workflow'
+				'workflow',
+				'dataset submitted',
+				'dataset approved',
+				'dataset rejected',
 			],
 		},
 		publisherName: {
 			type: String,
 			default: '',
-			trim: true
+			trim: true,
+		},
+		datasetID: {
+			type: String,
+			default: '',
 		},
 		createdBy: {
 			type: Schema.Types.ObjectId,
