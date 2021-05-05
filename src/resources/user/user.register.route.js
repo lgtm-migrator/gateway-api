@@ -5,6 +5,7 @@ import { updateUser } from '../user/user.service';
 import { createPerson } from '../person/person.service';
 import { getUserByUserId } from '../user/user.repository';
 import { registerDiscourseUser } from '../discourse/discourse.service';
+import mailchimpConnector from '../../services/mailchimp/mailchimp';
 const urlValidator = require('../utilities/urlValidator');
 const eventLogController = require('../eventlog/eventlog.controller');
 const router = express.Router();
@@ -32,7 +33,7 @@ router.post('/', async (req, res) => {
 		showBio,
 		showLink,
 		showOrcid,
-		redirectURL,
+		redirectURL: redirectURLis = '',
 		sector,
 		showSector,
 		organisation,
@@ -47,7 +48,6 @@ router.post('/', async (req, res) => {
 	} = req.body;
 	let link = urlValidator.validateURL(req.body.link);
 	let orcid = urlValidator.validateOrcidURL(req.body.orcid);
-	let username = `${firstname.toLowerCase()}.${lastname.toLowerCase()}`;
 	let discourseUsername,
 		discourseKey = '';
 
@@ -64,11 +64,13 @@ router.post('/', async (req, res) => {
 			email,
 			discourseKey,
 			discourseUsername,
+			feedback,
+			news
 		})
 	);
 
 	// 2. Create person entry in tools
-	let [personErr, person] = await to(
+	await to(
 		createPerson({
 			id,
 			firstname,
@@ -80,8 +82,6 @@ router.post('/', async (req, res) => {
 			orcid,
 			showOrcid,
 			emailNotifications,
-			feedback,
-			news,
 			terms,
 			sector,
 			showSector,
@@ -101,17 +101,21 @@ router.post('/', async (req, res) => {
 		email,
 	});
 
+	// 4. Create subscriptions in MailChimp for news and feedback if opted in
+	if(news) {
+		const newsSubscriptionId = process.env.MAILCHIMP_NEWS_AUDIENCE_ID;
+		await mailchimpConnector.addSubscriptionMember(newsSubscriptionId, user);
+	}
+	if(feedback) {
+		const feedbackSubscriptionId = process.env.MAILCHIMP_FEEDBACK_AUDIENCE_ID;
+		await mailchimpConnector.addSubscriptionMember(feedbackSubscriptionId, user);
+	}
+
 	const [loginErr, token] = await to(login(req, user));
 
 	if (loginErr) {
 		console.error(loginErr);
 		return res.status(500).json({ success: false, data: 'Authentication error!' });
-	}
-
-	var redirectURLis = redirectURL;
-
-	if (redirectURLis === null || redirectURLis === '') {
-		redirectURLis = '';
 	}
 
 	//Build event object for user registered and log it to DB
