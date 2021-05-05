@@ -392,6 +392,11 @@ const _datatsetStatuses = {
 
 const _hdrukEmail = 'enquiry@healthdatagateway.org';
 
+const _logTypes = {
+	SYSTEM: 'System',
+	USER: 'User'
+}
+
 export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
@@ -413,4 +418,5 @@ export default {
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
 	hdrukEmail: _hdrukEmail,
 	datatsetStatuses: _datatsetStatuses,
+	logTypes: _logTypes
 };
