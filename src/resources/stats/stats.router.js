@@ -388,10 +388,10 @@ router.get('', async (req, res) => {
 							datasetv2: 1,
 							datasetfields: 1,
 							description: 1,
-							updatedAt: 1,
+							'timestamps.updated': 1,
 						}
 					)
-						.sort({ updatedAt: -1, name: 1 })
+						.sort({ 'timestamps.updated': -1, name: 1 })
 						.limit(10);
 				} else if (req.query.type && req.query.type !== 'course' && req.query.type !== 'dataset') {
 					recentlyUpdated = Data.find(
