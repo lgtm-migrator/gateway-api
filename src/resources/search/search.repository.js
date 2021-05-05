@@ -240,7 +240,15 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		];
 	}
 
-	if (sort === '' || sort === 'relevance') {
+	if (sort === '') {
+		if (type === 'dataset') {
+			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
+			else queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, score: { $meta: 'textScore' } } });
+		} else {
+			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+			else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+		}
+	} else if (sort === 'relevance') {
 		if (type === 'person') {
 			if (searchAll) queryObject.push({ $sort: { lastname: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
