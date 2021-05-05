@@ -23,30 +23,32 @@ const defaultSubscriptionStatus = constants.mailchimpSubscriptionStatuses.SUBSCR
  * @param 	{String} 			status 				New status to assign to an email address for a subscription - subscribed or pending
  */
 const addSubscriptionMember = async (subscriptionId, user, status) => {
-	// 1. Assemble payload POST body for MailChimp Marketing API
-	let { id, email, firstname, lastname } = user;
-	const body = {
-		email_address: email,
-		status: status || defaultSubscriptionStatus,
-		status_if_new: status || defaultSubscriptionStatus,
-		tags,
-		merge_fields: {
-			FNAME: firstname,
-			LNAME: lastname,
-		},
-	};
-	// 2. Track attempted update in Sentry using log
-	Sentry.addBreadcrumb({
-		category: 'MailChimp',
-		message: `Adding subscription for user: ${id} to subscription: ${subscriptionId}`,
-		level: Sentry.Severity.Log,
-	});
-	// 3. POST to MailChimp Marketing API to add the Gateway user to the MailChimp subscription members
-	const md5email = Crypto.createHash('md5').update(email).digest('hex');
-	await mailchimp.put(`lists/${subscriptionId}/members/${md5email}`, body).catch(err => {
-		Sentry.captureException(err);
-		console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
-	});
+	if (apiKey) {
+		// 1. Assemble payload POST body for MailChimp Marketing API
+		let { id, email, firstname, lastname } = user;
+		const body = {
+			email_address: email,
+			status: status || defaultSubscriptionStatus,
+			status_if_new: status || defaultSubscriptionStatus,
+			tags,
+			merge_fields: {
+				FNAME: firstname,
+				LNAME: lastname,
+			},
+		};
+		// 2. Track attempted update in Sentry using log
+		Sentry.addBreadcrumb({
+			category: 'MailChimp',
+			message: `Adding subscription for user: ${id} to subscription: ${subscriptionId}`,
+			level: Sentry.Severity.Log,
+		});
+		// 3. POST to MailChimp Marketing API to add the Gateway user to the MailChimp subscription members
+		const md5email = Crypto.createHash('md5').update(email).digest('hex');
+		await mailchimp.put(`lists/${subscriptionId}/members/${md5email}`, body).catch(err => {
+			Sentry.captureException(err);
+			console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
+		});
+	}
 };
 
 /**
@@ -58,21 +60,23 @@ const addSubscriptionMember = async (subscriptionId, user, status) => {
  * @param 	{String} 			status 				New status to assign to each membership for a subscription - subscribed, unsubscribed, cleaned or pending
  */
 const updateSubscriptionUsers = async (subscriptionId, users = [], status) => {
-	// 1. Build members array providing required metadata for MailChimp
-	const members = users.map(user => {
-		return {
-			userId: user.id,
-			email_address: user.email,
-			status,
-			tags,
-			merge_fields: {
-				FNAME: user.firstName,
-				LNAME: user.lastName,
-			},
-		};
-	});
-	// 2. Update subscription members in MailChimp
-	await updateSubscriptionMembers(subscriptionId, members);
+	if (apiKey) {
+		// 1. Build members array providing required metadata for MailChimp
+		const members = users.map(user => {
+			return {
+				userId: user.id,
+				email_address: user.email,
+				status,
+				tags,
+				merge_fields: {
+					FNAME: user.firstName,
+					LNAME: user.lastName,
+				},
+			};
+		});
+		// 2. Update subscription members in MailChimp
+		await updateSubscriptionMembers(subscriptionId, members);
+	}
 };
 
 /**
@@ -83,26 +87,28 @@ const updateSubscriptionUsers = async (subscriptionId, users = [], status) => {
  * @param 	{Array<Object>} 	members 		    List of email addresses to update (max 500)
  */
 const updateSubscriptionMembers = async (subscriptionId, members) => {
-	// 1. Assemble payload POST body for MailChimp Marketing API
-	const body = {
-		members,
-		skip_merge_validation: true,
-		skip_duplicate_check: true,
-		update_existing: true,
-	};
-	// 2. Track attempted updates in Sentry using log
-	Sentry.addBreadcrumb({
-		category: 'MailChimp',
-		message: `Updating subscribed for members: ${members.map(
-			member => `${member.userId} to ${member.status}`
-		)} against subscription: ${subscriptionId}`,
-		level: Sentry.Severity.Log,
-	});
-	// 3. POST to MailChimp Marketing API to update member statuses
-	await mailchimp.post(`lists/${subscriptionId}`, body).catch(err => {
-		Sentry.captureException(err);
-		console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
-	});
+	if (apiKey) {
+		// 1. Assemble payload POST body for MailChimp Marketing API
+		const body = {
+			members,
+			skip_merge_validation: true,
+			skip_duplicate_check: true,
+			update_existing: true,
+		};
+		// 2. Track attempted updates in Sentry using log
+		Sentry.addBreadcrumb({
+			category: 'MailChimp',
+			message: `Updating subscribed for members: ${members.map(
+				member => `${member.userId} to ${member.status}`
+			)} against subscription: ${subscriptionId}`,
+			level: Sentry.Severity.Log,
+		});
+		// 3. POST to MailChimp Marketing API to update member statuses
+		await mailchimp.post(`lists/${subscriptionId}`, body).catch(err => {
+			Sentry.captureException(err);
+			console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
+		});
+	}
 };
 
 /**
@@ -113,24 +119,26 @@ const updateSubscriptionMembers = async (subscriptionId, members) => {
  * @param 	{String} 	        subscriptionId 	    Unique identifier for a subscription to update
  */
 const syncSubscriptionMembers = async subscriptionId => {
-	// 1. Track attempted sync in Sentry using log
-	Sentry.addBreadcrumb({
-		category: 'MailChimp',
-		message: `Syncing users for subscription: ${subscriptionId}`,
-		level: Sentry.Severity.Log,
-	});
-	// 2. Get total member count to anticipate chunking required to process all contacts
-	const {
-		stats: { member_count: subscribedCount, unsubscribe_count: unsubscribedCount }
-	} = await mailchimp.get(`lists/${subscriptionId}?fields=stats.member_count,stats.unsubscribe_count`).catch(err => {
-		Sentry.captureException(err);
-		console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
-	});
-	const memberCount = subscribedCount + unsubscribedCount;
-	// 3. Batch update database to sync MailChimp to reflect users unsubscribed/subscribed externally
-	await batchImportFromMailChimp(subscriptionId, memberCount);
-	// 4. Push any unsynchronised new contacts from Gateway to MailChimp
-	await batchExportToMailChimp(subscriptionId);
+	if (apiKey) {
+		// 1. Track attempted sync in Sentry using log
+		Sentry.addBreadcrumb({
+			category: 'MailChimp',
+			message: `Syncing users for subscription: ${subscriptionId}`,
+			level: Sentry.Severity.Log,
+		});
+		// 2. Get total member count to anticipate chunking required to process all contacts
+		const {
+			stats: { member_count: subscribedCount, unsubscribe_count: unsubscribedCount },
+		} = await mailchimp.get(`lists/${subscriptionId}?fields=stats.member_count,stats.unsubscribe_count`).catch(err => {
+			Sentry.captureException(err);
+			console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
+		});
+		const memberCount = subscribedCount + unsubscribedCount;
+		// 3. Batch update database to sync MailChimp to reflect users unsubscribed/subscribed externally
+		await batchImportFromMailChimp(subscriptionId, memberCount);
+		// 4. Push any unsynchronised new contacts from Gateway to MailChimp
+		await batchExportToMailChimp(subscriptionId);
+	}
 };
 
 /**
@@ -142,31 +150,33 @@ const syncSubscriptionMembers = async subscriptionId => {
  * @param   {String} 	        subscriptionBoolKey     The name of the boolean key that tracks the subscription status in the Gateway database
  */
 const batchImportFromMailChimp = async (subscriptionId, memberCount) => {
-	// 1. Get corresponding Gateway subscription variable e.g. feedback, news
-	const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
-	let processedCount = 0;
-	// 2. Iterate bulk update process until all contacts have been processed from MailChimp
-	while (processedCount < memberCount) {
-		const { members = [] } = await mailchimp.get(`lists/${subscriptionId}/members?count=100&offset=${processedCount}`);
-		let ops = [];
-		// 3. For each member returned by MailChimp, create a bulk update operation to update the corresponding Gateway user if they exist
-		members.forEach(member => {
-			const subscribedBoolValue = member.status === 'subscribed' ? true : false;
-			const { email_address: email } = member;
-			ops.push({
-				updateMany: {
-					filter: { email },
-					update: {
-						[subscriptionBoolKey]: subscribedBoolValue,
+	if (apiKey) {
+		// 1. Get corresponding Gateway subscription variable e.g. feedback, news
+		const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
+		let processedCount = 0;
+		// 2. Iterate bulk update process until all contacts have been processed from MailChimp
+		while (processedCount < memberCount) {
+			const { members = [] } = await mailchimp.get(`lists/${subscriptionId}/members?count=100&offset=${processedCount}`);
+			let ops = [];
+			// 3. For each member returned by MailChimp, create a bulk update operation to update the corresponding Gateway user if they exist
+			members.forEach(member => {
+				const subscribedBoolValue = member.status === 'subscribed' ? true : false;
+				const { email_address: email } = member;
+				ops.push({
+					updateMany: {
+						filter: { email },
+						update: {
+							[subscriptionBoolKey]: subscribedBoolValue,
+						},
+						upsert: false,
 					},
-					upsert: false,
-				},
+				});
 			});
-		});
-		// 4. Run bulk update
-		await UserModel.bulkWrite(ops);
-		// 5. Increment counter to move onto next chunk of members
-		processedCount = processedCount + members.length;
+			// 4. Run bulk update
+			await UserModel.bulkWrite(ops);
+			// 5. Increment counter to move onto next chunk of members
+			processedCount = processedCount + members.length;
+		}
 	}
 };
 
@@ -177,42 +187,46 @@ const batchImportFromMailChimp = async (subscriptionId, memberCount) => {
  * @param 	{String} 	        subscriptionId 	    Unique identifier for a subscription to find the database key for
  */
 const batchExportToMailChimp = async subscriptionId => {
-	const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
-	// 1. Get all users from db
-	const users = await UserModel.find({ email: 'robinkavanagh3@hotmail.co.uk' }).select('id email firstname lastname news feedback').lean();
-	// 2. Build members array providing required metadata for MailChimp
-	const members = users.reduce((arr, user) => {
-		// Get subscription status from user profile
-		const status = user[subscriptionBoolKey]
-			? constants.mailchimpSubscriptionStatuses.SUBSCRIBED
-			: constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
-		// Check if the same email address has already been processed (email address can be attached to multiple user accounts)
-		const memberIdx = arr.findIndex(member => member.email_address === user.email);
-		if (memberIdx === -1) {
-			// If email address has not be processed, return updated membership object
-			return [
-				...arr,
-				{
-					userId: user.id,
-					email_address: user.email,
-					status,
-					tags,
-					merge_fields: {
-						FNAME: user.firstname,
-						LNAME: user.lastname,
+	if (apiKey) {
+		const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
+		// 1. Get all users from db
+		const users = await UserModel.find({ email: 'robinkavanagh3@hotmail.co.uk' })
+			.select('id email firstname lastname news feedback')
+			.lean();
+		// 2. Build members array providing required metadata for MailChimp
+		const members = users.reduce((arr, user) => {
+			// Get subscription status from user profile
+			const status = user[subscriptionBoolKey]
+				? constants.mailchimpSubscriptionStatuses.SUBSCRIBED
+				: constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
+			// Check if the same email address has already been processed (email address can be attached to multiple user accounts)
+			const memberIdx = arr.findIndex(member => member.email_address === user.email);
+			if (memberIdx === -1) {
+				// If email address has not be processed, return updated membership object
+				return [
+					...arr,
+					{
+						userId: user.id,
+						email_address: user.email,
+						status,
+						tags,
+						merge_fields: {
+							FNAME: user.firstname,
+							LNAME: user.lastname,
+						},
 					},
-				},
-			];
-		} else {
-			// If email address has been processed, and the current status is unsubscribed, override membership status
-			if (status === constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED) {
-				arr[memberIdx].status = constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
+				];
+			} else {
+				// If email address has been processed, and the current status is unsubscribed, override membership status
+				if (status === constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED) {
+					arr[memberIdx].status = constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
+				}
+				return arr;
 			}
-			return arr;
-		}
-	}, []);
-	// 3. Update subscription members in MailChimp
-	await updateSubscriptionMembers(subscriptionId, members);
+		}, []);
+		// 3. Update subscription members in MailChimp
+		await updateSubscriptionMembers(subscriptionId, members);
+	}
 };
 
 /**

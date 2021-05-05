@@ -70,12 +70,13 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 	organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
 	tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
 
-	const { news: newsOriginalValue, feedback: feedbackOriginalValue } = await UserModel.findOne({ id }, 'news feedback').lean();
+	const userId = parseInt(id);
+	const { news: newsOriginalValue, feedback: feedbackOriginalValue } = await UserModel.findOne({ id: userId }, 'news feedback').lean();
 	const newsDirty = newsOriginalValue !== news && !isNil(news);
 	const feedbackDirty = feedbackOriginalValue !== feedback && !isNil(feedback);
 
 	await Data.findOneAndUpdate(
-		{ id },
+		{ id: userId },
 		{
 			firstname,
 			lastname,
@@ -111,7 +112,7 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 		await mailchimpConnector.updateSubscriptionUsers(feedbackSubscriptionId, [req.user], feedbackStatus);
 	}
 
-	await UserModel.findOneAndUpdate({ id }, { $set: { firstname, lastname, email, feedback, news } })
+	await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } })
 		.then(person => {
 			return res.json({ success: true, data: person });
 		})
