@@ -116,13 +116,14 @@ router.get('/entityid/:entityID', async (req, res) => {
 });
 
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	const collectionCreator = req.body.collectionCreator;
-	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag } = req.body;
+	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag, collectionCreator } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
 
+	let collectionId = parseInt(id);
+
 	await Collections.findOneAndUpdate(
-		{ id: id },
-		{
+		{ id: collectionId },
+		{ //lgtm [js/sql-injection]
 			name: inputSanitizer.removeNonBreakingSpaces(name),
 			description: inputSanitizer.removeNonBreakingSpaces(description),
 			imageLink: imageLink,
@@ -140,7 +141,7 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 		return res.json({ success: true });
 	});
 
-	await Collections.find({ id: id }, { publicflag: 1, id: 1, activeflag: 1, authors: 1, name: 1 }).then(async res => {
+	await Collections.find({ id: collectionId }, { publicflag: 1, id: 1, activeflag: 1, authors: 1, name: 1 }).then(async res => {
 		if (previousPublicFlag === false && publicflag === true) {
 			await sendEmailNotifications(res[0], res[0].activeflag, collectionCreator, true);
 
@@ -192,10 +193,11 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 });
 
 router.put('/status', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	var { id, activeflag } = req.body;
-	var isAuthorAdmin = false;
+	let { id, activeflag } = req.body;
+	let isAuthorAdmin = false;
+	let collectionId = parseInt(id);
 
-	var q = Collections.aggregate([{ $match: { $and: [{ id: parseInt(req.body.id) }, { authors: req.user.id }] } }]);
+	let q = Collections.aggregate([{ $match: { $and: [{ id: parseInt(req.body.id) }, { authors: req.user.id }] } }]);
 	q.exec((err, data) => {
 		if (data.length === 1) {
 			isAuthorAdmin = true;
@@ -207,8 +209,8 @@ router.put('/status', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Ad
 
 		if (isAuthorAdmin) {
 			Collections.findOneAndUpdate(
-				{ id: id },
-				{
+				{ id: collectionId },
+				{ //lgtm [js/sql-injection]
 					activeflag: activeflag,
 				},
 				err => {
