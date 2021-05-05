@@ -392,6 +392,13 @@ const _datatsetStatuses = {
 
 const _hdrukEmail = 'enquiry@healthdatagateway.org';
 
+const _mailchimpSubscriptionStatuses = {
+	SUBSCRIBED: 'subscribed',
+	UNSUBSCRIBED: 'unsubscribed',
+	CLEANED: 'cleaned',
+	PENDING: 'pending',
+};
+
 const _logTypes = {
 	SYSTEM: 'System',
 	USER: 'User'
@@ -417,6 +424,7 @@ export default {
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
 	hdrukEmail: _hdrukEmail,
+	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
 	logTypes: _logTypes
 };

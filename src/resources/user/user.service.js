@@ -18,7 +18,7 @@ export async function createUser({ firstname, lastname, email, providerId, provi
 	});
 }
 
-export async function updateUser({ id, firstname, lastname, email, discourseKey, discourseUsername }) {
+export async function updateUser({ id, firstname, lastname, email, discourseKey, discourseUsername, feedback, news }) {
 	return new Promise(async (resolve, reject) => {
 		return resolve(
 			await UserModel.findOneAndUpdate(
@@ -29,6 +29,8 @@ export async function updateUser({ id, firstname, lastname, email, discourseKey,
 					email,
 					discourseKey,
 					discourseUsername,
+					feedback, 
+					news
 				}
 			)
 		);
