@@ -17,9 +17,7 @@ const defaultSubscriptionStatus = constants.mailchimpSubscriptionStatuses.SUBSCR
  *
  * @desc    Adds a subscriber to a subscription with the status provided
  * @param 	{String} 	        subscriptionId 	    Unique identifier for a subscription to update
- * @param 	{String} 	        emailAddresses 		Email addresses to add to a subscription
- * @param 	{String} 	        firstName 		    First name of a new subscriber
- * @param 	{String} 	        lastName 		    Last name of a new subscriber
+ * @param 	{String} 	        user 				User object containing bio details
  * @param 	{String} 			status 				New status to assign to an email address for a subscription - subscribed or pending
  */
 const addSubscriptionMember = async (subscriptionId, user, status) => {
@@ -190,7 +188,7 @@ const batchExportToMailChimp = async subscriptionId => {
 	if (apiKey) {
 		const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
 		// 1. Get all users from db
-		const users = await UserModel.find({ email: 'robinkavanagh3@hotmail.co.uk' })
+		const users = await UserModel.find()
 			.select('id email firstname lastname news feedback')
 			.lean();
 		// 2. Build members array providing required metadata for MailChimp
