@@ -3,6 +3,7 @@ import passport from 'passport';
 import _ from 'lodash';
 import multer from 'multer';
 import { param } from 'express-validator';
+import { logger } from '../utilities/logger';
 const amendmentController = require('./amendment/amendment.controller');
 const datarequestController = require('./datarequest.controller');
 const fs = require('fs');
@@ -16,18 +17,29 @@ const storage = multer.diskStorage({
 	},
 });
 const multerMid = multer({ storage: storage });
+const logCategory = 'Data Access Request';
 
 const router = express.Router();
 
 // @route   GET api/v1/data-access-request
 // @desc    GET Access requests for user
 // @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
-router.get('/', passport.authenticate('jwt'), datarequestController.getAccessRequestsByUser);
+router.get(
+	'/',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Viewed personal Data Access Request dashboard' }),
+	datarequestController.getAccessRequestsByUser
+);
 
 // @route   GET api/v1/data-access-request/:requestId
 // @desc    GET a single data access request by Id
 // @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
-router.get('/:requestId', passport.authenticate('jwt'), datarequestController.getAccessRequestById);
+router.get(
+	'/:requestId',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application' }),
+	datarequestController.getAccessRequestById
+);
 
 // @route   GET api/v1/data-access-request/dataset/:datasetId
 // @desc    GET Access request for user
