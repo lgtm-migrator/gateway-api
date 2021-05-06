@@ -17,7 +17,7 @@ export async function createUser({ firstname, lastname, email, providerId, provi
 		// if a user has been created send new introduction email
 		if(user) {
 			const msg = {
-				to: user.email,
+				to: email,
 				from: 'enquiry@healthdatagateway.org',
 				templateId: process.env.SENDGRID_INTRO_EMAIL
 			}
