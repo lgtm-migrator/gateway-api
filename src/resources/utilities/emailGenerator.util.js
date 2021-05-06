@@ -1876,20 +1876,20 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
  * @desc    Send an intro Email upon user registration
  * @param   {Object}  message to from, templateId
  */
-const _sendIntroEmail = (msg) => {
+const _sendIntroEmail = msg => {
 	// 1. Apply SendGrid API key from environment variable
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  // 2. Send email using SendGrid
-  sgMail.send(msg, false, err => {
-    if (err) {
-      Sentry.addBreadcrumb({
-        category: 'SendGrid',
-        message: 'Sending email failed',
-        level: Sentry.Severity.Warning,
-      });
-      Sentry.captureException(err);
-    }
-  });
+	// 2. Send email using SendGrid
+	sgMail.send(msg, false, err => {
+		if (err) {
+			Sentry.addBreadcrumb({
+				category: 'SendGrid',
+				message: 'Sending email failed',
+				level: Sentry.Severity.Warning,
+			});
+			Sentry.captureException(err);
+		}
+	});
 };
 
 const _generateEmailFooter = (recipient, allowUnsubscribe) => {
@@ -1949,7 +1949,7 @@ const _generateAttachment = (filename, content, type) => {
 export default {
 	//General
 	sendEmail: _sendEmail,
-  sendIntroEmail: _sendIntroEmail,
+	sendIntroEmail: _sendIntroEmail,
 	generateEmailFooter: _generateEmailFooter,
 	generateAttachment: _generateAttachment,
 	//DAR
