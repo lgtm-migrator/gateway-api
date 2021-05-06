@@ -105,7 +105,7 @@ const editCourse = async (req, res) => {
 
 		Course.findOneAndUpdate(
 			{ id: id },
-			{
+			{ 	//lgtm [js/sql-injection]
 				title: inputSanitizer.removeNonBreakingSpaces(req.body.title),
 				link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link)),
 				provider: inputSanitizer.removeNonBreakingSpaces(req.body.provider),

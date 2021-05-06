@@ -221,7 +221,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 		const exportUri = `${baseUri}${dataModelExportRoute}`.replace('@datasetid@', datasetMDC.id);
 		const datasetMDCJSON = await axios
 			.get(exportUri, {
-				timeout: 10000,
+				timeout: 60000,
 			})
 			.catch(err => {
 				Sentry.addBreadcrumb({
@@ -232,8 +232,6 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 				Sentry.captureException(err);
 				console.error('Unable to get metadata JSON ' + err.message);
 			});
-
-		console.log(JSON.stringify(datasetMDCJSON.data));
 
 		const elapsedTime = ((Date.now() - startImportTime) / 1000).toFixed(3);
 		console.log(`Time taken to import JSON  ${elapsedTime} (${datasetMDC.id})`);
