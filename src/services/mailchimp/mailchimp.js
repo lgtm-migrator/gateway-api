@@ -8,7 +8,8 @@ import { UserModel } from '../../resources/user/user.model';
 
 // Default service params
 const apiKey = process.env.MAILCHIMP_API_KEY;
-const mailchimp = new Mailchimp(apiKey);
+let mailchimp;
+if (apiKey) mailchimp = new Mailchimp(apiKey);
 const tags = ['Gateway User'];
 const defaultSubscriptionStatus = constants.mailchimpSubscriptionStatuses.SUBSCRIBED;
 
@@ -188,9 +189,7 @@ const batchExportToMailChimp = async subscriptionId => {
 	if (apiKey) {
 		const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
 		// 1. Get all users from db
-		const users = await UserModel.find()
-			.select('id email firstname lastname news feedback')
-			.lean();
+		const users = await UserModel.find().select('id email firstname lastname news feedback').lean();
 		// 2. Build members array providing required metadata for MailChimp
 		const members = users.reduce((arr, user) => {
 			// Get subscription status from user profile
