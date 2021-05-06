@@ -4,14 +4,14 @@ const statsSnapshotSchema = new Schema(
 	{
 		date: Date,
 		entityCounts: {
-			datasets: 200,
-			datasetsWithMetadata: 100,
-			tools: 143,
-			papers: 378,
-			projects: 41,
-			persons: 599,
-			courses: 60,
-			accessRequests: 271
+			datasets: Number,
+			datasetsWithMetadata: Number,
+			tools: Number,
+			papers: Number,
+			projects: Number,
+			persons: Number,
+			courses: Number,
+			accessRequests: Number
 		}
 	},
 	{

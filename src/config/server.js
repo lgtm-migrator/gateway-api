@@ -210,8 +210,9 @@ app.use('/api/v1/search', require('../resources/search/search.router')); // tool
 
 app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router'));
 
-app.use('/api/v1/stats', require('../resources/stats/stats.router'));
-app.use('/api/v1/kpis', require('../resources/stats/kpis.router'));
+app.use('/api/v1/stats', require('../resources/stats/v1/stats.route'));
+app.use('/api/v2/stats', require('../resources/stats/v2/stats.route'));
+app.use('/api/v1/kpis', require('../resources/stats/v1/kpis.route'));
 
 app.use('/api/v1/course', require('../resources/course/v1/course.route'));
 app.use('/api/v2/courses', require('../resources/course/v2/course.route'));
