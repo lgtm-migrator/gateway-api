@@ -1884,7 +1884,7 @@ const _sendIntroEmail = msg => {
 		if (err) {
 			Sentry.addBreadcrumb({
 				category: 'SendGrid',
-				message: 'Sending email failed',
+				message: 'Sending email failed - Intro',
 				level: Sentry.Severity.Warning,
 			});
 			Sentry.captureException(err);
