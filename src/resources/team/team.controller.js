@@ -333,6 +333,7 @@ const updateNotifications = async (req, res) => {
 								let options = {
 									managerName: `${manager.firstname} ${manager.lastname}`,
 									notificationRemoved: false,
+									disabled: false,
 									header: '',
 									emailAddresses: []
 								};
@@ -343,6 +344,7 @@ const updateNotifications = async (req, res) => {
 									options = { 
 										...options, 
 										notificationRemoved: true, 
+										disabled: !payLoadOptIn ? true : false,
 										header: `A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${dbOptIn && !payLoadOptIn ? 'disabled all' : 'removed a'} generic team email address(es)`,
 										emailAddresses: dbOptIn && !payLoadOptIn ? payLoadSubscribedEmails : removedEmails  
 									}

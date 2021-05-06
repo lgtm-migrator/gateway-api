@@ -7,6 +7,8 @@ const UserSchema = new Schema(
 			unique: true,
 		},
 		email: String,
+		feedback: { type: Boolean, default: false }, 	//email subscription
+		news: { type: Boolean, default: false }, 		//email subscription
 		password: String,
 		businessName: String,
 		firstname: String,

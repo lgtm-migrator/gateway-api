@@ -19,7 +19,6 @@ module.exports = {
 			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds } = req.body;
 			let topicObj = {};
 			let team;
-
 			// 1. If the message type is 'message' and topic id is empty
 			if (messageType === 'message') {
 				// 2. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
