@@ -15,7 +15,7 @@ const inputSanitizer = require('../utilities/inputSanitizer');
 const router = express.Router();
 
 router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	const { firstname, lastname, bio, emailNotifications, terms, sector, organisation, showOrganisation, tags } = req.body;
+	const { firstname, lastname, bio, terms, sector, organisation, showOrganisation, tags } = req.body;
 	let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
 	let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
 	let data = Data();
@@ -26,7 +26,6 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 	data.bio = inputSanitizer.removeNonBreakingSpaces(bio);
 	data.link = link;
 	data.orcid = orcid;
-	data.emailNotifications = emailNotifications;
 	data.terms = terms;
 	data.sector = inputSanitizer.removeNonBreakingSpaces(sector);
 	data.organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
@@ -48,7 +47,6 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 		showBio,
 		showLink,
 		showOrcid,
-		emailNotifications,
 		feedback,
 		news,
 		terms,
@@ -87,7 +85,6 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 			showLink,
 			orcid,
 			showOrcid,
-			emailNotifications,
 			terms,
 			sector,
 			showSector,
@@ -124,30 +121,30 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 // @router   GET /api/v1/person/unsubscribe/:userObjectId
 // @desc     Unsubscribe a single user from email notifications without challenging authentication
 // @access   Public
-router.put('/unsubscribe/:userObjectId', async (req, res) => {
-	const userId = req.params.userObjectId;
-	// 1. Use _id param issued by MongoDb as unique reference to find user entry
-	await UserModel.findOne({ _id: userId })
-		.then(async user => {
-			// 2. Find person entry using numeric id and update email notifications to false
-			await Data.findOneAndUpdate(
-				{ id: user.id },
-				{
-					emailNotifications: false,
-				}
-			).then(() => {
-				// 3a. Return success message
-				return res.json({
-					success: true,
-					msg: "You've been successfully unsubscribed from all emails. You can change this setting via your account.",
-				});
-			});
-		})
-		.catch(() => {
-			// 3b. Return generic failure message in all cases without disclosing reason or data structure
-			return res.status(500).send({ success: false, msg: 'A problem occurred unsubscribing from email notifications.' });
-		});
-});
+// router.put('/unsubscribe/:userObjectId', async (req, res) => {
+// 	const userId = req.params.userObjectId;
+// 	// 1. Use _id param issued by MongoDb as unique reference to find user entry
+// 	await UserModel.findOne({ _id: userId })
+// 		.then(async user => {
+// 			// 2. Find person entry using numeric id and update email notifications to false
+// 			await Data.findOneAndUpdate(
+// 				{ id: user.id },
+// 				{
+// 					emailNotifications: false,
+// 				}
+// 			).then(() => {
+// 				// 3a. Return success message
+// 				return res.json({
+// 					success: true,
+// 					msg: "You've been successfully unsubscribed from all emails. You can change this setting via your account.",
+// 				});
+// 			});
+// 		})
+// 		.catch(() => {
+// 			// 3b. Return generic failure message in all cases without disclosing reason or data structure
+// 			return res.status(500).send({ success: false, msg: 'A problem occurred unsubscribing from email notifications.' });
+// 		});
+// });
 
 // @router   PATCH /api/v1/person/profileComplete/:id
 // @desc     Set profileComplete to true
@@ -187,13 +184,11 @@ router.get('/:id', async (req, res) => {
 // @desc     Get person info for their account
 router.get('/profile/:id', async (req, res) => {
 	try {
-		let person = await Data.findOne({ id: parseInt(req.params.id) }).populate([
-			{ path: 'tools' },
-			{ path: 'reviews' },
-			{ path: 'user', select: 'feedback news' },
-		]).lean();
+		let person = await Data.findOne({ id: parseInt(req.params.id) })
+			.populate([{ path: 'tools' }, { path: 'reviews' }, { path: 'user', select: 'feedback news' }])
+			.lean();
 		const { feedback, news } = person.user;
-		person = { ...person, feedback, news};
+		person = { ...person, feedback, news };
 		let data = [person];
 		return res.json({ success: true, data: data });
 	} catch (err) {
