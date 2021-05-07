@@ -242,7 +242,7 @@ app.use('/api/v1/data-access-request', require('../resources/datarequest/datareq
 
 app.use('/api/v1/collections', require('../resources/collections/collections.route'));
 
-app.use('/api/v1/analyticsdashboard', require('../resources/googleanalytics/googleanalytics.router'));
+app.use('/api/v1/analyticsdashboard', require('../services/googleAnalytics/googleAnalytics.route'));
 
 app.use('/api/v1/help', require('../resources/help/help.router'));
 

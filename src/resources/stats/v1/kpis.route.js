@@ -37,13 +37,13 @@ router.get('', logger.logRequestMiddleware({ logCategory, action: 'Viewed KPI st
 			case 'searchanddar':
 				const [searchStats, dataAccessRequestStats] = await Promise.all([
 					statsService.getSearchStatsByMonth(selectedMonthStart, selectedMonthEnd),
-					statsService.getDataAccessRequesStatsByMonth(selectedMonthStart, selectedMonthEnd),
+					statsService.getDataAccessRequestStats(selectedMonthStart, selectedMonthEnd),
 				]).catch(err => {
 					logger.logError(err, logCategory);
 				});
 
 				const { totalMonth = 0, noResultsMonth = 0 } = searchStats;
-				const { accessRequestsMonth = 0 } = dataAccessRequestStats;
+				const accessRequestsMonth = dataAccessRequestStats || 0;
 
 				result = res.json({
 					success: true,

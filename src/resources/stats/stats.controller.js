@@ -42,7 +42,9 @@ export default class StatsController extends Controller {
 				return res.status(400).json({ success: false, error: 'Snapshot could not be taken' });
 			}
 			// Create snapshot of stats at this point in time
-			let snapshot = await this.statsService.createSnapshot();
+			let snapshot = await this.statsService.createSnapshot().catch(err => {
+				logger.logError(err, logCategory);
+			});
 			// Return snapshot data
 			return res.status(201).json({
 				success: true,

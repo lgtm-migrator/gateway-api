@@ -4,14 +4,20 @@ const statsSnapshotSchema = new Schema(
 	{
 		date: Date,
 		entityCounts: {
-			datasets: Number,
-			datasetsWithMetadata: Number,
-			tools: Number,
-			papers: Number,
-			projects: Number,
-			persons: Number,
-			courses: Number,
-			accessRequests: Number
+			dataset: Number,
+			datasetWithMetadata: Number,
+			tool: Number,
+			paper: Number,
+			project: Number,
+			person: Number,
+			course: Number,
+			accessRequest: Number
+		},
+		searchCounts: {
+			day: Number,
+			month: Number,
+			week: Number,
+			year: Number
 		}
 	},
 	{

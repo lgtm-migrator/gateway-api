@@ -7,23 +7,30 @@ export default class StatsService {
 		return this.statsRepository.getSnapshots(query);
 	}
 
-	createSnapshot() {
-		// Get current date
-		const date = new Date(new Date().setHours(0, 0, 0));
-		// Get stats
-		let data = {
-			date,
+	async createSnapshot() {
+		const date = new Date(new Date().setHours(0, 0, 0, 0));
+		const timezoneOffset = date.getTimezoneOffset() * 60000;
+		const utcDate = new Date(date.getTime() - timezoneOffset);
+		
+		const [searchCounts, accessRequestCount, entityTotalCounts, coursesActiveCount, technicalStats] = await Promise.all([
+			this.getTotalSearchesByUsers(),
+			this.getDataAccessRequestStats(),
+			this.getTotalEntityCounts(),
+			this.getActiveCourseCount(),
+			this.getTechnicalMetadataStats()
+		])
+
+		const data = {
+			date: utcDate,
 			entityCounts: {
-				tools: 151,
-				papers: 985,
-				persons: 1133,
-				courses: 195,
-				datasets: 641,
-				datasetsWithMetadata: 341,
-				projects: 261,
-				accessRequests: 253,
+				...entityTotalCounts,
+				accessRequest: accessRequestCount,
+				course: coursesActiveCount,
+				datasetWithMetadata: technicalStats.datasetsMetadata
 			},
+			searchCounts,
 		};
+
 		return this.statsRepository.createSnapshot(data);
 	}
 
@@ -39,11 +46,8 @@ export default class StatsService {
 		};
 	}
 
-	async getDataAccessRequesStatsByMonth(startMonth, endMonth) {
-		const accessRequestsMonth = await this.statsRepository.getDataAccessRequesStatsByMonth(startMonth, endMonth);
-		return {
-			accessRequestsMonth,
-		};
+	async getDataAccessRequestStats(startMonth, endMonth) {
+		return this.statsRepository.getDataAccessRequestStats(startMonth, endMonth);
 	}
 
 	async getUptimeStatsByMonth(startMonth, endMonth) {
@@ -111,7 +115,7 @@ export default class StatsService {
 	}
 
 	async getPopularEntitiesByType(entityType) {
-		switch(entityType){
+		switch (entityType) {
 			case 'course':
 				return this.statsRepository.getPopularCourses();
 			default:
@@ -119,8 +123,12 @@ export default class StatsService {
 		}
 	}
 
+	async getActiveCourseCount() {
+		return this.statsRepository.getActiveCourseCount();
+	}
+
 	async getRecentlyUpdatedEntitiesByType(entityType) {
-		switch(entityType){
+		switch (entityType) {
 			case 'course':
 				return this.statsRepository.getRecentlyUpdatedCourses();
 			case 'dataset':
@@ -133,6 +141,20 @@ export default class StatsService {
 	async getTotalSearchesByUsers() {
 		return this.statsRepository.getTotalSearchesByUsers();
 	}
+
+	async getTotalEntityCounts() {
+		const data = await this.statsRepository.getTotalEntityCounts();
+		const counts = data.reduce((obj, entityType) => {
+			const { _id: type, count } = entityType;
+			obj = { 
+				...obj, 
+				[type]: count 
+			};
+			return obj;
+		}, {});
+
+		return counts;
+	}
 }
 
 const entityTypeMap = {
@@ -141,5 +163,5 @@ const entityTypeMap = {
 	Projects: 'project',
 	Courses: 'course',
 	Papers: 'papers',
-	People: 'person'
+	People: 'person',
 };

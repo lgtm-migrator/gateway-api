@@ -18,7 +18,7 @@ export default class StatsRepository extends Repository {
 	}
 
 	async createSnapshot(data) {
-		return this.create(data);
+		return this.updateByQuery({ date: data.date }, data);
 	}
 
 	async getTechnicalMetadataStats() {
@@ -176,11 +176,12 @@ export default class StatsRepository extends Repository {
 		};
 	}
 
-	async getDataAccessRequesStatsByMonth(startMonth, endMonth) {
+	async getDataAccessRequestStats(startMonth, endMonth) {
+		const dateQuery = startMonth && endMonth ? { dateSubmitted: { $gte: startMonth, $lt: endMonth }} : {};
 		const excludedDatasets = await this.getExcludedDatasetIds();
 		const accessRequests = await DataRequestModel.find(
 			{
-				dateSubmitted: { $gte: startMonth, $lt: endMonth },
+				...dateQuery,
 				applicationStatus: {
 					$in: [
 						constants.applicationStatuses.SUBMITTED,
@@ -459,6 +460,10 @@ export default class StatsRepository extends Repository {
 		]);
 	}
 
+	async getActiveCourseCount() {
+		return Course.countDocuments({ activeflag: 'active'});
+	}
+
 	async getPopularEntitiesByType(entityType) {
 		let entityTypeFilter = {};
 		if (entityType) entityTypeFilter = { type: entityType };
@@ -684,11 +689,29 @@ export default class StatsRepository extends Repository {
 		];
 
 		const results = await RecordSearchData.aggregate(query);
+
 		return {
-			lastDay: results[0].lastDay[0] ? results[0].lastDay[0].count : 0,
-			lastWeek: results[0].lastWeek[0] ? results[0].lastWeek[0].count : 0,
-			lastMonth: results[0].lastMonth[0] ? results[0].lastMonth[0].count : 0,
-			lastYear: results[0].lastYear[0] ? results[0].lastYear[0].count : 0,
-		}
+			day: results[0].lastDay[0] ? results[0].lastDay[0].count : 0,
+			week: results[0].lastWeek[0] ? results[0].lastWeek[0].count : 0,
+			month: results[0].lastMonth[0] ? results[0].lastMonth[0].count : 0,
+			year: results[0].lastYear[0] ? results[0].lastYear[0].count : 0,
+		};
+	}
+
+	async getTotalEntityCounts() {
+		const query = [
+			{
+				$match: {
+					$and: [
+						{ activeflag: 'active' },
+						{ 'datasetfields.publisher': { $ne: 'OTHER > HEALTH DATA RESEARCH UK' } },
+						{ 'datasetfields.publisher': { $ne: 'HDR UK' } },
+					],
+				},
+			},
+			{ $group: { _id: '$type', count: { $sum: 1 } } },
+		];
+
+		return Data.aggregate(query);
 	}
 }
