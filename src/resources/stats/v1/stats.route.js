@@ -1,9 +1,4 @@
 import express from 'express';
-import { RecordSearchData } from '../../search/record.search.model';
-import { Data } from '../../tool/data.model';
-import { DataRequestModel } from '../../datarequests/datarequests.model';
-//import { getHdrDatasetId } from './kpis.route';
-import { Course } from '../../course/course.model';
 import { statsService } from '../dependency';
 import { logger } from '../../utilities/logger';
 
