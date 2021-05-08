@@ -1,4 +1,4 @@
-import cli from 'migrate-mongoose/src/cli'; // Required - DO NOT DELETE
+import cli from 'migrate-mongoose/src/cli'; //lgtm [js/unused-local-variable]
 import mongoose from 'mongoose';
 
 mongoose.connect(
