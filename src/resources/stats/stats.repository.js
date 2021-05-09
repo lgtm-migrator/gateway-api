@@ -2,7 +2,7 @@ import Repository from '../base/repository';
 import { StatsSnapshot } from './statsSnapshot.model';
 import { Data } from '../tool/data.model';
 import { RecordSearchData } from '../search/record.search.model';
-import { DataRequestModel } from '../datarequests/datarequests.model';
+import { DataRequestModel } from '../datarequest/datarequest.model';
 import { Course } from '../course/course.model';
 import constants from '../utilities/constants.util';
 
