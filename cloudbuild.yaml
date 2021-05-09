@@ -23,6 +23,8 @@ steps:
   - name: 'node'
     args: ['npm', 'install']
   - name: 'node'
+    args: ['node', '-r', 'esm', 'migrations/migrate.js', 'up']
+  - name: 'node'
     args: ['npm', 'test']
     env:
       - 'URL=https://${_TEST_URL}'
