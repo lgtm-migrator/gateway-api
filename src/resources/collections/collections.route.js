@@ -172,6 +172,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	collections.activeflag = 'active';
 	collections.publicflag = publicflag;
 	collections.keywords = keywords;
+	collections.updatedon = Date.now();
 
 	if (collections.authors) {
 		collections.authors.forEach(async authorId => {
