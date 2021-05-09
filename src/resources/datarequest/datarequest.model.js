@@ -19,6 +19,11 @@ const DataRequestSchema = new Schema(
 			default: 'inProgress',
 			enum: ['inProgress', 'submitted', 'inReview', 'approved', 'rejected', 'approved with conditions', 'withdrawn'],
 		},
+		applicationType: {
+			type: String,
+			default: 'Initial',
+			enum: Object.values(constants.applicationTypes)
+		},
 		archived: {
 			Boolean,
 			default: false,
@@ -80,7 +85,9 @@ const DataRequestSchema = new Schema(
 				questionAnswers: { type: Object, default: {} },
 			},
 		],
-		originId: { type: Schema.Types.ObjectId, ref: 'data_request' }
+		originId: { type: Schema.Types.ObjectId, ref: 'data_request' },
+		version: { type: String, default: '1'},
+		versionTree: { type: Object, default: {} }
 	},
 	{
 		timestamps: true,
