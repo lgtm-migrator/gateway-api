@@ -14,29 +14,6 @@ const inputSanitizer = require('../utilities/inputSanitizer');
 
 const router = express.Router();
 
-router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	const { firstname, lastname, bio, terms, sector, organisation, showOrganisation, tags } = req.body;
-	let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
-	let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
-	let data = Data();
-	data.id = parseInt(Math.random().toString().replace('0.', ''));
-	(data.firstname = inputSanitizer.removeNonBreakingSpaces(firstname)),
-		(data.lastname = inputSanitizer.removeNonBreakingSpaces(lastname)),
-		(data.type = 'person');
-	data.bio = inputSanitizer.removeNonBreakingSpaces(bio);
-	data.link = link;
-	data.orcid = orcid;
-	data.terms = terms;
-	data.sector = inputSanitizer.removeNonBreakingSpaces(sector);
-	data.organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
-	data.showOrganisation = showOrganisation;
-	data.tags = inputSanitizer.removeNonBreakingSpaces(tags);
-	let newPersonObj = await data.save();
-	if (!newPersonObj) return res.json({ success: false, error: "Can't persist data to DB" });
-
-	return res.json({ success: true, data: newPersonObj });
-});
-
 router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	let {
 		id,
