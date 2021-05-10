@@ -75,7 +75,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 					activeflag: 1,
 					//TODO: counter needs to be added in B/E, front end add/edit forms and model
-					// counter: 1,
+					counter: 1,
 					//TODO - doesn't exist yet - will be added (in collection add/edit form) and used for views sort
 					latestUpdate: {
 						$cond: {
