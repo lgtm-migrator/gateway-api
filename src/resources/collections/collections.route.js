@@ -118,6 +118,7 @@ router.get('/entityid/:entityID', async (req, res) => {
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag, collectionCreator } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
+	let updatedon = Date.now();
 
 	let collectionId = parseInt(id);
 
@@ -131,6 +132,7 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 			relatedObjects: relatedObjects,
 			publicflag: publicflag,
 			keywords: keywords,
+			updatedon: updatedon
 		},
 		err => {
 			if (err) {
@@ -172,6 +174,7 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	collections.activeflag = 'active';
 	collections.publicflag = publicflag;
 	collections.keywords = keywords;
+	collections.updatedon = Date.now();
 
 	if (collections.authors) {
 		collections.authors.forEach(async authorId => {

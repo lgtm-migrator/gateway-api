@@ -57,7 +57,35 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			},
 		];
 	} else if (type === 'collection') {
-		queryObject = [{ $match: newSearchQuery }, { $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } }];
+		queryObject = [
+			{ $match: newSearchQuery },
+			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			{
+				$project: {
+					_id: 0,
+					id: 1,
+					name: 1,
+					description: 1,
+					imageLink: 1,
+					relatedObjects: 1,
+
+					'persons.id': 1,
+					'persons.firstname': 1,
+					'persons.lastname': 1,
+
+					activeflag: 1,
+					counter: 1,
+					latestUpdate: {
+						$cond: {
+							if: { $gte: ['$createdAt', '$updatedon'] },
+							then: '$createdAt',
+							else: '$updatedon',
+						},
+					},
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+				},
+			},
+		];
 	} else if (type === 'dataset') {
 		queryObject = [
 			{ $match: newSearchQuery },

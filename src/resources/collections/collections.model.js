@@ -6,6 +6,7 @@ const CollectionSchema = new Schema(
 		id: Number,
 		name: String,
 		description: String,
+		updatedon: Date,
 		imageLink: String,
 		authors: [Number],
 		// emailNotifications: Boolean,
