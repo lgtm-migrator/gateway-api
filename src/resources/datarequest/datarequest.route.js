@@ -4,7 +4,10 @@ import _ from 'lodash';
 import multer from 'multer';
 import { param } from 'express-validator';
 import { logger } from '../utilities/logger';
-const amendmentController = require('./amendment/amendment.controller');
+import DataRequestController from './datarequest.controller';
+import AmendmentController from './amendment/amendment.controller';
+import { dataRequestService, workflowService, amendmentService } from './dependency';
+
 const datarequestController = require('./datarequest.controller');
 const fs = require('fs');
 const path = './tmp';
@@ -18,7 +21,8 @@ const storage = multer.diskStorage({
 });
 const multerMid = multer({ storage: storage });
 const logCategory = 'Data Access Request';
-
+const dataRequestController = new DataRequestController(dataRequestService, workflowService, amendmentService);
+const amendmentController = new AmendmentController(amendmentService);
 const router = express.Router();
 
 // @route   GET api/v1/data-access-request
@@ -28,7 +32,7 @@ router.get(
 	'/',
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed personal Data Access Request dashboard' }),
-	datarequestController.getAccessRequestsByUser
+	(req, res) => dataRequestController.getAccessRequestsByUser(req, res)
 );
 
 // @route   GET api/v1/data-access-request/:requestId
@@ -172,7 +176,7 @@ router.post(
 	'/:id/amendments',
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Creating or removing an amendment against a Data Access Request application' }),
-	amendmentController.setAmendment
+	(req, res) => amendmentController.setAmendment(req, res)
 );
 
 // @route   POST api/v1/data-access-request/:id/requestAmendments
@@ -182,7 +186,7 @@ router.post(
 	'/:id/requestAmendments',
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Requesting a batch of amendments to a Data Access Request application' }),
-	amendmentController.requestAmendments
+	(req, res) => amendmentController.requestAmendments(req, res)
 );
 
 // @route   POST api/v1/data-access-request/:id/actions

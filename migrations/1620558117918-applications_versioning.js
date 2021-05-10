@@ -1,46 +1,59 @@
 import { DataRequestModel } from '../src/resources/datarequest/datarequest.model';
+import { buildVersionTree } from '../src/resources/datarequest/datarequest.entity';
 
 async function up() {
-
 	// 1. Add default application type to all applications
 	// 2. Add version 1 to all applications
 	// 3. Create version tree for all applications
 
-	// Find all access records
-	let accessRecords = await DataRequestModel.find();
+	let accessRecords = await DataRequestModel.find()
+		.select('_id version versionTree amendmentIterations')
+		.lean();
+	let ops = [];
 
-	// Loop through each record
-	for (const accessRecord of accessRecords) {
-
-    accessRecord.applicationType = 'Initial';
-    accessRecord.version = 1;
-    //accessRecord.versionTree = buildVersionTree(accessRecord);
-    
-		await accessRecord.save(async (err, doc) => {
-			if (err) {
-				console.error(`Object update failed for ${accessRecord._id}: ${err.message}`);
-			}
+	accessRecords.forEach(accessRecord => {
+		const versionTree = buildVersionTree(accessRecord);
+		const { _id } = accessRecord;
+		ops.push({
+			updateOne: {
+				filter: { _id },
+				update: {
+					applicationType: 'Initial',
+					version: 1,
+					versionTree,
+				},
+				upsert: false,
+			},
 		});
-	}
+	});
+
+	await DataRequestModel.bulkWrite(ops);
 }
 
 async function down() {
-	// Find all access records
-	let accessRecords = await DataRequestModel.find();
+	// 1. Remove application type from all applications
+	// 2. Remove version from all applications
+	// 3. Remove version tree from all applications
 
-	// Loop through each record
-	for (const accessRecord of accessRecords) {
+	let accessRecords = await DataRequestModel.find().select('_id version versionTree amendmentIterations').lean();
+	let ops = [];
 
-    accessRecord.applicationType = undefined;
-    accessRecord.version = undefined;
-    accessRecord.versionTree = undefined;
-    
-		await accessRecord.save(async (err, doc) => {
-			if (err) {
-				console.error(`Object update failed for ${accessRecord._id}: ${err.message}`);
-			}
+	accessRecords.forEach(accessRecord => {
+		const { _id } = accessRecord;
+		ops.push({
+			updateOne: {
+				filter: { _id },
+				update: {
+					applicationType: undefined,
+					version: undefined,
+					versionTree: undefined,
+				},
+				upsert: false,
+			},
 		});
-	}
+	});
+
+	await DataRequestModel.bulkWrite(ops);
 }
 
 module.exports = { up, down };

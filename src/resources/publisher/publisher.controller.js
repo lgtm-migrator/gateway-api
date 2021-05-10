@@ -7,8 +7,6 @@ import { WorkflowModel } from '../workflow/workflow.model';
 import constants from '../utilities/constants.util';
 import teamController from '../team/team.controller';
 
-const datarequestController = require('../datarequest/datarequest.controller');
-
 module.exports = {
 	// GET api/v1/publishers/:id
 	getPublisherById: async (req, res) => {
@@ -172,12 +170,12 @@ module.exports = {
 
 			// 6. Append projectName and applicants
 			let modifiedApplications = [...applications]
-				.map(app => {
-					return datarequestController.createApplicationDTO(app, constants.userTypes.CUSTODIAN, _id.toString());
+				.map(accessRecord => {
+					return this.dataRequestService.createApplicationDTO(accessRecord, constants.userTypes.CUSTODIAN, _id.toString());
 				})
 				.sort((a, b) => b.updatedAt - a.updatedAt);
 
-			let avgDecisionTime = datarequestController.calculateAvgDecisionTime(applications);
+			let avgDecisionTime = this.dataRequestService.calculateAvgDecisionTime(applications);
 			// 7. Return all applications
 			return res.status(200).json({ success: true, data: modifiedApplications, avgDecisionTime, canViewSubmitted: isManager });
 		} catch (err) {

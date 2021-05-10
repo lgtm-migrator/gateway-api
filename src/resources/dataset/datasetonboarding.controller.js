@@ -17,6 +17,7 @@ import moment from 'moment';
 var fs = require('fs');
 
 import constants from '../utilities/constants.util';
+import { amendmentService } from '../datarequest/amendment/dependency';
 
 module.exports = {
 	//GET api/v1/dataset-onboarding
@@ -529,7 +530,7 @@ module.exports = {
 					const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = dataset;
 					if (dirtySchema) {
 						accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
-						accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
+						accessRequestRecord = this.amendmentService.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
 					}
 					let data = {
 						status: 'success',
@@ -632,7 +633,7 @@ module.exports = {
 				return accessRecord;
 			}
 			let updatedAnswer = JSON.parse(updateObj.questionAnswers)[updatedQuestionId];
-			accessRecord = amendmentController.handleApplicantAmendment(accessRecord.toObject(), updatedQuestionId, '', updatedAnswer, user);
+			accessRecord = amendmentService.handleApplicantAmendment(accessRecord.toObject(), updatedQuestionId, '', updatedAnswer, user);
 			await DataRequestModel.replaceOne({ _id }, accessRecord, err => {
 				if (err) {
 					console.error(err);

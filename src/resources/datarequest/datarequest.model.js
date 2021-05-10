@@ -1,10 +1,11 @@
 import { model, Schema } from 'mongoose';
 import { WorkflowSchema } from '../workflow/workflow.model';
 import constants from '../utilities/constants.util';
+import DataRequestClass from './datarequest.entity';
 
 const DataRequestSchema = new Schema(
 	{
-		version: Number,
+		version: { type: Number, default: 1},
 		userId: Number, // Main applicant
 		authorIds: [Number],
 		dataSetId: String,
@@ -86,7 +87,6 @@ const DataRequestSchema = new Schema(
 			},
 		],
 		originId: { type: Schema.Types.ObjectId, ref: 'data_request' },
-		version: { type: String, default: '1'},
 		versionTree: { type: Object, default: {} }
 	},
 	{
@@ -129,5 +129,8 @@ DataRequestSchema.virtual('authors', {
 	foreignField: 'id',
 	localField: 'authorIds',
 });
+
+// Load entity class
+DataRequestSchema.loadClass(DataRequestClass);
 
 export const DataRequestModel = model('data_request', DataRequestSchema);

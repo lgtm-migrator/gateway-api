@@ -16,40 +16,48 @@ import constants from '../utilities/constants.util';
 import { processFile, getFile, fileStatus } from '../utilities/cloudStorage.util';
 import _ from 'lodash';
 import inputSanitizer from '../utilities/inputSanitizer';
+import Controller from '../base/controller';
 
 import moment from 'moment';
 import mongoose from 'mongoose';
 
+import { logger } from '../utilities/logger';
+const logCategory = 'Data Access Request';
+
 const amendmentController = require('./amendment/amendment.controller');
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
-module.exports = {
-	//GET api/v1/data-access-request
-	getAccessRequestsByUser: async (req, res) => {
+export default class DataRequestController extends Controller {
+	constructor(dataRequestService, workflowService, amendmentService) {
+		super(dataRequestService);
+		this.dataRequestService = dataRequestService;
+		this.workflowService = workflowService;
+		this.amendmentService = amendmentService;
+	}
+
+	async getAccessRequestsByUser(req, res) {
 		try {
-			// 1. Deconstruct the parameters passed
-			let { id: userId } = req.user;
+			// Deconstruct the parameters passed
 			let { query = {} } = req;
+			const userId = parseInt(req.user.id);
 
-			// 2. Find all data access request applications created with multi dataset version
-			let applications = await DataRequestModel.find({
-				$and: [{ ...query }, { $or: [{ userId: parseInt(userId) }, { authorIds: userId }] }],
-			})
-				.select('-jsonSchema -questionAnswers -files')
-				.populate('datasets mainApplicant')
-				.lean();
+			// Find all data access request applications for requesting user
+			let applications = await this.dataRequestService.getAccessRequestsByUser(userId, query);
 
-			// 3. Append project name and applicants
+			// Create detailed application object including workflow, review meta details
 			let modifiedApplications = [...applications]
-				.map(app => {
-					return module.exports.createApplicationDTO(app, constants.userTypes.APPLICANT);
+				.map(accessRecord => {
+					let accessRecordDTO = this.dataRequestService.createApplicationDTO(accessRecord, constants.userTypes.APPLICANT);
+					// Append amendment status
+					accessRecordDTO.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, userType);
+					return accessRecordDTO;
 				})
 				.sort((a, b) => b.updatedAt - a.updatedAt);
 
-			// 4. Calculate average decision time across submitted applications
-			let avgDecisionTime = module.exports.calculateAvgDecisionTime(applications);
+			// Calculate average decision time across submitted applications
+			let avgDecisionTime = this.dataRequestService.calculateAvgDecisionTime(applications);
 
-			// 5. Return payload
+			// Return payload
 			return res.status(200).json({
 				success: true,
 				data: modifiedApplications,
@@ -57,14 +65,17 @@ module.exports = {
 				canViewSubmitted: true,
 			});
 		} catch (err) {
-			console.error(err.message);
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred searching for user applications',
 			});
 		}
-	},
+	}
+}
 
+module.exports = {
 	//GET api/v1/data-access-request/:requestId
 	getAccessRequestById: async (req, res) => {
 		try {
@@ -105,11 +116,11 @@ module.exports = {
 				readOnly = false;
 			}
 			// 7. Count unsubmitted amendments
-			let countUnsubmittedAmendments = amendmentController.countUnsubmittedAmendments(accessRecord, userType);
+			let countUnsubmittedAmendments = this.amendmentService.countUnsubmittedAmendments(accessRecord, userType);
 			// 8. Set the review mode if user is a custodian reviewing the current step
-			let { inReviewMode, reviewSections, hasRecommended } = workflowController.getReviewStatus(accessRecord, req.user._id);
+			let { inReviewMode, reviewSections, hasRecommended } = this.workflowService.getReviewStatus(accessRecord, req.user._id);
 			// 9. Get the workflow/voting status
-			let workflow = workflowController.getWorkflowStatus(accessRecord);
+			let workflow = this.workflowService.getWorkflowStatus(accessRecord);
 			let isManager = false;
 			// 10. Check if the current user can override the current step
 			if (_.has(accessRecord.datasets[0], 'publisher.team')) {
@@ -120,9 +131,9 @@ module.exports = {
 				}
 			}
 			// 11. Update json schema and question answers with modifications since original submission
-			accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
+			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
 			// 12. Determine the current active party handling the form
-			let activeParty = amendmentController.getAmendmentIterationParty(accessRecord);
+			let activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord);
 			// 13. Append question actions depending on user type and application status
 			let userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
@@ -400,7 +411,7 @@ module.exports = {
 			module.exports.updateApplication(accessRequestRecord, updateObj).then(accessRequestRecord => {
 				const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRequestRecord;
 				if (dirtySchema) {
-					accessRequestRecord = amendmentController.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
+					accessRequestRecord = this.amendmentService.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
 				}
 				let data = {
 					status: 'success',
@@ -470,7 +481,7 @@ module.exports = {
 				return accessRecord;
 			}
 			let updatedAnswer = updateObj.questionAnswers[updatedQuestionId];
-			accessRecord = amendmentController.handleApplicantAmendment(accessRecord.toObject(), updatedQuestionId, '', updatedAnswer, user);
+			accessRecord = this.amendmentService.handleApplicantAmendment(accessRecord.toObject(), updatedQuestionId, '', updatedAnswer, user);
 			await DataRequestModel.replaceOne({ _id }, accessRecord, err => {
 				if (err) {
 					console.error(err.message);
@@ -789,12 +800,12 @@ module.exports = {
 						dataRequestUserId: userId.toString(),
 						dataRequestPublisher,
 						dataRequestStepName: workflowObj.steps[0].stepName,
-						notifyReviewerSLA: workflowController.calculateStepDeadlineReminderDate(workflowObj.steps[0]),
+						notifyReviewerSLA: this.workflowService.calculateStepDeadlineReminderDate(workflowObj.steps[0]),
 						reviewerList,
 					};
 					bpmController.postStartStepReview(bpmContext);
 					// 14. Gather context for notifications
-					const emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflowObj, 0);
+					const emailContext = this.workflowService.getWorkflowEmailContext(accessRecord, workflowObj, 0);
 					// 15. Create notifications to reviewers of the step that has been completed
 					module.exports.createNotifications(constants.notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, req.user);
 					// 16. Create our notifications to the custodian team managers if assigned a workflow to a DAR application
@@ -1140,7 +1151,7 @@ module.exports = {
 				newRecommendation,
 			];
 			// 11. Workflow management - construct Camunda payloads
-			let bpmContext = workflowController.buildNextStep(userId, accessRecord, activeStepIndex, false);
+			let bpmContext = this.workflowService.buildNextStep(userId, accessRecord, activeStepIndex, false);
 			// 12. If step is now complete, update database record
 			if (bpmContext.stepComplete) {
 				accessRecord.workflow.steps[activeStepIndex].active = false;
@@ -1172,7 +1183,7 @@ module.exports = {
 					}
 					// Continue only if notification required
 					if (!_.isEmpty(relevantNotificationType)) {
-						const emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, relevantStepIndex);
+						const emailContext = this.workflowService.getWorkflowEmailContext(accessRecord, workflow, relevantStepIndex);
 						module.exports.createNotifications(relevantNotificationType, emailContext, accessRecord, req.user);
 					}
 					// 16. Call Camunda controller to update workflow process
@@ -1262,7 +1273,7 @@ module.exports = {
 			accessRecord.workflow.steps[activeStepIndex].completed = true;
 			accessRecord.workflow.steps[activeStepIndex].endDateTime = new Date();
 			// 9. Set up Camunda payload
-			let bpmContext = workflowController.buildNextStep(userId, accessRecord, activeStepIndex, true);
+			let bpmContext = this.workflowService.buildNextStep(userId, accessRecord, activeStepIndex, true);
 			// 10. If it was not the final phase that was completed, move to next step
 			if (!bpmContext.finalPhaseApproved) {
 				accessRecord.workflow.steps[activeStepIndex + 1].active = true;
@@ -1275,7 +1286,7 @@ module.exports = {
 					res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 12. Gather context for notifications (active step)
-					let emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
+					let emailContext = this.workflowService.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
 					// 13. Create notifications to reviewers of the step that has been completed
 					module.exports.createNotifications(constants.notificationTypes.STEPOVERRIDE, emailContext, accessRecord, req.user);
 					// 14. Create emails and notifications
@@ -1292,7 +1303,7 @@ module.exports = {
 					}
 					// Get the email context only if required
 					if (relevantStepIndex !== activeStepIndex) {
-						emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, relevantStepIndex);
+						emailContext = this.workflowService.getWorkflowEmailContext(accessRecord, workflow, relevantStepIndex);
 					}
 					module.exports.createNotifications(relevantNotificationType, emailContext, accessRecord, req.user);
 					// 15. Call Camunda controller to start manager review process
@@ -1413,7 +1424,7 @@ module.exports = {
 				accessRecord.applicationStatus === constants.applicationStatuses.INREVIEW ||
 				accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED
 			) {
-				accessRecord = amendmentController.doResubmission(accessRecord.toObject(), req.user._id.toString());
+				accessRecord = this.amendmentService.doResubmission(accessRecord.toObject(), req.user._id.toString());
 			}
 			// 6. Ensure a valid submission is taking place
 			if (_.isNil(accessRecord.submissionType)) {
@@ -1432,7 +1443,7 @@ module.exports = {
 					});
 				} else {
 					// 8. Send notifications and emails with amendments
-					accessRecord = amendmentController.injectAmendments(accessRecord, userType, req.user);
+					accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
 					await module.exports.createNotifications(
 						accessRecord.submissionType === constants.submissionTypes.INITIAL
 							? constants.notificationTypes.SUBMITTED
@@ -1581,7 +1592,7 @@ module.exports = {
 			return step.active === true;
 		});
 		// 3. Determine email context if deadline has elapsed or is approaching
-		const emailContext = workflowController.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
+		const emailContext = this.workflowService.getWorkflowEmailContext(accessRecord, workflow, activeStepIndex);
 		// 4. Send emails based on deadline elapsed or approaching
 		if (emailContext.deadlineElapsed) {
 			module.exports.createNotifications(constants.notificationTypes.DEADLINEPASSED, emailContext, accessRecord, req.user);
@@ -1753,7 +1764,7 @@ module.exports = {
 			}
 
 			// 5. Update question answers with modifications since original submission
-			appToClone = amendmentController.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
+			appToClone = this.amendmentService.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
 
 			// 6. Create callback function used to complete the save process
 			const saveCallBack = (err, doc) => {
@@ -2043,8 +2054,8 @@ module.exports = {
 				if (_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users')) {
 					// Retrieve all custodian manager user Ids and active step reviewers
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
-					let activeStep = workflowController.getActiveWorkflowStep(workflow);
-					stepReviewers = workflowController.getStepReviewers(activeStep);
+					let activeStep = this.workflowService.getActiveWorkflowStep(workflow);
+					stepReviewers = this.workflowService.getStepReviewers(activeStep);
 					// Create custodian notification
 					let statusChangeUserIds = [...custodianManagers, ...stepReviewers].map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -2626,166 +2637,5 @@ module.exports = {
 				);
 				break;
 		}
-	},
-
-	createApplicationDTO: (app, userType, userId = '') => {
-		let projectName = '',
-			applicants = '',
-			workflowName = '',
-			workflowCompleted = false,
-			remainingActioners = [],
-			decisionDuration = '',
-			decisionMade = false,
-			decisionStatus = '',
-			decisionComments = '',
-			decisionDate = '',
-			decisionApproved = false,
-			managerUsers = [],
-			stepName = '',
-			deadlinePassed = '',
-			reviewStatus = '',
-			isReviewer = false,
-			reviewPanels = [],
-			amendmentStatus = '';
-
-		// Check if the application has a workflow assigned
-		let { workflow = {}, applicationStatus } = app;
-		if (_.has(app, 'publisherObj.team.members')) {
-			let {
-				publisherObj: {
-					team: { members, users },
-				},
-			} = app;
-			let managers = members.filter(mem => {
-				return mem.roles.includes('manager');
-			});
-			managerUsers = users
-				.filter(user => managers.some(manager => manager.memberid.toString() === user._id.toString()))
-				.map(user => {
-					let isCurrentUser = user._id.toString() === userId.toString();
-					return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)` : ``}`;
-				});
-			if (
-				applicationStatus === constants.applicationStatuses.SUBMITTED ||
-				(applicationStatus === constants.applicationStatuses.INREVIEW && _.isEmpty(workflow))
-			) {
-				remainingActioners = managerUsers.join(', ');
-			}
-			if (!_.isEmpty(workflow)) {
-				({ workflowName } = workflow);
-				workflowCompleted = workflowController.getWorkflowCompleted(workflow);
-				let activeStep = workflowController.getActiveWorkflowStep(workflow);
-				// Calculate active step status
-				if (!_.isEmpty(activeStep)) {
-					({
-						stepName = '',
-						remainingActioners = [],
-						deadlinePassed = '',
-						reviewStatus = '',
-						decisionMade = false,
-						decisionStatus = '',
-						decisionComments = '',
-						decisionApproved,
-						decisionDate,
-						isReviewer = false,
-						reviewPanels = [],
-					} = workflowController.getActiveStepStatus(activeStep, users, userId));
-					let activeStepIndex = workflow.steps.findIndex(step => {
-						return step.active === true;
-					});
-					workflow.steps[activeStepIndex] = {
-						...workflow.steps[activeStepIndex],
-						reviewStatus,
-					};
-				} else if (_.isUndefined(activeStep) && applicationStatus === constants.applicationStatuses.INREVIEW) {
-					reviewStatus = 'Final decision required';
-					remainingActioners = managerUsers.join(', ');
-				}
-				// Get decision duration if completed
-				let { dateFinalStatus, dateSubmitted } = app;
-				if (dateFinalStatus) {
-					decisionDuration = parseInt(moment(dateFinalStatus).diff(dateSubmitted, 'days'));
-				}
-				// Set review section to display format
-				let formattedSteps = [...workflow.steps].reduce((arr, item) => {
-					let step = {
-						...item,
-						sections: [...item.sections].map(section => constants.darPanelMapper[section]),
-					};
-					arr.push(step);
-					return arr;
-				}, []);
-				workflow.steps = [...formattedSteps];
-			}
-		}
-
-		// Ensure backward compatibility with old single dataset DARs
-		if (_.isEmpty(app.datasets) || _.isUndefined(app.datasets)) {
-			app.datasets = [app.dataset];
-			app.datasetIds = [app.datasetid];
-		}
-		let {
-			datasetfields: { publisher },
-			name,
-		} = app.datasets[0];
-		let { aboutApplication, questionAnswers } = app;
-
-		if (aboutApplication) {
-			({ projectName } = aboutApplication);
-		}
-		if (_.isEmpty(projectName)) {
-			projectName = `${publisher} - ${name}`;
-		}
-		if (questionAnswers) {
-			applicants = datarequestUtil.extractApplicantNames(questionAnswers).join(', ');
-		}
-		if (_.isEmpty(applicants)) {
-			let { firstname, lastname } = app.mainApplicant;
-			applicants = `${firstname} ${lastname}`;
-		}
-		amendmentStatus = amendmentController.calculateAmendmentStatus(app, userType);
-		return {
-			...app,
-			projectName,
-			applicants,
-			publisher,
-			workflowName,
-			workflowCompleted,
-			decisionDuration,
-			decisionMade,
-			decisionStatus,
-			decisionComments,
-			decisionDate,
-			decisionApproved,
-			remainingActioners,
-			stepName,
-			deadlinePassed,
-			reviewStatus,
-			isReviewer,
-			reviewPanels,
-			amendmentStatus,
-		};
-	},
-
-	calculateAvgDecisionTime: applications => {
-		// Extract dateSubmitted dateFinalStatus
-		let decidedApplications = applications.filter(app => {
-			let { dateSubmitted = '', dateFinalStatus = '' } = app;
-			return !_.isEmpty(dateSubmitted.toString()) && !_.isEmpty(dateFinalStatus.toString());
-		});
-		// Find difference between dates in milliseconds
-		if (!_.isEmpty(decidedApplications)) {
-			let totalDecisionTime = decidedApplications.reduce((count, current) => {
-				let { dateSubmitted, dateFinalStatus } = current;
-				let start = moment(dateSubmitted);
-				let end = moment(dateFinalStatus);
-				let diff = end.diff(start, 'seconds');
-				count += diff;
-				return count;
-			}, 0);
-			// Divide by number of items
-			if (totalDecisionTime > 0) return parseInt(totalDecisionTime / decidedApplications.length / 86400);
-		}
-		return 0;
-	},
+	}
 };
