@@ -74,9 +74,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					'persons.lastname': 1,
 
 					activeflag: 1,
-					//TODO: counter needs to be added in B/E, front end add/edit forms and model
 					counter: 1,
-					//TODO - doesn't exist yet - will be added (in collection add/edit form) and used for views sort
 					latestUpdate: {
 						$cond: {
 							if: { $gte: ['$createdAt', '$updatedon'] },
@@ -270,7 +268,15 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		];
 	}
 
-	if (sort === '' || sort === 'relevance') {
+	if (sort === '') {
+		if (type === 'dataset') {
+			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
+			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+		} else {
+			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+		}
+	} else if (sort === 'relevance') {
 		if (type === 'person') {
 			if (searchAll) queryObject.push({ $sort: { lastname: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
@@ -300,7 +306,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
 	}
 
-	console.log(`queryObject: ${JSON.stringify(queryObject)}`);
 
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
