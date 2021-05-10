@@ -58,60 +58,35 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		];
 	} else if (type === 'collection') {
 		queryObject = [
-			{ $match: newSearchQuery }, 
+			{ $match: newSearchQuery },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
-			// {$lookup: {
-			// 		from: 'tools',
-			// 		let: {
-			// 			pid: '$pid',
-			// 		},
-			// 		pipeline: [
-			// 			{ $unwind: '$relatedObjects' },
-			// 			{
-			// 				$match: {
-			// 					$expr: {
-			// 						$and: [
-			// 							{
-			// 								$eq: ['$relatedObjects.pid', '$$pid'],
-			// 							},
-			// 							{
-			// 								$eq: ['$activeflag', 'active'],
-			// 							},
-			// 						],
-			// 					},
-			// 				},
-			// 			},
-			// 			{ $group: { _id: null, count: { $sum: 1 } } },
-			// 		],
-			// 		as: 'relatedResourcesTools',
-			// 	},
-			// },
-			// {
-				// $project: {
-			// 		_id: 0,
-			// 		id: 1,
-			// 		type: 1,
-			// 		activeflag: 1,
-			// 		tags: 1,
-			// 		description: 1,
-			// 		name: 1,
-			// 		persons: 1,
-			// 		categories: 1,
-			// 		programmingLanguage: 1,
-			// 		firstname: 1,
-			// 		lastname: 1,
-			// 		bio: 1,
-			// 		authors: 1,
-			// 		latestUpdate: {
-			// 			$cond: {
-			// 				if: { $gte: ['$createdAt', '$updatedon'] },
-			// 				then: '$createdAt',
-			// 				else: '$updatedon',
-			// 			},
-			// 		},
-			// 		relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
-			// 	},
-			// },
+			{
+				$project: {
+					_id: 0,
+					id: 1,
+					name: 1,
+					description: 1,
+					imageLink: 1,
+					relatedObjects: 1,
+
+					'persons.id': 1,
+					'persons.firstname': 1,
+					'persons.lastname': 1,
+
+					activeflag: 1,
+					//TODO: counter needs to be added in B/E, front end add/edit forms and model
+					// counter: 1,
+					//TODO - doesn't exist yet - will be added (in collection add/edit form) and used for views sort
+					latestUpdate: {
+						$cond: {
+							if: { $gte: ['$createdAt', '$updatedon'] },
+							then: '$createdAt',
+							else: '$updatedon',
+						},
+					},
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+				},
+			},
 		];
 	} else if (type === 'dataset') {
 		queryObject = [
@@ -324,6 +299,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		if (searchAll) queryObject.push({ $sort: { relatedresources: -1 } });
 		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
 	}
+
+	console.log(`queryObject: ${JSON.stringify(queryObject)}`);
 
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
