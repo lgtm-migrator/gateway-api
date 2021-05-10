@@ -214,7 +214,7 @@ const cloneIntoExistingApplication = (appToClone, appToUpdate) => {
 	const { jsonSchema: schemaToUpdate } = appToUpdate;
 
 	// 2. Extract and append any user repeated sections from the original form
-	if (containsUserRepeatedSections(questionAnswers)) {
+	if (questionAnswers && Object.keys(questionAnswers).length > 0 && containsUserRepeatedSections(questionAnswers)) {
 		const updatedSchema = copyUserRepeatedSections(appToClone, schemaToUpdate);
 		appToUpdate.jsonSchema = updatedSchema;
 	}
@@ -250,7 +250,7 @@ const cloneIntoNewApplication = async (appToClone, context) => {
 	};
 
 	// 4. Extract and append any user repeated sections from the original form
-	if (containsUserRepeatedSections(questionAnswers)) {
+	if (questionAnswers && Object.keys(questionAnswers).length > 0 && containsUserRepeatedSections(questionAnswers)) {
 		const updatedSchema = copyUserRepeatedSections(appToClone, jsonSchema);
 		newApplication.jsonSchema = updatedSchema;
 	}
