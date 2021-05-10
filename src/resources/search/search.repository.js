@@ -57,7 +57,62 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			},
 		];
 	} else if (type === 'collection') {
-		queryObject = [{ $match: newSearchQuery }, { $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } }];
+		queryObject = [
+			{ $match: newSearchQuery }, 
+			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			// {$lookup: {
+			// 		from: 'tools',
+			// 		let: {
+			// 			pid: '$pid',
+			// 		},
+			// 		pipeline: [
+			// 			{ $unwind: '$relatedObjects' },
+			// 			{
+			// 				$match: {
+			// 					$expr: {
+			// 						$and: [
+			// 							{
+			// 								$eq: ['$relatedObjects.pid', '$$pid'],
+			// 							},
+			// 							{
+			// 								$eq: ['$activeflag', 'active'],
+			// 							},
+			// 						],
+			// 					},
+			// 				},
+			// 			},
+			// 			{ $group: { _id: null, count: { $sum: 1 } } },
+			// 		],
+			// 		as: 'relatedResourcesTools',
+			// 	},
+			// },
+			// {
+				// $project: {
+			// 		_id: 0,
+			// 		id: 1,
+			// 		type: 1,
+			// 		activeflag: 1,
+			// 		tags: 1,
+			// 		description: 1,
+			// 		name: 1,
+			// 		persons: 1,
+			// 		categories: 1,
+			// 		programmingLanguage: 1,
+			// 		firstname: 1,
+			// 		lastname: 1,
+			// 		bio: 1,
+			// 		authors: 1,
+			// 		latestUpdate: {
+			// 			$cond: {
+			// 				if: { $gte: ['$createdAt', '$updatedon'] },
+			// 				then: '$createdAt',
+			// 				else: '$updatedon',
+			// 			},
+			// 		},
+			// 		relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+			// 	},
+			// },
+		];
 	} else if (type === 'dataset') {
 		queryObject = [
 			{ $match: newSearchQuery },
@@ -240,15 +295,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		];
 	}
 
-	if (sort === '') {
-		if (type === 'dataset') {
-			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
-			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
-		} else {
-			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
-			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
-		}
-	} else if (sort === 'relevance') {
+	if (sort === '' || sort === 'relevance') {
 		if (type === 'person') {
 			if (searchAll) queryObject.push({ $sort: { lastname: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
