@@ -116,9 +116,9 @@ router.get('/entityid/:entityID', async (req, res) => {
 });
 
 router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, updatedon, previousPublicFlag, collectionCreator } = req.body;
+	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag, collectionCreator } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
-	updatedon = Date.now();
+	let updatedon = Date.now();
 
 	let collectionId = parseInt(id);
 
