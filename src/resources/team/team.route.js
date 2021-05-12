@@ -41,4 +41,9 @@ router.get('/:id/notifications', passport.authenticate('jwt'), teamController.ge
 // @access  Private
 router.put('/:id/notifications', passport.authenticate('jwt'), teamController.updateNotifications);
 
+// @route   PUT api/v1/teams/:id/notification-messages
+// @desc    Update notifications
+// @access  Private
+router.put('/:id/notification-messages', passport.authenticate('jwt'), teamController.updateNotificationMessages);
+
 module.exports = router;

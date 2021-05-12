@@ -460,7 +460,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
-		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html);
+		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, false);
 	});
 }
 
@@ -489,7 +489,8 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 			emailRecipients,
 			`${hdrukEmail}`,
 			`${toolOwner.name} added you as an author of the tool ${tool.name}`,
-			`${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`
+			`${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`,
+			false
 		);
 	});
 }

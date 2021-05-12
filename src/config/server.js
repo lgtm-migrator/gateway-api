@@ -13,24 +13,39 @@ import cookieParser from 'cookie-parser';
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
 import * as Sentry from '@sentry/node';
+import * as Tracing from '@sentry/tracing';
 import helper from '../resources/utilities/helper.util';
 
 require('dotenv').config();
 
-if (helper.getEnvironment() !== 'local') {
-	Sentry.init({
-		dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
-		environment: helper.getEnvironment(),
-		release: process.env.releaseVersion || 'latest',
-	});
-}
+var app = express();
+
+Sentry.init({
+	dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
+	environment: helper.getEnvironment(),
+	integrations: [
+		// enable HTTP calls tracing
+		new Sentry.Integrations.Http({ tracing: true }),
+		// enable Express.js middleware tracing
+		new Tracing.Integrations.Express({
+			// trace all requests to the default router
+			app,
+		}),
+	],
+	tracesSampleRate: 1.0,
+});
+// RequestHandler creates a separate execution context using domains, so that every
+// transaction/span/breadcrumb is attached to its own Hub instance
+app.use(Sentry.Handlers.requestHandler());
+// TracingHandler creates a trace for every incoming request
+app.use(Sentry.Handlers.tracingHandler());
+app.use(Sentry.Handlers.errorHandler());
 
 const Account = require('./account');
 const configuration = require('./configuration');
 
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
-var app = express();
 app.disable('x-powered-by');
 
 configuration.findAccount = Account.findAccount;
@@ -64,8 +79,10 @@ connectToDatabase();
 
 // (optional) only made for logging and
 // bodyParser, parses the request body to be a readable json format
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+
+app.use(bodyParser.json({ limit: '10mb', extended: true }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }));
+
 app.use(logger('dev'));
 app.use(cookieParser());
 app.use(passport.initialize());
@@ -193,8 +210,9 @@ app.use('/api/v1/search', require('../resources/search/search.router')); // tool
 
 app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router'));
 
-app.use('/api/v1/stats', require('../resources/stats/stats.router'));
-app.use('/api/v1/kpis', require('../resources/stats/kpis.router'));
+app.use('/api/v1/stats', require('../resources/stats/v1/stats.route'));
+app.use('/api/v2/stats', require('../resources/stats/v2/stats.route'));
+app.use('/api/v1/kpis', require('../resources/stats/v1/kpis.route'));
 
 app.use('/api/v1/course', require('../resources/course/v1/course.route'));
 app.use('/api/v2/courses', require('../resources/course/v2/course.route'));
@@ -212,9 +230,11 @@ app.use('/api/v2/papers', require('../resources/paper/v2/paper.route'));
 
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
+app.use('/api/v1/collectioncounter', require('../resources/collections/collectioncounter.route'));
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
+app.use('/api/v1/dataset-onboarding', require('../resources/dataset/datasetonboarding.route'));
 app.use('/api/v1/datasets', require('../resources/dataset/v1/dataset.route'));
 app.use('/api/v2/datasets', require('../resources/dataset/v2/dataset.route'));
 
@@ -223,11 +243,13 @@ app.use('/api/v1/data-access-request', require('../resources/datarequest/datareq
 
 app.use('/api/v1/collections', require('../resources/collections/collections.route'));
 
-app.use('/api/v1/analyticsdashboard', require('../resources/googleanalytics/googleanalytics.router'));
+app.use('/api/v1/analyticsdashboard', require('../services/googleAnalytics/googleAnalytics.route'));
 
 app.use('/api/v1/help', require('../resources/help/help.router'));
 
 app.use('/api/v2/filters', require('../resources/filters/filters.route'));
+
+app.use('/api/v1/mailchimp', require('../services/mailchimp/mailchimp.route'));
 
 initialiseAuthentication(app);
 

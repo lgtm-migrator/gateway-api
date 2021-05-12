@@ -224,74 +224,190 @@ const getTeamNotifications = async (req, res) => {
  */
 const updateNotifications = async (req, res) => {
 	try {
-		// 1. Get the team from the database
-		const team = await TeamModel.findOne({ _id: req.params.id });
-		if (!team) {
-			return res.status(404).json({ success: false });
-		}
-		// 2. Check the current user is a member of the team
-		const {
-			user: { _id },
-			body: data,
-		} = req;
+			// 1. Get the team from the database include user documents for each member
+			const team = await TeamModel.findOne({ _id: req.params.id }).populate([{ path: 'users' }, { path: 'publisher', select: 'name' }]);
 
-		let { members } = team;
-		let authorised = false;
+			if (!team) {
+				return res.status(404).json({ success: false });
+			}
+			// 2. Check the current user is a member of the team
+			const {
+				user: { _id },
+				body: data,
+			} = req;
 
-		if (members) {
-			authorised = members.some(el => el.memberid.toString() === _id.toString());
-		}
-		// 3. If not return unauthorised
-		if (!authorised) return res.status(401).json({ success: false });
-		// 4. get member details
-		let member = [...members].find(el => el.memberid.toString() === _id.toString());
-		// 5. get member roles and notifications
-		let { roles = [] } = member;
-		// 6. get user role
-		let isManager = roles.includes('manager');
-		// 7. req data from FE
-		let { memberNotifications = [], teamNotifications = [] } = data;
-		// want to optIn's for false values-
-		// if false we need to check the teamNotifications incoming for req to see if any are false
-		// if any teamNotifications for same type false return error with message obj
+			let { members, users, notifications } = team;
+			let authorised = false;
 
-		// 7. commonality = can only turn off personal notification for each type if team has subscribed emails for desired type **As of M2 DAR**
-		let missingOptIns = {};
-		// 8. if member has notifications
-		if (!_.isEmpty(memberNotifications) && !_.isEmpty(teamNotifications)) {
-			missingOptIns = [...memberNotifications].reduce((neededOptIns, memberNotification) => {
-				let { notificationType: memberNotificationType, optIn: memberOptIn } = memberNotification;
-				// find the matching notification type within the teams notification
-				let teamNotification =
-					[...teamNotifications].find(teamNotification => teamNotification.notificationType === memberNotificationType) || {};
-				// if the team has the same notification type test
-				if (!_.isEmpty(teamNotification)) {
-					let { notificationType, optIn: teamOptIn, subscribedEmails } = teamNotification;
-					// if both are turned off build and return new error
-					if ((!teamOptIn && !memberOptIn) || (!memberOptIn && subscribedEmails.length <= 0)) {
-						neededOptIns = {
-							...neededOptIns,
-							[`${notificationType}`]: `Notifications must be enabled for ${constants.teamNotificationTypesHuman[notificationType]}`,
-						};
-					}
+			if (members) {
+				authorised = [...members].some(
+					(el) => el.memberid.toString() === _id.toString()
+				);
+			}
+			// 3. If not return unauthorised
+			if (!authorised) 
+				return res.status(401).json({ success: false });
+			// 4. get member details
+			let member = [...members].find(el => el.memberid.toString() === _id.toString());
+			// 5. get member roles and notifications
+			let { roles = [] } = member;
+
+			// 6. get user role
+			let isManager = roles.includes('manager');
+
+			// 7. req data from FE
+			let { memberNotifications = [], teamNotifications = [] } = data;
+
+			// 8. commonality = can only turn off personal notification for each type if team has subscribed emails for desired type **As of M2 DAR**
+			let missingOptIns = {};
+
+			// 9. if member has notifications - backend check to ensure optIn is true if team notifications opted out for member
+			if (!_.isEmpty(memberNotifications) && !_.isEmpty(teamNotifications)) {
+				missingOptIns = findMissingOptIns(memberNotifications, teamNotifications);
+			}
+
+			// 10. return missingOptIns to FE and do not update
+			if(!_.isEmpty(missingOptIns))
+				return res.status(400).json({ success: false, message: missingOptIns });
+
+			// 11. if manager updates team notifications, check if we have any team notifications optedOut
+			if(isManager) {
+				// 1. filter team.notification types that are opted out ie { optIn: false, ... }
+				const optedOutTeamNotifications = [...teamNotifications].filter(notification => !notification.optIn) || [];
+				// 2. if there are opted out team notifications find members who have these notifications turned off and turn on if any
+				if(!_.isEmpty(optedOutTeamNotifications)) {
+					// loop over each notification type that has optOut
+					optedOutTeamNotifications.forEach((teamNotification) => {
+						// get notification type
+						let { notificationType } = teamNotification;
+						// loop members
+						members.forEach((member) => {
+							// get member notifications
+							let { notifications = [] } = member;
+							// if notifications exist
+							if(!_.isEmpty(notifications)) {
+								// find the notification by notificationType
+								let notificationIndex = notifications.findIndex((n => n.notificationType.toUpperCase() === notificationType.toUpperCase()));
+								// if notificationType exists update optIn and notificationMessage
+								if (!notifications[notificationIndex].optIn) {
+									notifications[notificationIndex].optIn = true;
+									notifications[notificationIndex].message = constants.teamNotificationMessages[notificationType.toUpperCase()];
+								}
+							}
+							// update member notifications
+							member.notifications = notifications;
+						});
+					});
 				}
-				return neededOptIns;
-			}, {});
-		}
-		// 9. return missingOptIns to FE and do not update
-		if (!_.isEmpty(missingOptIns)) return res.status(400).json({ success: false, message: missingOptIns });
-		// 10. if manager update team notifications
-		if (isManager) {
-			// update team notifications
-			team.notifications = teamNotifications;
-		}
-		// 11. update member notifications
-		member.notifications = memberNotifications;
-		// 12. save changes to team
-		await team.save();
-		// 13. return 201 with new team
-		return res.status(201).json(team);
-	} catch (err) {
+
+				// compare db / payload notifications for each type and send email ** when more types update email logic only to capture multiple types as it only outs one currently as per design ***
+				// check if team has team.notificaitons loop over db notifications array - process emails missing / added for the type if manager has saved
+				if(!_.isEmpty(notifications)) {
+					// get manager who has submitted the request
+					let manager = [...users].find(user => user._id.toString() === member.memberid.toString());
+
+					[...notifications].forEach((dbNotification) => {
+						// extract notification type from team.notifications ie dataAccessRequest
+						let { notificationType } = dbNotification;
+						// find the notificationType in the teamNotifications incoming from FE
+						const notificationPayload = [...teamNotifications].find(n => n.notificationType.toUpperCase() === notificationType.toUpperCase()) || {};
+						// if found process next phase
+						if(!_.isEmpty(notificationPayload)) {
+							//  get db subscribedEmails and rename to dbSubscribedEmails
+							let { subscribedEmails: dbSubscribedEmails, optIn: dbOptIn } = dbNotification;
+							//  get incoming subscribedEmails and rename to payLoadSubscribedEmails
+							let { subscribedEmails: payLoadSubscribedEmails, optIn: payLoadOptIn } = notificationPayload;
+							// compare team.notifications by notificationType subscribed emails against the incoming payload to get emails that have been removed
+							const removedEmails = _.difference([...dbSubscribedEmails], [...payLoadSubscribedEmails]) || [];
+							// compare incoming payload notificationTypes subscribed emails to get emails that have been added against db 
+							const addedEmails = _.difference([...payLoadSubscribedEmails], [...dbSubscribedEmails]) || [];
+							// get all members who have notifications by the type
+							const subscribedMembersByType = filterMembersByNoticationTypes([...members], [notificationType]);
+							if(!_.isEmpty(subscribedMembersByType)) {
+								// build cleaner array of memberIds from subscribedMembersByType
+								const memberIds = [...subscribedMembersByType].map(m => m.memberid);								
+								// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object in team
+								const { memberEmails, userIds } = getMemberDetails([...memberIds], [...users]);
+								// email options and html template
+								let html = '';
+								let options = {
+									managerName: `${manager.firstname} ${manager.lastname}`,
+									notificationRemoved: false,
+									disabled: false,
+									header: '',
+									emailAddresses: []
+								};
+								// check if removed emails and send email subscribedEmails or if the emails are turned off 
+								if(!_.isEmpty(removedEmails) || (dbOptIn && !payLoadOptIn)) {
+
+									// update the options
+									options = { 
+										...options, 
+										notificationRemoved: true, 
+										disabled: !payLoadOptIn ? true : false,
+										header: `A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${dbOptIn && !payLoadOptIn ? 'disabled all' : 'removed a'} generic team email address(es)`,
+										emailAddresses: dbOptIn && !payLoadOptIn ? payLoadSubscribedEmails : removedEmails  
+									}
+									// get html template
+									html = emailGenerator.generateTeamNotificationEmail(options);
+									// send email
+									emailGenerator.sendEmail(
+										memberEmails,
+										constants.hdrukEmail,
+										`A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${dbOptIn && !payLoadOptIn ? 'disabled all' : 'removed a'} generic team email address(es)`,
+										html,
+										true
+									);
+
+									notificationBuilder.triggerNotificationMessage(
+                    [...userIds],
+                    `A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${dbOptIn && !payLoadOptIn ? 'disabled all' : 'removed a'} generic team email address(es)`,
+                    'team',
+                    team.publisher ? team.publisher.name : 'Undefined'
+               	 	);
+
+								}
+								// check if added emails and send email to subscribedEmails or if the dbOpt is false but the manager is turning back on team notifications
+								if(!_.isEmpty(addedEmails) || (!dbOptIn && payLoadOptIn)) {
+									// update options
+									options = {
+										...options, 
+										notificationRemoved: false,
+										header: `A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${!dbOptIn && payLoadOptIn ? 'enabled all' : 'added a'} generic team email address(es)`,
+										emailAddresses: payLoadSubscribedEmails,
+									}
+									// get html template
+									html =  emailGenerator.generateTeamNotificationEmail(options);
+									// send email
+									emailGenerator.sendEmail(
+										memberEmails,
+										constants.hdrukEmail,
+										`A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${!dbOptIn && payLoadOptIn ? 'enabled all' : 'added a'} generic team email address(es)`,
+										html,
+										true
+									);
+
+									notificationBuilder.triggerNotificationMessage(
+                    [...userIds],
+										`A manager for ${team.publisher ? team.publisher.name : 'a team' } has ${!dbOptIn && payLoadOptIn ? 'enabled all' : 'added a'} generic team email address(es)`,
+                    'team',
+                    team.publisher ? team.publisher.name : 'Undefined'
+               	 	);
+								}
+							}
+						}
+					});
+				}
+				// update team notifications
+				team.notifications = teamNotifications;
+			} 
+			// 11. update member notifications
+			member.notifications = memberNotifications;
+			// 12. save changes to team
+			await team.save();
+			// 13. return 201 with new team
+			return res.status(201).json(team);
+	} catch(err) {
 		console.error(err.message);
 		return res.status(500).json({
 			success: false,
@@ -299,6 +415,37 @@ const updateNotifications = async (req, res) => {
 		});
 	}
 };
+
+/**
+ * PUT api/v1/team/:id/notification-messages
+ *
+ * @desc Update Individal User messages against their own notifications
+ *
+ */
+const updateNotificationMessages = async (req, res) => {
+	try {
+			const {
+				user: { _id },
+			} = req;
+			await TeamModel.update(
+				{ _id: req.params.id },
+				{ $set: { "members.$[m].notifications.$[].message": '' } },
+				{ arrayFilters: [ { "m.memberid": _id } ], multi: true}
+		 ).then(resp => {
+			return res.status(201).json();
+		 }).catch((err) => {
+					console.log(err);
+					res.status(500).json({success: false, message: err.message});
+			});
+	}
+	catch(err) {
+		console.error(err.message);
+		return res.status(500).json({
+			success: false,
+			message: 'An error occurred updating notification messages',
+		});
+	}
+}
 
 /**
  * Deletes a team member from a team
@@ -455,6 +602,60 @@ const findByNotificationType = (notificaitons = [], notificationType = '') => {
 	return {};
 };
 
+/**
+ * filterMembersByNoticationTypes *nifty*
+ *
+ * @param   {Array}  members            [members]
+ * @param   {Array}  notificationTypes  [notificationTypes]
+ * @return  {Array}                     [return all members with notification types]
+ */
+const filterMembersByNoticationTypes = (members, notificationTypes) =>  {
+	return _.filter(members, (member) => {
+			return _.some(member.notifications, (notification) => {
+					return _.includes(notificationTypes, notification.notificationType);
+			});
+	});
+}
+
+/**
+ * filterMembersByNoticationTypesOptIn *nifty*
+ *
+ * @param   {Array}  members            [members]
+ * @param   {Array}  notificationTypes  [notificationTypes]
+ * @return  {Array}                     [return all members with notification types]
+ */
+const filterMembersByNoticationTypesOptIn = (members, notificationTypes) =>  {
+	return _.filter(members, (member) => {
+			return _.some(member.notifications, (notification) => {
+					return _.includes(notificationTypes, notification.notificationType) && notification.optIn;
+			});
+	});
+}
+
+/**
+ * getMemberDetails
+ *
+ * @param   {Array}  memberIds          [memberIds from team.members]
+ * @param   {Array}  users  						[array of user objects that are in the team]
+ * @return  {Array}                     [return all emails for memberIds from user aray]
+ */
+const getMemberDetails = (memberIds = [], users = []) => {
+	if(!_.isEmpty(memberIds) && !_.isEmpty(users)) {
+		return [...users].reduce((arr, user) => {
+			const member = [...memberIds].find(m => m.toString() === user._id.toString()) || {};
+			if(!_.isEmpty(member)) {
+					let { email, id } = user;
+					return {
+						'memberEmails': [...arr['memberEmails'], { email }], 
+						'userIds': [...arr['userIds'], id] 
+					}
+			}
+			return arr;
+	}, {'memberEmails': [], 'userIds': []});
+	}
+	return [];
+}
+
 const buildOptedInEmailList = (custodianManagers = [], team = {}, notificationType = '') => {
 	let { members = [] } = team;
 	if (!_.isEmpty(custodianManagers)) {
@@ -597,18 +798,42 @@ const formatTeamNotifications = team => {
 	}
 };
 
+const findMissingOptIns = (memberNotifications, teamNotifications) => {
+	return [...memberNotifications].reduce((neededOptIns, memberNotification) => {
+		let { notificationType: memberNotificationType, optIn: memberOptIn } = memberNotification;
+		// find the matching notification type within the teams notification
+		let teamNotification = [...teamNotifications].find(teamNotification => teamNotification.notificationType === memberNotificationType) || {};
+		// if the team has the same notification type test
+		if(!_.isEmpty(teamNotification)) {
+			let {notificationType, optIn: teamOptIn, subscribedEmails} = teamNotification;
+			// if both are turned off build and return new error
+			if((!teamOptIn && !memberOptIn) || (!memberOptIn && subscribedEmails.length <= 0)) {
+				neededOptIns = {
+					...neededOptIns,
+					[`${notificationType}`]:  `Notifications must be enabled for ${constants.teamNotificationTypesHuman[notificationType]}`
+				}
+			}
+		}
+		return neededOptIns;
+	}, {});
+}
+
 export default {
 	getTeamById: getTeamById,
 	getTeamNotificationByType: getTeamNotificationByType,
 	getTeamNotificationEmails: getTeamNotificationEmails,
 	findTeamMemberById: findTeamMemberById,
 	findByNotificationType: findByNotificationType,
+	filterMembersByNoticationTypes: filterMembersByNoticationTypes,
+	filterMembersByNoticationTypesOptIn: filterMembersByNoticationTypesOptIn,
 	buildOptedInEmailList: buildOptedInEmailList,
 	getTeamMembers: getTeamMembers,
+	getMemberDetails: getMemberDetails,
 	getTeamNotifications: getTeamNotifications,
 	addTeamMembers: addTeamMembers,
 	updateTeamMember: updateTeamMember,
 	updateNotifications: updateNotifications,
+	updateNotificationMessages: updateNotificationMessages,
 	deleteTeamMember: deleteTeamMember,
 	checkTeamPermissions: checkTeamPermissions,
 	getTeamMembersByRole: getTeamMembersByRole,

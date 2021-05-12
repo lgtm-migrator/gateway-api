@@ -210,23 +210,23 @@ const matchCurrentUser = (user, auditField) => {
 
 const cloneIntoExistingApplication = (appToClone, appToUpdate) => {
 	// 1. Extract values required to clone into existing application
-	const { questionAnswers } = appToClone;
+	const { questionAnswers, _id } = appToClone;
 	const { jsonSchema: schemaToUpdate } = appToUpdate;
 
 	// 2. Extract and append any user repeated sections from the original form
-	if (containsUserRepeatedSections(questionAnswers)) {
+	if (questionAnswers && Object.keys(questionAnswers).length > 0 && containsUserRepeatedSections(questionAnswers)) {
 		const updatedSchema = copyUserRepeatedSections(appToClone, schemaToUpdate);
 		appToUpdate.jsonSchema = updatedSchema;
 	}
 
 	// 3. Return updated application
-	return { ...appToUpdate, questionAnswers };
+	return { ...appToUpdate, questionAnswers, originId: _id };
 };
 
 const cloneIntoNewApplication = async (appToClone, context) => {
 	// 1. Extract values required to clone existing application
 	const { userId, datasetIds, datasetTitles, publisher } = context;
-	const { questionAnswers } = appToClone;
+	const { questionAnswers, _id } = appToClone;
 
 	// 2. Get latest publisher schema
 	const { jsonSchema, version, _id: schemaId, isCloneable = false, formType } = await getLatestPublisherSchema(publisher);
@@ -246,10 +246,11 @@ const cloneIntoNewApplication = async (appToClone, context) => {
 		aboutApplication: {},
 		amendmentIterations: [],
 		applicationStatus: constants.applicationStatuses.INPROGRESS,
+		originId: _id
 	};
 
 	// 4. Extract and append any user repeated sections from the original form
-	if (containsUserRepeatedSections(questionAnswers)) {
+	if (questionAnswers && Object.keys(questionAnswers).length > 0 && containsUserRepeatedSections(questionAnswers)) {
 		const updatedSchema = copyUserRepeatedSections(appToClone, jsonSchema);
 		newApplication.jsonSchema = updatedSchema;
 	}

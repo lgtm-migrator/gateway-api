@@ -63,7 +63,7 @@ const DataSchema = new Schema(
 		showBio: Boolean,
 		orcid: String,
 		showOrcid: Boolean,
-		emailNotifications: Boolean,
+		emailNotifications: { type: Boolean, default: true },
 		terms: Boolean,
 		sector: String,
 		showSector: Boolean,
@@ -77,6 +77,7 @@ const DataSchema = new Schema(
 		source: String,
 		is5Safes: Boolean,
 		hasTechnicalDetails: Boolean,
+		commercialUse: Boolean,
 		datasetid: String,
 		pid: String,
 		datasetVersion: String,
@@ -105,6 +106,19 @@ const DataSchema = new Schema(
 			phenotypes: [],
 		},
 		datasetv2: {},
+		questionAnswers: {},
+		structuralMetadata: [],
+		percentageCompleted: {},
+		applicationStatusDesc: String,
+		timestamps: {
+			updated: Date,
+			created: Date,
+			submitted: Date,
+			published: Date,
+			rejected: Date,
+			archived: Date,
+		},
+		datasetVersionIsV1: { type: Boolean, default: false },
 
 		//not used
 		rating: Number,
@@ -142,6 +156,13 @@ DataSchema.virtual('persons', {
 	ref: 'Data',
 	foreignField: 'id',
 	localField: 'authors',
+});
+
+DataSchema.virtual('user', {
+	ref: 'User',
+	foreignField: 'id',
+	localField: 'id',
+	justOne: true
 });
 
 export const Data = model('Data', DataSchema);

@@ -1,4 +1,4 @@
-import { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
+import _, { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
@@ -1579,6 +1579,80 @@ const _generateRemovedFromTeam = options => {
 	return body;
 };
 
+const _displayViewEmailNotifications = () => {
+	let link = `${process.env.homeURL}/account?tab=teamManagement&innertab=notifications`;
+	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
+                <a style="color: #475da7;" href="${link}">View email notifications</a>
+              </td>
+            </tr>
+          </table>`;
+};
+
+const _formatEmails = emails => {
+	return [...emails].map((email, i) => ` ${email}`);
+};
+
+const _generateTeamNotificationEmail = options => {
+	let { managerName, notificationRemoved, emailAddresses, header, disabled } = options;
+	let formattedEmails = _formatEmails(emailAddresses);
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; max-width:700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${header}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${
+												notificationRemoved
+													? `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADEREMOVE}`
+													: `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADERADD}`
+											}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 140px; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Team email address</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 450px; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">
+													${formattedEmails}
+												</td>
+                      </tr>
+                    </table>
+                    ${disabled ? _generateTeamEmailRevert(notificationRemoved) : ''}
+                    ${_displayViewEmailNotifications()}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+	return body;
+};
+
+const _generateTeamEmailRevert = notificationRemoved => {
+	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
+                If you had stopped emails being sent to your gateway log in email address and no team email address is now active, your emails will have reverted back to your gateway log in email.
+              </td>
+            </tr>
+          </table>`;
+};
+
 const _generateAddedToTeam = options => {
 	let { teamName, role } = options;
 	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
@@ -1627,6 +1701,137 @@ const _generateAddedToTeam = options => {
 	return body;
 };
 
+const _generateMetadataOnboardingSumbitted = options => {
+	let { name, publisher } = options;
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Dataset version available for review
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    The dataset, ${name}, has been submitted to the Gateway by ${publisher}. You can review and approve or reject this dataset version from application view.
+                  </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=admin">View datasets pending approval</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingApproved = options => {
+	let { name, publisherId, comment } = options;
+
+	let commentHTML = '';
+
+	if (!_.isEmpty(comment)) {
+		commentHTML = `<tr>
+      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+        Approval comment
+      </th>
+    </tr>
+    <tr>
+      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+        ${comment}
+      </th>
+    </tr>`;
+	}
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Your dataset version has been approved and is now active
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    The submitted version of ${name} has been reviewed and approved by the HDRUK admins. It is now active, searchable and available to request access to on the Innovation Gateway. You may view and create a new version of the dataset in your dataset dashboard.
+                  </th>
+                  </tr>
+                  ${commentHTML}
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisherId}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingRejected = options => {
+	let { name, publisherId, comment } = options;
+
+	let commentHTML = '';
+
+	if (!_.isEmpty(comment)) {
+		commentHTML = `<tr>
+      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+        Reason for rejection
+      </th>
+    </tr>
+    <tr>
+      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+        ${comment}
+      </th>
+    </tr>`;
+	}
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Your dataset version has been reviewed and rejected
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    The submitted version of ${name} has been reviewed and rejected by the HDRUK admins. Please view and create a new version of this dataset and make the necessary changes if you would like to make another submission to the Gateway.
+                  </th>
+                  </tr>
+                  ${commentHTML}
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisherId}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
 /**
  * [_sendEmail]
  *
@@ -1663,6 +1868,28 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 			}
 		});
 	}
+};
+
+/**
+ * [_sendIntroEmail]
+ *
+ * @desc    Send an intro Email upon user registration
+ * @param   {Object}  message to from, templateId
+ */
+const _sendIntroEmail = msg => {
+	// 1. Apply SendGrid API key from environment variable
+	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+	// 2. Send email using SendGrid
+	sgMail.send(msg, false, err => {
+		if (err) {
+			Sentry.addBreadcrumb({
+				category: 'SendGrid',
+				message: 'Sending email failed - Intro',
+				level: Sentry.Severity.Warning,
+			});
+			Sentry.captureException(err);
+		}
+	});
 };
 
 const _generateEmailFooter = (recipient, allowUnsubscribe) => {
@@ -1720,6 +1947,12 @@ const _generateAttachment = (filename, content, type) => {
 };
 
 export default {
+	//General
+	sendEmail: _sendEmail,
+	sendIntroEmail: _sendIntroEmail,
+	generateEmailFooter: _generateEmailFooter,
+	generateAttachment: _generateAttachment,
+	//DAR
 	generateEmail: _generateEmail,
 	generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
@@ -1731,11 +1964,16 @@ export default {
 	generateReviewDeadlineWarning: _generateReviewDeadlineWarning,
 	generateReviewDeadlinePassed: _generateReviewDeadlinePassed,
 	generateFinalDecisionRequiredEmail: _generateFinalDecisionRequiredEmail,
+	generateTeamNotificationEmail: _generateTeamNotificationEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
-	sendEmail: _sendEmail,
-	generateEmailFooter: _generateEmailFooter,
-	generateAttachment: _generateAttachment,
+	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
+	//Metadata Onboarding
+	generateMetadataOnboardingSumbitted: _generateMetadataOnboardingSumbitted,
+	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
+	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
+	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
+	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 };

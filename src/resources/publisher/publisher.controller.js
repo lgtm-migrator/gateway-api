@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import mongoose from 'mongoose';
 import { PublisherModel } from './publisher.model';
 import { Data } from '../tool/data.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
@@ -13,7 +14,12 @@ module.exports = {
 	getPublisherById: async (req, res) => {
 		try {
 			// 1. Get the publisher from the database
-			const publisher = await PublisherModel.findOne({ name: req.params.id });
+			let publisher;
+			if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+				publisher = await PublisherModel.findOne({ _id: req.params.id });
+			} else {
+				publisher = await PublisherModel.findOne({ name: req.params.id });
+			}
 			if (!publisher) {
 				return res.status(200).json({
 					success: true,
