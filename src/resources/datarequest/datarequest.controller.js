@@ -5,7 +5,6 @@ import { DataRequestSchemaModel } from './datarequest.schemas.model';
 import { UserModel } from '../user/user.model';
 
 import teamController from '../team/team.controller';
-import workflowController from '../workflow/workflow.controller';
 import datarequestUtil from './utils/datarequest.util';
 import notificationBuilder from '../utilities/notificationBuilder';
 
@@ -24,7 +23,6 @@ import mongoose from 'mongoose';
 import { logger } from '../utilities/logger';
 const logCategory = 'Data Access Request';
 
-const amendmentController = require('./amendment/amendment.controller');
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
@@ -39,18 +37,20 @@ export default class DataRequestController extends Controller {
 		try {
 			// Deconstruct the parameters passed
 			let { query = {} } = req;
-			const userId = parseInt(req.user.id);
+			const requestingUserId = parseInt(req.user.id);
 
 			// Find all data access request applications for requesting user
-			let applications = await this.dataRequestService.getAccessRequestsByUser(userId, query);
+			let applications = await this.dataRequestService.getAccessRequestsByUser(requestingUserId, query);
 
 			// Create detailed application object including workflow, review meta details
 			let modifiedApplications = [...applications]
 				.map(accessRecord => {
-					let accessRecordDTO = this.dataRequestService.createApplicationDTO(accessRecord, constants.userTypes.APPLICANT);
-					// Append amendment status
-					accessRecordDTO.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, userType);
-					return accessRecordDTO;
+					accessRecord = this.workflowService.getWorkflowDetails(accessRecord, requestingUserId);
+					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
+					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
+					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
+					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.APPLICANT);
+					return accessRecord;
 				})
 				.sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -73,68 +73,54 @@ export default class DataRequestController extends Controller {
 			});
 		}
 	}
-}
 
-module.exports = {
-	//GET api/v1/data-access-request/:requestId
-	getAccessRequestById: async (req, res) => {
+	async getAccessRequestById(req, res) {
 		try {
 			// 1. Get dataSetId from params
-			let {
-				params: { requestId },
+			const {
+				params: { id },
 			} = req;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
 			// 2. Find the matching record and include attached datasets records with publisher details
-			let accessRecord = await DataRequestModel.findOne({
-				_id: requestId,
-			}).populate([
-				{ path: 'mainApplicant', select: 'firstname lastname -id' },
-				{
-					path: 'datasets dataset authors',
-					populate: { path: 'publisher', populate: { path: 'team' } },
-				},
-				{ path: 'workflow.steps.reviewers', select: 'firstname lastname' },
-				{ path: 'files.owner', select: 'firstname lastname' },
-			]);
+			let accessRecord = await this.dataRequestService.getApplicationById(id);
 			// 3. If no matching application found, return 404
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
-			} else {
-				accessRecord = accessRecord.toObject();
 			}
-			// 4. Ensure single datasets are mapped correctly into array
-			if (_.isEmpty(accessRecord.datasets)) {
-				accessRecord.datasets = [accessRecord.dataset];
-			}
-			// 5. Check if requesting user is custodian member or applicant/contributor
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
-			let readOnly = true;
+			// 4. Check if requesting user is custodian member or applicant/contributor
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
-			// 6. Set edit mode for applicants who have not yet submitted
-			if (userType === constants.userTypes.APPLICANT && accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
-				readOnly = false;
-			}
-			// 7. Count unsubmitted amendments
-			let countUnsubmittedAmendments = this.amendmentService.countUnsubmittedAmendments(accessRecord, userType);
-			// 8. Set the review mode if user is a custodian reviewing the current step
-			let { inReviewMode, reviewSections, hasRecommended } = this.workflowService.getReviewStatus(accessRecord, req.user._id);
-			// 9. Get the workflow/voting status
+			// 5. Set edit mode for applicants who have not yet submitted
+			const { applicationStatus } = accessRecord;
+			accessRecord.readOnly = this.dataRequestService.getApplicationIsReadOnly(userType, applicationStatus);
+			// 6. Count unsubmitted amendments
+			const countUnsubmittedAmendments = this.amendmentService.countUnsubmittedAmendments(accessRecord, userType);
+			// 7. Set the review mode if user is a custodian reviewing the current step
+			let { inReviewMode, reviewSections, hasRecommended } = this.workflowService.getReviewStatus(accessRecord, requestingUserObjectId);
+			// 8. Get the workflow/voting status
 			let workflow = this.workflowService.getWorkflowStatus(accessRecord);
 			let isManager = false;
-			// 10. Check if the current user can override the current step
+			// 9. Check if the current user can override the current step
 			if (_.has(accessRecord.datasets[0], 'publisher.team')) {
-				isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, accessRecord.datasets[0].publisher.team, req.user._id);
+				const { team } = accessRecord.datasets[0].publisher;
+				isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team, requestingUserObjectId);
 				// Set the workflow override capability if there is an active step and user is a manager
 				if (!_.isEmpty(workflow)) {
 					workflow.canOverrideStep = !workflow.isCompleted && isManager;
 				}
 			}
-			// 11. Update json schema and question answers with modifications since original submission
+			// 10. Update json schema and question answers with modifications since original submission
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
-			// 12. Determine the current active party handling the form
+			// 11. Determine the current active party handling the form
 			let activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord);
-			// 13. Append question actions depending on user type and application status
+			// 12. Append question actions depending on user type and application status
 			let userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
@@ -144,13 +130,12 @@ module.exports = {
 				userRole,
 				activeParty
 			);
-			// 14. Return application form
+			// 13. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
 					...accessRecord,
 					datasets: accessRecord.datasets,
-					readOnly,
 					...countUnsubmittedAmendments,
 					userType,
 					activeParty,
@@ -163,11 +148,17 @@ module.exports = {
 				},
 			});
 		} catch (err) {
-			console.error(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred opening this data access request application',
+			});
 		}
-	},
+	}
+}
 
+module.exports = {
 	//GET api/v1/data-access-request/dataset/:datasetId
 	getAccessRequestByUserAndDataset: async (req, res) => {
 		let accessRecord, dataset;
@@ -400,32 +391,26 @@ module.exports = {
 				user: req.user,
 			});
 			// 3. Find data request by _id to determine current status
-			let accessRequestRecord = await DataRequestModel.findOne({
+			let accessRecord = await DataRequestModel.findOne({
 				_id: id,
 			});
 			// 4. Check access record
-			if (!accessRequestRecord) {
+			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Data Access Request not found.' });
 			}
 			// 5. Update record object
-			module.exports.updateApplication(accessRequestRecord, updateObj).then(accessRequestRecord => {
-				const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRequestRecord;
-				if (dirtySchema) {
-					accessRequestRecord = this.amendmentService.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
-				}
-				let data = {
-					status: 'success',
-					unansweredAmendments,
-					answeredAmendments,
-				};
-				if (dirtySchema) {
-					data = {
-						...data,
-						jsonSchema: accessRequestRecord.jsonSchema,
-					};
-				}
-				// 6. Return new data object
-				return res.status(200).json(data);
+			accessRecord = await module.exports.updateApplication(accessRecord, updateObj);
+			const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRecord;
+
+			if (dirtySchema) {
+				accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, req.user);
+			}
+			// 6. Return new data object
+			return res.status(200).json({
+				status: 'success',
+				unansweredAmendments,
+				answeredAmendments,
+				jsonSchema: dirtySchema ? accessRecord.jsonSchema : undefined,
 			});
 		} catch (err) {
 			console.error(err.message);
@@ -471,7 +456,6 @@ module.exports = {
 					throw err;
 				}
 			});
-			return accessRecord;
 			// 3. Else if application has already been submitted make amendment
 		} else if (
 			applicationStatus === constants.applicationStatuses.INREVIEW ||
@@ -488,8 +472,8 @@ module.exports = {
 					throw err;
 				}
 			});
-			return accessRecord;
 		}
+		return accessRecord;
 	},
 
 	//PUT api/v1/data-access-request/:id
@@ -2637,5 +2621,5 @@ module.exports = {
 				);
 				break;
 		}
-	}
+	},
 };

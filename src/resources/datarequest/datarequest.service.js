@@ -1,5 +1,8 @@
-import { isEmpty, has, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import moment from 'moment';
+
+import datarequestUtil from '../datarequest/utils/datarequest.util';
+import constants from '../utilities/constants.util';
 
 export default class DataRequestService {
 	constructor(dataRequestRepository) {
@@ -8,6 +11,67 @@ export default class DataRequestService {
 
 	async getAccessRequestsByUser(userId, query = {}) {
 		return this.dataRequestRepository.getAccessRequestsByUser(userId, query);
+	}
+
+	getApplicationById(id) {
+		return this.dataRequestRepository.getApplicationById(id);
+	}
+
+	getApplicationIsReadOnly(userType, applicationStatus) {
+		let readOnly = true;
+		if (userType === constants.userTypes.APPLICANT && applicationStatus === constants.applicationStatuses.INPROGRESS) {
+			readOnly = false;
+		}
+		return readOnly;
+	}
+
+	getProjectName(accessRecord) {
+		// Retrieve project name from about application section
+		const {
+			aboutApplication: { projectName },
+		} = accessRecord;
+		if (projectName) {
+			return projectName;
+		} else {
+			// Build default project name from publisher and dataset name
+			const {
+				datasetfields: { publisher },
+				name,
+			} = accessRecord.datasets[0];
+			return `${publisher} - ${name}`;
+		}
+	}
+
+	getProjectNames(applications = []) {
+		return [...applications].map(accessRecord => {
+			const projectName = this.getProjectName(accessRecord);
+			const { _id } = accessRecord;
+			return { projectName, _id };
+		});
+	}
+
+	getApplicantNames(accessRecord) {
+		// Retrieve applicant names from form answers
+		const { questionAnswers = {} } = accessRecord;
+		let applicants = datarequestUtil.extractApplicantNames(questionAnswers);
+		let applicantNames = '';
+		// Return only main applicant if no applicants added
+		if (isEmpty(applicants)) {
+			const { firstname, lastname } = accessRecord.mainApplicant;
+			applicantNames = `${firstname} ${lastname}`;
+		} else {
+			applicantNames = applicants.join(', ');
+		}
+		return applicantNames;
+	}
+
+	getDecisionDuration(accessRecord) {
+		const { dateFinalStatus, dateSubmitted } = accessRecord;
+		if (dateFinalStatus && dateSubmitted) {
+			return parseInt(moment(dateFinalStatus).diff(dateSubmitted, 'days'));
+		} else {
+			return '';
+		}
 	}
 
 	calculateAvgDecisionTime(accessRecords = []) {
@@ -32,141 +96,5 @@ export default class DataRequestService {
 			if (totalDecisionTime > 0) return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
-	}
-
-	createApplicationDTO(accessRecord, userType, userId = '') {
-		let projectName = '',
-			applicants = '',
-			workflowName = '',
-			workflowCompleted = false,
-			remainingActioners = [],
-			decisionDuration = '',
-			decisionMade = false,
-			decisionStatus = '',
-			decisionComments = '',
-			decisionDate = '',
-			decisionApproved = false,
-			managerUsers = [],
-			stepName = '',
-			deadlinePassed = '',
-			reviewStatus = '',
-			isReviewer = false,
-			reviewPanels = []
-
-		// Check if the application has a workflow assigned
-		let { workflow = {}, applicationStatus } = accessRecord;
-		if (has(accessRecord, 'publisherObj.team.members')) {
-			let {
-				publisherObj: {
-					team: { members, users },
-				},
-			} = accessRecord;
-			let managers = members.filter(mem => {
-				return mem.roles.includes('manager');
-			});
-			managerUsers = users
-				.filter(user => managers.some(manager => manager.memberid.toString() === user._id.toString()))
-				.map(user => {
-					let isCurrentUser = user._id.toString() === userId.toString();
-					return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)` : ``}`;
-				});
-			if (
-				applicationStatus === constants.applicationStatuses.SUBMITTED ||
-				(applicationStatus === constants.applicationStatuses.INREVIEW && isEmpty(workflow))
-			) {
-				remainingActioners = managerUsers.join(', ');
-			}
-			if (!isEmpty(workflow)) {
-				({ workflowName } = workflow);
-				workflowCompleted = this.workflowService.getWorkflowCompleted(workflow);
-				let activeStep = this.workflowService.getActiveWorkflowStep(workflow);
-				// Calculate active step status
-				if (!isEmpty(activeStep)) {
-					({
-						stepName = '',
-						remainingActioners = [],
-						deadlinePassed = '',
-						reviewStatus = '',
-						decisionMade = false,
-						decisionStatus = '',
-						decisionComments = '',
-						decisionApproved,
-						decisionDate,
-						isReviewer = false,
-						reviewPanels = [],
-					} = this.workflowService.getActiveStepStatus(activeStep, users, userId));
-					let activeStepIndex = workflow.steps.findIndex(step => {
-						return step.active === true;
-					});
-					workflow.steps[activeStepIndex] = {
-						...workflow.steps[activeStepIndex],
-						reviewStatus,
-					};
-				} else if (isUndefined(activeStep) && applicationStatus === constants.applicationStatuses.INREVIEW) {
-					reviewStatus = 'Final decision required';
-					remainingActioners = managerUsers.join(', ');
-				}
-				// Get decision duration if completed
-				let { dateFinalStatus, dateSubmitted } = accessRecord;
-				if (dateFinalStatus) {
-					decisionDuration = parseInt(moment(dateFinalStatus).diff(dateSubmitted, 'days'));
-				}
-				// Set review section to display format
-				let formattedSteps = [...workflow.steps].reduce((arr, item) => {
-					let step = {
-						...item,
-						sections: [...item.sections].map(section => constants.darPanelMapper[section]),
-					};
-					arr.push(step);
-					return arr;
-				}, []);
-				workflow.steps = [...formattedSteps];
-			}
-		}
-
-		// Ensure backward compatibility with old single dataset DARs
-		if (isEmpty(accessRecord.datasets) || isUndefined(accessRecord.datasets)) {
-			accessRecord.datasets = [accessRecord.dataset];
-			accessRecord.datasetIds = [accessRecord.datasetid];
-		}
-		let {
-			datasetfields: { publisher },
-			name,
-		} = accessRecord.datasets[0];
-		let { aboutApplication, questionAnswers } = accessRecord;
-
-		if (aboutApplication) {
-			({ projectName } = aboutApplication);
-		}
-		if (isEmpty(projectName)) {
-			projectName = `${publisher} - ${name}`;
-		}
-		if (questionAnswers) {
-			applicants = datarequestUtil.extractApplicantNames(questionAnswers).join(', ');
-		}
-		if (isEmpty(applicants)) {
-			let { firstname, lastname } = accessRecord.mainApplicant;
-			applicants = `${firstname} ${lastname}`;
-		}
-		return {
-			...accessRecord,
-			projectName,
-			applicants,
-			publisher,
-			workflowName,
-			workflowCompleted,
-			decisionDuration,
-			decisionMade,
-			decisionStatus,
-			decisionComments,
-			decisionDate,
-			decisionApproved,
-			remainingActioners,
-			stepName,
-			deadlinePassed,
-			reviewStatus,
-			isReviewer,
-			reviewPanels
-		};
 	}
 }

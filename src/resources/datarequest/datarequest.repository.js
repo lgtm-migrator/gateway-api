@@ -14,7 +14,23 @@ export default class DataRequestRepository extends Repository {
 			$and: [{ ...query }, { $or: [{ userId }, { authorIds: userId }] }],
 		})
 			.select('-jsonSchema -questionAnswers -files')
-			.populate('datasets mainApplicant')
+			.populate([{ path: 'mainApplicant', select: 'firstname lastname -id' }, { path: 'datasets' }])
+			.lean();
+	}
+
+	async getApplicationById(id) {
+		return DataRequestModel.findOne({
+			_id: id,
+		})
+			.populate([
+				{ path: 'mainApplicant', select: 'firstname lastname -id' },
+				{
+					path: 'datasets dataset authors',
+					populate: { path: 'publisher', populate: { path: 'team' } },
+				},
+				{ path: 'workflow.steps.reviewers', select: 'firstname lastname' },
+				{ path: 'files.owner', select: 'firstname lastname' },
+			])
 			.lean();
 	}
 }

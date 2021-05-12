@@ -5,6 +5,8 @@ import datarequestUtil from '../utils/datarequest.util';
 import notificationBuilder from '../../utilities/notificationBuilder';
 import emailGenerator from '../../utilities/emailGenerator.util';
 
+import _ from 'lodash';
+
 export default class AmendmentService {
 	constructor(amendmentRepository) {
 		this.amendmentRepository = amendmentRepository;

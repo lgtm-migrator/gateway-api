@@ -7,14 +7,28 @@ export default class WorkflowRepository extends Repository {
 		this.workflowModel = WorkflowModel;
 	}
 
-	// async getAccessRequestsByUser(userId, query) {
-	// 	if (!userId) return [];
-
-	// 	return DataRequestModel.find({
-	// 		$and: [{ ...query }, { $or: [{ userId }, { authorIds: userId }] }],
-	// 	})
-	// 		.select('-jsonSchema -questionAnswers -files')
-	// 		.populate('datasets mainApplicant')
-	// 		.lean();
-	// }
+	getWorkflowsByPublisher(id) {
+		return WorkflowModel.find({
+			publisher: id,
+		}).populate([
+			{
+				path: 'publisher',
+				select: 'team',
+				populate: {
+					path: 'team',
+					select: 'members -_id',
+				},
+			},
+			{
+				path: 'steps.reviewers',
+				model: 'User',
+				select: '_id id firstname lastname',
+			},
+			{
+				path: 'applications',
+				select: 'aboutApplication',
+				match: { applicationStatus: 'inReview' },
+			},
+		]).lean();
+	}
 }

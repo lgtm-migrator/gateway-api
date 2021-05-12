@@ -131,42 +131,31 @@ export default class WorkflowController extends Controller {
 				createdBy: new Mongoose.Types.ObjectId(userId),
 			});
 			// 7. save new workflow to db
-			workflow.save(function (err) {
+			workflow = await workflow.save().catch(err => {
 				if (err) {
 					return res.status(400).json({
 						success: false,
 						message: err.message,
 					});
 				}
-				// 8. populate the workflow with the needed fiedls for our new notification and email
-				workflow.populate(
-					{
-						path: 'steps.reviewers',
-						select: 'firstname lastname email -_id',
-					},
-					(err, doc) => {
-						if (err) {
-							// 9. if issue
-							return res.status(400).json({
-								success: false,
-								message: err.message,
-							});
-						}
-						// 10. set context
-						let context = {
-							publisherObj: publisherObj.team.toObject(),
-							actioner: `${firstname} ${lastname}`,
-							workflow: doc.toObject(),
-						};
-						// 11. Generate new notifications / emails for managers of the team only on creation of a workflow
-						this.workflowService.createNotifications(context, constants.notificationTypes.WORKFLOWCREATED);
-						// 12. full complete return
-						return res.status(201).json({
-							success: true,
-							workflow,
-						});
-					}
-				);
+			});
+			// 8. populate the workflow with the needed fields for our new notification and email
+			const detailedWorkflow = await WorkflowModel.findById(workflow._id).populate({
+				path: 'steps.reviewers',
+				select: 'firstname lastname email -_id',
+			}).lean();
+			// 9. set context
+			let context = {
+				publisherObj: publisherObj.team.toObject(),
+				actioner: `${firstname} ${lastname}`,
+				workflow: detailedWorkflow,
+			};
+			// 10. Generate new notifications / emails for managers of the team only on creation of a workflow
+			this.workflowService.createNotifications(context, constants.notificationTypes.WORKFLOWCREATED);
+			// 11. full complete return
+			return res.status(201).json({
+				success: true,
+				workflow: detailedWorkflow,
 			});
 		} catch (err) {
 			console.error(err.message);

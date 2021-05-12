@@ -4,15 +4,127 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import notificationBuilder from '../utilities/notificationBuilder';
 
 import moment from 'moment';
-import _ from 'lodash';
+import { isEmpty, has } from 'lodash';
 
 export default class WorkflowService {
 	constructor(workflowRepository) {
 		this.workflowRepository = workflowRepository;
 	}
 
+	async getWorkflowsByPublisher(id) {
+		const workflows = await this.workflowRepository.getWorkflowsByPublisher(id);
+
+		const formattedWorkflows = [...workflows].map(workflow => {
+			let { active, _id, id, workflowName, version, applications = [], publisher } = workflow;
+			const formattedSteps = this.formatWorkflowSteps(workflow, 'displaySections');
+			return {
+				active,
+				_id,
+				id,
+				workflowName,
+				version,
+				steps: formattedSteps,
+				appCount: applications.length,
+				canDelete: applications.length === 0,
+				canEdit: applications.length === 0,
+				publisher
+			};
+		});
+
+		return formattedWorkflows;
+	}
+
+	getWorkflowDetails(accessRecord, requestingUserId) {
+		if (!has(accessRecord, 'publisherObj.team.members')) return accessRecord;
+
+		let { workflow = {} } = accessRecord;
+
+		const activeStep = this.getActiveWorkflowStep(workflow);
+		accessRecord = this.getRemainingActioners(accessRecord, activeStep, requestingUserId);
+
+		if (isEmpty(workflow)) return accessRecord;
+
+		accessRecord.workflowName = workflow.workflowName;
+		accessRecord.workflowCompleted = this.getWorkflowCompleted(workflow);
+
+		if (isEmpty(activeStep)) return accessRecord;
+
+		const activeStepDetails = this.getActiveStepStatus(activeStep, requestingUserId);
+		accessRecord = { ...accessRecord, ...activeStepDetails };
+
+		accessRecord = this.setActiveStepReviewStatus(accessRecord);
+
+		accessRecord.workflow.steps = this.formatWorkflowSteps(workflow, 'sections');
+
+		return accessRecord;
+	}
+
+	formatWorkflowSteps(workflow, sectionsKey) {
+		// Set review section to display format
+		const { steps = [] } = workflow;
+		let formattedSteps = [...steps].reduce((arr, item) => {
+			let step = {
+				...item,
+				[sectionsKey]: [...item.sections].map(section => constants.darPanelMapper[section]),
+			};
+			arr.push(step);
+			return arr;
+		}, []);
+		return [...formattedSteps];
+	}
+
+	setActiveStepReviewStatus(accessRecord) {
+		const { workflow } = accessRecord;
+		if (!workflow) return '';
+
+		let activeStepIndex = workflow.steps.findIndex(step => {
+			return step.active === true;
+		});
+
+		if (activeStepIndex === -1) return '';
+
+		accessRecord.workflow.steps[activeStepIndex].reviewStatus = accessRecord.reviewStatus;
+
+		return accessRecord;
+	}
+
+	getRemainingActioners(accessRecord, activeStep = {}, requestingUserId) {
+		let {
+			workflow = {},
+			applicationStatus,
+			publisherObj: { team },
+		} = accessRecord;
+
+		if (
+			applicationStatus === constants.applicationStatuses.SUBMITTED ||
+			(applicationStatus === constants.applicationStatuses.INREVIEW && isEmpty(workflow))
+		) {
+			accessRecord.remainingActioners = this.getReviewManagers(team, requestingUserId).join(', ');
+		} else if (!isEmpty(workflow) && isEmpty(activeStep) && applicationStatus === constants.applicationStatuses.INREVIEW) {
+			remainingActioners = this.getReviewManagers(team, requestingUserId).join(', ');
+			accessRecord.reviewStatus = 'Final decision required';
+		} else {
+			accessRecord.remainingActioners = this.getRemainingReviewerNames(activeStep, team.users, requestingUserId);
+		}
+
+		return accessRecord;
+	}
+
+	getReviewManagers(team, requestingUserId) {
+		const { members = [], users = [] } = team;
+		const managers = members.filter(mem => {
+			return mem.roles.includes('manager');
+		});
+		return users
+			.filter(user => managers.some(manager => manager.memberid.toString() === user._id.toString()))
+			.map(user => {
+				const isCurrentUser = user._id.toString() === requestingUserId.toString();
+				return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)` : ``}`;
+			});
+	}
+
 	async createNotifications(context, type = '') {
-		if (!_.isEmpty(type)) {
+		if (!isEmpty(type)) {
 			// local variables set here
 			let custodianManagers = [],
 				managerUserIds = [],
@@ -105,7 +217,7 @@ export default class WorkflowService {
 
 	getWorkflowCompleted(workflow = {}) {
 		let workflowCompleted = false;
-		if (!_.isEmpty(workflow)) {
+		if (!isEmpty(workflow)) {
 			let { steps } = workflow;
 			workflowCompleted = steps.every(step => step.completed);
 		}
@@ -114,7 +226,7 @@ export default class WorkflowService {
 
 	getActiveWorkflowStep(workflow = {}) {
 		let activeStep = {};
-		if (!_.isEmpty(workflow)) {
+		if (!isEmpty(workflow)) {
 			let { steps } = workflow;
 			activeStep = steps.find(step => {
 				return step.active;
@@ -126,7 +238,7 @@ export default class WorkflowService {
 	getStepReviewers(step = {}) {
 		let stepReviewers = [];
 		// Attempt to get step reviewers if workflow passed
-		if (!_.isEmpty(step)) {
+		if (!isEmpty(step)) {
 			// Get active reviewers
 			if (step) {
 				({ reviewers: stepReviewers } = step);
@@ -135,8 +247,8 @@ export default class WorkflowService {
 		return stepReviewers;
 	}
 
-	getRemainingReviewers(Step = {}, users) {
-		let { reviewers = [], recommendations = [] } = Step;
+	getRemainingReviewers(step = {}, users) {
+		let { reviewers = [], recommendations = [] } = step;
 		let remainingActioners = reviewers.filter(
 			reviewer => !recommendations.some(rec => rec.reviewer.toString() === reviewer._id.toString())
 		);
@@ -145,16 +257,29 @@ export default class WorkflowService {
 		return remainingActioners;
 	}
 
-	getActiveStepStatus(activeStep, users = [], userId = '') {
+	getRemainingReviewerNames(step = {}, users, requestingUserId) {
+		if (isEmpty(step)) return '';
+		let remainingActioners = this.getRemainingReviewers(step, users);
+
+		if (isEmpty(remainingActioners)) return '';
+
+		let remainingReviewerNames = remainingActioners.map(user => {
+			let isCurrentUser = user._id.toString() === requestingUserId.toString();
+			return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)` : ``}`;
+		});
+
+		return remainingReviewerNames.join(', ');
+	}
+
+	getActiveStepStatus(activeStep, userId = '') {
 		let reviewStatus = '',
 			deadlinePassed = false,
-			remainingActioners = [],
 			decisionMade = false,
 			decisionComments = '',
 			decisionApproved = false,
 			decisionDate = '',
 			decisionStatus = '';
-		let { stepName, deadline, startDateTime, reviewers = [], recommendations = [], sections = [] } = activeStep;
+		let { stepName = '', deadline, startDateTime, reviewers = [], recommendations = [], sections = [] } = activeStep;
 		let deadlineDate = moment(startDateTime).add(deadline, 'days');
 		let diff = parseInt(deadlineDate.diff(new Date(), 'days'));
 		if (diff > 0) {
@@ -165,13 +290,6 @@ export default class WorkflowService {
 		} else {
 			reviewStatus = `Deadline is today`;
 		}
-		remainingActioners = reviewers.filter(reviewer => !recommendations.some(rec => rec.reviewer.toString() === reviewer._id.toString()));
-		remainingActioners = users
-			.filter(user => remainingActioners.some(actioner => actioner._id.toString() === user._id.toString()))
-			.map(user => {
-				let isCurrentUser = user._id.toString() === userId.toString();
-				return `${user.firstname} ${user.lastname}${isCurrentUser ? ` (you)` : ``}`;
-			});
 
 		let isReviewer = reviewers.some(reviewer => reviewer._id.toString() === userId.toString());
 		let hasRecommended = recommendations.some(rec => rec.reviewer.toString() === userId.toString());
@@ -195,7 +313,6 @@ export default class WorkflowService {
 
 		return {
 			stepName,
-			remainingActioners: remainingActioners.join(', '),
 			deadlinePassed,
 			isReviewer,
 			reviewStatus,
@@ -211,7 +328,7 @@ export default class WorkflowService {
 	getWorkflowStatus(application) {
 		let workflowStatus = {};
 		let { workflow = {} } = application;
-		if (!_.isEmpty(workflow)) {
+		if (!isEmpty(workflow)) {
 			let { workflowName, steps } = workflow;
 			// Find the active step in steps
 			let activeStep = this.getActiveWorkflowStep(workflow);
@@ -255,7 +372,7 @@ export default class WorkflowService {
 		let { applicationStatus } = application;
 		// Check if the current user is a reviewer on the current step of an attached workflow
 		let { workflow = {} } = application;
-		if (!_.isEmpty(workflow)) {
+		if (!isEmpty(workflow)) {
 			let { steps } = workflow;
 			let activeStep = steps.find(step => {
 				return step.active === true;
@@ -265,7 +382,7 @@ export default class WorkflowService {
 				reviewSections = [...activeStep.sections];
 
 				let { recommendations = [] } = activeStep;
-				if (!_.isEmpty(recommendations)) {
+				if (!isEmpty(recommendations)) {
 					hasRecommended = recommendations.some(rec => rec.reviewer.toString() === userId.toString());
 				}
 			}
@@ -304,13 +421,13 @@ export default class WorkflowService {
 
 		// Calculate duration for step if it is completed
 		if (completed) {
-			if (!_.isEmpty(startDateTime.toString()) && !_.isEmpty(endDateTime.toString())) {
+			if (!isEmpty(startDateTime.toString()) && !isEmpty(endDateTime.toString())) {
 				duration = moment(endDateTime).diff(moment(startDateTime), 'days');
 				duration = duration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
 			}
 		} else {
 			//If related step is not completed, check if deadline has elapsed or is approaching
-			if (!_.isEmpty(startDateTime.toString()) && stepDeadline != 0) {
+			if (!isEmpty(startDateTime.toString()) && stepDeadline != 0) {
 				dateDeadline = moment(startDateTime).add(stepDeadline, 'days');
 				deadlineElapsed = moment().isAfter(dateDeadline, 'second');
 
@@ -322,13 +439,13 @@ export default class WorkflowService {
 			}
 			// Find reviewers of the current incomplete phase
 			let accessRecordObj = accessRecord.toObject();
-			if (_.has(accessRecordObj, 'publisherObj.team.users')) {
+			if (has(accessRecordObj, 'publisherObj.team.users')) {
 				let {
 					publisherObj: {
 						team: { users = [] },
 					},
 				} = accessRecordObj;
-				remainingReviewers = getRemainingReviewers(steps[relatedStepIndex], users);
+				remainingReviewers = this.getRemainingReviewers(steps[relatedStepIndex], users);
 				remainingReviewerUserIds = [...remainingReviewers].map(user => user.id);
 			}
 		}
@@ -338,7 +455,7 @@ export default class WorkflowService {
 			// If workflow completed
 			nextStepName = 'No next step';
 			// Calculate total duration for workflow
-			if (steps[relatedStepIndex].completed && !_.isEmpty(dateReviewStart.toString())) {
+			if (steps[relatedStepIndex].completed && !isEmpty(dateReviewStart.toString())) {
 				totalDuration = moment().diff(moment(dateReviewStart), 'days');
 				totalDuration = totalDuration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
 			}

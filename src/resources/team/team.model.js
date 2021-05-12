@@ -60,6 +60,7 @@ TeamSchema.virtual('users', {
 	ref: 'User',
 	foreignField: '_id',
 	localField: 'members.memberid',
+	match: { isServiceAccount: { $ne: true } }
 });
 
 export const TeamModel = model('Team', TeamSchema);

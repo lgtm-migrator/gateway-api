@@ -35,14 +35,14 @@ router.get(
 	(req, res) => dataRequestController.getAccessRequestsByUser(req, res)
 );
 
-// @route   GET api/v1/data-access-request/:requestId
+// @route   GET api/v1/data-access-request/:id
 // @desc    GET a single data access request by Id
 // @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
 router.get(
-	'/:requestId',
+	'/:id',
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application' }),
-	datarequestController.getAccessRequestById
+	(req, res) => dataRequestController.getAccessRequestById(req, res)
 );
 
 // @route   GET api/v1/data-access-request/dataset/:datasetId
