@@ -11,6 +11,7 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [],
 		highlighted: [],
+		beta: false
 	},
 	{
 		id: 2,
@@ -25,6 +26,7 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [],
 		highlighted: [],
+		beta: false
 	},
 	{
 		id: 3,
@@ -39,6 +41,7 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [],
 		highlighted: [],
+		beta: false
 	},
 	{
 		id: 4,
@@ -49,6 +52,7 @@ export const datasetFilters = [
 		closed: true,
 		isSearchable: false,
 		selectedCount: 0,
+		beta: false,
 		filters: [
 			{
 				id: 5,
@@ -100,6 +104,7 @@ export const datasetFilters = [
 		closed: true,
 		isSearchable: false,
 		selectedCount: 0,
+		beta: false,
 		filters: [
 			{
 				id: 9,
@@ -177,6 +182,7 @@ export const datasetFilters = [
 		closed: true,
 		isSearchable: false,
 		selectedCount: 0,
+		beta: false,
 		filters: [
 			{
 				id: 15,
@@ -216,6 +222,7 @@ export const datasetFilters = [
 		closed: true,
 		isSearchable: false,
 		selectedCount: 0,
+		beta: false,
 		filters: [
 			{
 				id: 18,
@@ -267,6 +274,7 @@ export const datasetFilters = [
 		closed: true,
 		isSearchable: false,
 		selectedCount: 0,
+		beta: false,
 		filters: [
 			{
 				id: 22,
@@ -498,5 +506,20 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [{ id: 999, label: 'Contains Technical Metadata', value: 'Contains Technical Metadata', checked: false }],
 		highlighted: ['contains technical metadata'],
+		beta: false
+	},
+	{
+		id: 40,
+		label: 'Commerical use',
+		key: 'commercialUse',
+		dataPath: 'commercialUse',
+		type: 'boolean',
+		tooltip: null,
+		closed: true,
+		isSearchable: false,
+		selectedCount: 0,
+		filters: [{ id: 998, label: 'Consented for commerical uses', value: 'Consented for commerical uses', checked: false }],
+		highlighted: ['consented for commerical uses'],
+		beta: true
 	},
 ];

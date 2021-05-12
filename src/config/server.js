@@ -230,6 +230,7 @@ app.use('/api/v2/papers', require('../resources/paper/v2/paper.route'));
 
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
+app.use('/api/v1/collectioncounter', require('../resources/collections/collectioncounter.route'));
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 

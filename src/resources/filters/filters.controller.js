@@ -2,7 +2,7 @@ import Controller from '../base/controller';
 
 export default class FiltersController extends Controller {
 	constructor(filtersService) {
-        super(filtersService);
+    super(filtersService);
 		this.filtersService = filtersService;
 	}
 
