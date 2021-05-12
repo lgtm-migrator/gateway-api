@@ -11,7 +11,7 @@ export default class FiltersService {
 		// 1. Get filters from repository for the entity type and query provided
 		const options = { lean: false };
 		let filters = await this.filtersRepository.getFilters(id, query, options);
-		if(filters) {
+		if (filters) {
 			filters = filters.mapDto();
 		}
 		return filters;
@@ -29,15 +29,15 @@ export default class FiltersService {
 		// 1. Use cached filters if instructed, need to remove type when all v2 filters come on
 		if (useCache && type === 'dataset') {
 			const options = { lean: true };
-			const { keys: filters = {} } = await this.filtersRepository.getFilters(type, {}, options) || {};
+			const { keys: filters = {} } = (await this.filtersRepository.getFilters(type, {}, options)) || {};
 			return filters;
 		}
-		
+
 		let filters = {},
 			sortedFilters = {},
 			entities = [],
 			fields = '';
-			
+
 		// 2. Query Db for required entity if array of entities has not been passed
 		switch (type) {
 			case 'dataset':
@@ -108,7 +108,6 @@ export default class FiltersService {
 				} = entity;
 				// 3. Create flattened filter props object
 				filterValues = {
-					publisher,
 					phenotypes: [...phenotypes.map(phenotype => phenotype.name)],
 					features,
 					...datautility,
@@ -117,6 +116,7 @@ export default class FiltersService {
 					...temporal,
 					...access,
 					...formatAndStandards,
+					publisher,
 				};
 				break;
 		}
