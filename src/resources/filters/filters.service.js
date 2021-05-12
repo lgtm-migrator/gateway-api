@@ -167,7 +167,6 @@ export default class FiltersService {
 				} = entity;
 				// 3. Create flattened filter props object
 				filterValues = {
-					publisher,
 					phenotypes: [...phenotypes.map(phenotype => phenotype.name)],
 					features,
 					...datautility,
@@ -176,6 +175,7 @@ export default class FiltersService {
 					...temporal,
 					...access,
 					...formatAndStandards,
+					publisher
 				};
 				break;
 		}
