@@ -28,7 +28,7 @@ export default class DataRequestService {
 	getProjectName(accessRecord) {
 		// Retrieve project name from about application section
 		const {
-			aboutApplication: { projectName },
+			aboutApplication: { projectName } = {},
 		} = accessRecord;
 		if (projectName) {
 			return projectName;

@@ -80,6 +80,7 @@ export default class DataRequestController extends Controller {
 			const {
 				params: { id },
 			} = req;
+			const { query } = req.params;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 			// 2. Find the matching record and include attached datasets records with publisher details
