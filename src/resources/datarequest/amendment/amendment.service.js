@@ -163,17 +163,21 @@ export default class AmendmentService {
 		});
 	}
 
-	getAmendmentIterationParty (accessRecord) {
-		// 1. Look for an amendment iteration that is in flight
-		//    An empty date submitted with populated date returned indicates that the current correction iteration is now with the applicants
-		let index = accessRecord.amendmentIterations.findIndex(v => _.isUndefined(v.dateSubmitted) && !_.isUndefined(v.dateReturned));
-		// 2. Deduce the user type from the current iteration state
-		if (index === -1) {
-			return constants.userTypes.CUSTODIAN;
+	getAmendmentIterationParty(accessRecord, versionAmendmentIterationIndex = -1) {
+		if (versionAmendmentIterationIndex === -1) {
+			// 1. Look for an amendment iteration that is in flight
+			//    An empty date submitted with populated date returned indicates that the current correction iteration is now with the applicants
+			let index = accessRecord.amendmentIterations.findIndex(v => _.isUndefined(v.dateSubmitted) && !_.isUndefined(v.dateReturned));
+			// 2. Deduce the user type from the current iteration state
+			if (index === -1) {
+				return constants.userTypes.CUSTODIAN;
+			} else {
+				return constants.userTypes.APPLICANT;
+			}
 		} else {
-			return constants.userTypes.APPLICANT;
+			return getAmendmentIterationPartyByVersion(accessRecord, versionAmendmentIterationIndex);
 		}
-	};
+	}
 
 	getAmendmentIterationPartyByVersion(accessRecord, versionAmendmentIterationIndex) {
 		// If a specific version has been requested, determine the last party active on that version
@@ -191,12 +195,19 @@ export default class AmendmentService {
 		}
 	}
 
-	filterAmendments(accessRecord = {}, userType) {
+	filterAmendments(accessRecord = {}, userType, lastIterationIndex = -1) {
+		// 1. Guard for invalid access record
 		if (_.isEmpty(accessRecord)) {
 			return {};
 		}
 		let { amendmentIterations = [] } = accessRecord;
-		// 1. Extract all relevant iteration objects and answers based on the user type
+
+		// 2. Slice any superfluous amendment iterations if a previous version has been explicitly requested
+		if(lastIterationIndex !== -1) {
+			amendmentIterations = amendmentIterations.slice(0, lastIterationIndex);
+		}
+
+		// 3. Extract all relevant iteration objects and answers based on the user type
 		// Applicant should only see requested amendments that have been returned by the custodian
 		if (userType === constants.userTypes.APPLICANT) {
 			amendmentIterations = [...amendmentIterations].filter(iteration => {
@@ -211,19 +222,26 @@ export default class AmendmentService {
 				return iteration;
 			});
 		}
-		// 2. Return relevant iterations
+
+		// 4. Return relevant iterations
 		return amendmentIterations;
 	}
 
-	injectAmendments(accessRecord, userType, user) {
+	injectAmendments(accessRecord, userType, user, versionAmendmentIterationIndex = -1) {
 		// 1. Get latest iteration created by Custodian
 		if (accessRecord.amendmentIterations.length === 0) {
 			return accessRecord;
 		}
-		const lastIndex = _.findLastIndex(accessRecord.amendmentIterations);
+
+		// 2. If a specific version has not be requested, fetch the latest (last) amendment iteration to include all changes to date
+		const lastIndex =
+			versionAmendmentIterationIndex === -1 ? _.findLastIndex(accessRecord.amendmentIterations) : versionAmendmentIterationIndex;
+
+		// 3. Get the corresponding iteration/version for the required index
 		let latestIteration = accessRecord.amendmentIterations[lastIndex];
 		const { dateReturned } = latestIteration;
-		// 2. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
+
+		// 4. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
 		if (
 			(lastIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
 			(userType === constants.userTypes.CUSTODIAN && _.isNil(latestIteration.questionAnswers))
@@ -232,16 +250,20 @@ export default class AmendmentService {
 		} else if (lastIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
 			return accessRecord;
 		}
-		// 3. Update schema if there is a new iteration
+
+		// 5. Update schema if there is a new iteration
 		const { publisher = 'Custodian' } = accessRecord;
 		if (!_.isNil(latestIteration)) {
 			accessRecord.jsonSchema = this.formatSchema(accessRecord.jsonSchema, latestIteration, userType, user, publisher);
 		}
-		// 4. Filter out amendments that have not yet been exposed to the opposite party
-		let amendmentIterations = this.filterAmendments(accessRecord, userType);
-		// 5. Update the question answers to reflect all the changes that have been made in later iterations
+
+		// 6. Filter out amendments that have not yet been exposed to the opposite party
+		const amendmentIterations = this.filterAmendments(accessRecord, userType, lastIndex);
+
+		// 7. Update the question answers to reflect all the changes that have been made in later iterations
 		accessRecord.questionAnswers = this.formatQuestionAnswers(accessRecord.questionAnswers, amendmentIterations);
-		// 6. Return the updated access record
+
+		// 8. Return the updated access record
 		return accessRecord;
 	}
 

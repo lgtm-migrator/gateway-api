@@ -116,22 +116,33 @@ const _userQuestionActions = {
 				},
 			],
 			inReview: {
-				custodian: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-					{
-						key: 'requestAmendment',
-						icon: 'fas fa-exclamation-circle',
-						color: '#F0BB24',
-						toolTip: 'Request applicant updates answer',
-						order: 2,
-					},
-				],
+				custodian: {
+					latestVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+						{
+							key: 'requestAmendment',
+							icon: 'fas fa-exclamation-circle',
+							color: '#F0BB24',
+							toolTip: 'Request applicant updates answer',
+							order: 2,
+						},
+					],
+					previousVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+				},
 				applicant: [
 					{
 						key: 'guidance',
@@ -341,8 +352,8 @@ const _applicationTypes = {
 	INITIAL: 'Initial',
 	AMENDED: 'Amendment',
 	EXTENDED: 'Extension',
-	RENEWAL: 'Renewal'
-}
+	RENEWAL: 'Renewal',
+};
 
 const _amendmentModes = {
 	ADDED: 'added',
@@ -408,8 +419,8 @@ const _mailchimpSubscriptionStatuses = {
 
 const _logTypes = {
 	SYSTEM: 'System',
-	USER: 'User'
-}
+	USER: 'User',
+};
 
 export default {
 	userTypes: _userTypes,
@@ -434,5 +445,5 @@ export default {
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
-	logTypes: _logTypes
+	logTypes: _logTypes,
 };

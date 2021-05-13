@@ -7,11 +7,12 @@ import dynamicForm from '../../utilities/dynamicForms/dynamicForm.util';
 
 const repeatedSectionRegex = /_[a-zA-Z|\d]{5}$/gm;
 
-const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '', activeParty) => {
+const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '', activeParty, isLatestMinorVersion = true) => {
 	let formattedSchema = {};
+	const version = isLatestMinorVersion ? 'latestVersion' : 'previousVersion';
 	if (userType === constants.userTypes.CUSTODIAN) {
 		if (applicationStatus === constants.applicationStatuses.INREVIEW) {
-			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus][activeParty] };
+			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus][activeParty][version] };
 		} else {
 			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus]};
 		}

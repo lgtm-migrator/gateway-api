@@ -11,6 +11,24 @@ export default class WorkflowService {
 		this.workflowRepository = workflowRepository;
 	}
 
+	getApplicationWorkflowStatusForUser(accessRecord, requestingUserObjectId) {
+		// Set the review mode if user is a custodian reviewing the current step
+		let { inReviewMode, reviewSections, hasRecommended } = this.getReviewStatus(accessRecord, requestingUserObjectId);
+		// Get the workflow/voting status
+		let workflow = this.getWorkflowStatus(accessRecord);
+		let isManager = false;
+		// Check if the current user can override the current step
+		if (_.has(accessRecord, 'publisherObj.team')) {
+			const { team } = accessRecord.publisherObj;
+			isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team, requestingUserObjectId);
+			// Set the workflow override capability if there is an active step and user is a manager
+			if (!_.isEmpty(workflow)) {
+				workflow.canOverrideStep = !workflow.isCompleted && isManager;
+			}
+		}
+		return { inReviewMode, reviewSections, hasRecommended, isManager, workflow };
+	}
+
 	async getWorkflowsByPublisher(id) {
 		const workflows = await this.workflowRepository.getWorkflowsByPublisher(id);
 
@@ -27,7 +45,7 @@ export default class WorkflowService {
 				appCount: applications.length,
 				canDelete: applications.length === 0,
 				canEdit: applications.length === 0,
-				publisher
+				publisher,
 			};
 		});
 

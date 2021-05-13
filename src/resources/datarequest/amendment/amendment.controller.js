@@ -134,7 +134,8 @@ export default class AmendmentController extends Controller {
 				}
 			});
 		} catch (err) {
-			console.error(err.message);
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred updating the application amendment',
@@ -221,14 +222,15 @@ export default class AmendmentController extends Controller {
 					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 10. Send update request notifications
-					createNotifications(constants.notificationTypes.RETURNED, accessRecord);
+					this.amendmentService.createNotifications(constants.notificationTypes.RETURNED, accessRecord);
 					return res.status(200).json({
 						success: true,
 					});
 				}
 			});
 		} catch (err) {
-			console.error(err.message);
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred attempting to submit the requested updates',

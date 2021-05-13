@@ -83,15 +83,24 @@ export default class DataRequestController extends Controller {
 				params: { id },
 			} = req;
 			const { version: requestedVersion } = req.query;
+			const requestingUser = req.user;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
+
 			// 2. Find the matching record and include attached datasets records with publisher details
 			let accessRecord = await this.dataRequestService.getApplicationById(id);
-			const { isValidVersion, isLatestMinorVersion, versionActiveParty, versionAmendmentIterationIndex } = this.dataRequestService.getVersionDetails(accessRecord, requestedVersion);
+			const {
+				isValidVersion,
+				isLatestMinorVersion,
+				versionActiveParty,
+				versionAmendmentIterationIndex,
+			} = this.dataRequestService.getVersionDetails(accessRecord, requestedVersion);
+
 			// 3. If no matching application found, return 404
 			if (!accessRecord || !isValidVersion) {
 				return res.status(404).json({ status: 'error', message: 'The application or the requested version could not be found.' });
 			}
+
 			// 4. Check if requesting user is custodian member or applicant/contributor
 			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
 				accessRecord,
@@ -101,6 +110,7 @@ export default class DataRequestController extends Controller {
 			if (!authorised || versionActiveParty !== userType) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
+
 			// 5. Set edit mode for applicants who have not yet submitted
 			const { applicationStatus, jsonSchema } = accessRecord;
 			accessRecord.readOnly = this.dataRequestService.getApplicationIsReadOnly(userType, applicationStatus);
@@ -112,44 +122,25 @@ export default class DataRequestController extends Controller {
 			const activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord, versionAmendmentIterationIndex);
 
 			// 8. Get the workflow status for the requested application version for the requesting user
-			let { inReviewMode, reviewSections, hasRecommended, isManager, workflow } = this.workflowService.getApplicationWorkflowStatusForUser(accessRecord, requestingUserObjectId, isLatestMinorVersion);
+			const {
+				inReviewMode,
+				reviewSections,
+				hasRecommended,
+				isManager,
+				workflow,
+			} = this.workflowService.getApplicationWorkflowStatusForUser(accessRecord, requestingUserObjectId);
 
-
-
-
-			
-
-			// 7. Set the review mode if user is a custodian reviewing the current step
-			//let { inReviewMode, reviewSections, hasRecommended } = this.workflowService.getReviewStatus(accessRecord, requestingUserObjectId);
-			// 8. Get the workflow/voting status
-			//let workflow = this.workflowService.getWorkflowStatus(accessRecord);
-			//let isManager = false;
-			// 9. Check if the current user can override the current step
-			// if (_.has(accessRecord.datasets[0], 'publisher.team')) {
-			// 	const { team } = accessRecord.datasets[0].publisher;
-			// 	isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team, requestingUserObjectId);
-			// 	// Set the workflow override capability if there is an active step and user is a manager
-			// 	if (!_.isEmpty(workflow)) {
-			// 		workflow.canOverrideStep = !workflow.isCompleted && isManager;
-			// 	}
-			// }
-
-
-			
-			// 10. Update json schema and question answers with modifications since original submission
-			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
-			
-			// 12. Append question actions depending on user type and application status
-			let userRole =
+			// 9. Get role type for requesting user, applicable for only Custodian users i.e. Manager/Reviewer role
+			const userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
-			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
-				jsonSchema,
-				userType,
-				applicationStatus,
-				userRole,
-				activeParty
-			);
-			// 13. Return application form
+
+			// 10. Update json schema and question answers with modifications since original submission up to requested version
+			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionAmendmentIterationIndex);
+
+			// 11. Append question actions depending on user type and application status
+			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(jsonSchema, userType, applicationStatus, userRole, activeParty, isLatestMinorVersion);
+
+			// 12. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -164,6 +155,7 @@ export default class DataRequestController extends Controller {
 					hasRecommended,
 					workflow,
 					files: accessRecord.files || [],
+					isLatestMinorVersion,
 				},
 			});
 		} catch (err) {

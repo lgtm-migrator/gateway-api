@@ -26,11 +26,10 @@ export default class DataRequestService {
 	}
 
 	getVersionDetails(accessRecord, requestedVersion) {
-		let isLatestVersion = true;
+		let isLatestMinorVersion = true;
 		const { version: majorVersion } = accessRecord;
 
 		let [fullMatch, requestedMajorVersion, requestedMinorVersion] = requestedVersion.match(/^(\d+)\.?(\d+)$/);
-		//let [ fullMatch, requestedMajorVersion, requestedMinorVersion ] = regexResult;
 
 		if (!fullMatch || majorVersion.toString() !== requestedMajorVersion.toString()) {
 			return { isValidVersion: false };
@@ -42,7 +41,7 @@ export default class DataRequestService {
 			return { isValidVersion: true };
 		}
 
-		return { isLatestVersion, isValidVersion };
+		return { isLatestMinorVersion, isValidVersion, versionActiveParty, versionAmendmentIterationIndex };
 	}
 
 	getProjectName(accessRecord) {
