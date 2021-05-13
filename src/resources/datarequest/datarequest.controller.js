@@ -108,6 +108,12 @@ export default class DataRequestController extends Controller {
 			// 6. Count amendments for selected version
 			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, versionAmendmentIterationIndex);
 
+			// 7. Determine the current active party handling the form, this may be undefined if the requested version is not the latest
+			const activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord, versionAmendmentIterationIndex);
+
+
+
+
 			// 7. If the application is the latest minor version...
 			if(isLatestMinorVersion) {
 				
@@ -133,8 +139,7 @@ export default class DataRequestController extends Controller {
 			
 			// 10. Update json schema and question answers with modifications since original submission
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
-			// 11. Determine the current active party handling the form, this may be undefined if the requested version is not the latest
-			const activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord);
+			
 			// 12. Append question actions depending on user type and application status
 			let userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
