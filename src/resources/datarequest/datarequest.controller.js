@@ -33,6 +33,7 @@ export default class DataRequestController extends Controller {
 		this.amendmentService = amendmentService;
 	}
 
+	//GET api/v1/data-access-request
 	async getAccessRequestsByUser(req, res) {
 		try {
 			// Deconstruct the parameters passed
@@ -74,20 +75,22 @@ export default class DataRequestController extends Controller {
 		}
 	}
 
+	//GET api/v1/data-access-request/:id
 	async getAccessRequestById(req, res) {
 		try {
 			// 1. Get dataSetId from params
 			const {
 				params: { id },
 			} = req;
-			const { query } = req.params;
+			const { version: requestedVersion } = req.query;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 			// 2. Find the matching record and include attached datasets records with publisher details
 			let accessRecord = await this.dataRequestService.getApplicationById(id);
+			const { isValidVersion, isLatestMinorVersion, versionActiveParty, versionAmendmentIterationIndex } = this.dataRequestService.getVersionDetails(accessRecord, requestedVersion);
 			// 3. If no matching application found, return 404
-			if (!accessRecord) {
-				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			if (!accessRecord || !isValidVersion) {
+				return res.status(404).json({ status: 'error', message: 'The application or the requested version could not be found.' });
 			}
 			// 4. Check if requesting user is custodian member or applicant/contributor
 			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
@@ -95,14 +98,22 @@ export default class DataRequestController extends Controller {
 				requestingUserId,
 				requestingUserObjectId
 			);
-			if (!authorised) {
+			if (!authorised || versionActiveParty !== userType) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 			// 5. Set edit mode for applicants who have not yet submitted
-			const { applicationStatus } = accessRecord;
+			const { applicationStatus, jsonSchema } = accessRecord;
 			accessRecord.readOnly = this.dataRequestService.getApplicationIsReadOnly(userType, applicationStatus);
-			// 6. Count unsubmitted amendments
-			const countUnsubmittedAmendments = this.amendmentService.countUnsubmittedAmendments(accessRecord, userType);
+
+			// 6. Count amendments for selected version
+			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, versionAmendmentIterationIndex);
+
+			// 7. If the application is the latest minor version...
+			if(isLatestMinorVersion) {
+				
+			}
+
+
 			// 7. Set the review mode if user is a custodian reviewing the current step
 			let { inReviewMode, reviewSections, hasRecommended } = this.workflowService.getReviewStatus(accessRecord, requestingUserObjectId);
 			// 8. Get the workflow/voting status
@@ -117,17 +128,20 @@ export default class DataRequestController extends Controller {
 					workflow.canOverrideStep = !workflow.isCompleted && isManager;
 				}
 			}
+
+
+			
 			// 10. Update json schema and question answers with modifications since original submission
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
-			// 11. Determine the current active party handling the form
-			let activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord);
+			// 11. Determine the current active party handling the form, this may be undefined if the requested version is not the latest
+			const activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord);
 			// 12. Append question actions depending on user type and application status
 			let userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
-				accessRecord.jsonSchema,
+				jsonSchema,
 				userType,
-				accessRecord.applicationStatus,
+				applicationStatus,
 				userRole,
 				activeParty
 			);
@@ -137,7 +151,7 @@ export default class DataRequestController extends Controller {
 				data: {
 					...accessRecord,
 					datasets: accessRecord.datasets,
-					...countUnsubmittedAmendments,
+					...countAmendments,
 					userType,
 					activeParty,
 					projectId: accessRecord.projectId || helper.generateFriendlyId(accessRecord._id),

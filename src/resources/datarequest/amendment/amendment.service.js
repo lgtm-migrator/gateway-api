@@ -12,7 +12,7 @@ export default class AmendmentService {
 		this.amendmentRepository = amendmentRepository;
 	}
 
-	addAmendment (accessRecord, questionId, questionSetId, answer, reason, user, requested) {
+	addAmendment(accessRecord, questionId, questionSetId, answer, reason, user, requested) {
 		// 1. Create new amendment object with key representing the questionId
 		let amendment = {
 			[`${questionId}`]: new AmendmentModel({
@@ -47,9 +47,9 @@ export default class AmendmentService {
 			};
 			accessRecord.amendmentIterations = [...accessRecord.amendmentIterations, amendmentIteration];
 		}
-	};
-	
-	updateAmendment (accessRecord, questionId, answer, user) {
+	}
+
+	updateAmendment(accessRecord, questionId, answer, user) {
 		// 1. Locate amendment in current iteration
 		const currentIterationIndex = this.getLatestAmendmentIterationIndex(accessRecord);
 		// 2. Return unmoodified record if invalid update
@@ -86,9 +86,9 @@ export default class AmendmentService {
 		};
 		// 5. Return updated access record
 		return accessRecord;
-	};
-	
-	removeAmendment (accessRecord, questionId) {
+	}
+
+	removeAmendment(accessRecord, questionId) {
 		// 1. Find the index of the latest amendment amendmentIteration of the DAR
 		let index = this.getLatestAmendmentIterationIndex(accessRecord);
 		// 2. Remove the key and associated object from the current iteration if it exists
@@ -99,9 +99,9 @@ export default class AmendmentService {
 				return _.isEmpty(amendmentIteration.questionAnswers);
 			});
 		}
-	};
-	
-	doesAmendmentExist (accessRecord, questionId) {
+	}
+
+	doesAmendmentExist(accessRecord, questionId) {
 		// 1. Get current amendment iteration
 		const latestIteration = this.getCurrentAmendmentIteration(accessRecord.amendmentIterations);
 		if (_.isNil(latestIteration) || _.isNil(latestIteration.questionAnswers)) {
@@ -109,9 +109,9 @@ export default class AmendmentService {
 		}
 		// 2. Check if questionId has been added by Custodian for amendment
 		return latestIteration.questionAnswers.hasOwnProperty(questionId);
-	};
-	
-	handleApplicantAmendment (accessRecord, questionId, questionSetId, answer = '', user) {
+	}
+
+	handleApplicantAmendment(accessRecord, questionId, questionSetId, answer = '', user) {
 		// 1. Check if an amendment already exists for the question
 		let isExisting = this.doesAmendmentExist(accessRecord, questionId);
 		// 2. Update existing
@@ -128,22 +128,22 @@ export default class AmendmentService {
 			} else if (answer !== latestAnswer || !helperUtil.arraysEqual(answer, latestAnswer)) {
 				performAdd = true;
 			}
-	
+
 			if (performAdd) {
 				// 6. Add new amendment otherwise
 				this.addAmendment(accessRecord, questionId, questionSetId, answer, '', user, false);
 			}
 		}
 		// 7. Update the amendment count
-		let { unansweredAmendments = 0, answeredAmendments = 0 } = this.countUnsubmittedAmendments(accessRecord, constants.userTypes.APPLICANT);
+		let { unansweredAmendments = 0, answeredAmendments = 0 } = this.countAmendments(accessRecord, constants.userTypes.APPLICANT);
 		accessRecord.unansweredAmendments = unansweredAmendments;
 		accessRecord.answeredAmendments = answeredAmendments;
 		accessRecord.dirtySchema = true;
 		// 8. Return updated access record
 		return accessRecord;
-	};
-	
-	getLatestAmendmentIterationIndex (accessRecord) {
+	}
+
+	getLatestAmendmentIterationIndex(accessRecord) {
 		// 1. Guard for incorrect type passed
 		let { amendmentIterations = [] } = accessRecord;
 		if (_.isEmpty(amendmentIterations)) {
@@ -161,8 +161,8 @@ export default class AmendmentService {
 			let date = new Date(iteration.dateCreated);
 			return date.getTime() == mostRecentDate.getTime();
 		});
-	};
-	
+	}
+
 	getAmendmentIterationParty (accessRecord) {
 		// 1. Look for an amendment iteration that is in flight
 		//    An empty date submitted with populated date returned indicates that the current correction iteration is now with the applicants
@@ -174,8 +174,24 @@ export default class AmendmentService {
 			return constants.userTypes.APPLICANT;
 		}
 	};
-	
-	filterAmendments (accessRecord = {}, userType) {
+
+	getAmendmentIterationPartyByVersion(accessRecord, versionAmendmentIterationIndex) {
+		// If a specific version has been requested, determine the last party active on that version
+		//	An empty submission date with a valid return date (added by Custodians returning the form) indicates applicants are active
+		const requestedAmendmentIteration = accessRecord.amendmentIterations[versionAmendmentIterationIndex];
+		if (requestedAmendmentIteration === _.last(accessRecord.amendmentIterations)) {
+			if (_.isUndefined(requestedAmendmentIteration.dateSubmitted) && !_.isUndefined(requestedAmendmentIteration.dateReturned)) {
+				return constants.userTypes.APPLICANT;
+			} else {
+				return constants.userTypes.CUSTODIAN;
+			}
+		} else {
+			// If a previous version has been requested, there is no active party
+			return;
+		}
+	}
+
+	filterAmendments(accessRecord = {}, userType) {
 		if (_.isEmpty(accessRecord)) {
 			return {};
 		}
@@ -197,9 +213,9 @@ export default class AmendmentService {
 		}
 		// 2. Return relevant iterations
 		return amendmentIterations;
-	};
-	
-	injectAmendments (accessRecord, userType, user) {
+	}
+
+	injectAmendments(accessRecord, userType, user) {
 		// 1. Get latest iteration created by Custodian
 		if (accessRecord.amendmentIterations.length === 0) {
 			return accessRecord;
@@ -209,7 +225,7 @@ export default class AmendmentService {
 		const { dateReturned } = latestIteration;
 		// 2. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
 		if (
-			lastIndex > 0 && (userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
+			(lastIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
 			(userType === constants.userTypes.CUSTODIAN && _.isNil(latestIteration.questionAnswers))
 		) {
 			latestIteration = accessRecord.amendmentIterations[lastIndex - 1];
@@ -217,8 +233,8 @@ export default class AmendmentService {
 			return accessRecord;
 		}
 		// 3. Update schema if there is a new iteration
-		const { publisher = 'Custodian' } = accessRecord; 
-		if(!_.isNil(latestIteration)) {
+		const { publisher = 'Custodian' } = accessRecord;
+		if (!_.isNil(latestIteration)) {
 			accessRecord.jsonSchema = this.formatSchema(accessRecord.jsonSchema, latestIteration, userType, user, publisher);
 		}
 		// 4. Filter out amendments that have not yet been exposed to the opposite party
@@ -227,11 +243,11 @@ export default class AmendmentService {
 		accessRecord.questionAnswers = this.formatQuestionAnswers(accessRecord.questionAnswers, amendmentIterations);
 		// 6. Return the updated access record
 		return accessRecord;
-	};
-	
-	formatSchema (jsonSchema, latestAmendmentIteration, userType, user, publisher) {
+	}
+
+	formatSchema(jsonSchema, latestAmendmentIteration, userType, user, publisher) {
 		const { questionAnswers = {}, dateSubmitted, dateReturned } = latestAmendmentIteration;
-		if(_.isEmpty(questionAnswers)) {
+		if (_.isEmpty(questionAnswers)) {
 			return jsonSchema;
 		}
 		// Loop through each amendment
@@ -254,9 +270,9 @@ export default class AmendmentService {
 			);
 		}
 		return jsonSchema;
-	};
-	
-	injectQuestionAmendment (jsonSchema, questionId, amendment, userType, completed, iterationStatus, user, publisher) {
+	}
+
+	injectQuestionAmendment(jsonSchema, questionId, amendment, userType, completed, iterationStatus, user, publisher) {
 		const { questionSetId } = amendment;
 		// 1. Find question set containing question
 		const qsIndex = jsonSchema.questionSets.findIndex(qs => qs.questionSetId === questionSetId);
@@ -278,9 +294,9 @@ export default class AmendmentService {
 		jsonSchema.questionSets[qsIndex].questions = datarequestUtil.updateQuestion(questions, question);
 		// 6. Return updated schema
 		return jsonSchema;
-	};
-	
-	injectNavigationAmendment (jsonSchema, questionSetId, userType, completed, iterationStatus) {
+	}
+
+	injectNavigationAmendment(jsonSchema, questionSetId, userType, completed, iterationStatus) {
 		// 1. Find question in schema
 		const qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
 		if (qpIndex === -1) {
@@ -299,9 +315,9 @@ export default class AmendmentService {
 		}
 		// 4. Return schema
 		return jsonSchema;
-	};
-	
-	getLatestQuestionAnswer (accessRecord, questionId) {
+	}
+
+	getLatestQuestionAnswer(accessRecord, questionId) {
 		// 1. Include original submission of question answer
 		let parsedQuestionAnswers = _.cloneDeep(accessRecord.questionAnswers);
 		let initialSubmission = {
@@ -333,15 +349,15 @@ export default class AmendmentService {
 			}
 			return arr;
 		}, []);
-	
+
 		if (_.isEmpty(latestAnswers)) {
 			return undefined;
 		} else {
 			return latestAnswers[0].answer;
 		}
-	};
-	
-	formatQuestionAnswers (questionAnswers, amendmentIterations) {
+	}
+
+	formatQuestionAnswers(questionAnswers, amendmentIterations) {
 		if (_.isNil(amendmentIterations) || _.isEmpty(amendmentIterations)) {
 			return questionAnswers;
 		}
@@ -373,9 +389,9 @@ export default class AmendmentService {
 		}, {});
 		// 6. Return combined object
 		return { ...questionAnswers, ...formattedLatestAnswers };
-	};
-	
-	getCurrentAmendmentIteration (amendmentIterations) {
+	}
+
+	getCurrentAmendmentIteration(amendmentIterations) {
 		// 1. Guard for incorrect type passed
 		if (_.isEmpty(amendmentIterations) || _.isNull(amendmentIterations) || _.isUndefined(amendmentIterations)) {
 			return undefined;
@@ -394,9 +410,9 @@ export default class AmendmentService {
 		})[0];
 		// 4. Return the correct object
 		return mostRecentObject;
-	};
-	
-	removeIterationAnswers (accessRecord = {}, iteration) {
+	}
+
+	removeIterationAnswers(accessRecord = {}, iteration) {
 		// 1. Guard for invalid object passed
 		if (!iteration || _.isEmpty(accessRecord)) {
 			return undefined;
@@ -408,9 +424,9 @@ export default class AmendmentService {
 		});
 		// 4. Return answer stripped iteration object
 		return iteration;
-	};
-	
-	doResubmission (accessRecord, userId) {
+	}
+
+	doResubmission(accessRecord, userId) {
 		// 1. Find latest iteration and if not found, return access record unmodified as no resubmission should take place
 		let index = this.getLatestAmendmentIterationIndex(accessRecord);
 		if (index === -1) {
@@ -425,13 +441,18 @@ export default class AmendmentService {
 		};
 		// 3. Return updated access record for saving
 		return accessRecord;
-	};
-	
-	countUnsubmittedAmendments (accessRecord, userType) {
+	}
+
+	countAmendments(accessRecord, userType, versionAmendmentIterationIndex = -1) {
 		// 1. Find latest iteration and if not found, return 0
+		let index;
 		let unansweredAmendments = 0;
 		let answeredAmendments = 0;
-		let index = this.getLatestAmendmentIterationIndex(accessRecord);
+		if (versionAmendmentIterationIndex === -1) {
+			index = this.getLatestAmendmentIterationIndex(accessRecord);
+		} else {
+			index = versionAmendmentIterationIndex;
+		}
 		if (
 			index === -1 ||
 			_.isNil(accessRecord.amendmentIterations[index].questionAnswers) ||
@@ -449,9 +470,11 @@ export default class AmendmentService {
 		});
 		// 3. Return counts
 		return { unansweredAmendments, answeredAmendments };
-	};
-	
-	revertAmendmentAnswer (accessRecord, questionId, user) {
+	}
+
+	countAmendments(accessRecord, userType, versionAmendmentIterationIndex) {}
+
+	revertAmendmentAnswer(accessRecord, questionId, user) {
 		// 1. Locate the latest amendment iteration
 		let index = this.getLatestAmendmentIterationIndex(accessRecord);
 		// 2. Verify the amendment was previously requested and a new answer exists
@@ -469,11 +492,14 @@ export default class AmendmentService {
 					answer: undefined,
 				}),
 			};
-			accessRecord.amendmentIterations[index].questionAnswers = { ...accessRecord.amendmentIterations[index].questionAnswers, ...amendment };
+			accessRecord.amendmentIterations[index].questionAnswers = {
+				...accessRecord.amendmentIterations[index].questionAnswers,
+				...amendment,
+			};
 		}
-	};
-	
-	calculateAmendmentStatus (accessRecord, userType) {
+	}
+
+	calculateAmendmentStatus(accessRecord, userType) {
 		let amendmentStatus = '';
 		const lastAmendmentIteration = _.last(accessRecord.amendmentIterations);
 		const { applicationStatus } = accessRecord;
@@ -503,9 +529,9 @@ export default class AmendmentService {
 			}
 		}
 		return amendmentStatus;
-	};
+	}
 
-	async createNotifications (type, accessRecord) {
+	async createNotifications(type, accessRecord) {
 		// Project details from about application
 		let { aboutApplication = {}, questionAnswers } = accessRecord;
 		let { projectName = 'No project name set' } = aboutApplication;
@@ -535,7 +561,7 @@ export default class AmendmentService {
 				return { firstname, lastname, email, id };
 			});
 		}
-	
+
 		switch (type) {
 			case constants.notificationTypes.RETURNED:
 				// 1. Create notifications
@@ -546,7 +572,7 @@ export default class AmendmentService {
 					'data access request',
 					accessRecord._id
 				);
-	
+
 				// Authors notification
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
@@ -556,7 +582,7 @@ export default class AmendmentService {
 						accessRecord._id
 					);
 				}
-	
+
 				// 2. Send emails to relevant users
 				emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
 				// Create object to pass through email data
@@ -580,5 +606,5 @@ export default class AmendmentService {
 				);
 				break;
 		}
-	};
+	}
 }

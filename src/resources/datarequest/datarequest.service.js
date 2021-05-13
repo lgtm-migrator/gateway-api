@@ -25,20 +25,40 @@ export default class DataRequestService {
 		return readOnly;
 	}
 
+	getVersionDetails(accessRecord, requestedVersion) {
+		let isLatestVersion = true;
+		const { version: majorVersion } = accessRecord;
+
+		let [fullMatch, requestedMajorVersion, requestedMinorVersion] = requestedVersion.match(/^(\d+)\.?(\d+)$/);
+		//let [ fullMatch, requestedMajorVersion, requestedMinorVersion ] = regexResult;
+
+		if (!fullMatch || majorVersion.toString() !== requestedMajorVersion.toString()) {
+			return { isValidVersion: false };
+		}
+
+		if (requestedMinorVersion) {
+			// Convert minor version to index for amendment iterations
+			console.log('yes');
+			return { isValidVersion: true };
+		}
+
+		return { isLatestVersion, isValidVersion };
+	}
+
 	getProjectName(accessRecord) {
 		// Retrieve project name from about application section
-		const {
-			aboutApplication: { projectName } = {},
-		} = accessRecord;
+		const { aboutApplication: { projectName } = {} } = accessRecord;
 		if (projectName) {
 			return projectName;
-		} else {
+		} else if (accessRecord.datasets.length > 0) {
 			// Build default project name from publisher and dataset name
 			const {
 				datasetfields: { publisher },
 				name,
 			} = accessRecord.datasets[0];
 			return `${publisher} - ${name}`;
+		} else {
+			return 'No project name';
 		}
 	}
 

@@ -542,12 +542,12 @@ describe('doResubmission', () => {
 	});
 });
 
-describe('countUnsubmittedAmendments', () => {
+describe('countAmendments', () => {
 	test('given a data access record with unsubmitted amendments, the correct number of answered and unanswered amendments in returned', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[5]);
 		// Act
-		const result = amendmentService.countUnsubmittedAmendments(data, constants.userTypes.APPLICANT);
+		const result = amendmentService.countAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.unansweredAmendments).toBe(2);
 		expect(result.answeredAmendments).toBe(1);
@@ -556,7 +556,7 @@ describe('countUnsubmittedAmendments', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[6]);
 		// Act
-		const result = amendmentService.countUnsubmittedAmendments(data, constants.userTypes.APPLICANT);
+		const result = amendmentService.countAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.unansweredAmendments).toBe(0);
 		expect(result.answeredAmendments).toBe(0);

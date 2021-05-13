@@ -120,7 +120,7 @@ export default class AmendmentController extends Controller {
 						activeParty
 					);
 					// 12. Count the number of answered/unanswered amendments
-					const { answeredAmendments = 0, unansweredAmendments = 0 } = this.amendmentService.countUnsubmittedAmendments(accessRecord, userType);
+					const { answeredAmendments = 0, unansweredAmendments = 0 } = this.amendmentService.countAmendments(accessRecord, userType);
 					return res.status(200).json({
 						success: true,
 						accessRecord: {
@@ -202,7 +202,7 @@ export default class AmendmentController extends Controller {
 				});
 			}
 			// 6. Check some amendments exist to be submitted to the applicant(s)
-			const { unansweredAmendments } = this.amendmentService.countUnsubmittedAmendments(accessRecord, constants.userTypes.CUSTODIAN);
+			const { unansweredAmendments } = this.amendmentService.countAmendments(accessRecord, constants.userTypes.CUSTODIAN);
 			if (unansweredAmendments === 0) {
 				return res.status(400).json({
 					status: 'failure',

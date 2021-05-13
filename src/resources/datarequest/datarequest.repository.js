@@ -25,8 +25,13 @@ export default class DataRequestRepository extends Repository {
 			.populate([
 				{ path: 'mainApplicant', select: 'firstname lastname -id' },
 				{
+					path: 'publisherObj',
+					populate: {
+						path: 'team',
+					},
+				},
+				{
 					path: 'datasets dataset authors',
-					populate: { path: 'publisher', populate: { path: 'team' } },
 				},
 				{ path: 'workflow.steps.reviewers', select: 'firstname lastname' },
 				{ path: 'files.owner', select: 'firstname lastname' },
