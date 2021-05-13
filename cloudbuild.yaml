@@ -24,6 +24,8 @@ steps:
     args: ['npm', 'install']
   - name: 'node'
     args: ['-r', 'esm', 'migrations/migrate.js', 'up', '--autosync', 'true']
+    env:
+      - 'MIGRATE_dbConnectionUri=${_MIGRATE_dbConnectionUri}'
   - name: 'node'
     args: ['npm', 'test']
     env:
