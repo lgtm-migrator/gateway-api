@@ -111,29 +111,28 @@ export default class DataRequestController extends Controller {
 			// 7. Determine the current active party handling the form, this may be undefined if the requested version is not the latest
 			const activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord, versionAmendmentIterationIndex);
 
+			// 8. Get the workflow status for the requested application version for the requesting user
+			let { inReviewMode, reviewSections, hasRecommended, isManager, workflow } = this.workflowService.getApplicationWorkflowStatusForUser(accessRecord, requestingUserObjectId, isLatestMinorVersion);
 
 
 
-			// 7. If the application is the latest minor version...
-			if(isLatestMinorVersion) {
-				
-			}
 
+			
 
 			// 7. Set the review mode if user is a custodian reviewing the current step
-			let { inReviewMode, reviewSections, hasRecommended } = this.workflowService.getReviewStatus(accessRecord, requestingUserObjectId);
+			//let { inReviewMode, reviewSections, hasRecommended } = this.workflowService.getReviewStatus(accessRecord, requestingUserObjectId);
 			// 8. Get the workflow/voting status
-			let workflow = this.workflowService.getWorkflowStatus(accessRecord);
-			let isManager = false;
+			//let workflow = this.workflowService.getWorkflowStatus(accessRecord);
+			//let isManager = false;
 			// 9. Check if the current user can override the current step
-			if (_.has(accessRecord.datasets[0], 'publisher.team')) {
-				const { team } = accessRecord.datasets[0].publisher;
-				isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team, requestingUserObjectId);
-				// Set the workflow override capability if there is an active step and user is a manager
-				if (!_.isEmpty(workflow)) {
-					workflow.canOverrideStep = !workflow.isCompleted && isManager;
-				}
-			}
+			// if (_.has(accessRecord.datasets[0], 'publisher.team')) {
+			// 	const { team } = accessRecord.datasets[0].publisher;
+			// 	isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team, requestingUserObjectId);
+			// 	// Set the workflow override capability if there is an active step and user is a manager
+			// 	if (!_.isEmpty(workflow)) {
+			// 		workflow.canOverrideStep = !workflow.isCompleted && isManager;
+			// 	}
+			// }
 
 
 			
