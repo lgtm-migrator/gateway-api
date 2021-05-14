@@ -4,6 +4,8 @@ import moment from 'moment';
 import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
 
+import { amendmentService } from '../datarequest/amendment/dependency';
+
 export default class DataRequestService {
 	constructor(dataRequestRepository) {
 		this.dataRequestRepository = dataRequestRepository;
@@ -25,23 +27,32 @@ export default class DataRequestService {
 		return readOnly;
 	}
 
-	getVersionDetails(accessRecord, requestedVersion) {
-		let isLatestMinorVersion = true;
-		const { version: majorVersion } = accessRecord;
+	validateRequestedVersion(accessRecord, requestedVersion) {
+		let isValidVersion = true;
 
+		// 1. Return base major version for specified access record if no specific version requested
+		if (!requestedVersion && accessRecord) {
+			return { isValidVersion, requestedMajorVersion: accessRecord.version, requestedMinorVersion: 0 };
+		}
+
+		// 2. Regex to validate and process the requested application version
 		let [fullMatch, requestedMajorVersion, requestedMinorVersion] = requestedVersion.match(/^(\d+)\.?(\d+)$/);
 
-		if (!fullMatch || majorVersion.toString() !== requestedMajorVersion.toString()) {
-			return { isValidVersion: false };
+		// 3. Catch invalid version requests
+		try {
+			let { version: majorVersion, amendmentIterations = [] } = accessRecord;
+			majorVersion = parseInt(majorVersion);
+			requestedMajorVersion = parseInt(requestedMajorVersion);
+			requestedMinorVersion = parseInt(requestedMinorVersion);
+
+			if (!fullMatch || majorVersion !== requestedMajorVersion || requestedMinorVersion > amendmentIterations.length) {
+				isValidVersion = false;
+			}
+		} catch {
+			isValidVersion = false;
 		}
 
-		if (requestedMinorVersion) {
-			// Convert minor version to index for amendment iterations
-			console.log('yes');
-			return { isValidVersion: true };
-		}
-
-		return { isLatestMinorVersion, isValidVersion, versionActiveParty, versionAmendmentIterationIndex };
+		return { isValidVersion, requestedMajorVersion, requestedMinorVersion };
 	}
 
 	getProjectName(accessRecord) {

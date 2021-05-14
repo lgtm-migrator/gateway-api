@@ -89,37 +89,36 @@ export default class DataRequestController extends Controller {
 
 			// 2. Find the matching record and include attached datasets records with publisher details
 			let accessRecord = await this.dataRequestService.getApplicationById(id);
-			const {
-				isValidVersion,
-				isLatestMinorVersion,
-				versionActiveParty,
-				versionAmendmentIterationIndex,
-			} = this.dataRequestService.getVersionDetails(accessRecord, requestedVersion);
 
-			// 3. If no matching application found, return 404
+			// 3. If no matching application found or invalid version requested, return 404
+			const { isValidVersion, requestedMajorVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(accessRecord, requestedVersion);
 			if (!accessRecord || !isValidVersion) {
 				return res.status(404).json({ status: 'error', message: 'The application or the requested version could not be found.' });
 			}
 
-			// 4. Check if requesting user is custodian member or applicant/contributor
+			// 4. Get requested amendment iteration details
+			const {
+				versionAmendmentIterationIndex,
+				activeParty,
+				isLatestMinorVersion,
+			} = this.amendmentService.getAmendmentIterationDetailsByVersion(accessRecord, requestedMajorVersion, requestedMinorVersion);
+
+			// 5. Check if requesting user is custodian member or applicant/contributor
 			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
 				accessRecord,
 				requestingUserId,
 				requestingUserObjectId
 			);
-			if (!authorised || versionActiveParty !== userType) {
+			if (!authorised || activeParty !== userType) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			// 5. Set edit mode for applicants who have not yet submitted
+			// 6. Set edit mode for applicants who have not yet submitted
 			const { applicationStatus, jsonSchema } = accessRecord;
 			accessRecord.readOnly = this.dataRequestService.getApplicationIsReadOnly(userType, applicationStatus);
 
-			// 6. Count amendments for selected version
+			// 7. Count amendments for selected version
 			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, versionAmendmentIterationIndex);
-
-			// 7. Determine the current active party handling the form, this may be undefined if the requested version is not the latest
-			const activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord, versionAmendmentIterationIndex);
 
 			// 8. Get the workflow status for the requested application version for the requesting user
 			const {
@@ -138,7 +137,14 @@ export default class DataRequestController extends Controller {
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionAmendmentIterationIndex);
 
 			// 11. Append question actions depending on user type and application status
-			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(jsonSchema, userType, applicationStatus, userRole, activeParty, isLatestMinorVersion);
+			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
+				jsonSchema,
+				userType,
+				applicationStatus,
+				userRole,
+				activeParty,
+				isLatestMinorVersion
+			);
 
 			// 12. Return application form
 			return res.status(200).json({

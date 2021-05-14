@@ -18,11 +18,11 @@ export default class WorkflowService {
 		let workflow = this.getWorkflowStatus(accessRecord);
 		let isManager = false;
 		// Check if the current user can override the current step
-		if (_.has(accessRecord, 'publisherObj.team')) {
+		if (has(accessRecord, 'publisherObj.team')) {
 			const { team } = accessRecord.publisherObj;
 			isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team, requestingUserObjectId);
 			// Set the workflow override capability if there is an active step and user is a manager
-			if (!_.isEmpty(workflow)) {
+			if (!isEmpty(workflow)) {
 				workflow.canOverrideStep = !workflow.isCompleted && isManager;
 			}
 		}

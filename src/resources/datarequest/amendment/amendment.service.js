@@ -169,7 +169,7 @@ export default class AmendmentService {
 			//    An empty date submitted with populated date returned indicates that the current correction iteration is now with the applicants
 			let index = accessRecord.amendmentIterations.findIndex(v => _.isUndefined(v.dateSubmitted) && !_.isUndefined(v.dateReturned));
 			// 2. Deduce the user type from the current iteration state
-			if (index === -1) {
+			if (index === -1 && accessRecord.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
 				return constants.userTypes.CUSTODIAN;
 			} else {
 				return constants.userTypes.APPLICANT;
@@ -195,6 +195,21 @@ export default class AmendmentService {
 		}
 	}
 
+	getAmendmentIterationDetailsByVersion(accessRecord, majorVersion, minorVersion) {
+		const { amendmentIterations = [] } = accessRecord;
+		// Get amendment iteration index, initial version will be offset by 1 to find array index i.e. 1.0 = -1, 1.1 = 0, 1.2 = 1 etc.
+		// versions beyond 1 will have matching offset to array index as 2.0 includes amendments on first submission i.e. 2.0 = 0, 2.1 = 1, 2.2 = 2 etc.
+		const versionAmendmentIterationIndex = majorVersion === 1 ? minorVersion - 1 : minorVersion;
+
+		// Get active party for selected index
+		const activeParty = this.getAmendmentIterationParty(accessRecord, versionAmendmentIterationIndex);
+
+		// Check if selected version is latest
+		const isLatestMinorVersion = amendmentIterations[versionAmendmentIterationIndex] === _.last(amendmentIterations);
+
+		return { versionAmendmentIterationIndex, activeParty, isLatestMinorVersion };
+	}
+
 	filterAmendments(accessRecord = {}, userType, lastIterationIndex = -1) {
 		// 1. Guard for invalid access record
 		if (_.isEmpty(accessRecord)) {
@@ -203,7 +218,7 @@ export default class AmendmentService {
 		let { amendmentIterations = [] } = accessRecord;
 
 		// 2. Slice any superfluous amendment iterations if a previous version has been explicitly requested
-		if(lastIterationIndex !== -1) {
+		if (lastIterationIndex !== -1) {
 			amendmentIterations = amendmentIterations.slice(0, lastIterationIndex);
 		}
 
@@ -493,8 +508,6 @@ export default class AmendmentService {
 		// 3. Return counts
 		return { unansweredAmendments, answeredAmendments };
 	}
-
-	countAmendments(accessRecord, userType, versionAmendmentIterationIndex) {}
 
 	revertAmendmentAnswer(accessRecord, questionId, user) {
 		// 1. Locate the latest amendment iteration
