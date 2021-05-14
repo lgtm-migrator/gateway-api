@@ -19,7 +19,8 @@ async function up() {
 				filter: { _id },
 				update: {
 					applicationType: 'Initial',
-					version: 1,
+					majorVersion: 1,
+					version: undefined,
 					versionTree,
 				},
 				upsert: false,
@@ -45,7 +46,8 @@ async function down() {
 				filter: { _id },
 				update: {
 					applicationType: undefined,
-					version: undefined,
+					majorVersion: undefined,
+					version: 1,
 					versionTree: undefined,
 				},
 				upsert: false,

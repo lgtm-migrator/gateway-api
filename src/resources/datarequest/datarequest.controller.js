@@ -87,11 +87,14 @@ export default class DataRequestController extends Controller {
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 
-			// 2. Find the matching record and include attached datasets records with publisher details
+			// 2. Find the matching record and include attached datasets records with publisher details and workflow details
 			let accessRecord = await this.dataRequestService.getApplicationById(id);
 
 			// 3. If no matching application found or invalid version requested, return 404
-			const { isValidVersion, requestedMajorVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(accessRecord, requestedVersion);
+			const { isValidVersion, requestedMajorVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(
+				accessRecord,
+				requestedVersion
+			);
 			if (!accessRecord || !isValidVersion) {
 				return res.status(404).json({ status: 'error', message: 'The application or the requested version could not be found.' });
 			}
@@ -170,6 +173,84 @@ export default class DataRequestController extends Controller {
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred opening this data access request application',
+			});
+		}
+	}
+
+	//POST api/v1/data-access-request/:id/clone
+	async cloneApplication(req, res) {
+		try {
+			// 1. Get the required request and body params
+			const {
+				params: { id },
+			} = req;
+			const { datasetIds = [], datasetTitles = [], publisher = '', appIdToCloneInto = '' } = req.body;
+
+			// 2. Retrieve DAR to clone from database
+			let appToClone = await this.dataRequestService.getApplicationToCloneById(id);
+
+			if (!appToClone) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, req.user.id, req.user._id);
+
+			// 4. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 5. Update question answers with modifications since original submission
+			appToClone = this.amendmentService.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
+
+			// 6. Set up new access record or load presubmission application as provided in request and save
+			let clonedAccessRecord = {};
+			if (_.isEmpty(appIdToCloneInto)) {
+				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
+					userId: req.user.id,
+					datasetIds,
+					datasetTitles,
+					publisher,
+				});
+				// Save new record
+				clonedAccessRecord = await DataRequestModel.create(clonedAccessRecord);
+			} else {
+				const appToCloneInto = await this.dataRequestService.getApplicationToCloneById(appIdToCloneInto);
+				// Ensure application to clone into was found
+				if (!appToCloneInto) {
+					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
+				}
+				// Get permissions for application to clone into
+				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToCloneInto, req.user.id, req.user._id);
+				//  Return unauthorised message if the requesting user is not authorised to the new application
+				if (!authorised || userType !== constants.userTypes.APPLICANT) {
+					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+				}
+				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
+
+				// Save into existing record
+				clonedAccessRecord = await DataRequestModel.findOneAndUpdate({ _id: appIdToCloneInto }, clonedAccessRecord, { new: true });
+			}
+			// Create notifications
+			await module.exports.createNotifications(
+				constants.notificationTypes.APPLICATIONCLONED,
+				{ newDatasetTitles: datasetTitles, newApplicationId: clonedAccessRecord._id.toString() },
+				appToClone,
+				req.user
+			);
+
+			// Return successful response
+			return res.status(200).json({
+				success: true,
+				accessRecord: clonedAccessRecord,
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred cloning the existing application',
 			});
 		}
 	}
@@ -1719,127 +1800,6 @@ module.exports = {
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred updating the application amendment',
-			});
-		}
-	},
-
-	//POST api/v1/data-access-request/:id/clone
-	cloneApplication: async (req, res) => {
-		try {
-			// 1. Get the required request and body params
-			const {
-				params: { id: appIdToClone },
-			} = req;
-			const { datasetIds = [], datasetTitles = [], publisher = '', appIdToCloneInto = '' } = req.body;
-
-			// 2. Retrieve DAR to clone from database
-			let appToClone = await DataRequestModel.findOne({ _id: appIdToClone })
-				.populate([
-					{
-						path: 'datasets dataset authors',
-					},
-					{
-						path: 'mainApplicant',
-					},
-					{
-						path: 'publisherObj',
-						populate: {
-							path: 'team',
-							populate: {
-								path: 'users',
-							},
-						},
-					},
-				])
-				.lean();
-			if (!appToClone) {
-				return res.status(404).json({ status: 'error', message: 'Application not found.' });
-			}
-
-			// 3. Get the requesting users permission levels
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, req.user.id, req.user._id);
-
-			// 4. Return unauthorised message if the requesting user is not an applicant
-			if (!authorised || userType !== constants.userTypes.APPLICANT) {
-				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			}
-
-			// 5. Update question answers with modifications since original submission
-			appToClone = this.amendmentService.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
-
-			// 6. Create callback function used to complete the save process
-			const saveCallBack = (err, doc) => {
-				if (err) {
-					console.error(err.message);
-					return res.status(500).json({ status: 'error', message: err.message });
-				}
-
-				// Create notifications
-				module.exports.createNotifications(
-					constants.notificationTypes.APPLICATIONCLONED,
-					{ newDatasetTitles: datasetTitles, newApplicationId: doc._id.toString() },
-					appToClone,
-					req.user
-				);
-
-				// Return successful response
-				return res.status(200).json({
-					success: true,
-					accessRecord: doc,
-				});
-			};
-
-			// 7. Set up new access record or load presubmission application as provided in request and save
-			let clonedAccessRecord = {};
-			if (_.isEmpty(appIdToCloneInto)) {
-				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
-					userId: req.user.id,
-					datasetIds,
-					datasetTitles,
-					publisher,
-				});
-				// Save new record
-				await DataRequestModel.create(clonedAccessRecord, saveCallBack);
-			} else {
-				let appToCloneInto = await DataRequestModel.findOne({ _id: appIdToCloneInto })
-					.populate([
-						{
-							path: 'datasets dataset authors',
-						},
-						{
-							path: 'mainApplicant',
-						},
-						{
-							path: 'publisherObj',
-							populate: {
-								path: 'team',
-								populate: {
-									path: 'users',
-								},
-							},
-						},
-					])
-					.lean();
-				// Ensure application to clone into was found
-				if (!appToCloneInto) {
-					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
-				}
-				// Get permissions for application to clone into
-				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToCloneInto, req.user.id, req.user._id);
-				//  Return unauthorised message if the requesting user is not authorised to the new application
-				if (!authorised || userType !== constants.userTypes.APPLICANT) {
-					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-				}
-				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
-
-				// Save into existing record
-				await DataRequestModel.findOneAndUpdate({ _id: appIdToCloneInto }, clonedAccessRecord, { new: true }, saveCallBack);
-			}
-		} catch (err) {
-			console.error(err.message);
-			return res.status(500).json({
-				success: false,
-				message: 'An error occurred cloning the existing application',
 			});
 		}
 	},

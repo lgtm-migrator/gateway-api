@@ -5,7 +5,7 @@ import DataRequestClass from './datarequest.entity';
 
 const DataRequestSchema = new Schema(
 	{
-		version: { type: Number, default: 1},
+		majorVersion: { type: Number, default: 1},
 		userId: Number, // Main applicant
 		authorIds: [Number],
 		dataSetId: String,

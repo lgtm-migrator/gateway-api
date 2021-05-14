@@ -19,6 +19,10 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getApplicationById(id);
 	}
 
+	getApplicationToCloneById(id) {
+		return this.dataRequestRepository.getApplicationToCloneById(id);
+	}
+
 	getApplicationIsReadOnly(userType, applicationStatus) {
 		let readOnly = true;
 		if (userType === constants.userTypes.APPLICANT && applicationStatus === constants.applicationStatuses.INPROGRESS) {
@@ -32,7 +36,7 @@ export default class DataRequestService {
 
 		// 1. Return base major version for specified access record if no specific version requested
 		if (!requestedVersion && accessRecord) {
-			return { isValidVersion, requestedMajorVersion: accessRecord.version, requestedMinorVersion: 0 };
+			return { isValidVersion, requestedMajorVersion: accessRecord.majorVersion, requestedMinorVersion: 0 };
 		}
 
 		// 2. Regex to validate and process the requested application version (e.g. 1, 2, 1.0, 1.1, 2.1, 3.11)
@@ -46,7 +50,7 @@ export default class DataRequestService {
 
 		// 3. Catch invalid version requests
 		try {
-			let { version: majorVersion, amendmentIterations = [] } = accessRecord;
+			let { majorVersion, amendmentIterations = [] } = accessRecord;
 			majorVersion = parseInt(majorVersion);
 			requestedMajorVersion = parseInt(requestedMajorVersion);
 			requestedMinorVersion = parseInt(requestedMinorVersion || 0);

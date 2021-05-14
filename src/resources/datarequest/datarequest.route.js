@@ -45,6 +45,18 @@ router.get(
 	(req, res) => dataRequestController.getAccessRequestById(req, res)
 );
 
+// @route   POST api/v1/data-access-request/:id/clone
+// @desc    Clone an existing application forms answers into a new one potentially for a different custodian
+// @access  Private - Applicant
+router.post(
+	'/:id/clone',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Cloning a Data Access Request application' }),
+	(req, res) => dataRequestController.cloneApplication(req, res)
+);
+
+
+
 // @route   GET api/v1/data-access-request/dataset/:datasetId
 // @desc    GET Access request for user
 // @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
@@ -197,16 +209,6 @@ router.post(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Performing a user trggered action on a Data Access Request application' }),
 	datarequestController.performAction
-);
-
-// @route   POST api/v1/data-access-request/:id/clone
-// @desc    Clone an existing application forms answers into a new one potentially for a different custodian
-// @access  Private - Applicant
-router.post(
-	'/:id/clone',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Cloning a Data Access Request application' }),
-	datarequestController.cloneApplication
 );
 
 // @route   POST api/v1/data-access-request/:id
