@@ -29,14 +29,16 @@ export default class DataRequestService {
 
 	validateRequestedVersion(accessRecord, requestedVersion) {
 		let isValidVersion = true;
-
+		
 		// 1. Return base major version for specified access record if no specific version requested
 		if (!requestedVersion && accessRecord) {
 			return { isValidVersion, requestedMajorVersion: accessRecord.version, requestedMinorVersion: 0 };
 		}
 
 		// 2. Regex to validate and process the requested application version
-		let [fullMatch, requestedMajorVersion, requestedMinorVersion] = requestedVersion.match(/^(\d+)\.?(\d+)$/);
+		let fullMatch, requestedMajorVersion, requestedMinorVersion;
+		const regexMatch = requestedVersion.match(/^(\d+)\.?(\d+)$/);
+		if(regexMatch) [fullMatch, requestedMajorVersion, requestedMinorVersion] = regexMatch;
 
 		// 3. Catch invalid version requests
 		try {

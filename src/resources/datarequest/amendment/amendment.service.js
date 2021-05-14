@@ -175,7 +175,7 @@ export default class AmendmentService {
 				return constants.userTypes.APPLICANT;
 			}
 		} else {
-			return getAmendmentIterationPartyByVersion(accessRecord, versionAmendmentIterationIndex);
+			return this.getAmendmentIterationPartyByVersion(accessRecord, versionAmendmentIterationIndex);
 		}
 	}
 
