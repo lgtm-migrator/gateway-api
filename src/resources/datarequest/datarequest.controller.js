@@ -2115,7 +2115,7 @@ module.exports = {
 						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
 						'data access request received',
 						accessRecord._id,
-						accessRecord.datasets[0].publisher.name
+						accessRecord.datasets[0].publisher._id.toString()
 					);
 				} else {
 					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
