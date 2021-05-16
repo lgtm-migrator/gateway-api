@@ -568,7 +568,7 @@ const _generateDARStatusChangedEmail = options => {
 
 const _generateDARClonedEmail = options => {
 	let { id, projectId, projectName, datasetTitles, dateSubmitted, applicants, firstname, lastname } = options;
-	dateSubmitted = isNil(dateSubmitted) ? 'Not yet submitted' : moment(dateSubmitted).format('D MMM YYYY');
+	dateSubmitted = isNil(dateSubmitted) || isEmpty(dateSubmitted) ? 'Not yet submitted' : moment(dateSubmitted).format('D MMM YYYY');
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table

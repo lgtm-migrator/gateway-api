@@ -65,6 +65,117 @@ router.post(
 	(req, res) => dataRequestController.submitAccessRequestById(req, res)
 );
 
+// @route   PATCH api/v1/data-access-request/:id
+// @desc    Update application passing single object to update database entry with specified key
+// @access  Private - Applicant (Gateway User)
+router.patch(
+	'/:id',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Updating a single question answer in a Data Access Request application' }),
+	(req, res) => dataRequestController.updateAccessRequestDataElement(req, res)
+);
+
+// @route   DELETE api/v1/data-access-request/:id
+// @desc    Delete an application in a presubmissioin
+// @access  Private - Applicant
+router.delete(
+	'/:id',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Deleting a presubmission Data Access Request application' }),
+	(req, res) => dataRequestController.deleteDraftAccessRequest(req, res)
+);
+
+// @route   POST api/v1/data-access-request/:id/upload
+// @desc    POST application files to scan bucket
+// @access  Private - Applicant (Gateway User / Custodian Manager)
+router.post(
+	'/:id/upload',
+	passport.authenticate('jwt'),
+	multerMid.array('assets'),
+	logger.logRequestMiddleware({ logCategory, action: 'Uploading a file to a Data Access Request application' }),
+	(req, res) => dataRequestController.uploadFiles(req, res)
+);
+
+// @route   PUT api/v1/data-access-request/:id/assignworkflow
+// @desc    Update access request workflow
+// @access  Private - Custodian Manager
+router.put(
+	'/:id/assignworkflow',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Assigning a workflow to a Data Access Request application' }),
+	(req, res) => dataRequestController.assignWorkflow(req, res)
+);
+
+// @route   GET api/v1/data-access-request/:id/file/:fileId
+// @desc    GET
+// @access  Private
+router.get(
+	'/:id/file/:fileId',
+	param('id').customSanitizer(value => {
+		return value;
+	}),
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Requested an uploaded file from a Data Access Request application' }),
+	(req, res) => dataRequestController.getFile(req, res)
+);
+
+// @route   GET api/v1/data-access-request/:id/file/:fileId/status
+// @desc    GET Status of a file
+// @access  Private
+router.get(
+	'/:id/file/:fileId/status',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Requested the status of an uploaded file to a Data Access Request application' }),
+	(req, res) => dataRequestController.getFileStatus(req, res)
+);
+
+
+// @route   PUT api/v1/data-access-request/:id/deletefile
+// @desc    Update access request deleting a file by Id
+// @access  Private - Applicant (Gateway User)
+router.put(
+	'/:id/deletefile',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Deleting an uploaded file from a Data Access Request application' }),
+	(req, res) => dataRequestController.updateAccessRequestDeleteFile(req, res)
+);
+
+// @route   POST api/v1/data-access-request/:id/updatefilestatus
+// @desc    Update the status of a file.
+// @access  Private
+router.post(
+	'/:id/file/:fileId/status',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Updating the status of an uploaded file to a Data Access Request application' }),
+	(req, res) => dataRequestController.updateFileStatus(req, res)
+);
+
+// @route   POST api/v1/data-access-request/:id/email
+// @desc    Mail a Data Access Request information in presubmission
+// @access  Private - Applicant
+router.post(
+	'/:id/email',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Emailing a presubmission Data Access Request application to the requesting user' }),
+	(req, res) => dataRequestController.mailDataAccessRequestInfoById(req, res)
+);
+
+// @route   POST api/v1/data-access-request/:id/notify
+// @desc    External facing endpoint to trigger notifications for Data Access Request workflows
+// @access  Private
+router.post(
+	'/:id/notify',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({
+		logCategory,
+		action: 'Notifying any outstanding or upcoming SLA breaches for review phases against a Data Access Request application',
+	}),
+	(req, res) => dataRequestController.notifyAccessRequestById(req, res)
+);
+
+
+
+
 
 
 // @route   GET api/v1/data-access-request/dataset/:datasetId
@@ -87,39 +198,6 @@ router.get(
 	datarequestController.getAccessRequestByUserAndMultipleDatasets
 );
 
-// @route   GET api/v1/data-access-request/:id/file/:fileId
-// @desc    GET
-// @access  Private
-router.get(
-	'/:id/file/:fileId',
-	param('id').customSanitizer(value => {
-		return value;
-	}),
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Requested an uploaded file from a Data Access Request application' }),
-	datarequestController.getFile
-);
-
-// @route   GET api/v1/data-access-request/:id/file/:fileId/status
-// @desc    GET Status of a file
-// @access  Private
-router.get(
-	'/:id/file/:fileId/status',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Requested the status of an uploaded file to a Data Access Request application' }),
-	datarequestController.getFileStatus
-);
-
-// @route   PATCH api/v1/data-access-request/:id
-// @desc    Update application passing single object to update database entry with specified key
-// @access  Private - Applicant (Gateway User)
-router.patch(
-	'/:id',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Updating a single question answer in a Data Access Request application' }),
-	datarequestController.updateAccessRequestDataElement
-);
-
 // @route   PUT api/v1/data-access-request/:id
 // @desc    Update request record by Id for status changes
 // @access  Private - Custodian Manager and Applicant (Gateway User)
@@ -128,16 +206,6 @@ router.put(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Updating the status of a Data Access Request application' }),
 	datarequestController.updateAccessRequestById
-);
-
-// @route   PUT api/v1/data-access-request/:id/assignworkflow
-// @desc    Update access request workflow
-// @access  Private - Custodian Manager
-router.put(
-	'/:id/assignworkflow',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Assigning a workflow to a Data Access Request application' }),
-	datarequestController.assignWorkflow
 );
 
 // @route   PUT api/v1/data-access-request/:id/vote
@@ -170,27 +238,6 @@ router.put(
 	datarequestController.updateAccessRequestStepOverride
 );
 
-// @route   PUT api/v1/data-access-request/:id/deletefile
-// @desc    Update access request deleting a file by Id
-// @access  Private - Applicant (Gateway User)
-router.put(
-	'/:id/deletefile',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Deleting an uploaded file from a Data Access Request application' }),
-	datarequestController.updateAccessRequestDeleteFile
-);
-
-// @route   POST api/v1/data-access-request/:id/upload
-// @desc    POST application files to scan bucket
-// @access  Private - Applicant (Gateway User / Custodian Manager)
-router.post(
-	'/:id/upload',
-	passport.authenticate('jwt'),
-	multerMid.array('assets'),
-	logger.logRequestMiddleware({ logCategory, action: 'Uploading a file to a Data Access Request application' }),
-	datarequestController.uploadFiles
-);
-
 // @route   POST api/v1/data-access-request/:id/amendments
 // @desc    Create or remove amendments from DAR
 // @access  Private - Custodian Reviewer/Manager
@@ -221,47 +268,8 @@ router.post(
 	datarequestController.performAction
 );
 
-// @route   POST api/v1/data-access-request/:id/notify
-// @desc    External facing endpoint to trigger notifications for Data Access Request workflows
-// @access  Private
-router.post(
-	'/:id/notify',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({
-		logCategory,
-		action: 'Notifying any outstanding or upcoming SLA breaches for review phases against a Data Access Request application',
-	}),
-	datarequestController.notifyAccessRequestById
-);
 
-// @route   POST api/v1/data-access-request/:id/updatefilestatus
-// @desc    Update the status of a file.
-// @access  Private
-router.post(
-	'/:id/file/:fileId/status',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Updating the status of an uploaded file to a Data Access Request application' }),
-	datarequestController.updateFileStatus
-);
 
-// @route   POST api/v1/data-access-request/:id/email
-// @desc    Mail a Data Access Request information in presubmission
-// @access  Private - Applicant
-router.post(
-	'/:id/email',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Emailing a presubmission Data Access Request application to the requesting user' }),
-	datarequestController.mailDataAccessRequestInfoById
-);
 
-// @route   DELETE api/v1/data-access-request/:id
-// @desc    Delete an application in a presubmissioin
-// @access  Private - Applicant
-router.delete(
-	'/:id',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Deleting a presubmission Data Access Request application' }),
-	datarequestController.deleteDraftAccessRequest
-);
 
 module.exports = router;

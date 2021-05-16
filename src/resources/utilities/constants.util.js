@@ -49,24 +49,46 @@ const _userQuestionActions = {
 				},
 			],
 			inReview: {
-				custodian: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
-				applicant: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
+				custodian: {
+					latestVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+					previousVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+				},
+				applicant: {
+					latestVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+					previousVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+				},
 			},
 			approved: [
 				{
@@ -143,15 +165,26 @@ const _userQuestionActions = {
 						},
 					],
 				},
-				applicant: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
+				applicant: {
+					latestVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+					previousVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+				},
 			},
 			approved: [
 				{

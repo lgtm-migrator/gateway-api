@@ -40,26 +40,48 @@ export default class DataRequestRepository extends Repository {
 			.lean();
 	}
 
-	getApplicationToCloneById(id) {
-		return DataRequestModel.findOne({ _id: id })
-			.populate([
-				{
-					path: 'datasets dataset authors',
-				},
-				{
-					path: 'mainApplicant',
-				},
-				{
-					path: 'publisherObj',
+	getApplicationWithTeamById(id, options = {}) {
+		return DataRequestModel.findOne({ _id: id }, null, options).populate([
+			{
+				path: 'datasets dataset authors',
+			},
+			{
+				path: 'mainApplicant',
+			},
+			{
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
 					populate: {
-						path: 'team',
-						populate: {
-							path: 'users',
-						},
+						path: 'users',
 					},
 				},
-			])
-			.lean();
+			},
+		]);
+	}
+
+	getApplicationWithWorkflowById(id, options = {}) {
+		return DataRequestModel.findOne({ _id: id }, null, options).populate([
+			{
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
+					populate: {
+						path: 'users',
+					},
+				},
+			},
+			{
+				path: 'workflow.steps.reviewers',
+				select: 'firstname lastname id email',
+			},
+			{
+				path: 'datasets dataset',
+			},
+			{
+				path: 'mainApplicant',
+			},
+		]);
 	}
 
 	getApplicationToSubmitById(id) {
@@ -89,5 +111,35 @@ export default class DataRequestRepository extends Repository {
 				path: 'publisherObj',
 			},
 		]);
+	}
+
+	getApplicationToUpdateById(id) {
+		return DataRequestModel.findOne({
+			_id: id,
+		}).lean();
+	}
+
+	getFilesForApplicationById(id, options = {}) {
+		return DataRequestModel.findById(id, { files: 1, applicationStatus: 1, userId: 1, authorIds: 1 }, options);
+	}
+
+	updateApplicationById(id, data, options = {}) {
+		return DataRequestModel.findByIdAndUpdate(id, data, { ...options });
+	}
+
+	replaceApplicationById(id, newDoc) {
+		return DataRequestModel.replaceOne({ _id: id }, newDoc);
+	}
+
+	deleteApplicationById(id) {
+		return DataRequestModel.findOneAndDelete({ _id: id });
+	}
+
+	async saveFileUploadChanges(accessRecord) {
+		await accessRecord.save();
+		return DataRequestModel.populate(accessRecord, {
+			path: 'files.owner',
+			select: 'firstname lastname id',
+		});
 	}
 }

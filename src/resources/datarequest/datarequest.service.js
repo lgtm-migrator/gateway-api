@@ -1,9 +1,9 @@
-import { isEmpty } from 'lodash';
+import { isEmpty, has, isNil } from 'lodash';
 import moment from 'moment';
 
 import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
-
+import { processFile, getFile, fileStatus } from '../utilities/cloudStorage.util';
 import { amendmentService } from '../datarequest/amendment/dependency';
 
 export default class DataRequestService {
@@ -19,12 +19,20 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getApplicationById(id);
 	}
 
-	getApplicationToCloneById(id) {
-		return this.dataRequestRepository.getApplicationToCloneById(id);
+	getApplicationWithTeamById(id, options) {
+		return this.dataRequestRepository.getApplicationWithTeamById(id, options);
+	}
+
+	getApplicationWithWorkflowById(id, options) {
+		return this.dataRequestRepository.getApplicationWithWorkflowById(id, options);
 	}
 
 	getApplicationToSubmitById(id) {
 		return this.dataRequestRepository.getApplicationToSubmitById(id);
+	}
+
+	getApplicationToUpdateById(id) {
+		return this.dataRequestRepository.getApplicationToUpdateById(id);
 	}
 
 	getApplicationIsReadOnly(userType, applicationStatus) {
@@ -33,6 +41,18 @@ export default class DataRequestService {
 			readOnly = false;
 		}
 		return readOnly;
+	}
+
+	getFilesForApplicationById(id, options) {
+		return this.dataRequestRepository.getFilesForApplicationById(id, options);
+	}
+
+	deleteApplicationById(id) {
+		return this.dataRequestRepository.deleteApplicationById(id);
+	}
+
+	replaceApplicationById(id, newAcessRecord) {
+		return this.dataRequestRepository.replaceApplicationById(id, newAcessRecord);
 	}
 
 	validateRequestedVersion(accessRecord, requestedVersion) {
@@ -140,5 +160,117 @@ export default class DataRequestService {
 			if (totalDecisionTime > 0) return parseInt(totalDecisionTime / decidedApplications.length / 86400);
 		}
 		return 0;
+	}
+
+	buildUpdateObject(data) {
+		let updateObj = {};
+		let { aboutApplication, questionAnswers, updatedQuestionId, user, jsonSchema = '' } = data;
+		if (aboutApplication) {
+			const { datasetIds, datasetTitles } = aboutApplication.selectedDatasets.reduce(
+				(newObj, dataset) => {
+					newObj.datasetIds = [...newObj.datasetIds, dataset.datasetId];
+					newObj.datasetTitles = [...newObj.datasetTitles, dataset.name];
+					return newObj;
+				},
+				{ datasetIds: [], datasetTitles: [] }
+			);
+
+			updateObj = { aboutApplication, datasetIds, datasetTitles };
+		}
+		if (questionAnswers) {
+			updateObj = { ...updateObj, questionAnswers, updatedQuestionId, user };
+		}
+
+		if (!isEmpty(jsonSchema)) {
+			updateObj = { ...updateObj, jsonSchema };
+		}
+
+		return updateObj;
+	}
+
+	async updateApplication(accessRecord, updateObj) {
+		// 1. Extract properties
+		let { applicationStatus, _id } = accessRecord;
+		let { updatedQuestionId = '', user } = updateObj;
+		// 2. If application is in progress, update initial question answers
+		if (applicationStatus === constants.applicationStatuses.INPROGRESS) {
+			await this.dataRequestRepository.updateApplicationById(_id, updateObj, { new: true });
+			// 3. Else if application has already been submitted make amendment
+		} else if (
+			applicationStatus === constants.applicationStatuses.INREVIEW ||
+			applicationStatus === constants.applicationStatuses.SUBMITTED
+		) {
+			if (isNil(updateObj.questionAnswers)) {
+				return accessRecord;
+			}
+			let updatedAnswer = updateObj.questionAnswers[updatedQuestionId];
+			accessRecord = amendmentService.handleApplicantAmendment(accessRecord, updatedQuestionId, '', updatedAnswer, user);
+			await this.dataRequestRepository.replaceApplicationById(_id, accessRecord);
+		}
+		return accessRecord;
+	}
+
+	async uploadFiles(accessRecord, files, descriptions, ids, userId) {
+		let fileArr = [];
+		// Check and see if descriptions and ids are an array
+		let descriptionArray = Array.isArray(descriptions);
+		let idArray = Array.isArray(ids);
+		// Process the files for scanning
+		for (let i = 0; i < files.length; i++) {
+			// Get description information
+			let description = descriptionArray ? descriptions[i] : descriptions;
+			// Get uniqueId
+			let generatedId = idArray ? ids[i] : ids;
+			// Remove - from uuidV4
+			let uniqueId = generatedId.replace(/-/gim, '');
+			// Send to db
+			const response = await processFile(files[i], accessRecord._id, uniqueId);
+			// Deconstruct response
+			let { status } = response;
+			// Setup fileArr for mongoo
+			let newFile = {
+				status: status.trim(),
+				description: description.trim(),
+				fileId: uniqueId,
+				size: files[i].size,
+				name: files[i].originalname,
+				owner: userId,
+				error: status === fileStatus.ERROR ? 'Could not upload. Unknown error. Please try again.' : '',
+			};
+			// Update local for post back to FE
+			fileArr.push(newFile);
+			// mongoo db update files array
+			accessRecord.files.push(newFile);
+		}
+		// Write back into mongo [{userId, fileName, status: enum, size}]
+		let updatedRecord = await this.dataRequestRepository.saveFileUploadChanges(accessRecord);
+
+		// Process access record into object
+		let record = updatedRecord._doc;
+		// Fetch files
+		let mediaFiles = record.files.map(f => {
+			return f._doc;
+		});
+
+		return mediaFiles;
+	}
+
+	doInitialSubmission (accessRecord) {
+		// 1. Update application to submitted status
+		accessRecord.submissionType = constants.submissionTypes.INITIAL;
+		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
+		// 2. Check if workflow/5 Safes based application, set final status date if status will never change again
+		if (has(accessRecord.toObject(), 'publisherObj')) {
+			if (!accessRecord.publisherObj.workflowEnabled) {
+				accessRecord.dateFinalStatus = new Date();
+				accessRecord.workflowEnabled = false;
+			} else {
+				accessRecord.workflowEnabled = true;
+			}
+		}
+		const dateSubmitted = new Date();
+		accessRecord.dateSubmitted = dateSubmitted;
+		// 3. Return updated access record for saving
+		return accessRecord;
 	}
 }

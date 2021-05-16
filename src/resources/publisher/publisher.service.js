@@ -54,12 +54,12 @@ export default class PublisherService {
 		const filteredApplications = [...applications].filter(app => {
 			let { workflow = {} } = app;
 			if (isEmpty(workflow)) {
-				return app;
+				return;
 			}
 
 			let { steps = [] } = workflow;
 			if (isEmpty(steps)) {
-				return app;
+				return;
 			}
 
 			let activeStepIndex = findIndex(steps, function (step) {

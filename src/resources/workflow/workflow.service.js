@@ -6,6 +6,8 @@ import notificationBuilder from '../utilities/notificationBuilder';
 import moment from 'moment';
 import { isEmpty, has } from 'lodash';
 
+const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
+
 export default class WorkflowService {
 	constructor(workflowRepository) {
 		this.workflowRepository = workflowRepository;
@@ -50,6 +52,14 @@ export default class WorkflowService {
 		});
 
 		return formattedWorkflows;
+	}
+
+	async assignWorkflowToApplication(accessRecord, workflowId) {
+		return this.workflowRepository.assignWorkflowToApplication(accessRecord, workflowId);
+	}
+
+	getWorkflowById(id){
+		return this.workflowRepository.getWorkflowById(id);
 	}
 
 	getWorkflowDetails(accessRecord, requestingUserId) {
@@ -413,9 +423,9 @@ export default class WorkflowService {
 		return { inReviewMode, reviewSections, hasRecommended };
 	}
 
-	getWorkflowEmailContext(accessRecord, workflow, relatedStepIndex) {
+	getWorkflowEmailContext(accessRecord, relatedStepIndex = 0) {
 		// Extract workflow email variables
-		const { dateReviewStart = '' } = accessRecord;
+		const { dateReviewStart = '', workflow = {} } = accessRecord;
 		const { workflowName, steps } = workflow;
 		const { stepName, startDateTime = '', endDateTime = '', completed = false, deadline: stepDeadline = 0, reminderOffset = 0 } = steps[
 			relatedStepIndex
@@ -509,5 +519,20 @@ export default class WorkflowService {
 			remainingReviewers,
 			remainingReviewerUserIds,
 		};
+	}
+
+	startWorkflow(accessRecord, requestingUserObjectId) {
+		const { publisherObj: { name: dataRequestPublisher }, _id, workflow } = accessRecord;
+		const reviewerList = workflow.steps[0].reviewers.map(reviewer => reviewer._id.toString());
+		const bpmContext = {
+			businessKey: _id,
+			dataRequestStatus: constants.applicationStatuses.INREVIEW,
+			dataRequestUserId: requestingUserObjectId.toString(),
+			dataRequestPublisher,
+			dataRequestStepName: workflow.steps[0].stepName,
+			notifyReviewerSLA: this.calculateStepDeadlineReminderDate(workflow.steps[0]),
+			reviewerList,
+		};
+		bpmController.postStartStepReview(bpmContext);
 	}
 }
