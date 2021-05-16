@@ -77,6 +77,7 @@ const DataSchema = new Schema(
 		source: String,
 		is5Safes: Boolean,
 		hasTechnicalDetails: Boolean,
+		commercialUse: Boolean,
 		datasetid: String,
 		pid: String,
 		datasetVersion: String,
