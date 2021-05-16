@@ -254,6 +254,91 @@ export default class DataRequestController extends Controller {
 			});
 		}
 	}
+
+	//POST api/v1/data-access-request/:id
+	async submitAccessRequestById(req, res) {
+		try {
+			// 1. id is the _id object in mongoo.db not the generated id or dataset Id
+			let {
+				params: { id },
+			} = req;
+
+			// 2. Find the relevant data request application
+			let accessRecord = await this.dataRequestService.getApplicationToSubmitById(id);
+
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. Check user type and authentication to submit application
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
+			if (_.isEmpty(accessRecord.datasets)) {
+				accessRecord.datasets = [accessRecord.dataset];
+			}
+
+			// 5. Perform either initial submission or resubmission depending on application status
+			if (accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
+				accessRecord = module.exports.doInitialSubmission(accessRecord);
+			} else if (
+				accessRecord.applicationStatus === constants.applicationStatuses.INREVIEW ||
+				accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED
+			) {
+				accessRecord = this.amendmentService.doResubmission(accessRecord.toObject(), req.user._id.toString());
+			}
+
+			// 6. Ensure a valid submission is taking place
+			if (_.isNil(accessRecord.submissionType)) {
+				return res.status(400).json({
+					status: 'error',
+					message: 'Application cannot be submitted as it has reached a final decision status.',
+				});
+			}
+
+			// 7. Save changes to db
+			let savedAccessRecord = await DataRequestModel.replaceOne({ _id: id }, accessRecord);
+			
+			// 8. Send notifications and emails with amendments
+			savedAccessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
+			await module.exports.createNotifications(
+				accessRecord.submissionType === constants.submissionTypes.INITIAL
+					? constants.notificationTypes.SUBMITTED
+					: constants.notificationTypes.RESUBMITTED,
+				{},
+				accessRecord,
+				req.user
+			);
+
+			// 9. Start workflow process in Camunda if publisher requires it and it is the first submission
+			if (savedAccessRecord.workflowEnabled && savedAccessRecord.submissionType === constants.submissionTypes.INITIAL) {
+				let {
+					publisherObj: { name: publisher },
+					dateSubmitted,
+				} = accessRecord;
+				let bpmContext = {
+					dateSubmitted,
+					applicationStatus: constants.applicationStatuses.SUBMITTED,
+					publisher,
+					businessKey: id,
+				};
+				bpmController.postStartPreReview(bpmContext);
+			}
+
+			// 10. Return aplication and successful response
+			return res.status(200).json({ status: 'success', data: savedAccessRecord });
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred submitting the application',
+			});
+		}
+	}
 }
 
 module.exports = {
@@ -1447,111 +1532,6 @@ module.exports = {
 
 			// 10. Return successful response
 			return res.status(200).json({ status: 'success' });
-		} catch (err) {
-			console.error(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
-	},
-
-	//POST api/v1/data-access-request/:id
-	submitAccessRequestById: async (req, res) => {
-		try {
-			// 1. id is the _id object in mongoo.db not the generated id or dataset Id
-			let {
-				params: { id },
-			} = req;
-			// 2. Find the relevant data request application
-			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
-				{
-					path: 'datasets dataset',
-					populate: {
-						path: 'publisher',
-						populate: {
-							path: 'team',
-							populate: {
-								path: 'users',
-								populate: {
-									path: 'additionalInfo',
-								},
-							},
-						},
-					},
-				},
-				{
-					path: 'mainApplicant authors',
-					populate: {
-						path: 'additionalInfo',
-					},
-				},
-				{
-					path: 'publisherObj',
-				},
-			]);
-			if (!accessRecord) {
-				return res.status(404).json({ status: 'error', message: 'Application not found.' });
-			}
-			// 3. Check user type and authentication to submit application
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
-			if (!authorised) {
-				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			}
-			// 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
-			if (_.isEmpty(accessRecord.datasets)) {
-				accessRecord.datasets = [accessRecord.dataset];
-			}
-			// 5. Perform either initial submission or resubmission depending on application status
-			if (accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
-				accessRecord = module.exports.doInitialSubmission(accessRecord);
-			} else if (
-				accessRecord.applicationStatus === constants.applicationStatuses.INREVIEW ||
-				accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED
-			) {
-				accessRecord = this.amendmentService.doResubmission(accessRecord.toObject(), req.user._id.toString());
-			}
-			// 6. Ensure a valid submission is taking place
-			if (_.isNil(accessRecord.submissionType)) {
-				return res.status(400).json({
-					status: 'error',
-					message: 'Application cannot be submitted as it has reached a final decision status.',
-				});
-			}
-			// 7. Save changes to db
-			await DataRequestModel.replaceOne({ _id: id }, accessRecord, async err => {
-				if (err) {
-					console.error(err.message);
-					return res.status(500).json({
-						status: 'error',
-						message: 'An error occurred saving the changes',
-					});
-				} else {
-					// 8. Send notifications and emails with amendments
-					accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
-					await module.exports.createNotifications(
-						accessRecord.submissionType === constants.submissionTypes.INITIAL
-							? constants.notificationTypes.SUBMITTED
-							: constants.notificationTypes.RESUBMITTED,
-						{},
-						accessRecord,
-						req.user
-					);
-					// 9. Start workflow process in Camunda if publisher requires it and it is the first submission
-					if (accessRecord.workflowEnabled && accessRecord.submissionType === constants.submissionTypes.INITIAL) {
-						let {
-							publisherObj: { name: publisher },
-							dateSubmitted,
-						} = accessRecord;
-						let bpmContext = {
-							dateSubmitted,
-							applicationStatus: constants.applicationStatuses.SUBMITTED,
-							publisher,
-							businessKey: id,
-						};
-						bpmController.postStartPreReview(bpmContext);
-					}
-				}
-			});
-			// 10. Return aplication and successful response
-			return res.status(200).json({ status: 'success', data: accessRecord._doc });
 		} catch (err) {
 			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });

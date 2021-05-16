@@ -23,6 +23,10 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getApplicationToCloneById(id);
 	}
 
+	getApplicationToSubmitById(id) {
+		return this.dataRequestRepository.getApplicationToSubmitById(id);
+	}
+
 	getApplicationIsReadOnly(userType, applicationStatus) {
 		let readOnly = true;
 		if (userType === constants.userTypes.APPLICANT && applicationStatus === constants.applicationStatuses.INPROGRESS) {

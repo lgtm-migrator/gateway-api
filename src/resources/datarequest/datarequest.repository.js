@@ -7,7 +7,7 @@ export default class DataRequestRepository extends Repository {
 		this.dataRequestModel = DataRequestModel;
 	}
 
-	async getAccessRequestsByUser(userId, query) {
+	getAccessRequestsByUser(userId, query) {
 		if (!userId) return [];
 
 		return DataRequestModel.find({
@@ -18,7 +18,7 @@ export default class DataRequestRepository extends Repository {
 			.lean();
 	}
 
-	async getApplicationById(id) {
+	getApplicationById(id) {
 		return DataRequestModel.findOne({
 			_id: id,
 		})
@@ -40,25 +40,54 @@ export default class DataRequestRepository extends Repository {
 			.lean();
 	}
 
-	async getApplicationToCloneById(id) {
+	getApplicationToCloneById(id) {
 		return DataRequestModel.findOne({ _id: id })
-		.populate([
-			{
-				path: 'datasets dataset authors',
-			},
-			{
-				path: 'mainApplicant',
-			},
-			{
-				path: 'publisherObj',
-				populate: {
-					path: 'team',
+			.populate([
+				{
+					path: 'datasets dataset authors',
+				},
+				{
+					path: 'mainApplicant',
+				},
+				{
+					path: 'publisherObj',
 					populate: {
-						path: 'users',
+						path: 'team',
+						populate: {
+							path: 'users',
+						},
+					},
+				},
+			])
+			.lean();
+	}
+
+	getApplicationToSubmitById(id) {
+		return DataRequestModel.findOne({ _id: id }).populate([
+			{
+				path: 'datasets dataset',
+				populate: {
+					path: 'publisher',
+					populate: {
+						path: 'team',
+						populate: {
+							path: 'users',
+							populate: {
+								path: 'additionalInfo',
+							},
+						},
 					},
 				},
 			},
-		])
-		.lean();
+			{
+				path: 'mainApplicant authors',
+				populate: {
+					path: 'additionalInfo',
+				},
+			},
+			{
+				path: 'publisherObj',
+			},
+		]);
 	}
 }

@@ -37,7 +37,7 @@ export default class PublisherService {
 	async getPublisherDataAccessRequests(id, requestingUserId, isManager) {
 		const excludedApplicationStatuses = ['inProgress'];
 		if (!isManager) {
-			applicationStatus.push('submitted');
+			excludedApplicationStatuses.push('submitted');
 		}
 		const query = { publisher: id, applicationStatus: { $nin: excludedApplicationStatuses } };
 

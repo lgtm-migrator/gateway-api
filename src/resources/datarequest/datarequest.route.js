@@ -55,6 +55,16 @@ router.post(
 	(req, res) => dataRequestController.cloneApplication(req, res)
 );
 
+// @route   POST api/v1/data-access-request/:id
+// @desc    Submit request record
+// @access  Private - Applicant (Gateway User)
+router.post(
+	'/:id',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Submitting a Data Access Request application' }),
+	(req, res) => dataRequestController.submitAccessRequestById(req, res)
+);
+
 
 
 // @route   GET api/v1/data-access-request/dataset/:datasetId
@@ -209,16 +219,6 @@ router.post(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Performing a user trggered action on a Data Access Request application' }),
 	datarequestController.performAction
-);
-
-// @route   POST api/v1/data-access-request/:id
-// @desc    Submit request record
-// @access  Private - Applicant (Gateway User)
-router.post(
-	'/:id',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Submitting a Data Access Request application' }),
-	datarequestController.submitAccessRequestById
 );
 
 // @route   POST api/v1/data-access-request/:id/notify
