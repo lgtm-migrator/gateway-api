@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/node';
 import Crypto from 'crypto';
 import constants from '../../resources/utilities/constants.util';
 import { UserModel } from '../../resources/user/user.model';
+import { chunk } from 'lodash';
 
 // See MailChimp API documentation for supporting info https://mailchimp.com/developer/marketing/api/
 
@@ -87,26 +88,31 @@ const updateSubscriptionUsers = async (subscriptionId, users = [], status) => {
  */
 const updateSubscriptionMembers = async (subscriptionId, members) => {
 	if (apiKey) {
-		// 1. Assemble payload POST body for MailChimp Marketing API
-		const body = {
-			members,
-			skip_merge_validation: true,
-			skip_duplicate_check: true,
-			update_existing: true,
-		};
-		// 2. Track attempted updates in Sentry using log
-		Sentry.addBreadcrumb({
-			category: 'MailChimp',
-			message: `Updating subscribed for members: ${members.map(
-				member => `${member.userId} to ${member.status}`
-			)} against subscription: ${subscriptionId}`,
-			level: Sentry.Severity.Log,
-		});
-		// 3. POST to MailChimp Marketing API to update member statuses
-		await mailchimp.post(`lists/${subscriptionId}`, body).catch(err => {
-			Sentry.captureException(err);
-			console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
-		});
+		// 1. Chunk members into smaller payloads
+		const allMembers = chunk(members, 100);
+		// 2. Iterate through all chunks
+		for (const membersChunk of allMembers) {
+			// 3. Assemble payload POST body for MailChimp Marketing API
+			const body = {
+				members: membersChunk,
+				skip_merge_validation: true,
+				skip_duplicate_check: true,
+				update_existing: true,
+			};
+			// 4. Track attempted updates in Sentry using log
+			Sentry.addBreadcrumb({
+				category: 'MailChimp',
+				message: `Updating subscribed for members: ${members.map(
+					member => `${member.userId} to ${member.status}`
+				)} against subscription: ${subscriptionId}`,
+				level: Sentry.Severity.Log,
+			});
+			// 5. POST to MailChimp Marketing API to update member statuses
+			await mailchimp.post(`lists/${subscriptionId}`, body).catch(err => {
+				Sentry.captureException(err);
+				console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
+			});
+		}
 	}
 };
 
@@ -198,28 +204,31 @@ const batchExportToMailChimp = async subscriptionId => {
 				: constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
 			// Check if the same email address has already been processed (email address can be attached to multiple user accounts)
 			const memberIdx = arr.findIndex(member => member.email_address === user.email);
-			if (memberIdx === -1) {
-				// If email address has not be processed, return updated membership object
-				return [
-					...arr,
-					{
-						userId: user.id,
-						email_address: user.email,
-						status,
-						tags,
-						merge_fields: {
-							FNAME: user.firstname,
-							LNAME: user.lastname,
+			if (status === constants.mailchimpSubscriptionStatuses.SUBSCRIBED) {
+				if (memberIdx === -1) {
+					// If email address has not be processed, return updated membership object
+					return [
+						...arr,
+						{
+							userId: user.id,
+							email_address: user.email,
+							status,
+							tags,
+							merge_fields: {
+								FNAME: user.firstname,
+								LNAME: user.lastname,
+							},
 						},
-					},
-				];
-			} else {
-				// If email address has been processed, and the current status is unsubscribed, override membership status
-				if (status === constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED) {
-					arr[memberIdx].status = constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
+					];
+				} else {
+					// If email address has been processed, and the current status is unsubscribed, override membership status
+					if (status === constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED) {
+						arr[memberIdx].status = constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
+					}
+					return arr;
 				}
-				return arr;
 			}
+			return arr;
 		}, []);
 		// 3. Update subscription members in MailChimp
 		await updateSubscriptionMembers(subscriptionId, members);
