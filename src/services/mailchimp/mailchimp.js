@@ -140,7 +140,7 @@ const syncSubscriptionMembers = async subscriptionId => {
 		});
 		const memberCount = subscribedCount + unsubscribedCount;
 		// 3. Batch update database to sync MailChimp to reflect users unsubscribed/subscribed externally
-		//await batchImportFromMailChimp(subscriptionId, memberCount);
+		await batchImportFromMailChimp(subscriptionId, memberCount);
 		// 4. Push any unsynchronised new contacts from Gateway to MailChimp
 		await batchExportToMailChimp(subscriptionId);
 	}
