@@ -129,7 +129,6 @@ router.get(
 	(req, res) => dataRequestController.getFileStatus(req, res)
 );
 
-
 // @route   PUT api/v1/data-access-request/:id/deletefile
 // @desc    Update access request deleting a file by Id
 // @access  Private - Applicant (Gateway User)
