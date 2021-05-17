@@ -443,6 +443,125 @@ export default class DataRequestController extends Controller {
 		}
 	}
 
+	//POST api/v1/data-access-request/:id/actions
+	async performAction(req, res) {
+		try {
+			// 1. Get the required request params
+			const {
+				params: { id },
+			} = req;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+			let { questionId, questionSetId, questionIds = [], mode, separatorText = '' } = req.body;
+			if (_.isEmpty(questionId) || _.isEmpty(questionSetId)) {
+				return res.status(400).json({
+					success: false,
+					message: 'You must supply the unique identifiers for the question to perform an action',
+				});
+			}
+
+			// 2. Retrieve DAR from database
+			let accessRecord = await this.dataRequestService.getApplicationWithTeamById(id, { lean: false });
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. If application is not in progress, actions cannot be performed
+			if (accessRecord.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
+				return res.status(400).json({
+					success: false,
+					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
+				});
+			}
+			// 4. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord.toObject(),
+				requestingUserId,
+				requestingUserObjectId
+			);
+
+			// 5. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 6. Extract schema and answers
+			let { jsonSchema, questionAnswers } = _.cloneDeep(accessRecord);
+
+			// 7. Perform different action depending on mode passed
+			switch (mode) {
+				case constants.formActions.ADDREPEATABLESECTION:
+					const duplicateQuestionSet = dynamicForm.duplicateQuestionSet(questionSetId, jsonSchema);
+					jsonSchema = dynamicForm.insertQuestionSet(questionSetId, duplicateQuestionSet, jsonSchema);
+					break;
+				case constants.formActions.REMOVEREPEATABLESECTION:
+					jsonSchema = dynamicForm.removeQuestionSetReferences(questionSetId, questionId, jsonSchema);
+					questionAnswers = dynamicForm.removeQuestionSetAnswers(questionId, questionAnswers);
+					break;
+				case constants.formActions.ADDREPEATABLEQUESTIONS:
+					if (_.isEmpty(questionIds)) {
+						return res.status(400).json({
+							success: false,
+							message: 'You must supply the question identifiers to duplicate when performing this action',
+						});
+					}
+					const duplicateQuestions = dynamicForm.duplicateQuestions(questionSetId, questionIds, separatorText, jsonSchema);
+					jsonSchema = dynamicForm.insertQuestions(questionSetId, questionId, duplicateQuestions, jsonSchema);
+					break;
+				case constants.formActions.REMOVEREPEATABLEQUESTIONS:
+					if (_.isEmpty(questionIds)) {
+						return res.status(400).json({
+							success: false,
+							message: 'You must supply the question identifiers to remove when performing this action',
+						});
+					}
+					questionIds = [...questionIds, questionId];
+					jsonSchema = dynamicForm.removeQuestionReferences(questionSetId, questionIds, jsonSchema);
+					questionAnswers = dynamicForm.removeQuestionAnswers(questionIds, questionAnswers);
+					break;
+				default:
+					return res.status(400).json({
+						success: false,
+						message: 'You must supply a valid action to perform',
+					});
+			}
+
+			// 8. Update record
+			accessRecord.jsonSchema = jsonSchema;
+			accessRecord.questionAnswers = questionAnswers;
+
+			// 9. Save changes to database
+			await accessRecord.save().catch(err => {
+				logger.logError(err, logCategory);
+			});
+
+			// 10. Append question actions for in progress applicant
+			jsonSchema = datarequestUtil.injectQuestionActions(
+				jsonSchema,
+				constants.userTypes.APPLICANT, // current user type
+				constants.applicationStatuses.INPROGRESS,
+				null,
+				constants.userTypes.APPLICANT // active party
+			);
+			
+			// 11. Return necessary object to reflect schema update
+			return res.status(200).json({
+				success: true,
+				accessRecord: {
+					jsonSchema,
+					questionAnswers,
+				},
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the application amendment',
+			});
+		}
+	}
+
 	//POST api/v1/data-access-request/:id/upload
 	async uploadFiles(req, res) {
 		try {
@@ -2286,126 +2405,6 @@ module.exports = {
 		} catch (err) {
 			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
-		}
-	},
-
-	//POST api/v1/data-access-request/:id/actions
-	performAction: async (req, res) => {
-		try {
-			// 1. Get the required request params
-			const {
-				params: { id },
-			} = req;
-			let { questionId, questionSetId, questionIds = [], mode, separatorText = '' } = req.body;
-			if (_.isEmpty(questionId) || _.isEmpty(questionSetId)) {
-				return res.status(400).json({
-					success: false,
-					message: 'You must supply the unique identifiers for the question to perform an action',
-				});
-			}
-			// 2. Retrieve DAR from database
-			let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
-				{
-					path: 'datasets dataset',
-				},
-				{
-					path: 'publisherObj',
-					populate: {
-						path: 'team',
-						populate: {
-							path: 'users',
-						},
-					},
-				},
-			]);
-			if (!accessRecord) {
-				return res.status(404).json({ status: 'error', message: 'Application not found.' });
-			}
-			// 3. If application is not in progress, actions cannot be performed
-			if (accessRecord.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
-				return res.status(400).json({
-					success: false,
-					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
-				});
-			}
-			// 4. Get the requesting users permission levels
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord.toObject(), req.user.id, req.user._id);
-			// 5. Return unauthorised message if the requesting user is not an applicant
-			if (!authorised || userType !== constants.userTypes.APPLICANT) {
-				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			}
-			// 6. Extract schema and answers
-			let { jsonSchema, questionAnswers } = _.cloneDeep(accessRecord);
-			// 7. Perform different action depending on mode passed
-			switch (mode) {
-				case constants.formActions.ADDREPEATABLESECTION:
-					let duplicateQuestionSet = dynamicForm.duplicateQuestionSet(questionSetId, jsonSchema);
-					jsonSchema = dynamicForm.insertQuestionSet(questionSetId, duplicateQuestionSet, jsonSchema);
-					break;
-				case constants.formActions.REMOVEREPEATABLESECTION:
-					jsonSchema = dynamicForm.removeQuestionSetReferences(questionSetId, questionId, jsonSchema);
-					questionAnswers = dynamicForm.removeQuestionSetAnswers(questionId, questionAnswers);
-					break;
-				case constants.formActions.ADDREPEATABLEQUESTIONS:
-					if (_.isEmpty(questionIds)) {
-						return res.status(400).json({
-							success: false,
-							message: 'You must supply the question identifiers to duplicate when performing this action',
-						});
-					}
-					let duplicateQuestions = dynamicForm.duplicateQuestions(questionSetId, questionIds, separatorText, jsonSchema);
-					jsonSchema = dynamicForm.insertQuestions(questionSetId, questionId, duplicateQuestions, jsonSchema);
-					break;
-				case constants.formActions.REMOVEREPEATABLEQUESTIONS:
-					if (_.isEmpty(questionIds)) {
-						return res.status(400).json({
-							success: false,
-							message: 'You must supply the question identifiers to remove when performing this action',
-						});
-					}
-					questionIds = [...questionIds, questionId];
-					jsonSchema = dynamicForm.removeQuestionReferences(questionSetId, questionIds, jsonSchema);
-					questionAnswers = dynamicForm.removeQuestionAnswers(questionIds, questionAnswers);
-					break;
-				default:
-					return res.status(400).json({
-						success: false,
-						message: 'You must supply a valid action to perform',
-					});
-			}
-			// 8. Update record
-			accessRecord.jsonSchema = jsonSchema;
-			accessRecord.questionAnswers = questionAnswers;
-			// 9. Save changes to database
-			await accessRecord.save(async err => {
-				if (err) {
-					console.error(err.message);
-					return res.status(500).json({ status: 'error', message: err.message });
-				} else {
-					// 10. Append question actions for in progress applicant
-					jsonSchema = datarequestUtil.injectQuestionActions(
-						jsonSchema,
-						constants.userTypes.APPLICANT, // current user type
-						constants.applicationStatuses.INPROGRESS,
-						null,
-						constants.userTypes.APPLICANT // active party
-					);
-					// 11. Return necessary object to reflect schema update
-					return res.status(200).json({
-						success: true,
-						accessRecord: {
-							jsonSchema,
-							questionAnswers,
-						},
-					});
-				}
-			});
-		} catch (err) {
-			console.error(err.message);
-			return res.status(500).json({
-				success: false,
-				message: 'An error occurred updating the application amendment',
-			});
 		}
 	},
 };

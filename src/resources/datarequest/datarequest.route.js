@@ -173,7 +173,15 @@ router.post(
 	(req, res) => dataRequestController.notifyAccessRequestById(req, res)
 );
 
-
+// @route   POST api/v1/data-access-request/:id/actions
+// @desc    Perform an action on a presubmitted application form e.g. add/remove repeatable section
+// @access  Private - Applicant
+router.post(
+	'/:id/actions',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Performing a user triggered action on a Data Access Request application' }),
+	(req, res) => dataRequestController.performAction(req, res)
+);
 
 
 
@@ -258,15 +266,7 @@ router.post(
 	(req, res) => amendmentController.requestAmendments(req, res)
 );
 
-// @route   POST api/v1/data-access-request/:id/actions
-// @desc    Perform an action on a presubmitted application form e.g. add/remove repeatable section
-// @access  Private - Applicant
-router.post(
-	'/:id/actions',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Performing a user trggered action on a Data Access Request application' }),
-	datarequestController.performAction
-);
+
 
 
 
