@@ -7,6 +7,8 @@ const UserSchema = new Schema(
 			unique: true,
 		},
 		email: String,
+		feedback: { type: Boolean, default: false }, 	//email subscription
+		news: { type: Boolean, default: false }, 		//email subscription
 		password: String,
 		businessName: String,
 		firstname: String,
@@ -14,6 +16,7 @@ const UserSchema = new Schema(
 		displayname: String,
 		providerId: { type: String, required: true },
 		provider: String,
+		affiliation: String,
 		role: String,
 		redirectURL: String,
 		discourseUsername: String,

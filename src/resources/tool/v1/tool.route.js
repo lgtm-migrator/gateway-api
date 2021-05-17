@@ -12,6 +12,7 @@ import inputSanitizer from '../../utilities/inputSanitizer';
 import _ from 'lodash';
 import helper from '../../utilities/helper.util';
 import escape from 'escape-html';
+import helperUtil from '../../utilities/helper.util';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const router = express.Router();
 
@@ -43,15 +44,15 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
 });
 
 // @router   GET /api/v1/get/admin
-// @desc     Returns List of Tool objects 
+// @desc     Returns List of Tool objects
 // @access   Private
 router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	req.params.type = 'tool';
 	let role = req.user.role;
 
 	if (role === ROLES.Admin) {
-		await getToolsAdmin(req) 
-			.then(data => { 
+		await getToolsAdmin(req)
+			.then(data => {
 				return res.json({ success: true, data });
 			})
 			.catch(err => {
@@ -68,7 +69,7 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
-// @router   GET /api/v1/ 
+// @router   GET /api/v1/
 // @desc     Returns List of Tool Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
@@ -94,7 +95,7 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 		.catch(err => {
 			return res.json({ success: false, error: err.message });
 		});
-}); 
+});
 
 /**
  * {get} /tool/:id Tool
@@ -348,13 +349,15 @@ router.delete('/review/delete', passport.authenticate('jwt'), utils.checkIsInRol
 //     }
 // );
 
-// @router   GET /api/v1/project/tag/name
+// @router   GET /api/v1/project/tag/
 // @desc     Get tools by tag search
 // @access   Private
-router.get('/:type/tag/:name', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/:type/tag', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	try {
 		// 1. Destructure tag name parameter passed
-		let { type, name } = req.params;
+		let { type } = req.params;
+		let { name } = req.query;
+
 		// 2. Check if parameters are empty
 		if (_.isEmpty(name) || _.isEmpty(type)) {
 			return res.status(400).json({
@@ -362,10 +365,21 @@ router.get('/:type/tag/:name', passport.authenticate('jwt'), utils.checkIsInRole
 				message: 'Entity type and tag are required',
 			});
 		}
+
 		// 3. Find matching projects in MongoDb selecting name and id
-		let entities = await Data.find({
-			$and: [{ type }, { $or: [{ 'tags.topics': name }, { 'tags.features': name }] }],
-		}).select('id name');
+		let filterValues = name.split(',');
+		let searchQuery = { $and: [{ type }] };
+		searchQuery['$and'].push({
+			$or: filterValues.map(value => {
+				return {
+					$or: [
+						{ 'tags.topics': { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } },
+						{ 'tags.features': { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } },
+					],
+				};
+			}),
+		});
+		let entities = await Data.find(searchQuery).select('id name');
 		// 4. Return projects
 		return res.status(200).json({ success: true, entities });
 	} catch (err) {
@@ -455,7 +469,8 @@ async function sendEmailNotifications(review) {
 			emailRecipients,
 			`${hdrukEmail}`,
 			`Someone reviewed your tool`,
-			`${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`
+			`${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`,
+			false
 		);
 	});
 }

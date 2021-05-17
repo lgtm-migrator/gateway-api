@@ -227,6 +227,6 @@ async function sendEmailNotifications(tool, activeflag) {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
-		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html);
+		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, false);
 	});
 }

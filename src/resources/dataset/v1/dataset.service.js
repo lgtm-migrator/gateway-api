@@ -4,6 +4,16 @@ import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
 import { PublisherModel } from '../../publisher/publisher.model';
+import { metadataCatalogues, validateCatalogueParams } from '../dataset.util';
+import { has } from 'lodash';
+
+let metadataQualityList = [],
+	phenotypesList = [],
+	dataUtilityList = [],
+	onboardedCustodians = [],
+	datasetsMDCList = [],
+	datasetsMDCIDs = [],
+	counter = 0;
 
 export async function updateExternalDatasetServices(services) {
 	for (let service of services) {
@@ -52,18 +62,479 @@ export async function updateExternalDatasetServices(services) {
 	}
 }
 
-export async function loadDatasets(override) {
-	console.log('Starting run at ' + Date());
-	let metadataCatalogueLink = process.env.metadataURL || 'https://metadata-catalogue.org/hdruk';
+/**
+ * Import Metadata Catalogues
+ *
+ * @desc    Performs the import of a given array of catalogues
+ * @param 	{Array<String>} 	cataloguesToImport 	The recognised names of each catalogue to import with this request
+ * @param 	{Boolean} 			override 			Overriding forces the import of each catalogue requested regardless of differential in datasets
+ * @param 	{Number} 			limit 				The maximum number of datasets to import from each catalogue requested
+ */
+export async function importCatalogues(cataloguesToImport, override = false, limit) {
+	onboardedCustodians = await getCustodians();
+	for (const catalogue in metadataCatalogues) {
+		if (!cataloguesToImport.includes(catalogue)) {
+			continue;
+		}
+		const isValid = validateCatalogueParams(metadataCatalogues[catalogue]);
+		if (!isValid) {
+			console.error('Catalogue failed to run due to incorrect or incomplete parameters');
+			continue;
+		}
+		const { metadataUrl, dataModelExportRoute, username, password, source, instanceType } = metadataCatalogues[catalogue];
+		const options = {
+			instanceType,
+			credentials: {
+				username,
+				password,
+			},
+			override,
+			limit,
+		};
+		initialiseImporter();
+		await importMetadataFromCatalogue(metadataUrl, dataModelExportRoute, source, options);
+	}
+}
 
-	let datasetsMDCCount = await new Promise(function (resolve, reject) {
+export async function saveUptime() {
+	const monitoring = require('@google-cloud/monitoring');
+	const projectId = 'hdruk-gateway';
+	const client = new monitoring.MetricServiceClient();
+
+	var selectedMonthStart = new Date();
+	selectedMonthStart.setMonth(selectedMonthStart.getMonth() - 1);
+	selectedMonthStart.setDate(1);
+	selectedMonthStart.setHours(0, 0, 0, 0);
+
+	var selectedMonthEnd = new Date();
+	selectedMonthEnd.setDate(0);
+	selectedMonthEnd.setHours(23, 59, 59, 999);
+
+	const request = {
+		name: client.projectPath(projectId),
+		filter:
+			'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-production-web-app-qsxe8fXRrBo" AND metric.label."checker_location"="eur-belgium"',
+
+		interval: {
+			startTime: {
+				seconds: selectedMonthStart.getTime() / 1000,
+			},
+			endTime: {
+				seconds: selectedMonthEnd.getTime() / 1000,
+			},
+		},
+		aggregation: {
+			alignmentPeriod: {
+				seconds: '86400s',
+			},
+			crossSeriesReducer: 'REDUCE_NONE',
+			groupByFields: ['metric.label."checker_location"', 'resource.label."instance_id"'],
+			perSeriesAligner: 'ALIGN_FRACTION_TRUE',
+		},
+	};
+
+	// Writes time series data
+	const [timeSeries] = await client.listTimeSeries(request);
+	var dailyUptime = [];
+	var averageUptime;
+
+	timeSeries.forEach(data => {
+		data.points.forEach(data => {
+			dailyUptime.push(data.value.doubleValue);
+		});
+
+		averageUptime = (dailyUptime.reduce((a, b) => a + b, 0) / dailyUptime.length) * 100;
+	});
+
+	var metricsData = new MetricsData();
+	metricsData.uptime = averageUptime;
+	await metricsData.save();
+}
+
+/**
+ * Initialise Importer Instance
+ *
+ * @desc    Resets the importer module scoped variables to original values for next run
+ */
+function initialiseImporter() {
+	metadataQualityList = [];
+	phenotypesList = [];
+	dataUtilityList = [];
+	datasetsMDCList = [];
+	datasetsMDCIDs = [];
+	counter = 0;
+}
+
+async function importMetadataFromCatalogue(baseUri, dataModelExportRoute, source, { instanceType, credentials, override = false, limit }) {
+	const startCacheTime = Date.now();
+	console.log(
+		`Starting metadata import for ${source} on ${instanceType} at ${Date()} with base URI ${baseUri}, override:${override}, limit:${
+			limit || 'all'
+		}`
+	);
+	datasetsMDCList = await getDataModels(baseUri);
+	if (datasetsMDCList === 'Update failed') return;
+
+	const isDifferentialValid = await checkDifferentialValid(datasetsMDCList.count, source, override);
+	if (!isDifferentialValid) return;
+
+	metadataQualityList = await getMetadataQualityExport();
+	phenotypesList = await getPhenotypesExport();
+	dataUtilityList = await getDataUtilityExport();
+
+	await logoutCatalogue(baseUri);
+	await loginCatalogue(baseUri, credentials);
+	await loadDatasets(baseUri, dataModelExportRoute, datasetsMDCList.items, datasetsMDCList.count, source, limit).catch(err => {
+		Sentry.addBreadcrumb({
+			category: 'Caching',
+			message: `Unable to complete the metadata import for ${source} ${err.message}`,
+			level: Sentry.Severity.Error,
+		});
+		Sentry.captureException(err);
+		console.error(`Unable to complete the metadata import for ${source} ${err.message}`);
+	});
+	await logoutCatalogue(baseUri);
+	await archiveMissingDatasets(source);
+
+	const totalCacheTime = ((Date.now() - startCacheTime) / 1000).toFixed(3);
+	console.log(`Run Completed for ${source} at ${Date()} - Run took ${totalCacheTime}s`);
+}
+
+async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, datasetsToImportCount, source, limit) {
+	if (limit) {
+		datasetsToImport = [...datasetsToImport.slice(0, limit)];
+		datasetsToImportCount = datasetsToImport.length;
+	}
+	for (const datasetMDC of datasetsToImport) {
+		counter++;
+		console.log(`Starting ${counter} of ${datasetsToImportCount} datasets (${datasetMDC.id})`);
+
+		let datasetHDR = await Data.findOne({ datasetid: datasetMDC.id });
+		datasetsMDCIDs.push({ datasetid: datasetMDC.id });
+
+		const metadataQuality = metadataQualityList.data.find(x => x.id === datasetMDC.id);
+		const dataUtility = dataUtilityList.data.find(x => x.id === datasetMDC.id);
+		const phenotypes = phenotypesList.data[datasetMDC.id] || [];
+
+		const startImportTime = Date.now();
+
+		const exportUri = `${baseUri}${dataModelExportRoute}`.replace('@datasetid@', datasetMDC.id);
+		const datasetMDCJSON = await axios
+			.get(exportUri, {
+				timeout: 60000,
+			})
+			.catch(err => {
+				Sentry.addBreadcrumb({
+					category: 'Caching',
+					message: 'Unable to get dataset JSON ' + err.message,
+					level: Sentry.Severity.Error,
+				});
+				Sentry.captureException(err);
+				console.error('Unable to get metadata JSON ' + err.message);
+			});
+
+		const elapsedTime = ((Date.now() - startImportTime) / 1000).toFixed(3);
+		console.log(`Time taken to import JSON  ${elapsedTime} (${datasetMDC.id})`);
+
+		const metadataSchemaCall = axios //Paul - Remove and populate gateway side
+			.get(`${baseUri}/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/${datasetMDC.id}`, {
+				timeout: 10000,
+			})
+			.catch(err => {
+				Sentry.addBreadcrumb({
+					category: 'Caching',
+					message: 'Unable to get metadata schema ' + err.message,
+					level: Sentry.Severity.Error,
+				});
+				Sentry.captureException(err);
+				console.error('Unable to get metadata schema ' + err.message);
+			});
+
+		const versionLinksCall = axios.get(`${baseUri}/api/catalogueItems/${datasetMDC.id}/semanticLinks`, { timeout: 10000 }).catch(err => {
+			Sentry.addBreadcrumb({
+				category: 'Caching',
+				message: 'Unable to get version links ' + err.message,
+				level: Sentry.Severity.Error,
+			});
+			Sentry.captureException(err);
+			console.error('Unable to get version links ' + err.message);
+		});
+
+		const [metadataSchema, versionLinks] = await axios.all([metadataSchemaCall, versionLinksCall]);
+
+		let datasetv1Object = {},
+			datasetv2Object = {};
+		if (has(datasetMDCJSON, 'data.dataModel.metadata')) {
+			datasetv1Object = populateV1datasetObject(datasetMDCJSON.data.dataModel.metadata);
+			datasetv2Object = populateV2datasetObject(datasetMDCJSON.data.dataModel.metadata);
+		}
+
+		// Get technical details data classes
+		let technicaldetails = [];
+		if (has(datasetMDCJSON, 'data.dataModel.childDataClasses')) {
+			for (const dataClassMDC of datasetMDCJSON.data.dataModel.childDataClasses) {
+				if (dataClassMDC.childDataElements) {
+					// Map out data class elements to attach to class
+					const dataClassElementArray = dataClassMDC.childDataElements.map(element => {
+						return {
+							domainType: element.domainType,
+							label: element.label,
+							description: element.description,
+							dataType: {
+								domainType: element.dataType.domainType,
+								label: element.dataType.label,
+							},
+						};
+					});
+
+					// Create class object
+					const technicalDetailClass = {
+						domainType: dataClassMDC.domainType,
+						label: dataClassMDC.label,
+						description: dataClassMDC.description,
+						elements: dataClassElementArray,
+					};
+
+					technicaldetails = [...technicaldetails, technicalDetailClass];
+				}
+			}
+		}
+
+		// Detect if dataset uses 5 Safes form for access
+		const is5Safes = onboardedCustodians.includes(datasetMDC.publisher);
+		const hasTechnicalDetails = technicaldetails.length > 0;
+
+		if (datasetHDR) {
+			//Edit
+			if (!datasetHDR.pid) {
+				let uuid = uuidv4();
+				let listOfVersions = [];
+				datasetHDR.pid = uuid;
+				datasetHDR.datasetVersion = '0.0.1';
+
+				if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
+					versionLinks.data.items.forEach(item => {
+						if (!listOfVersions.find(x => x.id === item.source.id)) {
+							listOfVersions.push({ id: item.source.id, version: item.source.documentationVersion });
+						}
+						if (!listOfVersions.find(x => x.id === item.target.id)) {
+							listOfVersions.push({ id: item.target.id, version: item.target.documentationVersion });
+						}
+					});
+
+					listOfVersions.forEach(async item => {
+						if (item.id !== datasetMDC.id) {
+							await Data.findOneAndUpdate({ datasetid: item.id }, { pid: uuid, datasetVersion: item.version });
+						} else {
+							datasetHDR.pid = uuid;
+							datasetHDR.datasetVersion = item.version;
+						}
+					});
+				}
+			}
+
+			let keywordArray = splitString(datasetv1Object.keywords);
+			let physicalSampleAvailabilityArray = splitString(datasetv1Object.physicalSampleAvailability);
+			let geographicCoverageArray = splitString(datasetv1Object.geographicCoverage);
+
+			await Data.findOneAndUpdate(
+				{ datasetid: datasetMDC.id },
+				{
+					pid: datasetHDR.pid,
+					datasetVersion: datasetHDR.datasetVersion,
+					name: datasetMDC.label,
+					description: datasetMDC.description,
+					source,
+					is5Safes: is5Safes,
+					hasTechnicalDetails,
+					activeflag: 'active',
+					license: datasetv1Object.license,
+					tags: {
+						features: keywordArray,
+					},
+					datasetfields: {
+						publisher: datasetv1Object.publisher,
+						geographicCoverage: geographicCoverageArray,
+						physicalSampleAvailability: physicalSampleAvailabilityArray,
+						abstract: datasetv1Object.abstract,
+						releaseDate: datasetv1Object.releaseDate,
+						accessRequestDuration: datasetv1Object.accessRequestDuration,
+						conformsTo: datasetv1Object.conformsTo,
+						accessRights: datasetv1Object.accessRights,
+						jurisdiction: datasetv1Object.jurisdiction,
+						datasetStartDate: datasetv1Object.datasetStartDate,
+						datasetEndDate: datasetv1Object.datasetEndDate,
+						statisticalPopulation: datasetv1Object.statisticalPopulation,
+						ageBand: datasetv1Object.ageBand,
+						contactPoint: datasetv1Object.contactPoint,
+						periodicity: datasetv1Object.periodicity,
+
+						metadataquality: metadataQuality ? metadataQuality : {},
+						datautility: dataUtility ? dataUtility : {},
+						metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
+						technicaldetails: technicaldetails,
+						versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
+						phenotypes,
+					},
+					datasetv2: datasetv2Object,
+				}
+			);
+			console.log(`Dataset Editted (${datasetMDC.id})`);
+		} else {
+			//Add
+			let uuid = uuidv4();
+			let listOfVersions = [];
+			let pid = uuid;
+			let datasetVersion = '0.0.1';
+
+			if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
+				versionLinks.data.items.forEach(item => {
+					if (!listOfVersions.find(x => x.id === item.source.id)) {
+						listOfVersions.push({ id: item.source.id, version: item.source.documentationVersion });
+					}
+					if (!listOfVersions.find(x => x.id === item.target.id)) {
+						listOfVersions.push({ id: item.target.id, version: item.target.documentationVersion });
+					}
+				});
+
+				for (const item of listOfVersions) {
+					if (item.id !== datasetMDC.id) {
+						var existingDataset = await Data.findOne({ datasetid: item.id });
+						if (existingDataset && existingDataset.pid) pid = existingDataset.pid;
+						else {
+							await Data.findOneAndUpdate({ datasetid: item.id }, { pid: uuid, datasetVersion: item.version });
+						}
+					} else {
+						datasetVersion = item.version;
+					}
+				}
+			}
+
+			let uniqueID = '';
+			while (uniqueID === '') {
+				uniqueID = parseInt(Math.random().toString().replace('0.', ''));
+				if ((await Data.find({ id: uniqueID }).length) === 0) {
+					uniqueID = '';
+				}
+			}
+
+			let { keywords = '', physicalSampleAvailability = '', geographicCoverage = '' } = datasetv1Object;
+			let keywordArray = splitString(keywords);
+			let physicalSampleAvailabilityArray = splitString(physicalSampleAvailability);
+			let geographicCoverageArray = splitString(geographicCoverage);
+
+			let data = new Data();
+			data.pid = pid;
+			data.datasetVersion = datasetVersion;
+			data.id = uniqueID;
+			data.datasetid = datasetMDC.id;
+			data.type = 'dataset';
+			data.activeflag = 'active';
+			data.source = source;
+			data.is5Safes = is5Safes;
+			data.hasTechnicalDetails = hasTechnicalDetails;
+
+			data.name = datasetMDC.label;
+			data.description = datasetMDC.description;
+			data.license = datasetv1Object.license;
+			data.tags.features = keywordArray;
+			data.datasetfields.publisher = datasetv1Object.publisher;
+			data.datasetfields.geographicCoverage = geographicCoverageArray;
+			data.datasetfields.physicalSampleAvailability = physicalSampleAvailabilityArray;
+			data.datasetfields.abstract = datasetv1Object.abstract;
+			data.datasetfields.releaseDate = datasetv1Object.releaseDate;
+			data.datasetfields.accessRequestDuration = datasetv1Object.accessRequestDuration;
+			data.datasetfields.conformsTo = datasetv1Object.conformsTo;
+			data.datasetfields.accessRights = datasetv1Object.accessRights;
+			data.datasetfields.jurisdiction = datasetv1Object.jurisdiction;
+			data.datasetfields.datasetStartDate = datasetv1Object.datasetStartDate;
+			data.datasetfields.datasetEndDate = datasetv1Object.datasetEndDate;
+			data.datasetfields.statisticalPopulation = datasetv1Object.statisticalPopulation;
+			data.datasetfields.ageBand = datasetv1Object.ageBand;
+			data.datasetfields.contactPoint = datasetv1Object.contactPoint;
+			data.datasetfields.periodicity = datasetv1Object.periodicity;
+
+			data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
+			data.datasetfields.datautility = dataUtility ? dataUtility : {};
+			data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
+			data.datasetfields.technicaldetails = technicaldetails;
+			data.datasetfields.versionLinks = versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
+			data.datasetfields.phenotypes = phenotypes;
+			data.datasetv2 = datasetv2Object;
+			await data.save();
+			console.log(`Dataset Added (${datasetMDC.id})`);
+		}
+
+		console.log(`Finished ${counter} of ${datasetsToImportCount} datasets (${datasetMDC.id})`);
+	}
+}
+
+/**
+ * Get Data Utility Export
+ *
+ * @desc    Gets a JSON extract from GitHub containing all HDRUK Data Utility data
+ * @returns {Array<Object>} JSON response from HDRUK GitHub
+ */
+async function getDataUtilityExport() {
+	return await axios
+		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout: 10000 })
+		.catch(err => {
+			Sentry.addBreadcrumb({
+				category: 'Caching',
+				message: 'Unable to get data utility ' + err.message,
+				level: Sentry.Severity.Error,
+			});
+			Sentry.captureException(err);
+			console.error('Unable to get data utility ' + err.message);
+		});
+}
+
+/**
+ * Get Phenotypes Export
+ *
+ * @desc    Gets a JSON extract from GitHub containing all HDRUK recognised Phenotypes
+ * @returns {Array<Object>} Json response from HDRUK GitHub
+ */
+async function getPhenotypesExport() {
+	return await axios
+		.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout: 10000 })
+		.catch(err => {
+			Sentry.addBreadcrumb({
+				category: 'Caching',
+				message: 'Unable to get metadata quality value ' + err.message,
+				level: Sentry.Severity.Error,
+			});
+			Sentry.captureException(err);
+			console.error('Unable to get metadata quality value ' + err.message);
+		});
+}
+
+/**
+ * Get Metadata Quality Export
+ *
+ * @desc    Gets a JSON extract from GitHub containing all HDRUK dataset Metadata Quality
+ * @returns {Array<Object>} Json response from HDRUK GitHub
+ */
+async function getMetadataQualityExport() {
+	return await axios
+		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/metadata_quality.json', { timeout: 10000 })
+		.catch(err => {
+			Sentry.addBreadcrumb({
+				category: 'Caching',
+				message: 'Unable to get metadata quality value ' + err.message,
+				level: Sentry.Severity.Error,
+			});
+			Sentry.captureException(err);
+			console.error('Unable to get metadata quality value ' + err.message);
+		});
+}
+
+async function getDataModels(baseUri) {
+	return await new Promise(function (resolve, reject) {
 		axios
-			.post(
-				metadataCatalogueLink +
-					'/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/customSearch?searchTerm=&domainType=DataModel&limit=1'
-			)
+			.get(baseUri + '/api/dataModels')
 			.then(function (response) {
-				resolve(response.data.count);
+				resolve(response.data);
 			})
 			.catch(err => {
 				Sentry.addBreadcrumb({
@@ -77,391 +548,51 @@ export async function loadDatasets(override) {
 	}).catch(() => {
 		return 'Update failed';
 	});
+}
 
-	if (datasetsMDCCount === 'Update failed') return;
-
+async function checkDifferentialValid(incomingMetadataCount, source, override) {
 	// Compare counts from HDR and MDC, if greater drop of 10%+ then stop process and email support queue
-	var datasetsHDRCount = await Data.countDocuments({ type: 'dataset', activeflag: 'active' });
+	const datasetsHDRCount = await Data.countDocuments({ type: 'dataset', activeflag: 'active', source });
 
-	// Get active custodians on HDR Gateway
-	const publishers = await PublisherModel.find().select('name').lean();
-	const onboardedCustodians = publishers.map(publisher => publisher.name);
-
-	if ((datasetsMDCCount / datasetsHDRCount) * 100 < 90 && !override) {
+	if ((incomingMetadataCount / datasetsHDRCount) * 100 < 90 && !override) {
 		Sentry.addBreadcrumb({
 			category: 'Caching',
-			message: `The caching run has failed because the counts from the MDC (${datasetsMDCCount}) where ${
-				100 - (datasetsMDCCount / datasetsHDRCount) * 100
+			message: `The caching run has failed because the counts from the MDC (${incomingMetadataCount}) where ${
+				100 - (incomingMetadataCount / datasetsHDRCount) * 100
 			}% lower than the number stored in the DB (${datasetsHDRCount})`,
 			level: Sentry.Severity.Fatal,
 		});
 		Sentry.captureException();
-		return;
+		return false;
 	}
+	return true;
+}
 
-	//datasetsMDCCount = 1; //For testing to limit the number brought down
+async function getCustodians() {
+	const publishers = await PublisherModel.find().select('name').lean();
+	return publishers.map(publisher => publisher.name);
+}
 
-	var datasetsMDCList = await new Promise(function (resolve, reject) {
-		axios
-			.post(
-				metadataCatalogueLink +
-					'/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/customSearch?searchTerm=&domainType=DataModel&limit=' +
-					datasetsMDCCount
-			)
-			.then(function (response) {
-				resolve(response.data);
-			})
-			.catch(err => {
-				Sentry.addBreadcrumb({
-					category: 'Caching',
-					message: 'The caching run has failed because it was unable to pull the datasets from the MDC',
-					level: Sentry.Severity.Fatal,
-				});
-				Sentry.captureException(err);
-				reject(err);
-			});
-	}).catch(() => {
-		return 'Update failed';
+async function logoutCatalogue(baseUri) {
+	await axios.post(`${baseUri}/api/authentication/logout`, { withCredentials: true, timeout: 10000 }).catch(err => {
+		console.error(`Error when trying to logout of the MDC - ${err.message}`);
+	});
+}
+
+async function loginCatalogue(baseUri, credentials) {
+	let response = await axios.post(`${baseUri}/api/authentication/login`, credentials, {
+		withCredentials: true,
+		timeout: 10000,
 	});
 
-	if (datasetsMDCList === 'Update failed') return;
+	axios.defaults.headers.Cookie = response.headers['set-cookie'][0];
+}
 
-	const metadataQualityList = await axios
-		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/metadata_quality.json', { timeout: 10000 })
-		.catch(err => {
-			Sentry.addBreadcrumb({
-				category: 'Caching',
-				message: 'Unable to get metadata quality value ' + err.message,
-				level: Sentry.Severity.Error,
-			});
-			Sentry.captureException(err);
-			console.error('Unable to get metadata quality value ' + err.message);
-		});
-
-	const phenotypesList = await axios
-		.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout: 10000 })
-		.catch(err => {
-			Sentry.addBreadcrumb({
-				category: 'Caching',
-				message: 'Unable to get metadata quality value ' + err.message,
-				level: Sentry.Severity.Error,
-			});
-			Sentry.captureException(err);
-			console.error('Unable to get metadata quality value ' + err.message);
-		});
-
-	const dataUtilityList = await axios
-		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout: 10000 })
-		.catch(err => {
-			Sentry.addBreadcrumb({
-				category: 'Caching',
-				message: 'Unable to get data utility ' + err.message,
-				level: Sentry.Severity.Error,
-			});
-			Sentry.captureException(err);
-			console.error('Unable to get data utility ' + err.message);
-		});
-
-	var datasetsMDCIDs = [];
-	var counter = 0;
-
-	await datasetsMDCList.results.reduce(
-		(p, datasetMDC) =>
-			p.then(
-				() =>
-					new Promise(resolve => {
-						setTimeout(async function () {
-							try {
-								counter++;
-								var datasetHDR = await Data.findOne({ datasetid: datasetMDC.id });
-								datasetsMDCIDs.push({ datasetid: datasetMDC.id });
-
-								const metadataQuality = metadataQualityList.data.find(x => x.id === datasetMDC.id);
-								const dataUtility = dataUtilityList.data.find(x => x.id === datasetMDC.id);
-								const phenotypes = phenotypesList.data[datasetMDC.id] || [];
-
-								const metadataSchemaCall = axios
-									.get(metadataCatalogueLink + '/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/' + datasetMDC.id, {
-										timeout: 10000,
-									})
-									.catch(err => {
-										Sentry.addBreadcrumb({
-											category: 'Caching',
-											message: 'Unable to get metadata schema ' + err.message,
-											level: Sentry.Severity.Error,
-										});
-										Sentry.captureException(err);
-										console.error('Unable to get metadata schema ' + err.message);
-									});
-
-								const dataClassCall = axios
-									.get(metadataCatalogueLink + '/api/dataModels/' + datasetMDC.id + '/dataClasses?max=300', { timeout: 10000 })
-									.catch(err => {
-										Sentry.addBreadcrumb({
-											category: 'Caching',
-											message: 'Unable to get dataclass ' + err.message,
-											level: Sentry.Severity.Error,
-										});
-										Sentry.captureException(err);
-										console.error('Unable to get dataclass ' + err.message);
-									});
-
-								const versionLinksCall = axios
-									.get(metadataCatalogueLink + '/api/catalogueItems/' + datasetMDC.id + '/semanticLinks', { timeout: 10000 })
-									.catch(err => {
-										Sentry.addBreadcrumb({
-											category: 'Caching',
-											message: 'Unable to get version links ' + err.message,
-											level: Sentry.Severity.Error,
-										});
-										Sentry.captureException(err);
-										console.error('Unable to get version links ' + err.message);
-									});
-
-								const datasetV2Call = axios
-									.get(metadataCatalogueLink + '/api/facets/' + datasetMDC.id + '/metadata?all=true', { timeout: 5000 })
-									.catch(err => {
-										Sentry.addBreadcrumb({
-											category: 'Caching',
-											message: 'Unable to get dataset version 2 ' + err.message,
-											level: Sentry.Severity.Error,
-										});
-										Sentry.captureException(err);
-										console.error('Unable to get dataset version 2 ' + err.message);
-									});
-
-								const [metadataSchema, dataClass, versionLinks, datasetV2] = await axios.all([
-									metadataSchemaCall,
-									dataClassCall,
-									versionLinksCall,
-									datasetV2Call,
-								]);
-
-								// Safely destructure data class items to protect against undefined and HTTP failures
-								const { data: { items: dataClassItems = [] } = {} } = dataClass || [];
-
-								// Get technical details data classes
-								let technicaldetails = [];
-
-								for (const dataClassMDC of dataClassItems) {
-									// Get data elements for each class
-									const { data: { items: dataClassElements = [] } = {} } = await axios
-										.get(`${metadataCatalogueLink}/api/dataModels/${datasetMDC.id}/dataClasses/${dataClassMDC.id}/dataElements?max=300`, {
-											timeout: 10000,
-										})
-										.catch(err => {
-											console.error('Unable to get dataclass element ' + err.message);
-										});
-
-									// Map out data class elements to attach to class
-									const dataClassElementArray = dataClassElements.map(element => {
-										return {
-											id: element.id,
-											domainType: element.domainType,
-											label: element.label,
-											description: element.description,
-											dataType: {
-												id: element.dataType.id,
-												domainType: element.dataType.domainType,
-												label: element.dataType.label,
-											},
-										};
-									});
-
-									// Create class object
-									const technicalDetailClass = {
-										id: dataClassMDC.id,
-										domainType: dataClassMDC.domainType,
-										label: dataClassMDC.label,
-										description: dataClassMDC.description,
-										elements: dataClassElementArray,
-									};
-
-									technicaldetails = [...technicaldetails, technicalDetailClass];
-								}
-
-								let datasetv2Object = populateV2datasetObject(datasetV2.data.items);
-
-								// Detect if dataset uses 5 Safes form for access
-								const is5Safes = onboardedCustodians.includes(datasetMDC.publisher);
-								const hasTechnicalDetails = technicaldetails.length > 0;
-
-								if (datasetHDR) {
-									//Edit
-									if (!datasetHDR.pid) {
-										let uuid = uuidv4();
-										let listOfVersions = [];
-										datasetHDR.pid = uuid;
-										datasetHDR.datasetVersion = '0.0.1';
-
-										if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
-											versionLinks.data.items.forEach(item => {
-												if (!listOfVersions.find(x => x.id === item.source.id)) {
-													listOfVersions.push({ id: item.source.id, version: item.source.documentationVersion });
-												}
-												if (!listOfVersions.find(x => x.id === item.target.id)) {
-													listOfVersions.push({ id: item.target.id, version: item.target.documentationVersion });
-												}
-											});
-
-											listOfVersions.forEach(async item => {
-												if (item.id !== datasetMDC.id) {
-													await Data.findOneAndUpdate({ datasetid: item.id }, { pid: uuid, datasetVersion: item.version });
-												} else {
-													datasetHDR.pid = uuid;
-													datasetHDR.datasetVersion = item.version;
-												}
-											});
-										}
-									}
-
-									let keywordArray = splitString(datasetMDC.keywords);
-									let physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability);
-									let geographicCoverageArray = splitString(datasetMDC.geographicCoverage);
-									// Update dataset
-									await Data.findOneAndUpdate(
-										{ datasetid: datasetMDC.id },
-										{
-											pid: datasetHDR.pid,
-											datasetVersion: datasetHDR.datasetVersion,
-											name: datasetMDC.title,
-											description: datasetMDC.description,
-											source: 'HDRUK MDC',
-											is5Safes,
-											hasTechnicalDetails,
-											activeflag: 'active',
-											license: datasetMDC.license,
-											tags: {
-												features: keywordArray,
-											},
-											datasetfields: {
-												publisher: datasetMDC.publisher,
-												geographicCoverage: geographicCoverageArray,
-												physicalSampleAvailability: physicalSampleAvailabilityArray,
-												abstract: datasetMDC.abstract,
-												releaseDate: datasetMDC.releaseDate,
-												accessRequestDuration: datasetMDC.accessRequestDuration,
-												conformsTo: datasetMDC.conformsTo,
-												accessRights: datasetMDC.accessRights,
-												jurisdiction: datasetMDC.jurisdiction,
-												datasetStartDate: datasetMDC.datasetStartDate,
-												datasetEndDate: datasetMDC.datasetEndDate,
-												statisticalPopulation: datasetMDC.statisticalPopulation,
-												ageBand: datasetMDC.ageBand,
-												contactPoint: datasetMDC.contactPoint,
-												periodicity: datasetMDC.periodicity,
-
-												metadataquality: metadataQuality ? metadataQuality : {},
-												datautility: dataUtility ? dataUtility : {},
-												metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
-												technicaldetails: technicaldetails,
-												versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
-												phenotypes,
-											},
-											datasetv2: datasetv2Object,
-										}
-									);
-								} else {
-									//Add
-									let uuid = uuidv4();
-									let listOfVersions = [];
-									let pid = uuid;
-									let datasetVersion = '0.0.1';
-
-									if (versionLinks && versionLinks.data && versionLinks.data.items && versionLinks.data.items.length > 0) {
-										versionLinks.data.items.forEach(item => {
-											if (!listOfVersions.find(x => x.id === item.source.id)) {
-												listOfVersions.push({ id: item.source.id, version: item.source.documentationVersion });
-											}
-											if (!listOfVersions.find(x => x.id === item.target.id)) {
-												listOfVersions.push({ id: item.target.id, version: item.target.documentationVersion });
-											}
-										});
-
-										for (const item of listOfVersions) {
-											if (item.id !== datasetMDC.id) {
-												var existingDataset = await Data.findOne({ datasetid: item.id });
-												if (existingDataset && existingDataset.pid) pid = existingDataset.pid;
-												else {
-													await Data.findOneAndUpdate({ datasetid: item.id }, { pid: uuid, datasetVersion: item.version });
-												}
-											} else {
-												datasetVersion = item.version;
-											}
-										}
-									}
-
-									var uniqueID = '';
-									while (uniqueID === '') {
-										uniqueID = parseInt(Math.random().toString().replace('0.', ''));
-										if ((await Data.find({ id: uniqueID }).length) === 0) {
-											uniqueID = '';
-										}
-									}
-
-									var keywordArray = splitString(datasetMDC.keywords);
-									var physicalSampleAvailabilityArray = splitString(datasetMDC.physicalSampleAvailability);
-									var geographicCoverageArray = splitString(datasetMDC.geographicCoverage);
-
-									var data = new Data();
-									data.pid = pid;
-									data.datasetVersion = datasetVersion;
-									data.id = uniqueID;
-									data.datasetid = datasetMDC.id;
-									data.type = 'dataset';
-									data.activeflag = 'active';
-									data.source = 'HDRUK MDC';
-									data.is5Safes = is5Safes;
-									data.hasTechnicalDetails = hasTechnicalDetails;
-
-									data.name = datasetMDC.title;
-									data.description = datasetMDC.description;
-									data.license = datasetMDC.license;
-									data.tags.features = keywordArray;
-									data.datasetfields.publisher = datasetMDC.publisher;
-									data.datasetfields.geographicCoverage = geographicCoverageArray;
-									data.datasetfields.physicalSampleAvailability = physicalSampleAvailabilityArray;
-									data.datasetfields.abstract = datasetMDC.abstract;
-									data.datasetfields.releaseDate = datasetMDC.releaseDate;
-									data.datasetfields.accessRequestDuration = datasetMDC.accessRequestDuration;
-									data.datasetfields.conformsTo = datasetMDC.conformsTo;
-									data.datasetfields.accessRights = datasetMDC.accessRights;
-									data.datasetfields.jurisdiction = datasetMDC.jurisdiction;
-									data.datasetfields.datasetStartDate = datasetMDC.datasetStartDate;
-									data.datasetfields.datasetEndDate = datasetMDC.datasetEndDate;
-									data.datasetfields.statisticalPopulation = datasetMDC.statisticalPopulation;
-									data.datasetfields.ageBand = datasetMDC.ageBand;
-									data.datasetfields.contactPoint = datasetMDC.contactPoint;
-									data.datasetfields.periodicity = datasetMDC.periodicity;
-
-									data.datasetfields.metadataquality = metadataQuality ? metadataQuality : {};
-									data.datasetfields.datautility = dataUtility ? dataUtility : {};
-									data.datasetfields.metadataschema = metadataSchema && metadataSchema.data ? metadataSchema.data : {};
-									data.datasetfields.technicaldetails = technicaldetails;
-									data.datasetfields.versionLinks =
-										versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [];
-									data.datasetfields.phenotypes = phenotypes;
-									data.datasetv2 = datasetv2Object;
-									await data.save();
-								}
-								console.log(`Finished ${counter} of ${datasetsMDCCount} datasets (${datasetMDC.id})`);
-								resolve(null);
-							} catch (err) {
-								Sentry.addBreadcrumb({
-									category: 'Caching',
-									message: `Failed to add ${datasetMDC.id} to the DB with the error of ${err.message}`,
-									level: Sentry.Severity.Fatal,
-								});
-								Sentry.captureException(err);
-								console.error(`Failed to add ${datasetMDC.id} to the DB with the error of ${err.message}`);
-							}
-						}, 500);
-					})
-			),
-		Promise.resolve(null)
-	);
-
-	var datasetsHDRIDs = await Data.aggregate([{ $match: { type: 'dataset' } }, { $project: { _id: 0, datasetid: 1 } }]);
+async function archiveMissingDatasets(source) {
+	let datasetsHDRIDs = await Data.aggregate([
+		{ $match: { type: 'dataset', activeflag: 'active', source } },
+		{ $project: { _id: 0, datasetid: 1 } },
+	]);
 
 	let datasetsNotFound = datasetsHDRIDs.filter(o1 => !datasetsMDCIDs.some(o2 => o1.datasetid === o2.datasetid));
 
@@ -476,10 +607,44 @@ export async function loadDatasets(override) {
 			);
 		})
 	);
+}
 
-	saveUptime();
-	console.log('Update Completed at ' + Date());
-	return;
+function populateV1datasetObject(v1Data) {
+	let datasetV1List = v1Data.filter(item => item.namespace === 'uk.ac.hdrukgateway');
+	let datasetv1Object = {};
+	if (datasetV1List.length > 0) {
+		datasetv1Object = {
+			keywords: datasetV1List.find(x => x.key === 'keywords') ? datasetV1List.find(x => x.key === 'keywords').value : '',
+			license: datasetV1List.find(x => x.key === 'license') ? datasetV1List.find(x => x.key === 'license').value : '',
+			publisher: datasetV1List.find(x => x.key === 'publisher') ? datasetV1List.find(x => x.key === 'publisher').value : '',
+			geographicCoverage: datasetV1List.find(x => x.key === 'geographicCoverage')
+				? datasetV1List.find(x => x.key === 'geographicCoverage').value
+				: '',
+			physicalSampleAvailability: datasetV1List.find(x => x.key === 'physicalSampleAvailability')
+				? datasetV1List.find(x => x.key === 'physicalSampleAvailability').value
+				: '',
+			abstract: datasetV1List.find(x => x.key === 'abstract') ? datasetV1List.find(x => x.key === 'abstract').value : '',
+			releaseDate: datasetV1List.find(x => x.key === 'releaseDate') ? datasetV1List.find(x => x.key === 'releaseDate').value : '',
+			accessRequestDuration: datasetV1List.find(x => x.key === 'accessRequestDuration')
+				? datasetV1List.find(x => x.key === 'accessRequestDuration').value
+				: '',
+			conformsTo: datasetV1List.find(x => x.key === 'conformsTo') ? datasetV1List.find(x => x.key === 'conformsTo').value : '',
+			accessRights: datasetV1List.find(x => x.key === 'accessRights') ? datasetV1List.find(x => x.key === 'accessRights').value : '',
+			jurisdiction: datasetV1List.find(x => x.key === 'jurisdiction') ? datasetV1List.find(x => x.key === 'jurisdiction').value : '',
+			datasetStartDate: datasetV1List.find(x => x.key === 'datasetStartDate')
+				? datasetV1List.find(x => x.key === 'datasetStartDate').value
+				: '',
+			datasetEndDate: datasetV1List.find(x => x.key === 'datasetEndDate') ? datasetV1List.find(x => x.key === 'datasetEndDate').value : '',
+			statisticalPopulation: datasetV1List.find(x => x.key === 'statisticalPopulation')
+				? datasetV1List.find(x => x.key === 'statisticalPopulation').value
+				: '',
+			ageBand: datasetV1List.find(x => x.key === 'ageBand') ? datasetV1List.find(x => x.key === 'ageBand').value : '',
+			contactPoint: datasetV1List.find(x => x.key === 'contactPoint') ? datasetV1List.find(x => x.key === 'contactPoint').value : '',
+			periodicity: datasetV1List.find(x => x.key === 'periodicity') ? datasetV1List.find(x => x.key === 'periodicity').value : '',
+		};
+	}
+
+	return datasetv1Object;
 }
 
 function populateV2datasetObject(v2Data) {
@@ -759,59 +924,4 @@ function splitString(array) {
 		}
 	}
 	return returnArray;
-}
-
-async function saveUptime() {
-	const monitoring = require('@google-cloud/monitoring');
-	const projectId = 'hdruk-gateway';
-	const client = new monitoring.MetricServiceClient();
-
-	var selectedMonthStart = new Date();
-	selectedMonthStart.setMonth(selectedMonthStart.getMonth() - 1);
-	selectedMonthStart.setDate(1);
-	selectedMonthStart.setHours(0, 0, 0, 0);
-
-	var selectedMonthEnd = new Date();
-	selectedMonthEnd.setDate(0);
-	selectedMonthEnd.setHours(23, 59, 59, 999);
-
-	const request = {
-		name: client.projectPath(projectId),
-		filter:
-			'metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url" AND metric.label."check_id"="check-production-web-app-qsxe8fXRrBo" AND metric.label."checker_location"="eur-belgium"',
-
-		interval: {
-			startTime: {
-				seconds: selectedMonthStart.getTime() / 1000,
-			},
-			endTime: {
-				seconds: selectedMonthEnd.getTime() / 1000,
-			},
-		},
-		aggregation: {
-			alignmentPeriod: {
-				seconds: '86400s',
-			},
-			crossSeriesReducer: 'REDUCE_NONE',
-			groupByFields: ['metric.label."checker_location"', 'resource.label."instance_id"'],
-			perSeriesAligner: 'ALIGN_FRACTION_TRUE',
-		},
-	};
-
-	// Writes time series data
-	const [timeSeries] = await client.listTimeSeries(request);
-	var dailyUptime = [];
-	var averageUptime;
-
-	timeSeries.forEach(data => {
-		data.points.forEach(data => {
-			dailyUptime.push(data.value.doubleValue);
-		});
-
-		averageUptime = (dailyUptime.reduce((a, b) => a + b, 0) / dailyUptime.length) * 100;
-	});
-
-	var metricsData = new MetricsData();
-	metricsData.uptime = averageUptime;
-	await metricsData.save();
 }

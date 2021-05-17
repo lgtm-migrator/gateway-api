@@ -2,8 +2,8 @@ import _, { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
-import teamController from '../team/team.controller';
 import constants from '../utilities/constants.util';
+import * as Sentry from '@sentry/node';
 
 const sgMail = require('@sendgrid/mail');
 let parent, qsId;
@@ -1579,6 +1579,80 @@ const _generateRemovedFromTeam = options => {
 	return body;
 };
 
+const _displayViewEmailNotifications = publisherId => {
+	let link = `${process.env.homeURL}/account?tab=teamManagement&innertab=notifications&team=${publisherId}`;
+	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
+                <a style="color: #475da7;" href="${link}">View email notifications</a>
+              </td>
+            </tr>
+          </table>`;
+};
+
+const _formatEmails = emails => {
+	return [...emails].map((email, i) => ` ${email}`);
+};
+
+const _generateTeamNotificationEmail = options => {
+	let { managerName, notificationRemoved, emailAddresses, header, disabled, publisherId } = options;
+	let formattedEmails = _formatEmails(emailAddresses);
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; max-width:700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${header}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${
+												notificationRemoved
+													? `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADEREMOVE}`
+													: `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADERADD}`
+											}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 140px; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Team email address</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 450px; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">
+													${formattedEmails}
+												</td>
+                      </tr>
+                    </table>
+                    ${disabled ? _generateTeamEmailRevert(notificationRemoved) : ''}
+                    ${_displayViewEmailNotifications(publisherId)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+	return body;
+};
+
+const _generateTeamEmailRevert = notificationRemoved => {
+	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
+                If you had stopped emails being sent to your gateway log in email address and no team email address is now active, your emails will have reverted back to your gateway log in email.
+              </td>
+            </tr>
+          </table>`;
+};
+
 const _generateAddedToTeam = options => {
 	let { teamName, role } = options;
 	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
@@ -1783,7 +1857,16 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 		};
 
 		// 4. Send email using SendGrid
-		await sgMail.send(msg);
+		await sgMail.send(msg, false, err => {
+			if (err) {
+				Sentry.addBreadcrumb({
+					category: 'SendGrid',
+					message: 'Sending email failed',
+					level: Sentry.Severity.Warning,
+				});
+				Sentry.captureException(err);
+			}
+		});
 	}
 };
 
@@ -1858,6 +1941,7 @@ export default {
 	generateReviewDeadlineWarning: _generateReviewDeadlineWarning,
 	generateReviewDeadlinePassed: _generateReviewDeadlinePassed,
 	generateFinalDecisionRequiredEmail: _generateFinalDecisionRequiredEmail,
+	generateTeamNotificationEmail: _generateTeamNotificationEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
 	//Workflows

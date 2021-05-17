@@ -96,6 +96,7 @@ router.get('/status', function (req, res, next) {
 						id: req.user.id,
 						name: req.user.firstname + ' ' + req.user.lastname,
 						loggedIn: true,
+						email: req.user.email,
 						teams: [...adminArray, ...teamArray],
 						provider: req.user.provider,
 						advancedSearchRoles: req.user.advancedSearchRoles,

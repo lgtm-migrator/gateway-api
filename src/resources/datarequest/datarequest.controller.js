@@ -2011,7 +2011,6 @@ module.exports = {
 				);
 
 				options = {
-					userType: '',
 					userEmail: appEmail,
 					publisher,
 					datasetTitles,
@@ -2109,6 +2108,7 @@ module.exports = {
 				) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
+					// check if publisher.team has email notifications
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
