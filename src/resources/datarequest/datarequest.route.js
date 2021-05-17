@@ -182,29 +182,6 @@ router.post(
 	(req, res) => dataRequestController.performAction(req, res)
 );
 
-
-
-
-// @route   GET api/v1/data-access-request/dataset/:datasetId
-// @desc    GET Access request for user
-// @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
-router.get(
-	'/dataset/:dataSetId',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application via a dataset' }),
-	datarequestController.getAccessRequestByUserAndDataset
-);
-
-// @route   GET api/v1/data-access-request/datasets/:datasetIds
-// @desc    GET Access request with multiple datasets for user
-// @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
-router.get(
-	'/datasets/:datasetIds',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application via multiple datasets' }),
-	datarequestController.getAccessRequestByUserAndMultipleDatasets
-);
-
 // @route   PUT api/v1/data-access-request/:id
 // @desc    Update request record by Id for status changes
 // @access  Private - Custodian Manager and Applicant (Gateway User)
@@ -212,27 +189,7 @@ router.put(
 	'/:id',
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Updating the status of a Data Access Request application' }),
-	datarequestController.updateAccessRequestById
-);
-
-// @route   PUT api/v1/data-access-request/:id/vote
-// @desc    Update access request with user vote
-// @access  Private - Custodian Reviewer/Manager
-router.put(
-	'/:id/vote',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Voting against a review phase for a Data Access Request application' }),
-	datarequestController.updateAccessRequestReviewVote
-);
-
-// @route   PUT api/v1/data-access-request/:id/startreview
-// @desc    Update access request with review started
-// @access  Private - Custodian Manager
-router.put(
-	'/:id/startreview',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Starting the review process for a Data Access Request application' }),
-	datarequestController.updateAccessRequestStartReview
+	(req, res) => dataRequestController.updateAccessRequestById(req, res)
 );
 
 // @route   PUT api/v1/data-access-request/:id/stepoverride
@@ -242,7 +199,27 @@ router.put(
 	'/:id/stepoverride',
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Overriding a workflow phase for a Data Access Request application' }),
-	datarequestController.updateAccessRequestStepOverride
+	(req, res) => dataRequestController.updateAccessRequestStepOverride(req, res)
+);
+
+// @route   PUT api/v1/data-access-request/:id/vote
+// @desc    Update access request with user vote
+// @access  Private - Custodian Reviewer/Manager
+router.put(
+	'/:id/vote',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Voting against a review phase for a Data Access Request application' }),
+	(req, res) => dataRequestController.updateAccessRequestReviewVote(req, res)
+);
+
+// @route   PUT api/v1/data-access-request/:id/startreview
+// @desc    Update access request with review started
+// @access  Private - Custodian Manager
+router.put(
+	'/:id/startreview',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Starting the review process for a Data Access Request application' }),
+	(req, res) => dataRequestController.updateAccessRequestStartReview(req, res)
 );
 
 // @route   POST api/v1/data-access-request/:id/amendments
@@ -268,7 +245,24 @@ router.post(
 
 
 
+// @route   GET api/v1/data-access-request/dataset/:datasetId
+// @desc    GET Access request for user
+// @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
+router.get(
+	'/dataset/:dataSetId',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application via a dataset' }),
+	datarequestController.getAccessRequestByUserAndDataset
+);
 
-
+// @route   GET api/v1/data-access-request/datasets/:datasetIds
+// @desc    GET Access request with multiple datasets for user
+// @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
+router.get(
+	'/datasets/:datasetIds',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application via multiple datasets' }),
+	datarequestController.getAccessRequestByUserAndMultipleDatasets
+);
 
 module.exports = router;

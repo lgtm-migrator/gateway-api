@@ -79,7 +79,7 @@ export default class DataRequestRepository extends Repository {
 				path: 'datasets dataset',
 			},
 			{
-				path: 'mainApplicant',
+				path: 'mainApplicant authors',
 			},
 		]);
 	}
