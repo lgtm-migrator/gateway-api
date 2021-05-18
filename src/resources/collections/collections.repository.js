@@ -5,6 +5,7 @@ import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import _ from 'lodash';
 import helper from '../utilities/helper.util';
+import i18next from '../internationalization/i18next';
 
 const getCollectionObjects = async (req, res) => {
 	let relatedObjects = [];
