@@ -66,6 +66,7 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 					bio: 1,
 					authors: 1,
 					counter: 1,
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 				}
 			)
 				.populate([{ path: 'persons', options: { select: { id: 1, firstname: 1, lastname: 1 } } }])
@@ -85,6 +86,7 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 					tags: 1,
 					description: 1,
 					counter: 1,
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 				}
 			).lean();
 		} else {
