@@ -65,6 +65,7 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 					lastname: 1,
 					bio: 1,
 					authors: 1,
+					counter: 1,
 				}
 			)
 				.populate([{ path: 'persons', options: { select: { id: 1, firstname: 1, lastname: 1 } } }])
@@ -72,13 +73,37 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 		} else if (!isNaN(id) && objectType === 'course') {
 			data = await Course.find(
 				{ id: parseInt(id) },
-				{ id: 1, type: 1, activeflag: 1, title: 1, provider: 1, courseOptions: 1, award: 1, domains: 1, tags: 1, description: 1 }
+				{
+					id: 1,
+					type: 1,
+					activeflag: 1,
+					title: 1,
+					provider: 1,
+					courseOptions: 1,
+					award: 1,
+					domains: 1,
+					tags: 1,
+					description: 1,
+					counter: 1,
+				}
 			).lean();
 		} else {
 			// 1. Search for a dataset based on pid
 			data = await Data.find(
 				{ pid: id, activeflag: 'active' },
-				{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
+				{
+					id: 1,
+					datasetid: 1,
+					pid: 1,
+					type: 1,
+					activeflag: 1,
+					name: 1,
+					datasetv2: 1,
+					datasetfields: 1,
+					tags: 1,
+					description: 1,
+					counter: 1,
+				}
 			).lean();
 			// 2. If dataset not found search for a dataset based on datasetID
 			if (!data || data.length <= 0) {
@@ -86,14 +111,38 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 				// 3. Use retrieved dataset's pid to search by pid again
 				data = await Data.find(
 					{ pid: data[0].pid, activeflag: 'active' },
-					{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
+					{
+						id: 1,
+						datasetid: 1,
+						pid: 1,
+						type: 1,
+						activeflag: 1,
+						name: 1,
+						datasetv2: 1,
+						datasetfields: 1,
+						tags: 1,
+						description: 1,
+						counter: 1,
+					}
 				).lean();
 			}
 			// 4. If dataset still not found search for deleted dataset by pid
 			if (!data || data.length <= 0) {
 				data = await Data.find(
 					{ pid: id, activeflag: 'archive' },
-					{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
+					{
+						id: 1,
+						datasetid: 1,
+						pid: 1,
+						type: 1,
+						activeflag: 1,
+						name: 1,
+						datasetv2: 1,
+						datasetfields: 1,
+						tags: 1,
+						description: 1,
+						counter: 1,
+					}
 				).lean();
 			}
 		}
