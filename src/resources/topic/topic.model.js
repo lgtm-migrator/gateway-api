@@ -63,7 +63,18 @@ const TopicSchema = new Schema(
 		],
 		tags: [
 			{
-				type: String,
+				id: {
+					type: String,
+				},
+				datasetId: {
+					type: String,
+				},
+				name: {
+					type: String,
+				},
+				publisher: {
+					type: String
+				}
 			},
 		],
 	},
