@@ -1,5 +1,6 @@
-import { isArray, isEmpty, isNil, uniq } from 'lodash';
+import { isArray, isEmpty, isNil, uniq, has, isString, isObject } from 'lodash';
 import helper from '../utilities/helper.util';
+import { commericalConstants, validCommericalUseOptions } from './utils/filters.util';
 
 export default class FiltersService {
 	constructor(filtersRepository, datasetRepository) {
@@ -11,10 +12,68 @@ export default class FiltersService {
 		// 1. Get filters from repository for the entity type and query provided
 		const options = { lean: false };
 		let filters = await this.filtersRepository.getFilters(id, query, options);
-		if(filters) {
+		if (filters) {
 			filters = filters.mapDto();
 		}
 		return filters;
+	}
+
+	/**
+	 * [computeCommericalUse - Calculates and sets commericalUse value]
+	 *
+	 * @param   {Object}  dataUtility  [dataUtility Object]
+	 * @param   {Object}  datasetv2    [datasetv2 Object]
+	 * @return  {boolean}
+	 */
+	computeCommericalUse(dataUtility = {}, datasetv2 = {}) {
+		// LOGIC agreed on IG-1661
+		// 1. check object contains the fields we need to compute against for commericalUse
+		let hasAllowableUses = has(dataUtility, 'allowable_uses');
+		let hasDataUseLimitation = has(datasetv2, 'accessibility.usage.dataUseLimitation');
+		// Not to be computed until further notice
+		//let hasDataUseRequirements = has(datasetv2, 'accessibility.usage.dataUseRequirements');
+
+		// 2. check allowable_uses
+		if (hasAllowableUses) {
+			const { allowable_uses = '' } = dataUtility;
+			const allowableUses = allowable_uses.trim().toUpperCase();
+			if (allowableUses === commericalConstants.gold || allowableUses === commericalConstants.platinum) {
+				return true;
+			}
+		}
+		// 3. check data_use_limitation set commercialUse true"
+		if (hasDataUseLimitation) {
+			// destructure out dataUseLimitation value
+			const {
+				accessibility: {
+					usage: { dataUseLimitation },
+				},
+			} = datasetv2;
+
+			return this.calculateCommercialUsage(dataUseLimitation);
+		}
+		return false;
+	}
+
+	/**
+	 * [calculateCommercialUsage]
+	 *
+	 * @param   {Array | String }  dataType  [field type ie data_use_limitation, data_use_requirements]
+	 * @return  {boolean}  return true false based on logic for commericalUsage
+	 */
+	calculateCommercialUsage(dataType) {
+		const isTypeString = isString(dataType);
+		const isTypeArray = isObject(dataType);
+
+		if (
+			isTypeString &&
+			(dataType.trim().toUpperCase() === commericalConstants.noRestriction ||
+				dataType.trim().toUpperCase() === commericalConstants.commercialResearchUse)
+		)
+			return true;
+		else if (isTypeArray && validCommericalUseOptions(dataType)) return true;
+
+		return false;
 	}
 
 	async optimiseFilters(type) {
@@ -29,15 +88,15 @@ export default class FiltersService {
 		// 1. Use cached filters if instructed, need to remove type when all v2 filters come on
 		if (useCache && type === 'dataset') {
 			const options = { lean: true };
-			const { keys: filters = {} } = await this.filtersRepository.getFilters(type, {}, options) || {};
+			const { keys: filters = {} } = (await this.filtersRepository.getFilters(type, {}, options)) || {};
 			return filters;
 		}
-		
+
 		let filters = {},
 			sortedFilters = {},
 			entities = [],
 			fields = '';
-			
+
 		// 2. Query Db for required entity if array of entities has not been passed
 		switch (type) {
 			case 'dataset':
@@ -108,7 +167,6 @@ export default class FiltersService {
 				} = entity;
 				// 3. Create flattened filter props object
 				filterValues = {
-					publisher,
 					phenotypes: [...phenotypes.map(phenotype => phenotype.name)],
 					features,
 					...datautility,
@@ -117,6 +175,7 @@ export default class FiltersService {
 					...temporal,
 					...access,
 					...formatAndStandards,
+					publisher
 				};
 				break;
 		}

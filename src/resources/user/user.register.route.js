@@ -37,7 +37,6 @@ router.post('/', async (req, res) => {
 		sector,
 		showSector,
 		organisation,
-		emailNotifications,
 		feedback,
 		news,
 		terms,
@@ -65,7 +64,7 @@ router.post('/', async (req, res) => {
 			discourseKey,
 			discourseUsername,
 			feedback,
-			news
+			news,
 		})
 	);
 
@@ -81,7 +80,6 @@ router.post('/', async (req, res) => {
 			showLink,
 			orcid,
 			showOrcid,
-			emailNotifications,
 			terms,
 			sector,
 			showSector,
@@ -102,11 +100,11 @@ router.post('/', async (req, res) => {
 	});
 
 	// 4. Create subscriptions in MailChimp for news and feedback if opted in
-	if(news) {
+	if (news) {
 		const newsSubscriptionId = process.env.MAILCHIMP_NEWS_AUDIENCE_ID;
 		await mailchimpConnector.addSubscriptionMember(newsSubscriptionId, user);
 	}
-	if(feedback) {
+	if (feedback) {
 		const feedbackSubscriptionId = process.env.MAILCHIMP_FEEDBACK_AUDIENCE_ID;
 		await mailchimpConnector.addSubscriptionMember(feedbackSubscriptionId, user);
 	}

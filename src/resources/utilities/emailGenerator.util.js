@@ -1579,8 +1579,8 @@ const _generateRemovedFromTeam = options => {
 	return body;
 };
 
-const _displayViewEmailNotifications = () => {
-	let link = `${process.env.homeURL}/account?tab=teamManagement&innertab=notifications`;
+const _displayViewEmailNotifications = publisherId => {
+	let link = `${process.env.homeURL}/account?tab=teamManagement&innertab=notifications&team=${publisherId}`;
 	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
             <tr>
               <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
@@ -1595,7 +1595,7 @@ const _formatEmails = emails => {
 };
 
 const _generateTeamNotificationEmail = options => {
-	let { managerName, notificationRemoved, emailAddresses, header, disabled } = options;
+	let { managerName, notificationRemoved, emailAddresses, header, disabled, publisherId } = options;
 	let formattedEmails = _formatEmails(emailAddresses);
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; max-width:700px; margin: 0 auto;">
@@ -1634,7 +1634,7 @@ const _generateTeamNotificationEmail = options => {
                       </tr>
                     </table>
                     ${disabled ? _generateTeamEmailRevert(notificationRemoved) : ''}
-                    ${_displayViewEmailNotifications()}
+                    ${_displayViewEmailNotifications(publisherId)}
                   </td>
                 </tr>
               </tbody>
@@ -1870,6 +1870,28 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 	}
 };
 
+/**
+ * [_sendIntroEmail]
+ *
+ * @desc    Send an intro Email upon user registration
+ * @param   {Object}  message to from, templateId
+ */
+const _sendIntroEmail = msg => {
+	// 1. Apply SendGrid API key from environment variable
+	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+	// 2. Send email using SendGrid
+	sgMail.send(msg, false, err => {
+		if (err) {
+			Sentry.addBreadcrumb({
+				category: 'SendGrid',
+				message: 'Sending email failed - Intro',
+				level: Sentry.Severity.Warning,
+			});
+			Sentry.captureException(err);
+		}
+	});
+};
+
 const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 	// 1. Generate HTML for unsubscribe link if allowed depending on context
 
@@ -1927,6 +1949,7 @@ const _generateAttachment = (filename, content, type) => {
 export default {
 	//General
 	sendEmail: _sendEmail,
+	sendIntroEmail: _sendIntroEmail,
 	generateEmailFooter: _generateEmailFooter,
 	generateAttachment: _generateAttachment,
 	//DAR

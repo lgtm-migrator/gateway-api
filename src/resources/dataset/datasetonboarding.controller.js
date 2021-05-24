@@ -2,7 +2,6 @@ import { Data } from '../tool/data.model';
 import { PublisherModel } from '../publisher/publisher.model';
 import { TeamModel } from '../team/team.model';
 import { UserModel } from '../user/user.model';
-import teamController from '../team/team.controller';
 import randomstring from 'randomstring';
 import { filtersService } from '../filters/dependency';
 import notificationBuilder from '../utilities/notificationBuilder';
@@ -117,18 +116,18 @@ module.exports = {
 
 		//Summary
 		if (!_.isNil(dataset.datasetv2.summary.title) && !_.isEmpty(dataset.datasetv2.summary.title))
-			questionAnswers['summary/title'] = dataset.datasetv2.summary.title;
-		if (_.isNil(questionAnswers['summary/title'])) questionAnswers['summary/title'] = dataset.name;
+			questionAnswers['properties/summary/title'] = dataset.datasetv2.summary.title;
+		if (_.isNil(questionAnswers['properties/summary/title'])) questionAnswers['properties/summary/title'] = dataset.name;
 		if (!_.isNil(dataset.datasetv2.summary.abstract) && !_.isEmpty(dataset.datasetv2.summary.abstract))
-			questionAnswers['summary/abstract'] = dataset.datasetv2.summary.abstract;
+			questionAnswers['properties/summary/abstract'] = dataset.datasetv2.summary.abstract;
 		if (!_.isNil(dataset.datasetv2.summary.contactPoint) && !_.isEmpty(dataset.datasetv2.summary.contactPoint))
-			questionAnswers['summary/contactPoint'] = dataset.datasetv2.summary.contactPoint;
+			questionAnswers['properties/summary/contactPoint'] = dataset.datasetv2.summary.contactPoint;
 		if (!_.isNil(dataset.datasetv2.summary.keywords) && !_.isEmpty(dataset.datasetv2.summary.keywords))
-			questionAnswers['summary/keywords'] = module.exports.returnAsArray(dataset.datasetv2.summary.keywords);
+			questionAnswers['properties/summary/keywords'] = module.exports.returnAsArray(dataset.datasetv2.summary.keywords);
 		if (!_.isNil(dataset.datasetv2.summary.alternateIdentifiers) && !_.isEmpty(dataset.datasetv2.summary.alternateIdentifiers))
-			questionAnswers['summary/alternateIdentifiers'] = dataset.datasetv2.summary.alternateIdentifiers;
+			questionAnswers['properties/summary/alternateIdentifiers'] = dataset.datasetv2.summary.alternateIdentifiers;
 		if (!_.isNil(dataset.datasetv2.summary.doiName) && !_.isEmpty(dataset.datasetv2.summary.doiName))
-			questionAnswers['summary/doiName'] = dataset.datasetv2.summary.doiName;
+			questionAnswers['properties/summary/doiName'] = dataset.datasetv2.summary.doiName;
 		//Documentation
 		if (!_.isNil(dataset.datasetv2.documentation.description) && !_.isEmpty(dataset.datasetv2.documentation.description))
 			questionAnswers['properties/documentation/description'] = dataset.datasetv2.documentation.description;
@@ -388,7 +387,9 @@ module.exports = {
 				data.is5Safes = publisherData[0].allowAccessRequestManagement;
 				data.timestamps.created = Date.now();
 				data.timestamps.updated = Date.now();
-				data.questionAnswers = JSON.stringify({ 'summary/title': `New dataset ${moment(Date.now()).format('D MMM YYYY HH:mm')}` });
+				data.questionAnswers = JSON.stringify({
+					'properties/summary/title': `New dataset ${moment(Date.now()).format('D MMM YYYY HH:mm')}`,
+				});
 				await data.save();
 
 				return res.status(200).json({ success: true, data: { id: data._id } });
@@ -403,7 +404,7 @@ module.exports = {
 
 				//else create new version of currentVersionId and send back new id
 				let datasetToCopy = await Data.findOne({ _id: currentVersionId });
-				
+
 				if (_.isNil(datasetToCopy)) {
 					return res.status(404).json({ status: 'error', message: 'Dataset to copy is not found' });
 				}
@@ -543,9 +544,9 @@ module.exports = {
 						};
 					}
 
-					if (updateObj.updatedQuestionId === 'summary/title') {
+					if (updateObj.updatedQuestionId === 'properties/summary/title') {
 						let questionAnswers = JSON.parse(updateObj.questionAnswers);
-						let title = questionAnswers['summary/title'];
+						let title = questionAnswers['properties/summary/title'];
 
 						if (title && title.length >= 2) {
 							Data.findByIdAndUpdate({ _id: id }, { name: title, 'timestamps.updated': Date.now() }, { new: true }, err => {
@@ -733,8 +734,8 @@ module.exports = {
 									modified: moment(Date.now()).format('DD/MM/YYYY'),
 									revisions: [],
 									summary: {
-										title: dataset.questionAnswers['summary/title'] || '',
-										abstract: dataset.questionAnswers['summary/abstract'] || '',
+										title: dataset.questionAnswers['properties/summary/title'] || '',
+										abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
 										publisher: {
 											identifier: publisherData[0]._id.toString(),
 											name: publisherData[0].publisherDetails.name,
@@ -749,10 +750,10 @@ module.exports = {
 											dataUseLimitation: publisherData[0].publisherDetails.dataUseLimitation || [],
 											dataUseRequirements: publisherData[0].publisherDetails.dataUseRequirements || [],
 										},
-										contactPoint: dataset.questionAnswers['summary/contactPoint'] || '',
-										keywords: dataset.questionAnswers['summary/keywords'] || [],
-										alternateIdentifiers: dataset.questionAnswers['summary/alternateIdentifiers'] || [],
-										doiName: dataset.questionAnswers['summary/doiName'] || '',
+										contactPoint: dataset.questionAnswers['properties/summary/contactPoint'] || '',
+										keywords: dataset.questionAnswers['properties/summary/keywords'] || [],
+										alternateIdentifiers: dataset.questionAnswers['properties/summary/alternateIdentifiers'] || [],
+										doiName: dataset.questionAnswers['properties/summary/doiName'] || '',
 									},
 									documentation: {
 										description: dataset.questionAnswers['properties/documentation/description'] || '',
@@ -821,17 +822,21 @@ module.exports = {
 								let technicalDetails = await module.exports.buildTechnicalDetails(dataset.structuralMetadata);
 								let metadataQuality = await module.exports.buildMetadataQuality(dataset, datasetv2Object, dataset.pid);
 
+								// call filterCommercialUsage to determine commericalUse field only pass in v2 a
+								let commercialUse =  filtersService.computeCommericalUse({}, datasetv2Object);
+
 								let updatedDataset = await Data.findOneAndUpdate(
 									{ _id: id },
 									{
 										datasetid: newDatasetVersionId,
 										datasetVersion: dataset.datasetVersion,
-										name: dataset.questionAnswers['summary/title'] || '',
+										name: dataset.questionAnswers['properties/summary/title'] || '',
 										description: dataset.questionAnswers['properties/documentation/abstract'] || '',
 										activeflag: 'active',
 										tags: {
-											features: dataset.questionAnswers['summary/keywords'] || [],
+											features: dataset.questionAnswers['properties/summary/keywords'] || [],
 										},
+										commercialUse,
 										hasTechnicalDetails: !_.isEmpty(technicalDetails) ? true : false,
 										'timestamps.updated': Date.now(),
 										'timestamps.published': Date.now(),
@@ -840,7 +845,7 @@ module.exports = {
 											publisher: `${publisherData[0].publisherDetails.memberOf} > ${publisherData[0].publisherDetails.name}`,
 											geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || '',
 											physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
-											abstract: dataset.questionAnswers['summary/abstract'] || '',
+											abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
 											releaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
 											accessRequestDuration: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
 											//conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || '',
@@ -850,7 +855,7 @@ module.exports = {
 											datasetEndDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
 											//statisticalPopulation: datasetMDC.statisticalPopulation,
 											ageBand: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
-											contactPoint: dataset.questionAnswers['summary/contactPoint'] || '',
+											contactPoint: dataset.questionAnswers['properties/summary/contactPoint'] || '',
 											periodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
 
 											metadataquality: metadataQuality,
@@ -1073,12 +1078,20 @@ module.exports = {
 		return technicalDetailsClasses;
 	},
 
+	/**
+	 * Takes the dataset object and builds the json that will be sent to the MDC
+	 *
+	 * @param   {object}  dataset  [dataset object]
+	 *
+	 * @return  {object}           [return json object to be stored in a json file]
+	 */
 	buildJSONFile: async dataset => {
 		let jsonFile = {};
 		let metadata = [];
 		let childDataClasses = [];
 		let regex = new RegExp('properties/observation/', 'g');
 
+		//Convert all answersQuestion entries into format for importing to MDC and taking out observation entries
 		let observationQuestions = [];
 		Object.keys(dataset.questionAnswers).forEach(item => {
 			if (item.match(regex)) {
@@ -1093,6 +1106,7 @@ module.exports = {
 			}
 		});
 
+		//Convert observation entries into format for importing to MDC, while in the questionAnswers object they are stored with unique ids but are required to be a single string for MDC
 		let observationUniqueIds = [''];
 		observationQuestions.forEach(item => {
 			let [, uniqueId] = item.key.split('_');
@@ -1134,6 +1148,19 @@ module.exports = {
 			metadata.push(newDatasetCatalogueItems);
 		}
 
+		//Adding in the publisher entries for importing to MDC
+		Object.keys(dataset.datasetv2.summary.publisher).forEach(item => {
+			if (!_.isEmpty(dataset.datasetv2.summary.publisher[item])) {
+				const newDatasetCatalogueItems = {
+					namespace: 'org.healthdatagateway',
+					key: `properties/summary/publisher/${item}`,
+					value: dataset.datasetv2.summary.publisher[item],
+				};
+				metadata.push(newDatasetCatalogueItems);
+			}
+		});
+
+		//Converting the strutural metadata into format for importing to MDC
 		const orderedMetadata = _.map(
 			_.groupBy(_.orderBy(dataset.structuralMetadata, ['tableName'], ['asc']), 'tableName'),
 			(children, tableName) => ({ tableName, children })
@@ -1159,10 +1186,12 @@ module.exports = {
 			});
 		});
 
+		//Assemble the different parts into the main json object
 		jsonFile = {
 			dataModel: {
-				label: dataset.questionAnswers['summary/title'],
-				description: dataset.questionAnswers['properties/documentation/description'] || dataset.questionAnswers['summary/abstract'],
+				label: dataset.questionAnswers['properties/summary/title'],
+				description:
+					dataset.questionAnswers['properties/documentation/description'] || dataset.questionAnswers['properties/summary/abstract'],
 				type: 'Data Asset',
 				metadata: metadata,
 				childDataClasses: childDataClasses,
