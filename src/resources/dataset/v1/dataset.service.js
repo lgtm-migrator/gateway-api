@@ -58,7 +58,7 @@ export async function updateExternalDatasetServices(services) {
 				// set commercial use
 				dataset.commercialUse = filtersService.computeCommericalUse(dataUtility, datasetv2);
 				// set datautility
-				dataset.datasetfields.datasetfields.datautility = dataUtility,
+				dataset.datasetfields.datasetfields.datautility = dataUtility;
 				// save dataset into db
       	await dataset.save();
 				// log details
