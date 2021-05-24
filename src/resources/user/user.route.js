@@ -14,7 +14,7 @@ const router = express.Router();
 // @router   GET /api/v1/users/:userID
 // @desc     find user by id
 // @access   Private
-router.get('/:userID', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/:userID', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
 	//req.params.id is how you get the id from the url
 	var q = UserModel.find({ id: req.params.userID });
 
@@ -27,7 +27,7 @@ router.get('/:userID', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 // @router   GET /api/v1/users
 // @desc     get all
 // @access   Private
-router.get('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/', passport.authenticate('jwt'), async (req, res) => {
 	var q = Data.aggregate([
 		// Find all tools with type of person
 		{ $match: { type: 'person' } },
@@ -89,13 +89,7 @@ router.get('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 // @router   PATCH /api/v1/users/advancedSearch/terms/:id
 // @desc     Accept the advanced search T&Cs for a user
 // @access   Private
-router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), async (req, res) => {
-	if (parseInt(req.params.id) !== req.user.id) {
-		return res.status(400).json({
-			status: 'error',
-			message: 'Invalid user id supplied',
-		});
-	}
+router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
 	const { acceptedAdvancedSearchTerms } = req.body;
 	if (typeof acceptedAdvancedSearchTerms !== 'boolean') {
 		return res.status(400).json({ status: 'error', message: 'Invalid input supplied.' });
@@ -109,7 +103,7 @@ router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), async (r
 // @router   PATCH /api/v1/users/advancedSearch/roles/:id
 // @desc     Set advanced search roles for a user
 // @access   Private
-router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), async (req, res) => {
+router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
 	const { advancedSearchRoles } = req.body;
 	if (typeof advancedSearchRoles !== 'object') {
 		return res.status(400).json({ status: 'error', message: 'Invalid role(s) supplied.' });
