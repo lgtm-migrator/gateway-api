@@ -226,6 +226,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
+	let gatewayAttributionPolicy = `We ask that use of the Innovation Gateway be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage 2020.'`;
 	let table = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -339,6 +340,11 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		}
 		table += `</table></td></tr>`;
 	}
+	table += `<tr>
+			<td align='left'>
+				<p style="font-size: 14px;">${gatewayAttributionPolicy}</p>
+			</td>
+		</tr>`;
 	table += ` </tbody></table></div>`;
 
 	return { html: table, jsonContent };
