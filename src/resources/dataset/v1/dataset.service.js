@@ -58,7 +58,7 @@ export async function updateExternalDatasetServices(services) {
 				// set commercial use
 				dataset.commercialUse = filtersService.computeCommericalUse(dataUtility, datasetv2);
 				// set datautility
-				datasetfields.datautility = dataUtility,
+				dataset.datasetfields.datasetfields.datautility = dataUtility,
 				// save dataset into db
       	await dataset.save();
 				// log details
@@ -310,7 +310,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 		const is5Safes = dataAccessRequestCustodians.includes(datasetMDC.publisher);
 		const hasTechnicalDetails = technicaldetails.length > 0;
 		// calculate commercialUse
-		const commercialUse = filterService.computeCommericalUse(dataUtility, datasetv2Object);
+		const commercialUse = filtersService.computeCommericalUse(dataUtility, datasetv2Object);
 
 		if (datasetHDR) {
 			//Edit
