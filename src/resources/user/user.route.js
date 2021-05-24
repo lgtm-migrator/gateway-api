@@ -1,8 +1,6 @@
 import express from 'express';
-import _ from 'lodash';
 import passport from 'passport';
 
-import { ROLES } from '../user/user.roles';
 import { utils } from '../auth';
 import { UserModel } from './user.model';
 import { Data } from '../tool/data.model';

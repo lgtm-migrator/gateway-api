@@ -2,7 +2,6 @@ import express from 'express';
 import { Data } from '../tool/data.model';
 import { utils } from '../auth';
 import passport from 'passport';
-import { ROLES } from '../user/user.roles';
 import { getAllTools } from '../tool/data.repository';
 import { UserModel } from '../user/user.model';
 import mailchimpConnector from '../../services/mailchimp/mailchimp';
