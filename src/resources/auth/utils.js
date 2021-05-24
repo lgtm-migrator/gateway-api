@@ -21,23 +21,24 @@ const signToken = (user, expiresIn = 604800) => {
 	return jwt.sign({ data: user }, process.env.JWTSecret, {
 		//Here change it so only id
 		algorithm: 'HS256',
-		expiresIn
+		expiresIn,
 	});
 };
 
 const camundaToken = () => {
-    return jwt.sign(
-        // This structure must not change or the authenication between camunda and the gateway will fail
-        // username: An admin user the exists within the camunda-admin group
-        // groupIds: The admin group that has been configured on the camunda portal.
-        { username: process.env.BPMN_ADMIN_USER, groupIds: ["camunda-admin"], tenantIds: []},
-        process.env.JWTSecret || "local",  
-        { //Here change it so only id
-            algorithm: 'HS256',
-            expiresIn: 604800
-        }
-    )
-}
+	return jwt.sign(
+		// This structure must not change or the authenication between camunda and the gateway will fail
+		// username: An admin user the exists within the camunda-admin group
+		// groupIds: The admin group that has been configured on the camunda portal.
+		{ username: process.env.BPMN_ADMIN_USER, groupIds: ['camunda-admin'], tenantIds: [] },
+		process.env.JWTSecret || 'local',
+		{
+			//Here change it so only id
+			algorithm: 'HS256',
+			expiresIn: 604800,
+		}
+	);
+};
 
 const hashPassword = async password => {
 	if (!password) {
@@ -73,6 +74,16 @@ const whatIsRole = req => {
 	}
 };
 
+const checkIsUser = () => (req, res, next) => {
+	if (!req.user || req.params.userID !== req.user.id.toString())
+		return res.status(401).json({
+			status: 'error',
+			message: 'Unauthorised to perform this action.',
+		});
+
+	return next();
+};
+
 const getRedirectUrl = role => {
 	switch (role) {
 		case ROLES.Admin:
@@ -84,4 +95,4 @@ const getRedirectUrl = role => {
 	}
 };
 
-export { setup, signToken, camundaToken, hashPassword, verifyPassword, checkIsInRole, getRedirectUrl, whatIsRole };
+export { setup, signToken, camundaToken, hashPassword, verifyPassword, checkIsInRole, getRedirectUrl, whatIsRole, checkIsUser };
