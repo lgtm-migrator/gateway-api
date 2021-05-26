@@ -1,6 +1,7 @@
+import { cloneDeep } from 'lodash';
+
 import Repository from '../base/repository';
 import { WorkflowModel } from './workflow.model';
-import { cloneDeep } from 'lodash';
 
 export default class WorkflowRepository extends Repository {
 	constructor() {

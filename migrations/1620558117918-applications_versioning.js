@@ -19,7 +19,7 @@ async function up() {
 				filter: { _id },
 				update: {
 					applicationType: 'Initial',
-					majorVersion: 1,
+					majorVersion: 1.0,
 					version: undefined,
 					versionTree,
 				},

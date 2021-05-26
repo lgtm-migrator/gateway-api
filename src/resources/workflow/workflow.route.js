@@ -5,9 +5,8 @@ import { logger } from '../utilities/logger';
 import WorkflowController from './workflow.controller';
 import { workflowService } from './dependency';
 
-const logCategory = 'Workflow';
 const workflowController = new WorkflowController(workflowService);
-
+const logCategory = 'Workflow';
 const router = express.Router();
 
 // @route   GET api/v1/workflows/:id

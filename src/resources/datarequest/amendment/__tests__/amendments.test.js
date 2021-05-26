@@ -1,4 +1,5 @@
 import constants from '../../../utilities/constants.util';
+import DataRequestClass from '../../datarequest.entity';
 import { amendmentService } from '../dependency';
 import _ from 'lodash';
 
@@ -528,17 +529,18 @@ describe('doResubmission', () => {
 	test('given a data access record is resubmitted with a valid amendment iteration, then the iteration is updated to submitted', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[4]);
+		let accessRecord = new DataRequestClass(data);
 		// Act
-		data = amendmentService.doResubmission(data, users.applicant._id);
+		accessRecord = amendmentService.doResubmission(accessRecord, users.applicant._id);
 		// Assert
 		expect(dataRequest[4].amendmentIterations[2].dateSubmitted).toBeFalsy();
 		expect(dataRequest[4].amendmentIterations[2].submittedBy).toBeFalsy();
-		expect(data.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
-		expect(data.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
-		expect(data.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
-		expect(data.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
-		expect(data.amendmentIterations[2]).toHaveProperty('dateSubmitted');
-		expect(data.amendmentIterations[2].submittedBy).toBe(users.applicant._id);
+		expect(accessRecord.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
+		expect(accessRecord.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
+		expect(accessRecord.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
+		expect(accessRecord.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
+		expect(accessRecord.amendmentIterations[2]).toHaveProperty('dateSubmitted');
+		expect(accessRecord.amendmentIterations[2].submittedBy).toBe(users.applicant._id);
 	});
 });
 

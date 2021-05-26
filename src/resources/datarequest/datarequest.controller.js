@@ -1,27 +1,21 @@
-import { DataRequestModel } from './datarequest.model';
-import { Data as ToolModel } from '../tool/data.model';
-import { DataRequestSchemaModel } from './datarequest.schemas.model';
-import { UserModel } from '../user/user.model';
+import _ from 'lodash';
+import moment from 'moment';
+import mongoose from 'mongoose';
 
 import teamController from '../team/team.controller';
 import datarequestUtil from './utils/datarequest.util';
 import notificationBuilder from '../utilities/notificationBuilder';
-
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import dynamicForm from '../utilities/dynamicForms/dynamicForm.util';
 import constants from '../utilities/constants.util';
 import { getFile, fileStatus } from '../utilities/cloudStorage.util';
-import _ from 'lodash';
 import inputSanitizer from '../utilities/inputSanitizer';
 import Controller from '../base/controller';
-
-import moment from 'moment';
-import mongoose from 'mongoose';
-
 import { logger } from '../utilities/logger';
-const logCategory = 'Data Access Request';
+import { UserModel } from '../user/user.model';
 
+const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
@@ -31,6 +25,8 @@ export default class DataRequestController extends Controller {
 		this.workflowService = workflowService;
 		this.amendmentService = amendmentService;
 	}
+
+	// ###### APPLICATION CRUD OPERATIONS #######
 
 	//GET api/v1/data-access-request
 	async getAccessRequestsByUser(req, res) {
@@ -49,6 +45,7 @@ export default class DataRequestController extends Controller {
 					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
 					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
 					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
+					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree);
 					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.APPLICANT);
 					return accessRecord;
 				})
@@ -102,11 +99,10 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 4. Get requested amendment iteration details
-			const {
-				versionAmendmentIterationIndex,
-				activeParty,
-				isLatestMinorVersion,
-			} = this.amendmentService.getAmendmentIterationDetailsByVersion(accessRecord, requestedMajorVersion, requestedMinorVersion);
+			const { versionIndex, activeParty, isLatestMinorVersion } = this.amendmentService.getAmendmentIterationDetailsByVersion(
+				accessRecord,
+				requestedMinorVersion
+			);
 
 			// 5. Check if requesting user is custodian member or applicant/contributor
 			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
@@ -119,11 +115,11 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 6. Set edit mode for applicants who have not yet submitted
-			const { applicationStatus, jsonSchema } = accessRecord;
+			const { applicationStatus, jsonSchema, versionTree } = accessRecord;
 			accessRecord.readOnly = this.dataRequestService.getApplicationIsReadOnly(userType, applicationStatus);
 
 			// 7. Count amendments for selected version
-			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, versionAmendmentIterationIndex);
+			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, versionIndex);
 
 			// 8. Get the workflow status for the requested application version for the requesting user
 			const {
@@ -139,7 +135,7 @@ export default class DataRequestController extends Controller {
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 
 			// 10. Update json schema and question answers with modifications since original submission up to requested version
-			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionAmendmentIterationIndex);
+			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex);
 
 			// 11. Append question actions depending on user type and application status
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
@@ -151,7 +147,13 @@ export default class DataRequestController extends Controller {
 				isLatestMinorVersion
 			);
 
-			// 12. Return application form
+			// 12. Build version selector
+			const requestedFullVersion = `Version ${requestedMajorVersion}.${
+				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
+			}`;
+			accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree);
+
+			// 13. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -167,6 +169,7 @@ export default class DataRequestController extends Controller {
 					workflow,
 					files: accessRecord.files || [],
 					isLatestMinorVersion,
+					version: requestedFullVersion,
 				},
 			});
 		} catch (err) {
@@ -179,86 +182,91 @@ export default class DataRequestController extends Controller {
 		}
 	}
 
-	//POST api/v1/data-access-request/:id/clone
-	async cloneApplication(req, res) {
+	//GET api/v1/data-access-request/datasets/:datasetIds
+	async getAccessRequestByUserAndMultipleDatasets(req, res) {
 		try {
-			// 1. Get the required request and body params
+			let data = {};
+			// 1. Get datasetIds from params
 			const {
-				params: { id },
+				params: { datasetIds, dataSetId },
 			} = req;
-			const { datasetIds = [], datasetTitles = [], publisher = '', appIdToCloneInto = '' } = req.body;
+			const resolvedIds = datasetIds || dataSetId;
+			const arrDatasetIds = resolvedIds.split(',');
 
-			// 2. Retrieve DAR to clone from database
-			let appToClone = await this.dataRequestService.getApplicationWithTeamById(id, { lean: true });
+			// 2. Get the user details
+			const { id: requestingUserId, firstname, lastname } = req.user;
 
-			if (!appToClone) {
-				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			// 3. Find the matching record
+			let accessRecord = await this.dataRequestService.getApplicationByDatasets(arrDatasetIds, constants.applicationStatuses.INPROGRESS, requestingUserId);
+
+			// 4. Get datasets
+			const datasets = await this.dataRequestService.getDatasetsForApplicationByIds(arrDatasetIds);
+			const arrDatasetNames = datasets.map(dataset => dataset.name);
+			
+			// 5. If in progress application found prepare to return data
+			if (accessRecord) {
+				data = { ...accessRecord };
 			}
+			else {
+				if (_.isEmpty(datasets)) {
+					return res.status(500).json({ status: 'error', message: 'No datasets available.' });
+				}
+				const {
+					datasetfields: { publisher = '' },
+				} = datasets[0];
 
-			// 3. Get the requesting users permission levels
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, req.user.id, req.user._id);
+				// 1. GET the template from the custodian or take the default (Cannot have dataset specific question sets for multiple datasets)
+				accessRecord = await this.dataRequestService.buildApplicationForm(publisher, arrDatasetIds, arrDatasetNames, requestingUserId);
 
-			// 4. Return unauthorised message if the requesting user is not an applicant
-			if (!authorised || userType !== constants.userTypes.APPLICANT) {
-				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			}
+				// 2. Ensure a question set was found
+				if (!accessRecord) {
+					return res.status(400).json({
+						status: 'error',
+						message: 'Application form could not be created',
+					});
+				}
 
-			// 5. Update question answers with modifications since original submission
-			appToClone = this.amendmentService.injectAmendments(appToClone, constants.userTypes.APPLICANT, req.user);
-
-			// 6. Set up new access record or load presubmission application as provided in request and save
-			let clonedAccessRecord = {};
-			if (_.isEmpty(appIdToCloneInto)) {
-				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
-					userId: req.user.id,
-					datasetIds,
-					datasetTitles,
-					publisher,
-				});
-				// Save new record
-				clonedAccessRecord = await DataRequestModel.create(clonedAccessRecord).catch(err => {
+				// 3. Create and save new application
+				const newApplication = await this.dataRequestService.createApplication(accessRecord).catch(err => {
 					logger.logError(err, logCategory);
 				});
-			} else {
-				const appToCloneInto = await this.dataRequestService.getApplicationWithTeamById(appIdToCloneInto, { lean: true });
-				// Ensure application to clone into was found
-				if (!appToCloneInto) {
-					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
-				}
-				// Get permissions for application to clone into
-				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToCloneInto, req.user.id, req.user._id);
-				//  Return unauthorised message if the requesting user is not authorised to the new application
-				if (!authorised || userType !== constants.userTypes.APPLICANT) {
-					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-				}
-				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
 
-				// Save into existing record
-				clonedAccessRecord = await DataRequestModel.findOneAndUpdate({ _id: appIdToCloneInto }, clonedAccessRecord, { new: true }).catch(
-					err => {
-						logger.logError(err, logCategory);
-					}
-				);
+				// 4. Set return data
+				data = {
+					...newApplication._doc,
+					mainApplicant: { firstname, lastname },
+				};
 			}
-			// Create notifications
-			await this.createNotifications(
-				constants.notificationTypes.APPLICATIONCLONED,
-				{ newDatasetTitles: datasetTitles, newApplicationId: clonedAccessRecord._id.toString() },
-				appToClone,
-				req.user
+
+			// 6. Append question actions depending on user type and application status
+			data.jsonSchema = datarequestUtil.injectQuestionActions(
+				data.jsonSchema,
+				constants.userTypes.APPLICANT,
+				data.applicationStatus,
+				null,
+				constants.userTypes.APPLICANT
 			);
 
-			// Return successful response
+			// 7. Return payload
 			return res.status(200).json({
-				success: true,
-				accessRecord: clonedAccessRecord,
+				status: 'success',
+				data: {
+					...data,
+					datasets,
+					projectId: data.projectId || helper.generateFriendlyId(data._id),
+					userType: constants.userTypes.APPLICANT,
+					activeParty: constants.userTypes.APPLICANT,
+					inReviewMode: false,
+					reviewSections: [],
+					files: data.files || [],
+				},
 			});
 		} catch (err) {
 			// Return error response if something goes wrong
 			logger.logError(err, logCategory);
 			return res.status(500).json({
 				success: false,
-				message: 'An error occurred cloning the existing application',
+				message: 'An error occurred opening a data access request application for the requested dataset(s)',
 			});
 		}
 	}
@@ -267,9 +275,12 @@ export default class DataRequestController extends Controller {
 	async submitAccessRequestById(req, res) {
 		try {
 			// 1. id is the _id object in mongoo.db not the generated id or dataset Id
-			let {
+			const {
 				params: { id },
 			} = req;
+			const requestingUser = req.user;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
 
 			// 2. Find the relevant data request application
 			let accessRecord = await this.dataRequestService.getApplicationToSubmitById(id);
@@ -279,7 +290,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 3. Check user type and authentication to submit application
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, requestingUserId, requestingUserObjectId);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
@@ -296,7 +307,8 @@ export default class DataRequestController extends Controller {
 				accessRecord.applicationStatus === constants.applicationStatuses.INREVIEW ||
 				accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED
 			) {
-				accessRecord = this.amendmentService.doResubmission(accessRecord.toObject(), req.user._id.toString());
+				accessRecord = this.amendmentService.doResubmission(accessRecord, requestingUserObjectId.toString());
+				this.dataRequestService.syncRelatedApplications(accessRecord.versionTree);
 			}
 
 			// 6. Ensure a valid submission is taking place
@@ -313,14 +325,14 @@ export default class DataRequestController extends Controller {
 			});
 
 			// 8. Send notifications and emails with amendments
-			savedAccessRecord = this.amendmentService.injectAmendments(accessRecord, userType, req.user);
+			savedAccessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser);
 			await this.createNotifications(
 				accessRecord.submissionType === constants.submissionTypes.INITIAL
 					? constants.notificationTypes.SUBMITTED
 					: constants.notificationTypes.RESUBMITTED,
 				{},
 				accessRecord,
-				req.user
+				requestingUser
 			);
 
 			// 9. Start workflow process in Camunda if publisher requires it and it is the first submission
@@ -358,10 +370,11 @@ export default class DataRequestController extends Controller {
 				params: { id },
 				body: data,
 			} = req;
+			const requestingUser = req.user;
 			// 2. Destructure body and update only specific fields by building a segregated non-user specified update object
 			let updateObj = this.dataRequestService.buildUpdateObject({
 				...data,
-				user: req.user,
+				user: requestingUser,
 			});
 			// 3. Find data request by _id to determine current status
 			let accessRecord = await this.dataRequestService.getApplicationToUpdateById(id);
@@ -376,7 +389,7 @@ export default class DataRequestController extends Controller {
 			const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRecord;
 
 			if (dirtySchema) {
-				accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, req.user);
+				accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser);
 			}
 			// 6. Return new data object
 			return res.status(200).json({
@@ -560,12 +573,15 @@ export default class DataRequestController extends Controller {
 			const {
 				params: { id: appIdToDelete },
 			} = req;
+			const requestingUser = req.user;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
 
 			// 2. Retrieve DAR to clone from database
 			const appToDelete = await this.dataRequestService.getApplicationWithTeamById(appIdToDelete, { lean: true });
 
 			// 3. Get the requesting users permission levels
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToDelete, req.user.id, req.user._id);
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToDelete, requestingUserId, requestingUserObjectId);
 
 			// 4. Return unauthorised message if the requesting user is not an applicant
 			if (!authorised || userType !== constants.userTypes.APPLICANT) {
@@ -586,7 +602,7 @@ export default class DataRequestController extends Controller {
 			});
 
 			// 7. Create notifications
-			await this.createNotifications(constants.notificationTypes.APPLICATIONDELETED, {}, appToDelete, req.user);
+			await this.createNotifications(constants.notificationTypes.APPLICATIONDELETED, {}, appToDelete, requestingUser);
 
 			return res.status(200).json({
 				success: true,
@@ -597,6 +613,95 @@ export default class DataRequestController extends Controller {
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred deleting the existing application',
+			});
+		}
+	}
+
+	// ###### ADDITIONAL FORM OPERATIONS #######
+
+	//POST api/v1/data-access-request/:id/clone
+	async cloneApplication(req, res) {
+		try {
+			// 1. Get the required request and body params
+			const {
+				params: { id },
+			} = req;
+			const requestingUser = req.user;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+			const { datasetIds = [], datasetTitles = [], publisher = '', appIdToCloneInto = '' } = req.body;
+
+			// 2. Retrieve DAR to clone from database
+			let appToClone = await this.dataRequestService.getApplicationWithTeamById(id, { lean: true });
+
+			if (!appToClone) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, requestingUserId, requestingUserObjectId);
+
+			// 4. Return unauthorised message if the requesting user is not an applicant
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 5. Update question answers with modifications since original submission
+			appToClone = this.amendmentService.injectAmendments(appToClone, constants.userTypes.APPLICANT, requestingUser);
+
+			// 6. Set up new access record or load presubmission application as provided in request and save
+			let clonedAccessRecord = {};
+			if (_.isEmpty(appIdToCloneInto)) {
+				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
+					userId: requestingUserId,
+					datasetIds,
+					datasetTitles,
+					publisher,
+				});
+				// Save new record
+				clonedAccessRecord = await this.dataRequestService.createApplication(clonedAccessRecord).catch(err => {
+					logger.logError(err, logCategory);
+				});
+			} else {
+				const appToCloneInto = await this.dataRequestService.getApplicationWithTeamById(appIdToCloneInto, { lean: true });
+				// Ensure application to clone into was found
+				if (!appToCloneInto) {
+					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
+				}
+				// Get permissions for application to clone into
+				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToCloneInto, requestingUserId, requestingUserObjectId);
+				//  Return unauthorised message if the requesting user is not authorised to the new application
+				if (!authorised || userType !== constants.userTypes.APPLICANT) {
+					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+				}
+				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
+
+				// Save into existing record
+				clonedAccessRecord = await this.dataRequestService.updateApplicationById(appIdToCloneInto, clonedAccessRecord, { new: true }).catch(
+					err => {
+						logger.logError(err, logCategory);
+					}
+				);
+			}
+			// Create notifications
+			await this.createNotifications(
+				constants.notificationTypes.APPLICATIONCLONED,
+				{ newDatasetTitles: datasetTitles, newApplicationId: clonedAccessRecord._id.toString() },
+				appToClone,
+				requestingUser
+			);
+
+			// Return successful response
+			return res.status(200).json({
+				success: true,
+				accessRecord: clonedAccessRecord,
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred cloning the existing application',
 			});
 		}
 	}
@@ -720,6 +825,8 @@ export default class DataRequestController extends Controller {
 		}
 	}
 
+	// ###### FILE UPLOAD #######
+
 	//POST api/v1/data-access-request/:id/upload
 	async uploadFiles(req, res) {
 		try {
@@ -727,6 +834,7 @@ export default class DataRequestController extends Controller {
 			const {
 				params: { id },
 			} = req;
+			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 			// 2. Get files
 			let files = req.files;
@@ -738,7 +846,7 @@ export default class DataRequestController extends Controller {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
 			}
 			// 5. Check if requesting user is custodian member or applicant/contributor
-			let { authorised } = datarequestUtil.getUserPermissionsForApplication(accessRecord, req.user.id, req.user._id);
+			let { authorised } = datarequestUtil.getUserPermissionsForApplication(accessRecord, requestingUserId, requestingUserObjectId);
 			// 6. Check authorisation
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
@@ -945,6 +1053,8 @@ export default class DataRequestController extends Controller {
 		}
 	}
 
+	// ###### WORKFLOW #######
+
 	//PUT api/v1/data-access-request/:id/assignworkflow
 	async assignWorkflow(req, res) {
 		try {
@@ -952,6 +1062,7 @@ export default class DataRequestController extends Controller {
 			const {
 				params: { id },
 			} = req;
+			const requestingUser = req.user;
 			const requestingUserObjectId = req.user._id;
 			const { workflowId = '' } = req.body;
 			if (_.isEmpty(workflowId)) {
@@ -1017,9 +1128,9 @@ export default class DataRequestController extends Controller {
 			// 10. Send notifications
 			const emailContext = this.workflowService.getWorkflowEmailContext(accessRecord);
 			// Create notifications to reviewers of the step that has been completed
-			this.createNotifications(constants.notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, req.user);
+			this.createNotifications(constants.notificationTypes.REVIEWSTEPSTART, emailContext, accessRecord, requestingUser);
 			// Create our notifications to the custodian team managers if assigned a workflow to a DAR application
-			this.createNotifications(constants.notificationTypes.WORKFLOWASSIGNED, emailContext, accessRecord, req.user);
+			this.createNotifications(constants.notificationTypes.WORKFLOWASSIGNED, emailContext, accessRecord, requestingUser);
 
 			return res.status(200).json({
 				success: true,
@@ -1357,7 +1468,7 @@ export default class DataRequestController extends Controller {
 					publisher: name,
 					notifyManager: 'P999D',
 				};
-				
+
 				// 9. Call Camunda controller to start manager review process
 				bpmController.postStartManagerReview(bpmContext);
 			}
@@ -1381,6 +1492,7 @@ export default class DataRequestController extends Controller {
 			const {
 				params: { id },
 			} = req;
+			const requestingUser = req.user;
 			// 2. Retrieve DAR from database
 			const accessRecord = await this.dataRequestService.getApplicationWithWorkflowById(id);
 			if (!accessRecord) {
@@ -1400,9 +1512,9 @@ export default class DataRequestController extends Controller {
 			const emailContext = this.workflowService.getWorkflowEmailContext(accessRecord, activeStepIndex);
 			// 4. Send emails based on deadline elapsed or approaching
 			if (emailContext.deadlineElapsed) {
-				this.createNotifications(constants.notificationTypes.DEADLINEPASSED, emailContext, accessRecord, req.user);
+				this.createNotifications(constants.notificationTypes.DEADLINEPASSED, emailContext, accessRecord, requestingUser);
 			} else {
-				this.createNotifications(constants.notificationTypes.DEADLINEWARNING, emailContext, accessRecord, req.user);
+				this.createNotifications(constants.notificationTypes.DEADLINEWARNING, emailContext, accessRecord, requestingUser);
 			}
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
@@ -1414,6 +1526,8 @@ export default class DataRequestController extends Controller {
 			});
 		}
 	}
+
+	// ###### EMAIL & NOTIFICATIONS #######
 
 	//POST api/v1/data-access-request/:id/email
 	async mailDataAccessRequestInfoById(req, res) {
@@ -2150,223 +2264,3 @@ export default class DataRequestController extends Controller {
 		}
 	}
 }
-
-module.exports = {
-	//GET api/v1/data-access-request/dataset/:datasetId
-	getAccessRequestByUserAndDataset: async (req, res) => {
-		let accessRecord, dataset;
-		let formType = constants.formTypes.Extended5Safe;
-		let data = {};
-		try {
-			// 1. Get dataSetId from params
-			let {
-				params: { dataSetId },
-			} = req;
-			// 2. Get the userId
-			let { id: userId, firstname, lastname } = req.user;
-			// 3. Find the matching record
-			accessRecord = await DataRequestModel.findOne({
-				dataSetId,
-				userId,
-				applicationStatus: constants.applicationStatuses.INPROGRESS,
-			}).populate({
-				path: 'mainApplicant',
-				select: 'firstname lastname -id -_id',
-			});
-			// 4. Get dataset
-			dataset = await ToolModel.findOne({ datasetid: dataSetId }).populate('publisher');
-			// 5. If no record create it and pass back
-			if (!accessRecord) {
-				if (!dataset) {
-					return res.status(500).json({ status: 'error', message: 'No dataset available.' });
-				}
-				let {
-					datasetfields: { publisher = '' },
-				} = dataset;
-				// 1. GET the template from the custodian
-				const accessRequestTemplate = await DataRequestSchemaModel.findOne({
-					$or: [{ dataSetId }, { publisher }, { dataSetId: 'default' }],
-					status: 'active',
-				}).sort({ createdAt: -1 });
-
-				if (!accessRequestTemplate) {
-					return res.status(400).json({
-						status: 'error',
-						message: 'No Data Access request schema.',
-					});
-				}
-				// 2. Build up the accessModel for the user
-				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
-				// 3. check for the type of form [enquiry - 5safes]
-				if (schemaId.toString() === constants.enquiryFormId) formType = constants.formTypes.Enquiry;
-
-				// 4. create new DataRequestModel
-				let record = new DataRequestModel({
-					version,
-					userId,
-					dataSetId,
-					datasetIds: [dataSetId],
-					datasetTitles: [dataset.name],
-					isCloneable,
-					jsonSchema,
-					schemaId,
-					publisher,
-					questionAnswers: {},
-					aboutApplication: {},
-					applicationStatus: constants.applicationStatuses.INPROGRESS,
-					formType,
-				});
-				// 5. save record
-				const newApplication = await record.save();
-				newApplication.projectId = helper.generateFriendlyId(newApplication._id);
-				await newApplication.save();
-
-				// 6. return record
-				data = {
-					...newApplication._doc,
-					mainApplicant: { firstname, lastname },
-				};
-			} else {
-				data = { ...accessRecord.toObject() };
-			}
-			// 7. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(
-				data.jsonSchema,
-				constants.userTypes.APPLICANT,
-				data.applicationStatus,
-				null,
-				constants.userTypes.APPLICANT
-			);
-			// 8. Return payload
-			return res.status(200).json({
-				status: 'success',
-				data: {
-					...data,
-					dataset,
-					projectId: data.projectId || helper.generateFriendlyId(data._id),
-					userType: constants.userTypes.APPLICANT,
-					activeParty: constants.userTypes.APPLICANT,
-					inReviewMode: false,
-					reviewSections: [],
-					files: data.files || [],
-				},
-			});
-		} catch (err) {
-			console.error(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
-	},
-
-	//GET api/v1/data-access-request/datasets/:datasetIds
-	getAccessRequestByUserAndMultipleDatasets: async (req, res) => {
-		let accessRecord;
-		let formType = constants.formTypes.Extended5Safe;
-		let data = {};
-		let datasets = [];
-		try {
-			// 1. Get datasetIds from params
-			let {
-				params: { datasetIds },
-			} = req;
-			let arrDatasetIds = datasetIds.split(',');
-			// 2. Get the userId
-			let { id: userId, firstname, lastname } = req.user;
-			// 3. Find the matching record
-			accessRecord = await DataRequestModel.findOne({
-				datasetIds: { $all: arrDatasetIds },
-				userId,
-				applicationStatus: constants.applicationStatuses.INPROGRESS,
-			})
-				.populate([
-					{
-						path: 'mainApplicant',
-						select: 'firstname lastname -id -_id',
-					},
-					{ path: 'files.owner', select: 'firstname lastname' },
-				])
-				.sort({ createdAt: 1 });
-			// 4. Get datasets
-			datasets = await ToolModel.find({
-				datasetid: { $in: arrDatasetIds },
-			}).populate('publisher');
-			const arrDatasetNames = datasets.map(dataset => dataset.name);
-			// 5. If no record create it and pass back
-			if (!accessRecord) {
-				if (_.isEmpty(datasets)) {
-					return res.status(500).json({ status: 'error', message: 'No datasets available.' });
-				}
-				let {
-					datasetfields: { publisher = '' },
-				} = datasets[0];
-
-				// 1. GET the template from the custodian or take the default (Cannot have dataset specific question sets for multiple datasets)
-				const accessRequestTemplate = await DataRequestSchemaModel.findOne({
-					$or: [{ publisher }, { dataSetId: 'default' }],
-					status: 'active',
-				}).sort({ createdAt: -1 });
-				// 2. Ensure a question set was found
-				if (!accessRequestTemplate) {
-					return res.status(400).json({
-						status: 'error',
-						message: 'No Data Access request schema.',
-					});
-				}
-				// 3. Build up the accessModel for the user
-				let { jsonSchema, version, _id: schemaId, isCloneable = false } = accessRequestTemplate;
-				// 4. Check form is enquiry
-				if (schemaId.toString() === constants.enquiryFormId) formType = constants.formTypes.Enquiry;
-				// 5. Create new DataRequestModel
-				let record = new DataRequestModel({
-					version,
-					userId,
-					datasetIds: arrDatasetIds,
-					datasetTitles: arrDatasetNames,
-					isCloneable,
-					jsonSchema,
-					schemaId,
-					publisher,
-					questionAnswers: {},
-					aboutApplication: {},
-					applicationStatus: constants.applicationStatuses.INPROGRESS,
-					formType,
-				});
-				// 6. save record
-				const newApplication = await record.save();
-				newApplication.projectId = helper.generateFriendlyId(newApplication._id);
-				await newApplication.save();
-				// 7. return record
-				data = {
-					...newApplication._doc,
-					mainApplicant: { firstname, lastname },
-				};
-			} else {
-				data = { ...accessRecord.toObject() };
-			}
-			// 8. Append question actions depending on user type and application status
-			data.jsonSchema = datarequestUtil.injectQuestionActions(
-				data.jsonSchema,
-				constants.userTypes.APPLICANT,
-				data.applicationStatus,
-				null,
-				constants.userTypes.APPLICANT
-			);
-			// 9. Return payload
-			return res.status(200).json({
-				status: 'success',
-				data: {
-					...data,
-					datasets,
-					projectId: data.projectId || helper.generateFriendlyId(data._id),
-					userType: constants.userTypes.APPLICANT,
-					activeParty: constants.userTypes.APPLICANT,
-					inReviewMode: false,
-					reviewSections: [],
-					files: data.files || [],
-				},
-			});
-		} catch (err) {
-			console.error(err.message);
-			res.status(500).json({ status: 'error', message: err.message });
-		}
-	},
-};

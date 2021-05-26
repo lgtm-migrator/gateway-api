@@ -1,9 +1,10 @@
 import _ from 'lodash';
+
 import constants from '../utilities/constants.util';
 import teamController from '../team/team.controller';
 import Controller from '../base/controller';
-
 import { logger } from '../utilities/logger';
+
 const logCategory = 'Publisher';
 
 export default class PublisherController extends Controller {
@@ -92,6 +93,7 @@ export default class PublisherController extends Controller {
 					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
 					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
 					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
+					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree);
 					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.CUSTODIAN);
 					return accessRecord;
 				})

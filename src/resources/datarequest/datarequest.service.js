@@ -1,9 +1,10 @@
-import { isEmpty, has, isNil } from 'lodash';
-import moment from 'moment';
+import { isEmpty, has, isNil, orderBy } from 'lodash';
+import moment, { version } from 'moment';
 
+import helper from '../utilities/helper.util';
 import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
-import { processFile, getFile, fileStatus } from '../utilities/cloudStorage.util';
+import { processFile, fileStatus } from '../utilities/cloudStorage.util';
 import { amendmentService } from '../datarequest/amendment/dependency';
 
 export default class DataRequestService {
@@ -17,6 +18,10 @@ export default class DataRequestService {
 
 	getApplicationById(id) {
 		return this.dataRequestRepository.getApplicationById(id);
+	}
+
+	getApplicationByDatasets(datasetIds, applicationStatus, userId) {
+		return this.dataRequestRepository.getApplicationByDatasets(datasetIds, applicationStatus, userId);
 	}
 
 	getApplicationWithTeamById(id, options) {
@@ -35,6 +40,10 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getApplicationToUpdateById(id);
 	}
 
+	getApplicationForUpdateRequest(id) {
+		return this.dataRequestRepository.getApplicationForUpdateRequest(id);
+	}
+
 	getApplicationIsReadOnly(userType, applicationStatus) {
 		let readOnly = true;
 		if (userType === constants.userTypes.APPLICANT && applicationStatus === constants.applicationStatuses.INPROGRESS) {
@@ -47,6 +56,10 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getFilesForApplicationById(id, options);
 	}
 
+	getDatasetsForApplicationByIds(arrDatasetIds) {
+		return this.dataRequestRepository.getDatasetsForApplicationByIds(arrDatasetIds);
+	}
+
 	deleteApplicationById(id) {
 		return this.dataRequestRepository.deleteApplicationById(id);
 	}
@@ -55,12 +68,45 @@ export default class DataRequestService {
 		return this.dataRequestRepository.replaceApplicationById(id, newAcessRecord);
 	}
 
+	async buildApplicationForm(publisher, datasetIds, datasetTitles, requestingUserId) {
+		// 1. Get schema to base application form on
+		const dataRequestSchema = await this.dataRequestRepository.getApplicationFormSchema(publisher);
+
+		// 2. Build up the accessModel for the user
+		const { jsonSchema, _id: schemaId, isCloneable = false } = dataRequestSchema;
+
+		// 3. Set form type
+		const formType = schemaId.toString === constants.enquiryFormId ? constants.formTypes.Enquiry : constants.formTypes.Extended5Safe;
+
+		// 4. Create new DataRequestModel
+		return {
+			userId: requestingUserId,
+			datasetIds,
+			datasetTitles,
+			isCloneable,
+			jsonSchema,
+			schemaId,
+			publisher,
+			questionAnswers: {},
+			aboutApplication: {},
+			applicationStatus: constants.applicationStatuses.INPROGRESS,
+			formType,
+		};
+	}
+
+	async createApplication(data) {
+		const application = await this.dataRequestRepository.createApplication(data);
+		application.projectId = helper.generateFriendlyId(application._id);
+		application.createMajorVersion(1);
+		return application.save();
+	}
+
 	validateRequestedVersion(accessRecord, requestedVersion) {
 		let isValidVersion = true;
 
 		// 1. Return base major version for specified access record if no specific version requested
 		if (!requestedVersion && accessRecord) {
-			return { isValidVersion, requestedMajorVersion: accessRecord.majorVersion, requestedMinorVersion: 0 };
+			return { isValidVersion, requestedMajorVersion: accessRecord.majorVersion, requestedMinorVersion: undefined };
 		}
 
 		// 2. Regex to validate and process the requested application version (e.g. 1, 2, 1.0, 1.1, 2.1, 3.11)
@@ -77,7 +123,11 @@ export default class DataRequestService {
 			let { majorVersion, amendmentIterations = [] } = accessRecord;
 			majorVersion = parseInt(majorVersion);
 			requestedMajorVersion = parseInt(requestedMajorVersion);
-			requestedMinorVersion = parseInt(requestedMinorVersion || 0);
+			if (requestedMinorVersion) {
+				requestedMinorVersion = parseInt(requestedMinorVersion);
+			} else if (requestedMajorVersion && !requestedMinorVersion) {
+				requestedMinorVersion = 0;
+			}
 
 			if (!fullMatch || majorVersion !== requestedMajorVersion || requestedMinorVersion > amendmentIterations.length) {
 				isValidVersion = false;
@@ -88,6 +138,26 @@ export default class DataRequestService {
 
 		return { isValidVersion, requestedMajorVersion, requestedMinorVersion };
 	}
+
+	buildVersionHistory = versionTree => {
+		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
+			const { applicationId: _id, link, displayTitle, detailedTitle } = versionTree[versionKey];
+
+			const version = {
+				number: versionKey,
+				_id,
+				link,
+				displayTitle,
+				detailedTitle,
+			};
+
+			arr = [...arr, version];
+
+			return arr;
+		}, []);
+
+		return orderBy(unsortedVersions, ['number'], ['desc']);
+	};
 
 	getProjectName(accessRecord) {
 		// Retrieve project name from about application section
@@ -136,6 +206,10 @@ export default class DataRequestService {
 		} else {
 			return '';
 		}
+	}
+
+	updateApplicationById(id, data, options = {}) {
+		return this.dataRequestRepository.updateApplicationById(id, data, options);
 	}
 
 	calculateAvgDecisionTime(accessRecords = []) {
@@ -255,7 +329,7 @@ export default class DataRequestService {
 		return mediaFiles;
 	}
 
-	doInitialSubmission (accessRecord) {
+	doInitialSubmission(accessRecord) {
 		// 1. Update application to submitted status
 		accessRecord.submissionType = constants.submissionTypes.INITIAL;
 		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
@@ -272,5 +346,17 @@ export default class DataRequestService {
 		accessRecord.dateSubmitted = dateSubmitted;
 		// 3. Return updated access record for saving
 		return accessRecord;
+	}
+
+	syncRelatedApplications(versionTree) {
+		// 1. Extract all major version _ids denoted by an application type on each node in the version tree
+		const applicationIds = Object.keys(versionTree).reduce((arr, key) => {
+			if (versionTree[key].applicationType) {
+				arr.push(versionTree[key].applicationId);
+			}
+			return arr;
+		}, []);
+		// 2. Update all related applications
+		this.dataRequestRepository.syncRelatedApplications(applicationIds, versionTree);
 	}
 }

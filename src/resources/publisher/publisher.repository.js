@@ -1,9 +1,9 @@
+import mongoose from 'mongoose';
+
 import Repository from '../base/repository';
 import { PublisherModel } from './publisher.model';
 import { Dataset } from '../dataset/dataset.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
-
-import mongoose from 'mongoose';
 
 export default class PublisherRepository extends Repository {
 	constructor() {

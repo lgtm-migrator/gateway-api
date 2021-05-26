@@ -3,12 +3,12 @@ import passport from 'passport';
 import _ from 'lodash';
 import multer from 'multer';
 import { param } from 'express-validator';
+
 import { logger } from '../utilities/logger';
 import DataRequestController from './datarequest.controller';
 import AmendmentController from './amendment/amendment.controller';
 import { dataRequestService, workflowService, amendmentService } from './dependency';
 
-const datarequestController = require('./datarequest.controller');
 const fs = require('fs');
 const path = './tmp';
 const storage = multer.diskStorage({
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 const multerMid = multer({ storage: storage });
 const logCategory = 'Data Access Request';
 const dataRequestController = new DataRequestController(dataRequestService, workflowService, amendmentService);
-const amendmentController = new AmendmentController(amendmentService);
+const amendmentController = new AmendmentController(amendmentService, dataRequestService);
 const router = express.Router();
 
 // @route   GET api/v1/data-access-request
@@ -43,6 +43,16 @@ router.get(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application' }),
 	(req, res) => dataRequestController.getAccessRequestById(req, res)
+);
+
+// @route   GET api/v1/data-access-request/datasets/:datasetIds
+// @desc    GET Access request with multiple datasets for user
+// @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
+router.get(
+	'/datasets/:datasetIds',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application via multiple datasets' }),
+	(req, res) => dataRequestController.getAccessRequestByUserAndMultipleDatasets(req, res)
 );
 
 // @route   POST api/v1/data-access-request/:id/clone
@@ -240,29 +250,6 @@ router.post(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Requesting a batch of amendments to a Data Access Request application' }),
 	(req, res) => amendmentController.requestAmendments(req, res)
-);
-
-
-
-
-// @route   GET api/v1/data-access-request/dataset/:datasetId
-// @desc    GET Access request for user
-// @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
-router.get(
-	'/dataset/:dataSetId',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application via a dataset' }),
-	datarequestController.getAccessRequestByUserAndDataset
-);
-
-// @route   GET api/v1/data-access-request/datasets/:datasetIds
-// @desc    GET Access request with multiple datasets for user
-// @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
-router.get(
-	'/datasets/:datasetIds',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Opened a Data Access Request application via multiple datasets' }),
-	datarequestController.getAccessRequestByUserAndMultipleDatasets
 );
 
 module.exports = router;

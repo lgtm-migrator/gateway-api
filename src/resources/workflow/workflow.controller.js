@@ -1,3 +1,6 @@
+import _ from 'lodash';
+import Mongoose from 'mongoose';
+
 import { PublisherModel } from '../publisher/publisher.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { WorkflowModel } from './workflow.model';
@@ -5,9 +8,6 @@ import teamController from '../team/team.controller';
 import helper from '../utilities/helper.util';
 import constants from '../utilities/constants.util';
 import Controller from '../base/controller';
-
-import _ from 'lodash';
-import Mongoose from 'mongoose';
 
 export default class WorkflowController extends Controller {
 	constructor(workflowService) {

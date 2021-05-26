@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+
 import constants from '../utilities/constants.util';
 
 const TeamSchema = new Schema(

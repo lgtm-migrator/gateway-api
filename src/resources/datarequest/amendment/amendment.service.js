@@ -1,11 +1,11 @@
+import _ from 'lodash';
+
 import { AmendmentModel } from './amendment.model';
 import constants from '../../utilities/constants.util';
 import helperUtil from '../../utilities/helper.util';
 import datarequestUtil from '../utils/datarequest.util';
 import notificationBuilder from '../../utilities/notificationBuilder';
 import emailGenerator from '../../utilities/emailGenerator.util';
-
-import _ from 'lodash';
 
 export default class AmendmentService {
 	constructor(amendmentRepository) {
@@ -163,8 +163,8 @@ export default class AmendmentService {
 		});
 	}
 
-	getAmendmentIterationParty(accessRecord, versionAmendmentIterationIndex = -1) {
-		if (versionAmendmentIterationIndex === -1) {
+	getAmendmentIterationParty(accessRecord, versionIndex) {
+		if (!versionIndex) {
 			// 1. Look for an amendment iteration that is in flight
 			//    An empty date submitted with populated date returned indicates that the current correction iteration is now with the applicants
 			let index = accessRecord.amendmentIterations.findIndex(v => _.isUndefined(v.dateSubmitted) && !_.isUndefined(v.dateReturned));
@@ -175,14 +175,14 @@ export default class AmendmentService {
 				return constants.userTypes.APPLICANT;
 			}
 		} else {
-			return this.getAmendmentIterationPartyByVersion(accessRecord, versionAmendmentIterationIndex);
+			return this.getAmendmentIterationPartyByVersion(accessRecord, versionIndex);
 		}
 	}
 
-	getAmendmentIterationPartyByVersion(accessRecord, versionAmendmentIterationIndex) {
+	getAmendmentIterationPartyByVersion(accessRecord, versionIndex) {
 		// If a specific version has been requested, determine the last party active on that version
 		//	An empty submission date with a valid return date (added by Custodians returning the form) indicates applicants are active
-		const requestedAmendmentIteration = accessRecord.amendmentIterations[versionAmendmentIterationIndex];
+		const requestedAmendmentIteration = accessRecord.amendmentIterations[versionIndex];
 		if (requestedAmendmentIteration === _.last(accessRecord.amendmentIterations)) {
 			if (_.isUndefined(requestedAmendmentIteration.dateSubmitted) && !_.isUndefined(requestedAmendmentIteration.dateReturned)) {
 				return constants.userTypes.APPLICANT;
@@ -195,22 +195,24 @@ export default class AmendmentService {
 		}
 	}
 
-	getAmendmentIterationDetailsByVersion(accessRecord, majorVersion, minorVersion) {
+	getAmendmentIterationDetailsByVersion(accessRecord, minorVersion) {
 		const { amendmentIterations = [] } = accessRecord;
 		// Get amendment iteration index, initial version will be offset by 1 to find array index i.e. 1.0 = -1, 1.1 = 0, 1.2 = 1 etc.
 		// versions beyond 1 will have matching offset to array index as 2.0 includes amendments on first submission i.e. 2.0 = 0, 2.1 = 1, 2.2 = 2 etc.
-		const versionAmendmentIterationIndex = majorVersion === 1 ? minorVersion - 1 : minorVersion;
+		//const versionIndex = majorVersion === 1 ? minorVersion - 1 : minorVersion;
+		// If no minor version updates are requested,
+		const versionIndex = minorVersion - 1;
 
 		// Get active party for selected index
-		const activeParty = this.getAmendmentIterationParty(accessRecord, versionAmendmentIterationIndex);
+		const activeParty = this.getAmendmentIterationParty(accessRecord, versionIndex);
 
 		// Check if selected version is latest
-		const isLatestMinorVersion = amendmentIterations[versionAmendmentIterationIndex] === _.last(amendmentIterations);
+		const isLatestMinorVersion = amendmentIterations[versionIndex] === _.last(amendmentIterations);
 
-		return { versionAmendmentIterationIndex, activeParty, isLatestMinorVersion };
+		return { versionIndex, activeParty, isLatestMinorVersion };
 	}
 
-	filterAmendments(accessRecord = {}, userType, lastIterationIndex = -1) {
+	filterAmendments(accessRecord = {}, userType, lastIterationIndex) {
 		// 1. Guard for invalid access record
 		if (_.isEmpty(accessRecord)) {
 			return {};
@@ -218,8 +220,8 @@ export default class AmendmentService {
 		let { amendmentIterations = [] } = accessRecord;
 
 		// 2. Slice any superfluous amendment iterations if a previous version has been explicitly requested
-		if (lastIterationIndex !== -1) {
-			amendmentIterations = amendmentIterations.slice(0, lastIterationIndex);
+		if (lastIterationIndex) {
+			amendmentIterations = amendmentIterations.slice(0, lastIterationIndex + 1);
 		}
 
 		// 3. Extract all relevant iteration objects and answers based on the user type
@@ -242,27 +244,32 @@ export default class AmendmentService {
 		return amendmentIterations;
 	}
 
-	injectAmendments(accessRecord, userType, user, versionAmendmentIterationIndex = -1) {
-		// 1. Get latest iteration created by Custodian
+	injectAmendments(accessRecord, userType, user, versionIndex) {
+		let latestIteration;
+
+		// 1. Ensure minor versions exist
 		if (accessRecord.amendmentIterations.length === 0) {
 			return accessRecord;
 		}
 
 		// 2. If a specific version has not be requested, fetch the latest (last) amendment iteration to include all changes to date
-		const lastIndex =
-			versionAmendmentIterationIndex === -1 ? _.findLastIndex(accessRecord.amendmentIterations) : versionAmendmentIterationIndex;
+		if (!versionIndex) {
+			versionIndex = _.findLastIndex(accessRecord.amendmentIterations);
+			latestIteration = accessRecord.amendmentIterations[versionIndex];
+		} else {
+			latestIteration = accessRecord.amendmentIterations[versionIndex + 1] || accessRecord.amendmentIterations[versionIndex];
+		}
 
-		// 3. Get the corresponding iteration/version for the required index
-		let latestIteration = accessRecord.amendmentIterations[lastIndex];
+		// 3. Get requested updates for next version if it exists (must be created by custodians by requesting updates)
 		const { dateReturned } = latestIteration;
 
 		// 4. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
 		if (
-			(lastIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
+			(versionIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
 			(userType === constants.userTypes.CUSTODIAN && _.isNil(latestIteration.questionAnswers))
 		) {
-			latestIteration = accessRecord.amendmentIterations[lastIndex - 1];
-		} else if (lastIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
+			latestIteration = accessRecord.amendmentIterations[versionIndex - 1];
+		} else if (versionIndex === 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) {
 			return accessRecord;
 		}
 
@@ -273,7 +280,7 @@ export default class AmendmentService {
 		}
 
 		// 6. Filter out amendments that have not yet been exposed to the opposite party
-		const amendmentIterations = this.filterAmendments(accessRecord, userType, lastIndex);
+		const amendmentIterations = this.filterAmendments(accessRecord, userType, versionIndex);
 
 		// 7. Update the question answers to reflect all the changes that have been made in later iterations
 		accessRecord.questionAnswers = this.formatQuestionAnswers(accessRecord.questionAnswers, amendmentIterations);
@@ -471,24 +478,20 @@ export default class AmendmentService {
 		}
 		// 2. Mark submission type as a resubmission later used to determine notification generation
 		accessRecord.submissionType = constants.submissionTypes.RESUBMISSION;
-		accessRecord.amendmentIterations[index] = {
-			...accessRecord.amendmentIterations[index],
-			dateSubmitted: new Date(),
-			submittedBy: userId,
-		};
+		accessRecord.submitAmendmentIteration(index, userId);
 		// 3. Return updated access record for saving
 		return accessRecord;
 	}
 
-	countAmendments(accessRecord, userType, versionAmendmentIterationIndex = -1) {
-		// 1. Find latest iteration and if not found, return 0
+	countAmendments(accessRecord, userType, versionIndex) {
+		// 1. Find either latest iteration or version to count amendments from
 		let index;
 		let unansweredAmendments = 0;
 		let answeredAmendments = 0;
-		if (versionAmendmentIterationIndex === -1) {
+		if (!versionIndex) {
 			index = this.getLatestAmendmentIterationIndex(accessRecord);
 		} else {
-			index = versionAmendmentIterationIndex;
+			index = versionIndex;
 		}
 		if (
 			index === -1 ||
