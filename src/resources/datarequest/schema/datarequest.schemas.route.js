@@ -2,8 +2,8 @@ import express from 'express';
 import passport from 'passport';
 
 import { DataRequestSchemaModel } from './datarequest.schemas.model';
-import { utils } from '../auth';
-import { ROLES } from '../user/user.roles';
+import { utils } from '../../auth';
+import { ROLES } from '../../user/user.roles';
 
 const router = express.Router();
 

@@ -135,7 +135,7 @@ export default class DataRequestController extends Controller {
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 
 			// 10. Update json schema and question answers with modifications since original submission up to requested version
-			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex);
+			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex, isLatestMinorVersion);
 
 			// 11. Append question actions depending on user type and application status
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
@@ -151,7 +151,7 @@ export default class DataRequestController extends Controller {
 			const requestedFullVersion = `Version ${requestedMajorVersion}.${
 				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
 			}`;
-			accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree);
+			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree);
 
 			// 13. Return application form
 			return res.status(200).json({
@@ -630,6 +630,7 @@ export default class DataRequestController extends Controller {
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 			const { datasetIds = [], datasetTitles = [], publisher = '', appIdToCloneInto = '' } = req.body;
+			const { version: requestedVersion } = req.query;
 
 			// 2. Retrieve DAR to clone from database
 			let appToClone = await this.dataRequestService.getApplicationWithTeamById(id, { lean: true });
@@ -638,18 +639,33 @@ export default class DataRequestController extends Controller {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
 			}
 
-			// 3. Get the requesting users permission levels
+			// 3. If invalid version requested to clone, return 404
+			const { isValidVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(
+				appToClone,
+				requestedVersion
+			);
+			if (!isValidVersion) {
+				return res.status(404).json({ status: 'error', message: 'The requested application version could not be found.' });
+			}
+
+			// 4. Get requested amendment iteration details
+			const { versionIndex } = this.amendmentService.getAmendmentIterationDetailsByVersion(
+				appToClone,
+				requestedMinorVersion
+			);
+
+			// 5. Get the requesting users permission levels
 			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, requestingUserId, requestingUserObjectId);
 
-			// 4. Return unauthorised message if the requesting user is not an applicant
+			// 6. Return unauthorised message if the requesting user is not an applicant
 			if (!authorised || userType !== constants.userTypes.APPLICANT) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			// 5. Update question answers with modifications since original submission
-			appToClone = this.amendmentService.injectAmendments(appToClone, constants.userTypes.APPLICANT, requestingUser);
+			// 7. Update question answers with modifications since original submission
+			appToClone = this.amendmentService.injectAmendments(appToClone, constants.userTypes.APPLICANT, requestingUser, versionIndex);
 
-			// 6. Set up new access record or load presubmission application as provided in request and save
+			// 8. Set up new access record or load presubmission application as provided in request and save
 			let clonedAccessRecord = {};
 			if (_.isEmpty(appIdToCloneInto)) {
 				clonedAccessRecord = await datarequestUtil.cloneIntoNewApplication(appToClone, {
@@ -683,7 +699,7 @@ export default class DataRequestController extends Controller {
 					}
 				);
 			}
-			// Create notifications
+			// 9. Create notifications
 			await this.createNotifications(
 				constants.notificationTypes.APPLICATIONCLONED,
 				{ newDatasetTitles: datasetTitles, newApplicationId: clonedAccessRecord._id.toString() },
@@ -691,7 +707,7 @@ export default class DataRequestController extends Controller {
 				requestingUser
 			);
 
-			// Return successful response
+			// 10. Return successful response
 			return res.status(200).json({
 				success: true,
 				accessRecord: clonedAccessRecord,

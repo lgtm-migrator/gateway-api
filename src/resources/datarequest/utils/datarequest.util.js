@@ -2,7 +2,7 @@ import { has, isEmpty, isNil } from 'lodash';
 import constants from '../../utilities/constants.util';
 import teamController from '../../team/team.controller';
 import moment from 'moment';
-import { DataRequestSchemaModel } from '../datarequest.schemas.model';
+import { DataRequestSchemaModel } from '../schema/datarequest.schemas.model';
 import dynamicForm from '../../utilities/dynamicForms/dynamicForm.util';
 
 const repeatedSectionRegex = /_[a-zA-Z|\d]{5}$/gm;
@@ -171,7 +171,7 @@ const setQuestionState = (question, questionAlert, readOnly) => {
 	return question;
 };
 
-const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user, publisher) => {
+const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user, publisher, latestVersion = true) => {
 	// 1. Use a try catch to prevent conditions where the combination of params lead to no question alert required
 	try {
 		// 2. Static mapping allows us to determine correct flag to show based on scenario (params)
@@ -184,7 +184,7 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 		requestedBy = matchCurrentUser(user, requestedBy);
 		updatedBy = matchCurrentUser(user, updatedBy);
 		// 5. Update the generic question alerts to match the scenario
-		let relevantActioner = !isNil(updatedBy) ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
+		const relevantActioner = !isNil(updatedBy) && latestVersion ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
 		questionAlert.text = questionAlert.text.replace('#NAME#', relevantActioner);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',

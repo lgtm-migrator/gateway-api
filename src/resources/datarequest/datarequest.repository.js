@@ -1,6 +1,6 @@
 import Repository from '../base/repository';
 import { DataRequestModel } from './datarequest.model';
-import { DataRequestSchemaModel } from './datarequest.schemas.model';
+import { DataRequestSchemaModel } from './schema/datarequest.schemas.model';
 import { Data as ToolModel } from '../tool/data.model';
 
 export default class DataRequestRepository extends Repository {

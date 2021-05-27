@@ -98,7 +98,8 @@ export default class DataRequestService {
 		const application = await this.dataRequestRepository.createApplication(data);
 		application.projectId = helper.generateFriendlyId(application._id);
 		application.createMajorVersion(1);
-		return application.save();
+		await this.dataRequestRepository.updateApplicationById(application._id, application);
+		return application;
 	}
 
 	validateRequestedVersion(accessRecord, requestedVersion) {
