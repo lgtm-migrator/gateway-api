@@ -118,8 +118,8 @@ export default class DataRequestController extends Controller {
 			const { applicationStatus, jsonSchema, versionTree } = accessRecord;
 			accessRecord.readOnly = this.dataRequestService.getApplicationIsReadOnly(userType, applicationStatus);
 
-			// 7. Count amendments for selected version
-			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, versionIndex);
+			// 7. Count amendments for the latest version - returns 0 immediately if not viewing latest version
+			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, isLatestMinorVersion);
 
 			// 8. Get the workflow status for the requested application version for the requesting user
 			const {

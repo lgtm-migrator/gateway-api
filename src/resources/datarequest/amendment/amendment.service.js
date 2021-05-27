@@ -207,7 +207,7 @@ export default class AmendmentService {
 		const activeParty = this.getAmendmentIterationParty(accessRecord, versionIndex);
 
 		// Check if selected version is latest
-		const isLatestMinorVersion = amendmentIterations[versionIndex] === _.last(amendmentIterations);
+		const isLatestMinorVersion = amendmentIterations[versionIndex] === _.last(amendmentIterations) || isNaN(minorVersion);
 
 		return { versionIndex, activeParty, isLatestMinorVersion };
 	}
@@ -503,18 +503,14 @@ export default class AmendmentService {
 		return accessRecord;
 	}
 
-	countAmendments(accessRecord, userType, versionIndex) {
-		// 1. Find either latest iteration or version to count amendments from
-		let index;
+	countAmendments(accessRecord, userType, isLatestVersion = true) {
+		// 1. Find either latest iteration to count amendments from
+		const index = this.getLatestAmendmentIterationIndex(accessRecord);
 		let unansweredAmendments = 0;
 		let answeredAmendments = 0;
-		if (!versionIndex && versionIndex !== 0) {
-			index = this.getLatestAmendmentIterationIndex(accessRecord);
-		} else {
-			index = versionIndex;
-		}
+		
 		if (
-			index === -1 ||
+			!isLatestVersion || index === -1 ||
 			_.isNil(accessRecord.amendmentIterations[index].questionAnswers) ||
 			(_.isNil(accessRecord.amendmentIterations[index].dateReturned) && userType == constants.userTypes.APPLICANT)
 		) {
