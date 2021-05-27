@@ -56,7 +56,7 @@ module.exports = {
 						title = publisher;
 						subTitle = _.isEmpty(subTitle) ? datasetTitle : `${subTitle}, ${datasetTitle}`;
 						datasets.push({ datasetId: datasetid, publisher });
-						tags.push({datasetId, name: subTitle, _id: relatedObjectIds[0], publisher});
+						tags.push({ datasetId, name: subTitle, _id: relatedObjectIds[0], publisher });
 						break;
 					default:
 						break;
@@ -112,9 +112,9 @@ module.exports = {
 				}
 			});
 
-			if(topic.tags.length === 1) {
-				let {datasetId} =  topic.datasets[0];
-				topic.tags = [{name: topic.subTitle, _id: topic.relatedObjectIds[0], datasetId, publisher: topic.title}];
+			if (topic.tags.length === 1) {
+				let { datasetId } = topic.datasets[0];
+				topic.tags = [{ name: topic.subTitle, _id: topic.relatedObjectIds[0], datasetId, publisher: topic.title }];
 				console.log(datasetId, topic.subTitle, topic.title);
 			}
 
@@ -152,9 +152,11 @@ module.exports = {
 	},
 	// GET api/v1/topics
 	getTopics: async (req, res) => {
+		console.log(`get topics: ${req.user}`);
 		// check if user / publisher
 		try {
 			let { _id: userId } = req.user;
+			console.log(`get topics userId: ${userId}`);
 			const topics = await TopicModel.find({
 				recipients: { $elemMatch: { $eq: userId } },
 				status: 'active',
@@ -171,8 +173,8 @@ module.exports = {
 						return (new Date(a.createdDate) > new Date(b.createdDate) ? a : b).createdDate;
 					});
 
-					if(topic.tags.length === 1) {
-						let {datasetId, publisher} =  topic.datasets[0];
+					if (topic.tags.length === 1) {
+						let { datasetId, publisher } = topic.datasets[0];
 						topic.tags = [{ name: topic.subTitle, datasetId: datasetId, _id: topic.relatedObjectIds[0], publisher }];
 					}
 				});
