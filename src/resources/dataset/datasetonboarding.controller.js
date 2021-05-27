@@ -531,7 +531,7 @@ module.exports = {
 					const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = dataset;
 					if (dirtySchema) {
 						accessRequestRecord.jsonSchema = JSON.parse(accessRequestRecord.jsonSchema);
-						accessRequestRecord = this.amendmentService.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
+						accessRequestRecord = amendmentService.injectAmendments(accessRequestRecord, constants.userTypes.APPLICANT, req.user);
 					}
 					let data = {
 						status: 'success',
