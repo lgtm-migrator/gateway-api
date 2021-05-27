@@ -134,10 +134,13 @@ export default class DataRequestController extends Controller {
 			const userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 
-			// 10. Update json schema and question answers with modifications since original submission up to requested version
+			// 10. Inject completed update requests from previous version to the requested version e.g. 1.1 if 1.2 requested
+			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex - 1, true);
+
+			// 11. Inject updates from requested version e.g. 1.2
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex, isLatestMinorVersion);
 
-			// 11. Append question actions depending on user type and application status
+			// 12. Append question actions depending on user type and application status
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
 				jsonSchema,
 				userType,
@@ -147,13 +150,13 @@ export default class DataRequestController extends Controller {
 				isLatestMinorVersion
 			);
 
-			// 12. Build version selector
+			// 13. Build version selector
 			const requestedFullVersion = `Version ${requestedMajorVersion}.${
 				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
 			}`;
 			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree);
 
-			// 13. Return application form
+			// 14. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {

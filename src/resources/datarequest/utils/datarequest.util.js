@@ -171,7 +171,7 @@ const setQuestionState = (question, questionAlert, readOnly) => {
 	return question;
 };
 
-const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user, publisher, latestVersion = true) => {
+const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user, publisher, includeCompleted = true) => {
 	// 1. Use a try catch to prevent conditions where the combination of params lead to no question alert required
 	try {
 		// 2. Static mapping allows us to determine correct flag to show based on scenario (params)
@@ -184,7 +184,7 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 		requestedBy = matchCurrentUser(user, requestedBy);
 		updatedBy = matchCurrentUser(user, updatedBy);
 		// 5. Update the generic question alerts to match the scenario
-		const relevantActioner = !isNil(updatedBy) && latestVersion ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
+		const relevantActioner = !isNil(updatedBy) && includeCompleted ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
 		questionAlert.text = questionAlert.text.replace('#NAME#', relevantActioner);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',

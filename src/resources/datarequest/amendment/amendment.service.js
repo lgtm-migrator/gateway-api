@@ -244,11 +244,11 @@ export default class AmendmentService {
 		return amendmentIterations;
 	}
 
-	injectAmendments(accessRecord, userType, user, versionIndex, isLatestVersion = true) {
+	injectAmendments(accessRecord, userType, user, versionIndex, includeCompleted = true) {
 		let latestIteration;
 
-		// 1. Ensure minor versions exist
-		if (accessRecord.amendmentIterations.length === 0) {
+		// 1. Ensure minor versions exist and requested version index is valid
+		if (accessRecord.amendmentIterations.length === 0 || versionIndex < -1) {
 			return accessRecord;
 		}
 
@@ -276,7 +276,7 @@ export default class AmendmentService {
 		// 5. Update schema if there is a new iteration
 		const { publisher = 'Custodian' } = accessRecord;
 		if (!_.isNil(latestIteration)) {
-			accessRecord.jsonSchema = this.formatSchema(accessRecord.jsonSchema, latestIteration, userType, user, publisher, isLatestVersion);
+			accessRecord.jsonSchema = this.formatSchema(accessRecord.jsonSchema, latestIteration, userType, user, publisher, includeCompleted);
 		}
 
 		// 6. Filter out amendments that have not yet been exposed to the opposite party
@@ -289,7 +289,7 @@ export default class AmendmentService {
 		return accessRecord;
 	}
 
-	formatSchema(jsonSchema, amendmentIteration, userType, user, publisher, latestVersion = true) {
+	formatSchema(jsonSchema, amendmentIteration, userType, user, publisher, includeCompleted = true) {
 		const { questionAnswers = {}, dateSubmitted, dateReturned } = amendmentIteration;
 		if (_.isEmpty(questionAnswers)) {
 			return jsonSchema;
@@ -298,8 +298,9 @@ export default class AmendmentService {
 		for (let questionId in questionAnswers) {
 			const { questionSetId, answer } = questionAnswers[questionId];
 			// 1. Update parent/child navigation with flags for amendments
-			const amendmentCompleted = _.isNil(answer) || !latestVersion ? 'incomplete' : 'completed';
-			const iterationStatus = !_.isNil(dateSubmitted) && latestVersion ? 'submitted' : !_.isNil(dateReturned) ? 'returned' : 'inProgress';
+			const amendmentCompleted = _.isNil(answer) || !includeCompleted ? 'incomplete' : 'completed';
+			const iterationStatus =
+				!_.isNil(dateSubmitted) && includeCompleted ? 'submitted' : !_.isNil(dateReturned) ? 'returned' : 'inProgress';
 			jsonSchema = this.injectNavigationAmendment(jsonSchema, questionSetId, userType, amendmentCompleted, iterationStatus);
 			// 2. Update questions with alerts/actions
 			jsonSchema = this.injectQuestionAmendment(
@@ -311,13 +312,23 @@ export default class AmendmentService {
 				iterationStatus,
 				user,
 				publisher,
-				latestVersion
+				includeCompleted
 			);
 		}
 		return jsonSchema;
 	}
 
-	injectQuestionAmendment(jsonSchema, questionId, amendment, userType, completed, iterationStatus, user, publisher, latestVersion = true) {
+	injectQuestionAmendment(
+		jsonSchema,
+		questionId,
+		amendment,
+		userType,
+		completed,
+		iterationStatus,
+		user,
+		publisher,
+		includeCompleted = true
+	) {
 		const { questionSetId } = amendment;
 		// 1. Find question set containing question
 		const qsIndex = jsonSchema.questionSets.findIndex(qs => qs.questionSetId === questionSetId);
@@ -331,9 +342,17 @@ export default class AmendmentService {
 			return jsonSchema;
 		}
 		// 3. Create question alert object to highlight amendment
-		const questionAlert = datarequestUtil.buildQuestionAlert(userType, iterationStatus, completed, amendment, user, publisher, latestVersion);
+		const questionAlert = datarequestUtil.buildQuestionAlert(
+			userType,
+			iterationStatus,
+			completed,
+			amendment,
+			user,
+			publisher,
+			includeCompleted
+		);
 		// 4. Update question to contain amendment state
-		const readOnly = userType === constants.userTypes.CUSTODIAN || iterationStatus === 'submitted' || !latestVersion;
+		const readOnly = userType === constants.userTypes.CUSTODIAN || iterationStatus === 'submitted' || !includeCompleted;
 		question = datarequestUtil.setQuestionState(question, questionAlert, readOnly);
 		// 5. Update jsonSchema with updated question
 		jsonSchema.questionSets[qsIndex].questions = datarequestUtil.updateQuestion(questions, question);
@@ -489,7 +508,7 @@ export default class AmendmentService {
 		let index;
 		let unansweredAmendments = 0;
 		let answeredAmendments = 0;
-		if (!versionIndex) {
+		if (!versionIndex && versionIndex !== 0) {
 			index = this.getLatestAmendmentIterationIndex(accessRecord);
 		} else {
 			index = versionIndex;
