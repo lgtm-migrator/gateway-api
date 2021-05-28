@@ -1,5 +1,3 @@
-import { cloneDeep } from 'lodash';
-
 import Repository from '../base/repository';
 import { WorkflowModel } from './workflow.model';
 
@@ -40,7 +38,7 @@ export default class WorkflowRepository extends Repository {
 		return WorkflowModel.findOne(
 			{
 				_id: id,
-			},
+			}, //lgtm [js/sql-injection]
 			null,
 			options
 		)

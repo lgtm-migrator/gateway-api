@@ -1,5 +1,5 @@
 import { isEmpty, has, isNil, orderBy } from 'lodash';
-import moment, { version } from 'moment';
+import moment from 'moment';
 
 import helper from '../utilities/helper.util';
 import datarequestUtil from '../datarequest/utils/datarequest.util';
@@ -112,7 +112,7 @@ export default class DataRequestService {
 
 		// 2. Regex to validate and process the requested application version (e.g. 1, 2, 1.0, 1.1, 2.1, 3.11)
 		let fullMatch, requestedMajorVersion, requestedMinorVersion;
-		const regexMatch = requestedVersion.match(/^(\d+)$|^(\d+)\.?(\d+)$/);
+		const regexMatch = requestedVersion.match(/^(\d+)$|^(\d+)\.?(\d+)$/); // lgtm [js/polynomial-redos]
 		if (regexMatch) {
 			fullMatch = regexMatch[0];
 			requestedMajorVersion = regexMatch[1] || regexMatch[2];
@@ -126,7 +126,7 @@ export default class DataRequestService {
 			requestedMajorVersion = parseInt(requestedMajorVersion);
 			if (requestedMinorVersion) {
 				requestedMinorVersion = parseInt(requestedMinorVersion);
-			} else if (requestedMajorVersion && !requestedMinorVersion) {
+			} else if (requestedMajorVersion) {
 				requestedMinorVersion = 0;
 			}
 
@@ -285,7 +285,7 @@ export default class DataRequestService {
 		return accessRecord;
 	}
 
-	async uploadFiles(accessRecord, files, descriptions, ids, userId) {
+	async uploadFiles(accessRecord, files = [], descriptions, ids, userId) {
 		let fileArr = [];
 		// Check and see if descriptions and ids are an array
 		let descriptionArray = Array.isArray(descriptions);

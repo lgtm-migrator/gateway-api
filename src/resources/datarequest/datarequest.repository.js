@@ -60,7 +60,7 @@ export default class DataRequestRepository extends Repository {
 	}
 
 	getApplicationWithTeamById(id, options = {}) {
-		return DataRequestModel.findOne({ _id: id }, null, options).populate([
+		return DataRequestModel.findOne({ _id: id }, null, options).populate([ //lgtm [js/sql-injection]
 			{
 				path: 'datasets dataset authors',
 			},
@@ -187,7 +187,7 @@ export default class DataRequestRepository extends Repository {
 	}
 
 	updateApplicationById(id, data, options = {}) {
-		return DataRequestModel.findByIdAndUpdate(id, data, { ...options });
+		return DataRequestModel.findByIdAndUpdate(id, data, { ...options }); //lgtm [js/sql-injection]
 	}
 
 	replaceApplicationById(id, newDoc) {

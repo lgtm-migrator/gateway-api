@@ -97,7 +97,7 @@ export default class WorkflowController extends Controller {
 				});
 			}
 			// 2. Look up publisher and team
-			const publisherObj = await PublisherModel.findOne({
+			const publisherObj = await PublisherModel.findOne({ //lgtm [js/sql-injection]
 				_id: publisher,
 			}).populate({
 				path: 'team members',
