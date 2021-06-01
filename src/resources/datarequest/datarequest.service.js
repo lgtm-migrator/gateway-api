@@ -290,6 +290,8 @@ export default class DataRequestService {
 		// Check and see if descriptions and ids are an array
 		let descriptionArray = Array.isArray(descriptions);
 		let idArray = Array.isArray(ids);
+		if(!Array.isArray(files)) return [];
+		
 		// Process the files for scanning
 		for (let i = 0; i < files.length; i++) {
 			// Get description information
