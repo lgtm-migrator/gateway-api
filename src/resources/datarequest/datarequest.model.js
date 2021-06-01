@@ -1,10 +1,12 @@
 import { model, Schema } from 'mongoose';
+
 import { WorkflowSchema } from '../workflow/workflow.model';
 import constants from '../utilities/constants.util';
+import DataRequestClass from './datarequest.entity';
 
 const DataRequestSchema = new Schema(
 	{
-		version: Number,
+		majorVersion: { type: Number, default: 1},
 		userId: Number, // Main applicant
 		authorIds: [Number],
 		dataSetId: String,
@@ -18,6 +20,11 @@ const DataRequestSchema = new Schema(
 			type: String,
 			default: 'inProgress',
 			enum: ['inProgress', 'submitted', 'inReview', 'approved', 'rejected', 'approved with conditions', 'withdrawn'],
+		},
+		applicationType: {
+			type: String,
+			default: 'Initial',
+			enum: Object.values(constants.applicationTypes)
 		},
 		archived: {
 			Boolean,
@@ -80,7 +87,8 @@ const DataRequestSchema = new Schema(
 				questionAnswers: { type: Object, default: {} },
 			},
 		],
-		originId: { type: Schema.Types.ObjectId, ref: 'data_request' }
+		originId: { type: Schema.Types.ObjectId, ref: 'data_request' },
+		versionTree: { type: Object, default: {} }
 	},
 	{
 		timestamps: true,
@@ -122,5 +130,8 @@ DataRequestSchema.virtual('authors', {
 	foreignField: 'id',
 	localField: 'authorIds',
 });
+
+// Load entity class
+DataRequestSchema.loadClass(DataRequestClass);
 
 export const DataRequestModel = model('data_request', DataRequestSchema);

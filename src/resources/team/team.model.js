@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+
 import constants from '../utilities/constants.util';
 
 const TeamSchema = new Schema(
@@ -60,6 +61,7 @@ TeamSchema.virtual('users', {
 	ref: 'User',
 	foreignField: '_id',
 	localField: 'members.memberid',
+	match: { isServiceAccount: { $ne: true } }
 });
 
 export const TeamModel = model('Team', TeamSchema);
