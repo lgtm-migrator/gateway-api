@@ -200,17 +200,20 @@ export default class DataRequestController extends Controller {
 			const { id: requestingUserId, firstname, lastname } = req.user;
 
 			// 3. Find the matching record
-			let accessRecord = await this.dataRequestService.getApplicationByDatasets(arrDatasetIds, constants.applicationStatuses.INPROGRESS, requestingUserId);
+			let accessRecord = await this.dataRequestService.getApplicationByDatasets(
+				arrDatasetIds,
+				constants.applicationStatuses.INPROGRESS,
+				requestingUserId
+			);
 
 			// 4. Get datasets
 			const datasets = await this.dataRequestService.getDatasetsForApplicationByIds(arrDatasetIds);
 			const arrDatasetNames = datasets.map(dataset => dataset.name);
-			
+
 			// 5. If in progress application found prepare to return data
 			if (accessRecord) {
 				data = { ...accessRecord };
-			}
-			else {
+			} else {
 				if (_.isEmpty(datasets)) {
 					return res.status(500).json({ status: 'error', message: 'No datasets available.' });
 				}
@@ -293,7 +296,11 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 3. Check user type and authentication to submit application
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, requestingUserId, requestingUserObjectId);
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
@@ -584,7 +591,11 @@ export default class DataRequestController extends Controller {
 			const appToDelete = await this.dataRequestService.getApplicationWithTeamById(appIdToDelete, { lean: true });
 
 			// 3. Get the requesting users permission levels
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToDelete, requestingUserId, requestingUserObjectId);
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				appToDelete,
+				requestingUserId,
+				requestingUserObjectId
+			);
 
 			// 4. Return unauthorised message if the requesting user is not an applicant
 			if (!authorised || userType !== constants.userTypes.APPLICANT) {
@@ -643,19 +654,13 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 3. If invalid version requested to clone, return 404
-			const { isValidVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(
-				appToClone,
-				requestedVersion
-			);
+			const { isValidVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(appToClone, requestedVersion);
 			if (!isValidVersion) {
 				return res.status(404).json({ status: 'error', message: 'The requested application version could not be found.' });
 			}
 
 			// 4. Get requested amendment iteration details
-			const { versionIndex } = this.amendmentService.getAmendmentIterationDetailsByVersion(
-				appToClone,
-				requestedMinorVersion
-			);
+			const { versionIndex } = this.amendmentService.getAmendmentIterationDetailsByVersion(appToClone, requestedMinorVersion);
 
 			// 5. Get the requesting users permission levels
 			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, requestingUserId, requestingUserObjectId);
@@ -688,7 +693,11 @@ export default class DataRequestController extends Controller {
 					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
 				}
 				// Get permissions for application to clone into
-				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToCloneInto, requestingUserId, requestingUserObjectId);
+				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+					appToCloneInto,
+					requestingUserId,
+					requestingUserObjectId
+				);
 				//  Return unauthorised message if the requesting user is not authorised to the new application
 				if (!authorised || userType !== constants.userTypes.APPLICANT) {
 					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
@@ -696,11 +705,11 @@ export default class DataRequestController extends Controller {
 				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
 
 				// Save into existing record
-				clonedAccessRecord = await this.dataRequestService.updateApplicationById(appIdToCloneInto, clonedAccessRecord, { new: true }).catch(
-					err => {
+				clonedAccessRecord = await this.dataRequestService
+					.updateApplicationById(appIdToCloneInto, clonedAccessRecord, { new: true })
+					.catch(err => {
 						logger.logError(err, logCategory);
-					}
-				);
+					});
 			}
 			// 9. Create notifications
 			await this.createNotifications(
@@ -2280,6 +2289,130 @@ export default class DataRequestController extends Controller {
 					false
 				);
 				break;
+		}
+	}
+
+	// ###### CONTEXTUAL MESSAGING & NOTES #######
+
+	//PUT api/v1/data-access-request/:id/share
+	async updateSharedDARFlag(req, res) {
+		try {
+			const {
+				params: { id },
+			} = req;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+
+			let accessRecord = await this.dataRequestService.getApplicationById(id);
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
+			}
+
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			await this.dataRequestService.updateApplicationById(id, { isShared: true }).catch(err => {
+				logger.logError(err, logCategory);
+			});
+
+			return res.status(200).json({
+				status: 'success',
+			});
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the application',
+			});
+		}
+	}
+
+	//GET api/v1/data-access-request/:id/messages
+	async getMessages(req, res) {
+		try {
+			const {
+				params: { id },
+			} = req;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+
+			let accessRecord = await this.dataRequestService.getApplicationById(id);
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
+			}
+
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			//Messages to be shown for both applicant and custodian
+
+			//Applicant notes for only applicant
+
+			//Custodian notes for only custodians
+
+			return res.status(200).json({
+				status: 'success',
+			});
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the application',
+			});
+		}
+	}
+
+	//POST api/v1/data-access-request/:id/messages
+	async submitMessage(req, res) {
+		try {
+			const {
+				params: { id },
+			} = req;
+			const { messageType, messageBody } = req.body;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+
+			let accessRecord = await this.dataRequestService.getApplicationById(id);
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
+			}
+
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			//Messages to be shown for both applicant and custodian
+
+			//Applicant notes for only applicant
+
+			//Custodian notes for only custodians
+
+			return res.status(200).json({
+				status: 'success',
+			});
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the application',
+			});
 		}
 	}
 }

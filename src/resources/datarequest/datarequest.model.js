@@ -6,7 +6,7 @@ import DataRequestClass from './datarequest.entity';
 
 const DataRequestSchema = new Schema(
 	{
-		majorVersion: { type: Number, default: 1},
+		majorVersion: { type: Number, default: 1 },
 		userId: Number, // Main applicant
 		authorIds: [Number],
 		dataSetId: String,
@@ -24,7 +24,7 @@ const DataRequestSchema = new Schema(
 		applicationType: {
 			type: String,
 			default: 'Initial',
-			enum: Object.values(constants.applicationTypes)
+			enum: Object.values(constants.applicationTypes),
 		},
 		archived: {
 			Boolean,
@@ -88,7 +88,8 @@ const DataRequestSchema = new Schema(
 			},
 		],
 		originId: { type: Schema.Types.ObjectId, ref: 'data_request' },
-		versionTree: { type: Object, default: {} }
+		versionTree: { type: Object, default: {} },
+		isShared: { Boolean, default: false },
 	},
 	{
 		timestamps: true,
