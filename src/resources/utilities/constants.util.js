@@ -357,6 +357,7 @@ const _notificationTypes = {
 	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
 	DEADLINEWARNING: 'DeadlineWarning',
 	DEADLINEPASSED: 'DeadlinePassed',
+	APPLICATIONAMENDED: 'ApplicationAmended',
 	RETURNED: 'Returned',
 	MEMBERADDED: 'MemberAdded',
 	MEMBERREMOVED: 'MemberRemoved',

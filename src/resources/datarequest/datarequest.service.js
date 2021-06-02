@@ -6,6 +6,7 @@ import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
 import { processFile, fileStatus } from '../utilities/cloudStorage.util';
 import { amendmentService } from '../datarequest/amendment/dependency';
+import { application } from 'express';
 
 export default class DataRequestService {
 	constructor(dataRequestRepository) {
@@ -94,10 +95,17 @@ export default class DataRequestService {
 		};
 	}
 
-	async createApplication(data) {
+	async createApplication(data, applicationType = constants.applicationTypes.INITIAL) {
 		const application = await this.dataRequestRepository.createApplication(data);
-		application.projectId = helper.generateFriendlyId(application._id);
-		application.createMajorVersion(1);
+
+		if (applicationType === constants.applicationTypes.INITIAL) {
+			application.projectId = helper.generateFriendlyId(application._id);
+			application.createMajorVersion(1);
+		} else {
+			const versionNumber = application.findNextVersion();
+			application.createMajorVersion(versionNumber);
+		}
+
 		await this.dataRequestRepository.updateApplicationById(application._id, application);
 		return application;
 	}
@@ -263,6 +271,52 @@ export default class DataRequestService {
 		return updateObj;
 	}
 
+	async createAmendment(accessRecord) {
+		// TODO persist messages + private notes between applications (copy)
+		const applicationType = constants.applicationTypes.AMENDED;
+		const applicationStatus = constants.applicationStatuses.INPROGRESS;
+		
+		const {
+			userId,
+			authorIds,
+			datasetIds,
+			datasetTitles,
+			isCloneable,
+			projectId,
+			schemaId,
+			jsonSchema,
+			questionAnswers,
+			aboutApplication,
+			publisher,
+			formType,
+			files,
+			versionTree
+		} = accessRecord;
+
+		let amendedApplication = {
+			applicationType,
+			applicationStatus,
+			userId,
+			authorIds,
+			datasetIds,
+			datasetTitles,
+			isCloneable,
+			projectId,
+			schemaId,
+			jsonSchema,
+			questionAnswers,
+			aboutApplication,
+			publisher,
+			formType,
+			files,
+			versionTree
+		}
+
+		amendedApplication = await this.createApplication(amendedApplication, applicationType);
+
+		return amendedApplication;
+	}
+
 	async updateApplication(accessRecord, updateObj) {
 		// 1. Extract properties
 		let { applicationStatus, _id } = accessRecord;
@@ -288,11 +342,13 @@ export default class DataRequestService {
 	async uploadFiles(accessRecord, files = [], descriptions, ids, userId) {
 		let fileArr = [];
 		// Check and see if descriptions and ids are an array
-		let descriptionArray = Array.isArray(descriptions);
-		let idArray = Array.isArray(ids);
+		const descriptionArray = Array.isArray(descriptions);
+		const idArray = Array.isArray(ids);
+		const initialApplicationId = accessRecord.getInitialApplicationId();
 
 		// Process the files for scanning
-		for (let i = 0; i < files.length; i++) { //lgtm [js/type-confusion-through-parameter-tampering]
+		for (let i = 0; i < files.length; i++) {
+			//lgtm [js/type-confusion-through-parameter-tampering]
 			// Get description information
 			let description = descriptionArray ? descriptions[i] : descriptions;
 			// Get uniqueId
@@ -300,7 +356,7 @@ export default class DataRequestService {
 			// Remove - from uuidV4
 			let uniqueId = generatedId.replace(/-/gim, '');
 			// Send to db
-			const response = await processFile(files[i], accessRecord._id, uniqueId);
+			const response = await processFile(files[i], initialApplicationId, uniqueId);
 			// Deconstruct response
 			let { status } = response;
 			// Setup fileArr for mongoo
@@ -329,6 +385,14 @@ export default class DataRequestService {
 		});
 
 		return mediaFiles;
+	}
+
+	updateFileStatus(accessRecord, fileId, status) {
+		// 1. Get all major version Ids to update file status against
+		const versionIds = accessRecord.getRelatedVersionIds();
+
+		// 2. Update all applications with file status
+		this.dataRequestRepository.updateFileStatus(versionIds, fileId, status);
 	}
 
 	doInitialSubmission(accessRecord) {

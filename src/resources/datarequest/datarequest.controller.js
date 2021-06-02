@@ -200,17 +200,20 @@ export default class DataRequestController extends Controller {
 			const { id: requestingUserId, firstname, lastname } = req.user;
 
 			// 3. Find the matching record
-			let accessRecord = await this.dataRequestService.getApplicationByDatasets(arrDatasetIds, constants.applicationStatuses.INPROGRESS, requestingUserId);
+			let accessRecord = await this.dataRequestService.getApplicationByDatasets(
+				arrDatasetIds,
+				constants.applicationStatuses.INPROGRESS,
+				requestingUserId
+			);
 
 			// 4. Get datasets
 			const datasets = await this.dataRequestService.getDatasetsForApplicationByIds(arrDatasetIds);
 			const arrDatasetNames = datasets.map(dataset => dataset.name);
-			
+
 			// 5. If in progress application found prepare to return data
 			if (accessRecord) {
 				data = { ...accessRecord };
-			}
-			else {
+			} else {
 				if (_.isEmpty(datasets)) {
 					return res.status(500).json({ status: 'error', message: 'No datasets available.' });
 				}
@@ -293,7 +296,11 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 3. Check user type and authentication to submit application
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord, requestingUserId, requestingUserObjectId);
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
@@ -580,11 +587,15 @@ export default class DataRequestController extends Controller {
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 
-			// 2. Retrieve DAR to clone from database
+			// 2. Retrieve DAR to delete from database
 			const appToDelete = await this.dataRequestService.getApplicationWithTeamById(appIdToDelete, { lean: true });
 
 			// 3. Get the requesting users permission levels
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToDelete, requestingUserId, requestingUserObjectId);
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				appToDelete,
+				requestingUserId,
+				requestingUserObjectId
+			);
 
 			// 4. Return unauthorised message if the requesting user is not an applicant
 			if (!authorised || userType !== constants.userTypes.APPLICANT) {
@@ -643,19 +654,13 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 3. If invalid version requested to clone, return 404
-			const { isValidVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(
-				appToClone,
-				requestedVersion
-			);
+			const { isValidVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(appToClone, requestedVersion);
 			if (!isValidVersion) {
 				return res.status(404).json({ status: 'error', message: 'The requested application version could not be found.' });
 			}
 
 			// 4. Get requested amendment iteration details
-			const { versionIndex } = this.amendmentService.getAmendmentIterationDetailsByVersion(
-				appToClone,
-				requestedMinorVersion
-			);
+			const { versionIndex } = this.amendmentService.getAmendmentIterationDetailsByVersion(appToClone, requestedMinorVersion);
 
 			// 5. Get the requesting users permission levels
 			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToClone, requestingUserId, requestingUserObjectId);
@@ -688,7 +693,11 @@ export default class DataRequestController extends Controller {
 					return res.status(404).json({ status: 'error', message: 'Application to clone into not found.' });
 				}
 				// Get permissions for application to clone into
-				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(appToCloneInto, requestingUserId, requestingUserObjectId);
+				let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+					appToCloneInto,
+					requestingUserId,
+					requestingUserObjectId
+				);
 				//  Return unauthorised message if the requesting user is not authorised to the new application
 				if (!authorised || userType !== constants.userTypes.APPLICANT) {
 					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
@@ -696,11 +705,11 @@ export default class DataRequestController extends Controller {
 				clonedAccessRecord = await datarequestUtil.cloneIntoExistingApplication(appToClone, appToCloneInto);
 
 				// Save into existing record
-				clonedAccessRecord = await this.dataRequestService.updateApplicationById(appIdToCloneInto, clonedAccessRecord, { new: true }).catch(
-					err => {
+				clonedAccessRecord = await this.dataRequestService
+					.updateApplicationById(appIdToCloneInto, clonedAccessRecord, { new: true })
+					.catch(err => {
 						logger.logError(err, logCategory);
-					}
-				);
+					});
 			}
 			// 9. Create notifications
 			await this.createNotifications(
@@ -844,6 +853,95 @@ export default class DataRequestController extends Controller {
 		}
 	}
 
+	//POST api/v1/data-access-request/:id/amend
+	async createAmendment(req, res) {
+		try {
+			// 1. Get dataSetId from params
+			const {
+				params: { id },
+			} = req;
+			const { version: requestedVersion } = req.query;
+			const requestingUser = req.user;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+
+			// 2. Find the matching record and include attached datasets records with publisher details and workflow details
+			let accessRecord = await this.dataRequestService.getApplicationById(id);
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
+			}
+
+			// 3. Check if requesting user is custodian member or applicant/contributor
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 4. If invalid version requested, return 404
+			const { isValidVersion, requestedMajorVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(
+				accessRecord,
+				requestedVersion
+			);
+			if (!isValidVersion) {
+				return res.status(404).json({ status: 'error', message: 'The requested application version could not be found.' });
+			}
+
+			// 5. Check version is the latest version
+			const { isLatestMinorVersion } = this.amendmentService.getAmendmentIterationDetailsByVersion(accessRecord, requestedMinorVersion);
+			if (!isLatestMinorVersion) {
+				return res
+					.status(400)
+					.json({ status: 'error', message: 'This action can only be performed against the latest version of an approved application' });
+			}
+
+			// 6. Check application is in correct status
+			const { applicationStatus } = accessRecord;
+			if (
+				applicationStatus !== constants.applicationStatuses.APPROVED &&
+				applicationStatus !== constants.applicationStatuses.APPROVEDWITHCONDITIONS
+			) {
+				return res
+					.status(400)
+					.json({ status: 'error', message: 'This action can only be performed against an application that has been approved' });
+			}
+
+			// 7. Update question answers with modifications since original submission (minor version updates)
+			accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser);
+
+			// 8. Perform amend
+			newAccessRecord = await this.dataRequestService.createAmendment(newAccessRecord).catch(err => {
+				logger.logError(err, logCategory);
+			});
+
+			if (!newAccessRecord) {
+				return res.status(400).json({ status: 'error', message: 'Creating application amendment failed' });
+			}
+
+			// 9. Send notifications
+			await this.createNotifications(constants.notificationTypes.APPLICATIONAMENDED, {}, newAccessRecord, requestingUser);
+
+			// 10. Return successful response and version details
+			return res.status(201).json({
+				status: 'success',
+				data: {
+					_id: newAccessRecord._id,
+					newVersion: newAccessRecord.majorVersion,
+				},
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred opening this data access request application',
+			});
+		}
+	}
+
 	// ###### FILE UPLOAD #######
 
 	//POST api/v1/data-access-request/:id/upload
@@ -931,7 +1029,7 @@ export default class DataRequestController extends Controller {
 			} = req;
 
 			// 2. Get AccessRecord
-			const accessRecord = await this.dataRequestService.getFilesForApplicationById(id);
+			const accessRecord = await this.dataRequestService.getFilesForApplicationById(id, { lean: false });
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
 			}
@@ -950,10 +1048,11 @@ export default class DataRequestController extends Controller {
 			}
 			// 6. get the name of the file
 			let { name, fileId: dbFileId } = mediaFile;
-			// 7. get the file
-			await getFile(name, dbFileId, id);
+			// 7. get the files based on the initial application id (version 1)
+			const initialApplicationId = accessRecord.getInitialApplicationId();
+			await getFile(name, dbFileId, initialApplicationId);
 			// 8. send file back to user
-			return res.status(200).sendFile(`${process.env.TMPDIR}${id}/${dbFileId}_${name}`);
+			return res.status(200).sendFile(`${process.env.TMPDIR}${initialApplicationId}/${dbFileId}_${name}`);
 		} catch (err) {
 			// Return error response if something goes wrong
 			logger.logError(err, logCategory);
@@ -991,15 +1090,8 @@ export default class DataRequestController extends Controller {
 				return res.status(400).json({ status: 'error', message: 'File status not valid' });
 			}
 
-			//4. Get the file
-			const fileIndex = accessRecord.files.findIndex(file => file.fileId === fileId);
-			if (fileIndex === -1) return res.status(404).json({ status: 'error', message: 'File not found.' });
-
-			//5. Update the status
-			accessRecord.files[fileIndex].status = status;
-
-			//6. Write back into mongo
-			await accessRecord.save().catch(err => {
+			//4. Update all versions of application using version tree
+			await this.dataRequestService.updateFileStatus(accessRecord, fileId).catch(err => {
 				logger.logError(err, logCategory);
 			});
 
@@ -2199,9 +2291,8 @@ export default class DataRequestController extends Controller {
 				// 1. Create notifications
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully duplicated into a new form for ${newDatasetTitles.join(
-						','
-					)}, which can now be edited`,
+					`Your Data Access Request for ${datasetTitles} was successfully duplicated 
+					${_.isEmpty(newDatasetTitles) ? `from an existing form, which can now be edited` : `into a new form for ${newDatasetTitles.join(',')}, which can now be edited`}`,
 					'data access request',
 					newApplicationId
 				);
@@ -2279,6 +2370,9 @@ export default class DataRequestController extends Controller {
 					html,
 					false
 				);
+				break;
+			case constants.notificationTypes.APPLICATIONAMENDED:
+				// TODO application amended notifications
 				break;
 		}
 	}

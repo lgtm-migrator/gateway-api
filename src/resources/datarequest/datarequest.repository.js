@@ -2,6 +2,7 @@ import Repository from '../base/repository';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './schema/datarequest.schemas.model';
 import { Data as ToolModel } from '../tool/data.model';
+import { Next } from 'react-bootstrap/lib/Pagination';
 
 export default class DataRequestRepository extends Repository {
 	constructor() {
@@ -60,7 +61,8 @@ export default class DataRequestRepository extends Repository {
 	}
 
 	getApplicationWithTeamById(id, options = {}) {
-		return DataRequestModel.findOne({ _id: id }, null, options).populate([ //lgtm [js/sql-injection]
+		return DataRequestModel.findOne({ _id: id }, null, options).populate([
+			//lgtm [js/sql-injection]
 			{
 				path: 'datasets dataset authors',
 			},
@@ -211,6 +213,20 @@ export default class DataRequestRepository extends Repository {
 	}
 
 	syncRelatedApplications(applicationIds, versionTree) {
-		return DataRequestModel.updateMany({ _id: { $in: applicationIds }}, { $set: { versionTree }});
+		return DataRequestModel.updateMany({ _id: { $in: applicationIds } }, { $set: { versionTree } });
+	}
+
+	async updateFileStatus(versionIds, fileId, status) {
+		const majorVersions = DataRequestModel.find({ _id: { $in: [versionIds] } }).select({ files: 1 });
+
+		for(const version of majorVersions) {
+			const fileIndex = version.files.findIndex(file => file.fileId === fileId);
+
+			if(fileIndex === -1) continue;
+
+			version.files[fileIndex].status = status;
+			
+			await version.save();
+		}
 	}
 }
