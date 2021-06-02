@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { TopicModel } from './topic.model';
 import { Data as ToolModel } from '../tool/data.model';
 import _ from 'lodash';
+
 module.exports = {
 	buildRecipients: async (team, createdBy) => {
 		// 1. Cause error if no members found
@@ -56,7 +57,8 @@ module.exports = {
 						title = publisher;
 						subTitle = _.isEmpty(subTitle) ? datasetTitle : `${subTitle}, ${datasetTitle}`;
 						datasets.push({ datasetId: datasetid, publisher });
-						tags.push({ datasetId, name: subTitle, _id: relatedObjectIds[0], publisher });
+
+						tags.push({ datasetId: datasetid, name: datasetTitle, _id: relatedObjectIds[0], publisher });
 						break;
 					default:
 						break;
@@ -115,7 +117,6 @@ module.exports = {
 			if (topic.tags.length === 1) {
 				let { datasetId } = topic.datasets[0];
 				topic.tags = [{ name: topic.subTitle, _id: topic.relatedObjectIds[0], datasetId, publisher: topic.title }];
-				console.log(datasetId, topic.subTitle, topic.title);
 			}
 
 			return topic;
@@ -152,11 +153,9 @@ module.exports = {
 	},
 	// GET api/v1/topics
 	getTopics: async (req, res) => {
-		console.log(`get topics: ${req.user}`);
 		// check if user / publisher
 		try {
 			let { _id: userId } = req.user;
-			console.log(`get topics userId: ${userId}`);
 			const topics = await TopicModel.find({
 				recipients: { $elemMatch: { $eq: userId } },
 				status: 'active',

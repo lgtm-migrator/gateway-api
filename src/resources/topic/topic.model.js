@@ -73,8 +73,8 @@ const TopicSchema = new Schema(
 					type: String,
 				},
 				publisher: {
-					type: String
-				}
+					type: String,
+				},
 			},
 		],
 	},
@@ -96,7 +96,7 @@ TopicSchema.pre(/^find/, function (next) {
 		path: 'createdBy',
 		select: 'firstname lastname',
 		path: 'topicMessages',
-		select: 'messageDescription createdDate isRead _id readBy',
+		select: 'messageDescription firstMessage createdDate isRead _id readBy',
 		options: { sort: '-createdDate' },
 		populate: {
 			path: 'createdBy',
