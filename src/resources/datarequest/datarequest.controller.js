@@ -2545,7 +2545,7 @@ module.exports = {
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
 					`Your Data Access Request for ${datasetTitles} was successfully duplicated 
-					${_.isEmpty(newDatasetTitles) ? `from an existing form` : `into a new form for ${newDatasetTitles.join(',')}, which can now be edited`}`,
+					${_.isEmpty(newDatasetTitles) ? `from an existing form, which can now be edited` : `into a new form for ${newDatasetTitles.join(',')}, which can now be edited`}`,
 					'data access request',
 					newApplicationId
 				);
