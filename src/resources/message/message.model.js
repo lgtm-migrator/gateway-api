@@ -68,6 +68,9 @@ const MessageSchema = new Schema(
 		createdByName: {
 			type: Object,
 		},
+		firstMessage: {
+			type: Object,
+		},
 	},
 	{
 		toJSON: { virtuals: true },
