@@ -795,8 +795,8 @@ module.exports = {
 											accessRequestCost: dataset.questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
 											deliveryLeadTime: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
 											jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || [],
-											dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
-											dataController: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
+											dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
+											dataController: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
 										},
 										formatAndStandards: {
 											vocabularyEncodingScheme:
@@ -823,7 +823,7 @@ module.exports = {
 								let metadataQuality = await module.exports.buildMetadataQuality(dataset, datasetv2Object, dataset.pid);
 
 								// call filterCommercialUsage to determine commericalUse field only pass in v2 a
-								let commercialUse =  filtersService.computeCommericalUse({}, datasetv2Object);
+								let commercialUse = filtersService.computeCommericalUse({}, datasetv2Object);
 
 								let updatedDataset = await Data.findOneAndUpdate(
 									{ _id: id },

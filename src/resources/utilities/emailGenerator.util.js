@@ -226,6 +226,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
+	let gatewayAttributionPolicy = `We ask that use of the Innovation Gateway be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage 2020.'`;
 	let table = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -339,6 +340,11 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		}
 		table += `</table></td></tr>`;
 	}
+	table += `<tr>
+			<td align='left'>
+				<p style="font-size: 14px;">${gatewayAttributionPolicy}</p>
+			</td>
+		</tr>`;
 	table += ` </tbody></table></div>`;
 
 	return { html: table, jsonContent };
@@ -1579,8 +1585,8 @@ const _generateRemovedFromTeam = options => {
 	return body;
 };
 
-const _displayViewEmailNotifications = () => {
-	let link = `${process.env.homeURL}/account?tab=teamManagement&innertab=notifications`;
+const _displayViewEmailNotifications = publisherId => {
+	let link = `${process.env.homeURL}/account?tab=teamManagement&innertab=notifications&team=${publisherId}`;
 	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
             <tr>
               <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
@@ -1595,7 +1601,7 @@ const _formatEmails = emails => {
 };
 
 const _generateTeamNotificationEmail = options => {
-	let { managerName, notificationRemoved, emailAddresses, header, disabled } = options;
+	let { managerName, notificationRemoved, emailAddresses, header, disabled, publisherId } = options;
 	let formattedEmails = _formatEmails(emailAddresses);
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; max-width:700px; margin: 0 auto;">
@@ -1634,7 +1640,7 @@ const _generateTeamNotificationEmail = options => {
                       </tr>
                     </table>
                     ${disabled ? _generateTeamEmailRevert(notificationRemoved) : ''}
-                    ${_displayViewEmailNotifications()}
+                    ${_displayViewEmailNotifications(publisherId)}
                   </td>
                 </tr>
               </tbody>
