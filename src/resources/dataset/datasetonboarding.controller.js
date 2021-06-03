@@ -796,8 +796,8 @@ module.exports = {
 											accessRequestCost: dataset.questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
 											deliveryLeadTime: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
 											jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || [],
-											dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
-											dataController: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
+											dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
+											dataController: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
 										},
 										formatAndStandards: {
 											vocabularyEncodingScheme:
@@ -1094,10 +1094,20 @@ module.exports = {
 			if (item.match(regex)) {
 				observationQuestions.push({ key: item, value: dataset.questionAnswers[item] });
 			} else {
+				let value = !_.isString(dataset.questionAnswers[item])
+					? JSON.stringify(dataset.questionAnswers[item])
+					: dataset.questionAnswers[item];
+				if (
+					item === 'properties/provenance/temporal/startDate' ||
+					item === 'properties/provenance/temporal/endDate' ||
+					item === 'properties/provenance/temporal/distributionReleaseDate'
+				)
+					value = moment(value, 'DD/MM/YYYY').format('YYYY-MM-DD');
+
 				const newDatasetCatalogueItems = {
 					namespace: 'org.healthdatagateway',
 					key: item,
-					value: !_.isString(dataset.questionAnswers[item]) ? JSON.stringify(dataset.questionAnswers[item]) : dataset.questionAnswers[item],
+					value,
 				};
 				metadata.push(newDatasetCatalogueItems);
 			}
@@ -1329,6 +1339,8 @@ module.exports = {
 		metadataquality.publisher = v2Object.summary.publisher.memberOf + ' > ' + v2Object.summary.publisher.name;
 		metadataquality.title = v2Object.summary.title;
 
+		const cleanV2Object = module.exports.cleanV2Object(v2Object);
+
 		let completeness = [];
 		let totalCount = 0,
 			totalWeight = 0;
@@ -1339,88 +1351,75 @@ module.exports = {
 			if (parentKey === 'structuralMetadata') {
 				if (subKey === 'dataClassesCount') {
 					if (!_.isEmpty(dataset.structuralMetadata)) {
-						completeness.push({ value: 'structuralMetadata.dataClassesCount', weight, score: weight });
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'structuralMetadata.dataClassesCount', weight });
 				} else if (subKey === 'tableName') {
-					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.tableName))) {
-						completeness.push({ value: 'structuralMetadata.tableName', weight, score: weight });
+					if (!_.isEmpty(dataset.structuralMetadata.filter(data => !_.isEmpty(data.tableName)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'structuralMetadata.tableName', weight });
 				} else if (subKey === 'tableDescription') {
-					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.tableDescription))) {
-						completeness.push({ value: 'structuralMetadata.tableDescription', weight, score: weight });
+					if (!_.isEmpty(dataset.structuralMetadata.filter(data => !_.isEmpty(data.tableDescription)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'structuralMetadata.tableDescription', weight });
 				} else if (subKey === 'columnName') {
-					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.columnName))) {
-						completeness.push({ value: 'structuralMetadata.columnName', weight, score: weight });
+					if (!_.isEmpty(dataset.structuralMetadata.filter(data => !_.isEmpty(data.columnName)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'structuralMetadata.columnName', weight });
 				} else if (subKey === 'columnDescription') {
-					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.columnDescription))) {
-						completeness.push({ value: 'structuralMetadata.columnDescription', weight, score: weight });
+					if (!_.isEmpty(dataset.structuralMetadata.filter(data => !_.isEmpty(data.columnDescription)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'structuralMetadata.columnDescription', weight });
 				} else if (subKey === 'dataType') {
-					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.dataType))) {
-						completeness.push({ value: 'structuralMetadata.dataType', weight, score: weight });
+					if (!_.isEmpty(dataset.structuralMetadata.filter(data => !_.isEmpty(data.dataType)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'structuralMetadata.dataType', weight });
 				} else if (subKey === 'sensitive') {
-					if (_.isEmpty(dataset.structuralMetadata.filter(data => !data.sensitive))) {
-						completeness.push({ value: 'structuralMetadata.sensitive', weight, score: weight });
+					if (!_.isEmpty(dataset.structuralMetadata.filter(data => !_.isEmpty(data.sensitive)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'structuralMetadata.sensitive', weight });
 				}
 			} else if (parentKey === 'observation') {
 				if (subKey === 'observedNode') {
-					if (_.isEmpty(v2Object.observations.filter(data => !data.observedNode))) {
-						completeness.push({ value: 'observation.observedNode', weight, score: weight });
+					if (!_.isEmpty(cleanV2Object.observations.filter(data => !_.isEmpty(data.observedNode)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'observation.observedNode', weight });
 				} else if (subKey === 'measuredValue') {
-					if (_.isEmpty(v2Object.observations.filter(data => !data.measuredValue))) {
-						completeness.push({ value: 'observation.measuredValue', weight, score: weight });
+					if (!_.isEmpty(cleanV2Object.observations.filter(data => !_.isEmpty(data.measuredValue)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'observation.measuredValue', weight });
 				} else if (subKey === 'disambiguatingDescription') {
-					if (_.isEmpty(v2Object.observations.filter(data => !data.disambiguatingDescription))) {
-						completeness.push({ value: 'observation.disambiguatingDescription', weight, score: weight });
+					if (!_.isEmpty(cleanV2Object.observations.filter(data => !_.isEmpty(data.disambiguatingDescription)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'observation.disambiguatingDescription', weight });
 				} else if (subKey === 'observationDate') {
-					if (_.isEmpty(v2Object.observations.filter(data => !data.observationDate))) {
-						completeness.push({ value: 'observation.observationDate', weight, score: weight });
+					if (!_.isEmpty(cleanV2Object.observations.filter(data => !_.isEmpty(data.observationDate)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'observation.observationDate', weight });
 				} else if (subKey === 'measuredProperty') {
-					if (_.isEmpty(v2Object.observations.filter(data => !data.measuredProperty))) {
-						completeness.push({ value: 'observation.measuredProperty', weight, score: weight });
+					if (!_.isEmpty(cleanV2Object.observations.filter(data => !_.isEmpty(data.measuredProperty)))) {
 						totalCount++;
 						totalWeight += weight;
-					}
+					} else completeness.push({ value: 'observation.measuredProperty', weight });
 				}
 			} else {
-				let datasetValue = module.exports.getDatatsetValue(v2Object, key);
+				let datasetValue = module.exports.getDatatsetValue(cleanV2Object, key);
 
-				if (datasetValue) {
-					completeness.push({ value: datasetValue, weight, score: weight });
+				if (!_.isEmpty(datasetValue)) {
 					totalCount++;
 					totalWeight += weight;
 				} else {
-					completeness.push({ value: datasetValue, weight, score: 0 });
+					completeness.push({ key, weight });
 				}
 			}
 			//special rules around provenance.temporal.accrualPeriodicity = CONTINUOUS
@@ -1434,22 +1433,21 @@ module.exports = {
 		const ajv = new Ajv({ strict: false, allErrors: true });
 		addFormats(ajv);
 		const validate = ajv.compile(schema);
-		validate(v2Object);
+		validate(cleanV2Object);
 
 		let errors = [];
 		let errorCount = 0,
 			errorWeight = 0;
 
 		Object.entries(weights).forEach(([key, weight]) => {
+			let datasetValue = module.exports.getDatatsetValue(cleanV2Object, key);
 			let updatedKey = '/' + key.replace(/\./g, '/');
 
 			let errorIndex = Object.keys(validate.errors).find(key => validate.errors[key].instancePath === updatedKey);
-			if (errorIndex) {
-				errors.push({ value: key, scor: weight });
+			if (errorIndex && !_.isEmpty(datasetValue)) {
+				errors.push({ key, value: datasetValue, weight });
 				errorCount += 1;
 				errorWeight += weight;
-			} else {
-				errors.push({ value: key, scor: 0 });
 			}
 		});
 
@@ -1465,6 +1463,23 @@ module.exports = {
 		metadataquality.weighted_quality_rating = rating;
 
 		return metadataquality;
+	},
+
+	cleanV2Object(v2Object) {
+		let clonedV2Object = _.cloneDeep(v2Object);
+		//Change dates to ISO format
+		if (!_.isEmpty(clonedV2Object.provenance.temporal.startDate))
+			clonedV2Object.provenance.temporal.startDate = moment(clonedV2Object.provenance.temporal.startDate, 'DD/MM/YYYY').format(
+				'YYYY-MM-DD'
+			);
+		if (!_.isEmpty(clonedV2Object.provenance.temporal.endDate))
+			clonedV2Object.provenance.temporal.endDate = moment(clonedV2Object.provenance.temporal.endDate, 'DD/MM/YYYY').format('YYYY-MM-DD');
+		if (!_.isEmpty(clonedV2Object.provenance.temporal.distributionReleaseDate))
+			clonedV2Object.provenance.temporal.distributionReleaseDate = moment(
+				clonedV2Object.provenance.temporal.distributionReleaseDate,
+				'DD/MM/YYYY'
+			).format('YYYY-MM-DD');
+		return clonedV2Object;
 	},
 
 	getDatatsetValue(dataset, field) {
