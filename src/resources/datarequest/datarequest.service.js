@@ -277,7 +277,7 @@ export default class DataRequestService {
 		// TODO persist messages + private notes between applications (copy)
 		const applicationType = constants.submissionTypes.AMENDED;
 		const applicationStatus = constants.applicationStatuses.INPROGRESS;
-		
+
 		const {
 			userId,
 			authorIds,
@@ -288,7 +288,7 @@ export default class DataRequestService {
 			aboutApplication,
 			publisher,
 			files,
-			versionTree
+			versionTree,
 		} = accessRecord;
 
 		const { jsonSchema, _id: schemaId, isCloneable = false, formType } = await datarequestUtil.getLatestPublisherSchema(publisher);
@@ -308,8 +308,8 @@ export default class DataRequestService {
 			aboutApplication,
 			publisher,
 			formType,
-			files
-		}
+			files,
+		};
 
 		if (questionAnswers && Object.keys(questionAnswers).length > 0 && datarequestUtil.containsUserRepeatedSections(questionAnswers)) {
 			const updatedSchema = datarequestUtil.copyUserRepeatedSections(accessRecord, jsonSchema);
@@ -402,8 +402,10 @@ export default class DataRequestService {
 	}
 
 	doInitialSubmission(accessRecord) {
-		// 1. Update application to submitted status
-		accessRecord.submissionType = constants.submissionTypes.INITIAL;
+		// 1. Update application type and submitted status
+		if (!accessRecord.applicationType) {
+			accessRecord.applicationType = constants.submissionTypes.INITIAL;
+		}
 		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
 		// 2. Check if workflow/5 Safes based application, set final status date if status will never change again
 		if (has(accessRecord.toObject(), 'publisherObj')) {

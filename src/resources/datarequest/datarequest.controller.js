@@ -322,7 +322,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 6. Ensure a valid submission is taking place
-			if (_.isNil(accessRecord.submissionType)) {
+			if (_.isNil(accessRecord.applicationType)) {
 				return res.status(400).json({
 					status: 'error',
 					message: 'Application cannot be submitted as it has reached a final decision status.',
@@ -334,19 +334,21 @@ export default class DataRequestController extends Controller {
 				logger.logError(err, logCategory);
 			});
 
-			// 8. Send notifications and emails with amendments
+			// 8. Inject amendments from minor versions
 			savedAccessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser);
+
+			// 9. Calculate notification type to send
+			const notificationType = constants.submissionNotifications[accessRecord.applicationType];
+
 			await this.createNotifications(
-				accessRecord.submissionType === constants.submissionTypes.INITIAL
-					? constants.notificationTypes.SUBMITTED
-					: constants.notificationTypes.RESUBMITTED,
+				notificationType,
 				{},
 				accessRecord,
 				requestingUser
 			);
 
 			// 9. Start workflow process in Camunda if publisher requires it and it is the first submission
-			if (savedAccessRecord.workflowEnabled && savedAccessRecord.submissionType === constants.submissionTypes.INITIAL) {
+			if (savedAccessRecord.workflowEnabled && savedAccessRecord.applicationType === constants.submissionTypes.INITIAL) {
 				let {
 					publisherObj: { name: publisher },
 					dateSubmitted,
@@ -882,10 +884,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 4. If invalid version requested, return 404
-			const { isValidVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(
-				accessRecord,
-				requestedVersion
-			);
+			const { isValidVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(accessRecord, requestedVersion);
 			if (!isValidVersion) {
 				return res.status(404).json({ status: 'error', message: 'The requested application version could not be found.' });
 			}
@@ -924,10 +923,7 @@ export default class DataRequestController extends Controller {
 			// 9. Get amended application (new major version) with all details populated
 			newAccessRecord = await this.dataRequestService.getApplicationById(newAccessRecord._id);
 
-			// 10. Send notifications
-			await this.createNotifications(constants.notificationTypes.APPLICATIONAMENDED, {}, newAccessRecord, requestingUser);
-
-			// 11. Return successful response and version details
+			// 10. Return successful response and version details
 			return res.status(201).json({
 				status: 'success',
 				data: {
@@ -2295,7 +2291,11 @@ export default class DataRequestController extends Controller {
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
 					`Your Data Access Request for ${datasetTitles} was successfully duplicated 
-					${_.isEmpty(newDatasetTitles) ? `from an existing form, which can now be edited` : `into a new form for ${newDatasetTitles.join(',')}, which can now be edited`}`,
+					${
+						_.isEmpty(newDatasetTitles)
+							? `from an existing form, which can now be edited`
+							: `into a new form for ${newDatasetTitles.join(',')}, which can now be edited`
+					}`,
 					'data access request',
 					newApplicationId
 				);
@@ -2375,7 +2375,87 @@ export default class DataRequestController extends Controller {
 				);
 				break;
 			case constants.notificationTypes.APPLICATIONAMENDED:
-				// TODO application amended notifications
+				// 1. Create notifications
+				// Custodian notification
+				if (_.has(accessRecord.datasets[0], 'publisher.team.users')) {
+					// Retrieve all custodian user Ids to generate notifications
+					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
+					custodianUserIds = custodianManagers.map(user => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						custodianUserIds,
+						`A Data Access Request has been resubmitted with updates to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
+						'data access request',
+						accessRecord._id
+					);
+				} else {
+					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
+					custodianManagers = [{ email: dataCustodianEmail }];
+				}
+				// Applicant notification
+				await notificationBuilder.triggerNotificationMessage(
+					[accessRecord.userId],
+					`Your Data Access Request for ${datasetTitles} was successfully resubmitted with updates to ${publisher}`,
+					'data access request',
+					accessRecord._id
+				);
+				// Contributors/authors notification
+				if (!_.isEmpty(authors)) {
+					await notificationBuilder.triggerNotificationMessage(
+						accessRecord.authors.map(author => author.id),
+						`A Data Access Request you are contributing to for ${datasetTitles} was successfully resubmitted with updates to ${publisher} by ${firstname} ${lastname}`,
+						'data access request',
+						accessRecord._id
+					);
+				}
+				// 2. Send emails to custodian and applicant
+				// Create object to pass to email generator
+				options = {
+					userType: '',
+					userEmail: appEmail,
+					publisher,
+					datasetTitles,
+					userName: `${appFirstName} ${appLastName}`,
+				};
+				// Iterate through the recipient types
+				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
+					// Establish email context object
+					options = {
+						...options,
+						userType: emailRecipientType,
+						submissionType: constants.submissionTypes.RESUBMISSION,
+					};
+					// Build email template
+					({ html, jsonContent } = await emailGenerator.generateEmail(
+						aboutApplication,
+						questions,
+						pages,
+						questionPanels,
+						questionAnswers,
+						options
+					));
+					// Send emails to custodian team members who have opted in to email notifications
+					if (emailRecipientType === 'dataCustodian') {
+						emailRecipients = [...custodianManagers];
+						// Generate json attachment for external system integration
+						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
+						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
+						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+					} else {
+						// Send email to main applicant and contributors if they have opted in to email notifications
+						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
+					}
+					// Send email
+					if (!_.isEmpty(emailRecipients)) {
+						await emailGenerator.sendEmail(
+							emailRecipients,
+							constants.hdrukEmail,
+							`Data Access Request to ${publisher} for ${datasetTitles} has been updated with updates`,
+							html,
+							false,
+							attachments
+						);
+					}
+				}
 				break;
 		}
 	}

@@ -497,7 +497,7 @@ export default class AmendmentService {
 			return accessRecord;
 		}
 		// 2. Mark submission type as a resubmission later used to determine notification generation
-		accessRecord.submissionType = constants.submissionTypes.RESUBMISSION;
+		accessRecord.applicationType = constants.submissionTypes.RESUBMISSION;
 		accessRecord.submitAmendmentIteration(index, userId);
 		// 3. Return updated access record for saving
 		return accessRecord;
