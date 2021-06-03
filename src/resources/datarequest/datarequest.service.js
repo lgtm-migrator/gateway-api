@@ -95,18 +95,20 @@ export default class DataRequestService {
 		};
 	}
 
-	async createApplication(data, applicationType = constants.applicationTypes.INITIAL) {
-		const application = await this.dataRequestRepository.createApplication(data);
+	async createApplication(data, applicationType = constants.submissionTypes.INITIAL, versionTree = {}) {
+		let application = await this.dataRequestRepository.createApplication(data);
 
-		if (applicationType === constants.applicationTypes.INITIAL) {
+		if (applicationType === constants.submissionTypes.INITIAL) {
 			application.projectId = helper.generateFriendlyId(application._id);
 			application.createMajorVersion(1);
 		} else {
+			application.versionTree = versionTree;
 			const versionNumber = application.findNextVersion();
 			application.createMajorVersion(versionNumber);
 		}
 
-		await this.dataRequestRepository.updateApplicationById(application._id, application);
+		application = await this.dataRequestRepository.updateApplicationById(application._id, application);
+
 		return application;
 	}
 
@@ -273,7 +275,7 @@ export default class DataRequestService {
 
 	async createAmendment(accessRecord) {
 		// TODO persist messages + private notes between applications (copy)
-		const applicationType = constants.applicationTypes.AMENDED;
+		const applicationType = constants.submissionTypes.AMENDED;
 		const applicationStatus = constants.applicationStatuses.INPROGRESS;
 		
 		const {
@@ -281,17 +283,15 @@ export default class DataRequestService {
 			authorIds,
 			datasetIds,
 			datasetTitles,
-			isCloneable,
 			projectId,
-			schemaId,
-			jsonSchema,
 			questionAnswers,
 			aboutApplication,
 			publisher,
-			formType,
 			files,
 			versionTree
 		} = accessRecord;
+
+		const { jsonSchema, _id: schemaId, isCloneable = false, formType } = await datarequestUtil.getLatestPublisherSchema(publisher);
 
 		let amendedApplication = {
 			applicationType,
@@ -308,11 +308,17 @@ export default class DataRequestService {
 			aboutApplication,
 			publisher,
 			formType,
-			files,
-			versionTree
+			files
 		}
 
-		amendedApplication = await this.createApplication(amendedApplication, applicationType);
+		if (questionAnswers && Object.keys(questionAnswers).length > 0 && datarequestUtil.containsUserRepeatedSections(questionAnswers)) {
+			const updatedSchema = datarequestUtil.copyUserRepeatedSections(accessRecord, jsonSchema);
+			amendedApplication.jsonSchema = updatedSchema;
+		}
+
+		amendedApplication = await this.createApplication(amendedApplication, applicationType, versionTree);
+
+		await this.syncRelatedVersions(versionTree);
 
 		return amendedApplication;
 	}
@@ -414,7 +420,7 @@ export default class DataRequestService {
 		return accessRecord;
 	}
 
-	syncRelatedApplications(versionTree) {
+	syncRelatedVersions(versionTree) {
 		// 1. Extract all major version _ids denoted by an application type on each node in the version tree
 		const applicationIds = Object.keys(versionTree).reduce((arr, key) => {
 			if (versionTree[key].applicationType) {
@@ -423,6 +429,6 @@ export default class DataRequestService {
 			return arr;
 		}, []);
 		// 2. Update all related applications
-		this.dataRequestRepository.syncRelatedApplications(applicationIds, versionTree);
+		this.dataRequestRepository.syncRelatedVersions(applicationIds, versionTree);
 	}
 }

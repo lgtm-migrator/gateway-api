@@ -357,4 +357,7 @@ export default {
 	setQuestionState: setQuestionState,
 	cloneIntoExistingApplication: cloneIntoExistingApplication,
 	cloneIntoNewApplication: cloneIntoNewApplication,
+	getLatestPublisherSchema: getLatestPublisherSchema,
+	containsUserRepeatedSections: containsUserRepeatedSections,
+	copyUserRepeatedSections: copyUserRepeatedSections
 };

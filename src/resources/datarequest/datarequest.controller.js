@@ -318,7 +318,7 @@ export default class DataRequestController extends Controller {
 				accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED
 			) {
 				accessRecord = this.amendmentService.doResubmission(accessRecord, requestingUserObjectId.toString());
-				this.dataRequestService.syncRelatedApplications(accessRecord.versionTree);
+				await this.dataRequestService.syncRelatedVersions(accessRecord.versionTree);
 			}
 
 			// 6. Ensure a valid submission is taking place
@@ -882,7 +882,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 4. If invalid version requested, return 404
-			const { isValidVersion, requestedMajorVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(
+			const { isValidVersion, requestedMinorVersion } = this.dataRequestService.validateRequestedVersion(
 				accessRecord,
 				requestedVersion
 			);
@@ -913,7 +913,7 @@ export default class DataRequestController extends Controller {
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser);
 
 			// 8. Perform amend
-			newAccessRecord = await this.dataRequestService.createAmendment(newAccessRecord).catch(err => {
+			let newAccessRecord = await this.dataRequestService.createAmendment(accessRecord).catch(err => {
 				logger.logError(err, logCategory);
 			});
 
@@ -921,10 +921,13 @@ export default class DataRequestController extends Controller {
 				return res.status(400).json({ status: 'error', message: 'Creating application amendment failed' });
 			}
 
-			// 9. Send notifications
+			// 9. Get amended application (new major version) with all details populated
+			newAccessRecord = await this.dataRequestService.getApplicationById(newAccessRecord._id);
+
+			// 10. Send notifications
 			await this.createNotifications(constants.notificationTypes.APPLICATIONAMENDED, {}, newAccessRecord, requestingUser);
 
-			// 10. Return successful response and version details
+			// 11. Return successful response and version details
 			return res.status(201).json({
 				status: 'success',
 				data: {

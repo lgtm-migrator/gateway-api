@@ -2,7 +2,6 @@ import Repository from '../base/repository';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './schema/datarequest.schemas.model';
 import { Data as ToolModel } from '../tool/data.model';
-import { Next } from 'react-bootstrap/lib/Pagination';
 
 export default class DataRequestRepository extends Repository {
 	constructor() {
@@ -212,12 +211,19 @@ export default class DataRequestRepository extends Repository {
 		});
 	}
 
-	syncRelatedApplications(applicationIds, versionTree) {
-		return DataRequestModel.updateMany({ _id: { $in: applicationIds } }, { $set: { versionTree } });
+	async syncRelatedVersions(versionIds, versionTree) {
+		const majorVersions = await DataRequestModel.find().where('_id').in(versionIds).select({ versionTree: 1 });
+
+		for(const version of majorVersions) {
+
+			version.versionTree = versionTree;
+			
+			await version.save();
+		}
 	}
 
 	async updateFileStatus(versionIds, fileId, status) {
-		const majorVersions = DataRequestModel.find({ _id: { $in: [versionIds] } }).select({ files: 1 });
+		const majorVersions = await DataRequestModel.find({ _id: { $in: [versionIds] } }).select({ files: 1 });
 
 		for(const version of majorVersions) {
 			const fileIndex = version.files.findIndex(file => file.fileId === fileId);

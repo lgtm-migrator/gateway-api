@@ -184,7 +184,7 @@ export default class AmendmentService {
 		//	An empty submission date with a valid return date (added by Custodians returning the form) indicates applicants are active
 		const requestedAmendmentIteration = accessRecord.amendmentIterations[versionIndex];
 		if (requestedAmendmentIteration === _.last(accessRecord.amendmentIterations)) {
-			if (_.isUndefined(requestedAmendmentIteration.dateSubmitted) && !_.isUndefined(requestedAmendmentIteration.dateReturned)) {
+			if (!requestedAmendmentIteration || (_.isUndefined(requestedAmendmentIteration.dateSubmitted) && !_.isUndefined(requestedAmendmentIteration.dateReturned))) {
 				return constants.userTypes.APPLICANT;
 			} else {
 				return constants.userTypes.CUSTODIAN;

@@ -90,7 +90,7 @@ export const buildVersionTree = accessRecord => {
 		majorVersion,
 		versionTree = {},
 		amendmentIterations = [],
-		applicationType = constants.applicationTypes.INITIAL,
+		applicationType = constants.submissionTypes.INITIAL,
 	} = accessRecord;
 	const versionKey = majorVersion ? majorVersion.toString() : '1';
 
@@ -114,7 +114,7 @@ export const buildVersionTree = accessRecord => {
 
 	// 4. Create latest major version
 	const hasMinorVersions = amendmentIterations.length > 0;
-	const isInitial = applicationType === constants.applicationTypes.INITIAL;
+	const isInitial = applicationType === constants.submissionTypes.INITIAL;
 	const detailedTitle = `Version ${versionKey}.0${!hasMinorVersions && !isInitial ? ' (latest)' : ''}${
 		isInitial ? '' : ` | ${applicationType}`
 	}`;

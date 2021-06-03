@@ -24,7 +24,7 @@ const DataRequestSchema = new Schema(
 		applicationType: {
 			type: String,
 			default: 'Initial',
-			enum: Object.values(constants.applicationTypes)
+			enum: Object.values(constants.submissionTypes)
 		},
 		archived: {
 			Boolean,

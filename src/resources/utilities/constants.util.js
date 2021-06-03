@@ -382,13 +382,6 @@ const _applicationStatuses = {
 	WITHDRAWN: 'withdrawn',
 };
 
-const _applicationTypes = {
-	INITIAL: 'Initial',
-	AMENDED: 'Amendment',
-	EXTENDED: 'Extension',
-	RENEWAL: 'Renewal',
-};
-
 const _amendmentModes = {
 	ADDED: 'added',
 	REMOVED: 'removed',
@@ -399,6 +392,9 @@ const _submissionTypes = {
 	INPROGRESS: 'inProgress',
 	INITIAL: 'initial',
 	RESUBMISSION: 'resubmission',
+	AMENDED: 'amendment',
+	EXTENDED: 'extension',
+	RENEWAL: 'renewal',
 };
 
 const _formActions = {
@@ -468,7 +464,6 @@ export default {
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
 	notificationTypes: _notificationTypes,
-	applicationTypes: _applicationTypes,
 	applicationStatuses: _applicationStatuses,
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
