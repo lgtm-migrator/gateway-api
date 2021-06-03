@@ -150,7 +150,7 @@ export default class DataRequestService {
 		return { isValidVersion, requestedMajorVersion, requestedMinorVersion };
 	}
 
-	buildVersionHistory = versionTree => {
+	buildVersionHistory = (versionTree, applicationId, requestedVersion) => {
 		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
 			const { applicationId: _id, link, displayTitle, detailedTitle } = versionTree[versionKey];
 
@@ -160,6 +160,7 @@ export default class DataRequestService {
 				link,
 				displayTitle,
 				detailedTitle,
+				isCurrent: applicationId.toString() === _id.toString() && ((requestedVersion === versionKey || !requestedVersion))
 			};
 
 			arr = [...arr, version];

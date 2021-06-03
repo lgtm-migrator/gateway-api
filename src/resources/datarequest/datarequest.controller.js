@@ -45,7 +45,7 @@ export default class DataRequestController extends Controller {
 					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
 					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
 					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
-					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree);
+					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree, accessRecord._id);
 					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.APPLICANT);
 					return accessRecord;
 				})
@@ -151,10 +151,10 @@ export default class DataRequestController extends Controller {
 			);
 
 			// 13. Build version selector
-			const requestedFullVersion = `Version ${requestedMajorVersion}.${
+			const requestedFullVersion = `${requestedMajorVersion}.${
 				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
 			}`;
-			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree);
+			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree, accessRecord._id, requestedFullVersion);
 
 			// 14. Return application form
 			return res.status(200).json({
@@ -171,8 +171,7 @@ export default class DataRequestController extends Controller {
 					hasRecommended,
 					workflow,
 					files: accessRecord.files || [],
-					isLatestMinorVersion,
-					version: requestedFullVersion,
+					isLatestMinorVersion
 				},
 			});
 		} catch (err) {
