@@ -2,7 +2,6 @@ import express from 'express';
 import { Data } from '../tool/data.model';
 import { utils } from '../auth';
 import passport from 'passport';
-import { ROLES } from '../user/user.roles';
 import { getAllTools } from '../tool/data.repository';
 import { UserModel } from '../user/user.model';
 import mailchimpConnector from '../../services/mailchimp/mailchimp';
@@ -14,7 +13,7 @@ const inputSanitizer = require('../utilities/inputSanitizer');
 
 const router = express.Router();
 
-router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
 	let {
 		id,
 		firstname,
@@ -126,7 +125,7 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 // @router   PATCH /api/v1/person/profileComplete/:id
 // @desc     Set profileComplete to true
 // @access   Private
-router.patch('/profileComplete/:id', passport.authenticate('jwt'), async (req, res) => {
+router.patch('/profileComplete/:id', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
 	const id = req.params.id;
 	await Data.findOneAndUpdate({ id }, { profileComplete: true })
 		.then(response => {

@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { filtersService } from '../../filters/dependency';
 import { PublisherModel } from '../../publisher/publisher.model';
 import { metadataCatalogues, validateCatalogueParams } from '../dataset.util';
-import _ from 'lodash';
+import { isEmpty } from 'lodash';
 
 let metadataQualityList = [],
 	phenotypesList = [],
@@ -53,14 +53,16 @@ export async function updateExternalDatasetServices(services) {
 			for (const dataUtility of dataUtilityList.data) {
 				// we only hav dataUtility so will be only checking the score of allowable_uses
 				const dataset = await Data.findOne({ datasetid: dataUtility.id });
-				// deconstruct out datasetv2 if available
-				let { datasetv2 = {} } = dataset;
-				// set commercial use
-				dataset.commercialUse = filtersService.computeCommericalUse(dataUtility, datasetv2);
-				// set datautility
-				dataset.datasetfields.datautility = dataUtility;
-				// save dataset into db
-      	await dataset.save();
+				if (!isEmpty(dataset)) {
+					// deconstruct out datasetv2 if available
+					let { datasetv2 = {} } = dataset;
+					// set commercial use
+					dataset.commercialUse = filtersService.computeCommericalUse(dataUtility, datasetv2);
+					// set datautility
+					dataset.datasetfields.datautility = dataUtility;
+					// save dataset into db
+					await dataset.save();
+				}
 				// log details
 				//  console.log(`DatasetID is ${dataUtility.id} and metadata richness is ${dataUtility.metadata_richness}`);
 			}

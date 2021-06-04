@@ -1,4 +1,5 @@
 import { Data } from './data.model';
+import { cloneDeep } from 'lodash';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model';
 import { createDiscourseTopic } from '../discourse/discourse.service';
@@ -155,6 +156,7 @@ const editTool = async (req, res) => {
 			id: id,
 			name: name,
 			authors: authors,
+			type: type,
 		};
 
 		Data.findOneAndUpdate(
@@ -498,11 +500,11 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 async function storeNotificationsForAuthors(tool, toolOwner) {
 	//store messages to alert a user has been added as an author
 	const toolLink = process.env.homeURL + '/tool/' + tool.id;
-
-	//normal user
-	var toolCopy = JSON.parse(JSON.stringify(tool));
+	// clone deep the object tool take a deep clone of properties
+	let toolCopy = cloneDeep(tool);
 
 	toolCopy.authors.push(0);
+
 	asyncModule.eachSeries(toolCopy.authors, async author => {
 		let message = new MessagesModel();
 		message.messageType = 'author';
