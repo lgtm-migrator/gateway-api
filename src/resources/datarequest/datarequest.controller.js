@@ -2359,7 +2359,6 @@ export default class DataRequestController extends Controller {
 			//Messages to be shown for both applicant and custodian
 
 			//Applicant notes for only applicant
-
 			//Custodian notes for only custodians
 
 			return res.status(200).json({
