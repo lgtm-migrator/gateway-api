@@ -19,11 +19,13 @@ const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
-	constructor(dataRequestService, workflowService, amendmentService) {
+	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService) {
 		super(dataRequestService);
 		this.dataRequestService = dataRequestService;
 		this.workflowService = workflowService;
 		this.amendmentService = amendmentService;
+		this.topicService = topicService;
+		this.messageService = messageService;
 	}
 
 	// ###### APPLICATION CRUD OPERATIONS #######
@@ -150,13 +152,19 @@ export default class DataRequestController extends Controller {
 				isLatestMinorVersion
 			);
 
-			// 13. Build version selector
+			// 13. Inject message and note counts
+			accessRecord.jsonSchema = datarequestUtil.injectMessagesAndNotesCount(accessRecord.jsonSchema, userType);
+			//Get all messages
+			//Get notes if applicant
+			//Get notes if team
+
+			// 14. Build version selector
 			const requestedFullVersion = `Version ${requestedMajorVersion}.${
 				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
 			}`;
 			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree);
 
-			// 14. Return application form
+			// 15. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -2333,11 +2341,12 @@ export default class DataRequestController extends Controller {
 		}
 	}
 
-	//GET api/v1/data-access-request/:id/messages
+	//GET api/v1/data-access-request/:id/:messageType
 	async getMessages(req, res) {
 		try {
 			const {
 				params: { id },
+				query: { messageType, questionId },
 			} = req;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
@@ -2354,15 +2363,35 @@ export default class DataRequestController extends Controller {
 			);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} else if (
+				userType === constants.userTypes.APPLICANT &&
+				![constants.DARMessageTypes.DARNOTESAPPLICANT, constants.DARMessageTypes.DARMESSAGE].includes(messageType)
+			) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} else if (
+				userType === constants.userTypes.CUSTODIAN &&
+				![constants.DARMessageTypes.DARNOTESCUSTODIAN, constants.DARMessageTypes.DARMESSAGE].includes(messageType)
+			) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			//Messages to be shown for both applicant and custodian
+			const topic = await this.topicService.getTopicForDAR(id, questionId, messageType);
 
-			//Applicant notes for only applicant
-			//Custodian notes for only custodians
+			let messages = [];
+			if (!_.isEmpty(topic) && !_.isEmpty(topic.topicMessages)) {
+				for (let topicMessage of topic.topicMessages.reverse()) {
+					messages.push({
+						name: `${topicMessage.createdBy.firstname} ${topicMessage.createdBy.lastname}`,
+						date: moment(topicMessage.createdDate).format('D MMM YYYY HH:mm'),
+						content: topicMessage.messageDescription,
+						userType: topicMessage.userType,
+					});
+				}
+			}
 
 			return res.status(200).json({
 				status: 'success',
+				messages,
 			});
 		} catch (err) {
 			logger.logError(err, logCategory);
@@ -2379,7 +2408,7 @@ export default class DataRequestController extends Controller {
 			const {
 				params: { id },
 			} = req;
-			const { messageType, messageBody } = req.body;
+			const { questionId, messageType, messageBody } = req.body;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 
@@ -2395,13 +2424,27 @@ export default class DataRequestController extends Controller {
 			);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} else if (
+				userType === constants.userTypes.APPLICANT &&
+				![constants.DARMessageTypes.DARNOTESAPPLICANT, constants.DARMessageTypes.DARMESSAGE].includes(messageType)
+			) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} else if (
+				userType === constants.userTypes.CUSTODIAN &&
+				![constants.DARMessageTypes.DARNOTESCUSTODIAN, constants.DARMessageTypes.DARMESSAGE].includes(messageType)
+			) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			//Messages to be shown for both applicant and custodian
+			let topic = await this.topicService.getTopicForDAR(id, questionId, messageType);
 
-			//Applicant notes for only applicant
+			if (_.isEmpty(topic)) {
+				topic = await this.topicService.createTopicForDAR(id, questionId, messageType);
+			}
 
-			//Custodian notes for only custodians
+			await this.messageService.createMessageForDAR(messageBody, topic._id, requestingUserObjectId, userType);
+
+			//update message/note count in json
 
 			return res.status(200).json({
 				status: 'success',

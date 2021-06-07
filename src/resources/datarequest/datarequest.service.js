@@ -292,7 +292,8 @@ export default class DataRequestService {
 		let idArray = Array.isArray(ids);
 
 		// Process the files for scanning
-		for (let i = 0; i < files.length; i++) { //lgtm [js/type-confusion-through-parameter-tampering]
+		for (let i = 0; i < files.length; i++) {
+			//lgtm [js/type-confusion-through-parameter-tampering]
 			// Get description information
 			let description = descriptionArray ? descriptions[i] : descriptions;
 			// Get uniqueId

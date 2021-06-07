@@ -46,6 +46,10 @@ const MessageSchema = new Schema(
 			type: Schema.Types.ObjectId,
 			ref: 'User',
 		},
+		userType: {
+			type: String,
+			enum: ['applicant', 'custodian'],
+		},
 		createdDate: {
 			type: Date,
 			default: Date.now,

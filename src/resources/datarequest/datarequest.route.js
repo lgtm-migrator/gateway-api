@@ -7,7 +7,7 @@ import { param } from 'express-validator';
 import { logger } from '../utilities/logger';
 import DataRequestController from './datarequest.controller';
 import AmendmentController from './amendment/amendment.controller';
-import { dataRequestService, workflowService, amendmentService } from './dependency';
+import { dataRequestService, workflowService, amendmentService, topicService, messageService } from './dependency';
 
 const fs = require('fs');
 const path = './tmp';
@@ -21,7 +21,13 @@ const storage = multer.diskStorage({
 });
 const multerMid = multer({ storage: storage });
 const logCategory = 'Data Access Request';
-const dataRequestController = new DataRequestController(dataRequestService, workflowService, amendmentService);
+const dataRequestController = new DataRequestController(
+	dataRequestService,
+	workflowService,
+	amendmentService,
+	topicService,
+	messageService
+);
 const amendmentController = new AmendmentController(amendmentService, dataRequestService);
 const router = express.Router();
 
@@ -250,6 +256,36 @@ router.post(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Requesting a batch of amendments to a Data Access Request application' }),
 	(req, res) => amendmentController.requestAmendments(req, res)
+);
+
+// @route   PUT api/v1/data-access-request/:id/share
+// @desc    Update share flag for application
+// @access  Private - Applicant
+router.put(
+	'/:id/share',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Update share flag for application' }),
+	(req, res) => dataRequestController.updateSharedDARFlag(req, res)
+);
+
+// @route   GET api/v1/data-access-request/:id/messages
+// @desc    Get messages or notes for application
+// @access  Private - Applicant/Custodian Reviewer/Manager
+router.get(
+	'/:id/messages',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Get messages or notes for application' }),
+	(req, res) => dataRequestController.getMessages(req, res)
+);
+
+// @route   POST api/v1/data-access-request/:id/messages
+// @desc    Submitting a message or note
+// @access  Private - Applicant/Custodian Reviewer/Manager
+router.post(
+	'/:id/messages',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Submitting a message or note' }),
+	(req, res) => dataRequestController.submitMessage(req, res)
 );
 
 module.exports = router;

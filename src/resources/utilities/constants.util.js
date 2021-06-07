@@ -765,6 +765,12 @@ const _darPanelMapper = {
 	safeoutputs: 'Safe outputs',
 };
 
+const _DARMessageTypes = {
+	DARMESSAGE: 'DAR_Message',
+	DARNOTESAPPLICANT: 'DAR_Notes_Applicant',
+	DARNOTESCUSTODIAN: 'DAR_Notes_Custodian',
+};
+
 // </DAR related enums>
 
 // <Team related enums>
@@ -829,4 +835,5 @@ export default {
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
 	logTypes: _logTypes,
+	DARMessageTypes: _DARMessageTypes,
 };
