@@ -26,6 +26,7 @@ module.exports = {
 			let subTitle = '';
 			let datasets = [];
 			let tags = [];
+			let is5Safes = false;
 			const { createdBy, relatedObjectIds } = context;
 			// 1. Topic cannot be created without related object i.e. data/project/tool/paper
 			if (_.isEmpty(relatedObjectIds)) {
@@ -52,12 +53,13 @@ module.exports = {
 							name: datasetTitle,
 							datasetid = '',
 							datasetfields: { publisher },
+							is5Safes: isDataset5Safes = false,
 						} = tool;
 						// set title of topic which is publisher
 						title = publisher;
 						subTitle = _.isEmpty(subTitle) ? datasetTitle : `${subTitle}, ${datasetTitle}`;
 						datasets.push({ datasetId: datasetid, publisher });
-
+						is5Safes = isDataset5Safes;
 						tags.push({ datasetId: datasetid, name: datasetTitle, _id: relatedObjectIds[0], publisher });
 						break;
 					default:
@@ -92,6 +94,7 @@ module.exports = {
 				recipients,
 				datasets,
 				tags,
+				is5Safes,
 			});
 			// 9. Return created object
 			return topic;
