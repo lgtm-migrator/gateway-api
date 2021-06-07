@@ -28,7 +28,7 @@ export default class DataRequestClass extends Entity {
 	}
 
 	getInitialApplicationId() {
-		return this.versionTree['1'].applicationId;
+		return this.versionTree['1.0'].applicationId;
 	}
 
 	/**
@@ -92,7 +92,7 @@ export const buildVersionTree = accessRecord => {
 		amendmentIterations = [],
 		applicationType = constants.submissionTypes.INITIAL,
 	} = accessRecord;
-	const versionKey = majorVersion ? majorVersion.toString() : '1';
+	const versionKey = majorVersion ? majorVersion.toString() : '1.0';
 
 	// 3. Reverse iterate through amendment iterations and construct minor versions
 	let minorVersions = {};

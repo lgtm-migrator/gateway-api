@@ -23,7 +23,7 @@ const DataRequestSchema = new Schema(
 		},
 		applicationType: {
 			type: String,
-			default: 'Initial',
+			default: constants.submissionTypes.INITIAL,
 			enum: Object.values(constants.submissionTypes)
 		},
 		archived: {

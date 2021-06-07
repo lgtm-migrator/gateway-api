@@ -137,10 +137,13 @@ export default class DataRequestController extends Controller {
 			// 10. Inject completed update requests from previous version to the requested version e.g. 1.1 if 1.2 requested
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex - 1, true);
 
-			// 11. Inject updates from requested version e.g. 1.2
-			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex, isLatestMinorVersion);
+			// 11. Inject updates for current version
+			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex, true);
 
-			// 12. Append question actions depending on user type and application status
+			// 12. Inject updates from any unreleased version e.g. 1.2
+			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex + 1, isLatestMinorVersion, false);
+
+			// 13. Append question actions depending on user type and application status
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
 				jsonSchema,
 				userType,
@@ -150,13 +153,13 @@ export default class DataRequestController extends Controller {
 				isLatestMinorVersion
 			);
 
-			// 13. Build version selector
+			// 14. Build version selector
 			const requestedFullVersion = `${requestedMajorVersion}.${
 				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
 			}`;
 			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree, accessRecord._id, requestedFullVersion);
 
-			// 14. Return application form
+			// 15. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -400,9 +403,34 @@ export default class DataRequestController extends Controller {
 			const { unansweredAmendments = 0, answeredAmendments = 0, dirtySchema = false } = accessRecord;
 
 			if (dirtySchema) {
-				accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser);
+				// 6. Support for versioning
+				if (accessRecord.amendmentIterations.length > 0) {
+
+					// Detemine which versions to return
+					let currentVersionIndex;
+					let previousVersionIndex;
+					const unreleasedVersionIndex = accessRecord.amendmentIterations.findIndex(iteration => _.isNil(iteration.dateReturned));
+					
+					if(unreleasedVersionIndex === -1) {
+						currentVersionIndex = accessRecord.amendmentIterations.length -1;
+					} else {
+						currentVersionIndex = accessRecord.amendmentIterations.length -2;
+					}
+					previousVersionIndex = currentVersionIndex - 1;
+
+					// Inject updates from previous version
+					accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser, previousVersionIndex, true);
+
+					// Inject updates from current version
+					accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser, currentVersionIndex, true);
+
+					// Inject updates from possible unreleased version
+					if(unreleasedVersionIndex !== -1) {
+						accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser, unreleasedVersionIndex, true, false);
+					}
+				}
 			}
-			// 6. Return new data object
+			// 7. Return new data object
 			return res.status(200).json({
 				status: 'success',
 				unansweredAmendments,

@@ -36,6 +36,23 @@ const _teamNotificationTypesHuman = Object.freeze({
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
 
+const _questionActions = {
+	guidance: {
+		key: 'guidance',
+		icon: 'far fa-question-circle',
+		color: '#475da7',
+		toolTip: 'Guidance',
+		order: 1,
+	},
+	updates: {
+		key: 'requestAmendment',
+		icon: 'fas fa-exclamation-circle',
+		color: '#F0BB24',
+		toolTip: 'Request applicant updates answer',
+		order: 2,
+	},
+};
+
 const _userQuestionActions = {
 	custodian: {
 		reviewer: {
@@ -467,6 +484,7 @@ export default {
 	teamNotificationTypesHuman: _teamNotificationTypesHuman,
 	teamNotificationEmailContentTypes: _teamNotificationEmailContentTypes,
 	userQuestionActions: _userQuestionActions,
+	questionActions: _questionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
 	notificationTypes: _notificationTypes,

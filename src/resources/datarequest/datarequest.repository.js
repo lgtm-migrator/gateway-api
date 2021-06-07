@@ -15,7 +15,7 @@ export default class DataRequestRepository extends Repository {
 		return DataRequestModel.find({
 			$and: [{ ...query }, { $or: [{ userId }, { authorIds: userId }] }],
 		})
-			.select('-jsonSchema -questionAnswers -files')
+			.select('-jsonSchema -files')
 			.populate([{ path: 'mainApplicant', select: 'firstname lastname -id' }, { path: 'datasets' }])
 			.lean();
 	}

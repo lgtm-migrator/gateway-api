@@ -1,5 +1,6 @@
 import { DataRequestModel } from '../src/resources/datarequest/datarequest.model';
 import { buildVersionTree } from '../src/resources/datarequest/datarequest.entity';
+import constants from '../src/resources/utilities/constants.util';
 
 async function up() {
 	// 1. Add default application type to all applications
@@ -18,7 +19,7 @@ async function up() {
 			updateOne: {
 				filter: { _id },
 				update: {
-					applicationType: 'Initial',
+					applicationType: constants.submissionTypes.INITIAL,
 					majorVersion: 1.0,
 					version: undefined,
 					versionTree,

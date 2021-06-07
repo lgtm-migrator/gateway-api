@@ -35,7 +35,7 @@ export default class PublisherRepository extends Repository {
 
 	getPublisherDataAccessRequests(query) {
 		return DataRequestModel.find(query)
-			.select('-jsonSchema -questionAnswers -files')
+			.select('-jsonSchema -files')
 			.sort({ updatedAt: -1 })
 			.populate([
 				{

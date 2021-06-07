@@ -153,6 +153,7 @@ export default class DataRequestService {
 	buildVersionHistory = (versionTree, applicationId, requestedVersion) => {
 		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
 			const { applicationId: _id, link, displayTitle, detailedTitle } = versionTree[versionKey];
+			const isCurrent = applicationId.toString() === _id.toString() && (requestedVersion === versionKey || !requestedVersion);
 
 			const version = {
 				number: versionKey,
@@ -160,7 +161,7 @@ export default class DataRequestService {
 				link,
 				displayTitle,
 				detailedTitle,
-				isCurrent: applicationId.toString() === _id.toString() && ((requestedVersion === versionKey || !requestedVersion))
+				isCurrent,
 			};
 
 			arr = [...arr, version];
@@ -168,7 +169,21 @@ export default class DataRequestService {
 			return arr;
 		}, []);
 
-		return orderBy(unsortedVersions, ['number'], ['desc']);
+		const orderedVersions = orderBy(unsortedVersions, ['number'], ['desc']);
+
+		// If a current version is not found, this means an unpublished version is in progress with the Custodian, therefore we must select the previous available version
+		if (!orderedVersions.some(v => v.isCurrent)) {
+			const previousVersion = parseFloat(requestedVersion) - 0.1;
+			const previousVersionIndex = orderedVersions.findIndex(v => parseFloat(v.number).toFixed(1) === previousVersion.toFixed(1));
+			if (previousVersionIndex !== -1) {
+				orderedVersions[previousVersionIndex].isCurrent = true;
+			}
+			else {
+				orderedVersions[0].isCurrent = true;
+			}
+		}
+
+		return orderedVersions;
 	};
 
 	getProjectName(accessRecord) {
