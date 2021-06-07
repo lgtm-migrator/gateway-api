@@ -77,6 +77,10 @@ const TopicSchema = new Schema(
 				},
 			},
 		],
+		is5Safes: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	{
 		toJSON: { virtuals: true },
