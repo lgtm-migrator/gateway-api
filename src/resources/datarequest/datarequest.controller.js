@@ -212,9 +212,10 @@ export default class DataRequestController extends Controller {
 			const datasets = await this.dataRequestService.getDatasetsForApplicationByIds(arrDatasetIds);
 			const arrDatasetNames = datasets.map(dataset => dataset.name);
 
-			// 5. If in progress application found prepare to return data
+			// 5. If in progress application found use existing endpoint to handle logic to fetch and return
 			if (accessRecord) {
-				data = { ...accessRecord };
+				req.params.id = accessRecord._id;
+				return await this.getAccessRequestById(req, res);
 			} else {
 				if (_.isEmpty(datasets)) {
 					return res.status(500).json({ status: 'error', message: 'No datasets available.' });

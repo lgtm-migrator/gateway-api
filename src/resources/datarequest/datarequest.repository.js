@@ -55,7 +55,7 @@ export default class DataRequestRepository extends Repository {
 				},
 				{ path: 'files.owner', select: 'firstname lastname' },
 			])
-			.sort({ createdAt: 1 })
+			.sort({ createdAt: -1 })
 			.lean();
 	}
 
