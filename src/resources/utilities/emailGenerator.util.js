@@ -1838,6 +1838,45 @@ const _generateMetadataOnboardingRejected = options => {
 	return body;
 };
 
+const _generateMessageNotification = options => {
+	let { firstMessage, firstname, lastname, messageDescription, openMessagesLink } = options;
+
+	let body = `<div>
+						<img src="https://storage.googleapis.com/hdruk-gateway_prod-cms/web-assets/HDRUK_logo_colour.png" alt="HDR UK Logo" width="127" height="63" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 24px; margin-top: 24px;">
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+										${_.isEmpty(firstMessage) ? `New message from ${firstname} ${lastname}` : `Data access request enquiry from ${firstname} ${lastname}`}
+										</th>
+										</tr>
+										<tr>
+										<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+											<p>${messageDescription.replace(/\n/g, '<br />')}</p>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+									<tr style="width: 100%; text-align: left;">
+										<td style=" font-size: 14px; color: #3c3c3b; padding: 5px 5px; width: 50%; text-align: left; vertical-align: top;">
+											<a href=${openMessagesLink}>View Messages</a>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
 /**
  * [_sendEmail]
  *
@@ -1982,4 +2021,6 @@ export default {
 	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
 	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
+	//Messages
+	generateMessageNotification: _generateMessageNotification,
 };
