@@ -65,6 +65,8 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 					lastname: 1,
 					bio: 1,
 					authors: 1,
+					counter: { $ifNull: ['$counter', 0] },
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 				}
 			)
 				.populate([{ path: 'persons', options: { select: { id: 1, firstname: 1, lastname: 1 } } }])
@@ -72,29 +74,140 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 		} else if (!isNaN(id) && objectType === 'course') {
 			data = await Course.find(
 				{ id: parseInt(id) },
-				{ id: 1, type: 1, activeflag: 1, title: 1, provider: 1, courseOptions: 1, award: 1, domains: 1, tags: 1, description: 1 }
+				{
+					id: 1,
+					type: 1,
+					activeflag: 1,
+					title: 1,
+					provider: 1,
+					courseOptions: 1,
+					award: 1,
+					domains: 1,
+					tags: 1,
+					description: 1,
+					counter: { $ifNull: ['$counter', 0] },
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+				}
 			).lean();
 		} else {
+			const datasetRelatedResources = {
+				$lookup: {
+					from: 'tools',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [
+						{ $unwind: '$relatedObjects' },
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$eq: ['$relatedObjects.pid', '$$pid'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $group: { _id: null, count: { $sum: 1 } } },
+					],
+					as: 'relatedResourcesTools',
+				},
+			};
+
+			const datasetRelatedCourses = {
+				$lookup: {
+					from: 'course',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [
+						{ $unwind: '$relatedObjects' },
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$eq: ['$relatedObjects.pid', '$$pid'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $group: { _id: null, count: { $sum: 1 } } },
+					],
+					as: 'relatedResourcesCourses',
+				},
+			};
+
+			const datasetProjectFields = {
+				$project: {
+					id: 1,
+					datasetid: 1,
+					pid: 1,
+					type: 1,
+					activeflag: 1,
+					name: 1,
+					datasetv2: 1,
+					datasetfields: 1,
+					tags: 1,
+					description: 1,
+					counter: { $ifNull: ['$counter', 0] },
+					relatedresources: {
+						$add: [
+							{
+								$cond: {
+									if: { $eq: [{ $size: '$relatedResourcesTools' }, 0] },
+									then: 0,
+									else: { $first: '$relatedResourcesTools.count' },
+								},
+							},
+							{
+								$cond: {
+									if: { $eq: [{ $size: '$relatedResourcesCourses' }, 0] },
+									then: 0,
+									else: { $first: '$relatedResourcesCourses.count' },
+								},
+							},
+						],
+					},
+				},
+			};
+
 			// 1. Search for a dataset based on pid
-			data = await Data.find(
-				{ pid: id, activeflag: 'active' },
-				{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
-			).lean();
+			data = await Data.aggregate([
+				{ $match: { $and: [{ pid: id }, { activeflag: 'active' }] } },
+				datasetRelatedResources,
+				datasetRelatedCourses,
+				datasetProjectFields,
+			]);
+
 			// 2. If dataset not found search for a dataset based on datasetID
 			if (!data || data.length <= 0) {
 				data = await Data.find({ datasetid: objectId }, { datasetid: 1, pid: 1 }).lean();
 				// 3. Use retrieved dataset's pid to search by pid again
-				data = await Data.find(
-					{ pid: data[0].pid, activeflag: 'active' },
-					{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
-				).lean();
+				data = await Data.aggregate([
+					{ $match: { $and: [{ pid: data[0].pid }, { activeflag: 'active' }] } },
+					datasetRelatedResources,
+					datasetRelatedCourses,
+					datasetProjectFields,
+				]);
 			}
+
 			// 4. If dataset still not found search for deleted dataset by pid
 			if (!data || data.length <= 0) {
-				data = await Data.find(
-					{ pid: id, activeflag: 'archive' },
-					{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
-				).lean();
+				data = await Data.aggregate([
+					{ $match: { $and: [{ pid: id }, { activeflag: 'archive' }] } },
+					datasetRelatedResources,
+					datasetRelatedCourses,
+					datasetProjectFields,
+				]);
 			}
 		}
 

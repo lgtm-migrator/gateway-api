@@ -226,6 +226,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
+	let gatewayAttributionPolicy = `We ask that use of the Innovation Gateway be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage 2020.'`;
 	let table = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -339,6 +340,11 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		}
 		table += `</table></td></tr>`;
 	}
+	table += `<tr>
+			<td align='left'>
+				<p style="font-size: 14px;">${gatewayAttributionPolicy}</p>
+			</td>
+		</tr>`;
 	table += ` </tbody></table></div>`;
 
 	return { html: table, jsonContent };
@@ -1870,6 +1876,28 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 	}
 };
 
+/**
+ * [_sendIntroEmail]
+ *
+ * @desc    Send an intro Email upon user registration
+ * @param   {Object}  message to from, templateId
+ */
+const _sendIntroEmail = msg => {
+	// 1. Apply SendGrid API key from environment variable
+	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+	// 2. Send email using SendGrid
+	sgMail.send(msg, false, err => {
+		if (err) {
+			Sentry.addBreadcrumb({
+				category: 'SendGrid',
+				message: 'Sending email failed - Intro',
+				level: Sentry.Severity.Warning,
+			});
+			Sentry.captureException(err);
+		}
+	});
+};
+
 const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 	// 1. Generate HTML for unsubscribe link if allowed depending on context
 
@@ -1927,6 +1955,7 @@ const _generateAttachment = (filename, content, type) => {
 export default {
 	//General
 	sendEmail: _sendEmail,
+	sendIntroEmail: _sendIntroEmail,
 	generateEmailFooter: _generateEmailFooter,
 	generateAttachment: _generateAttachment,
 	//DAR

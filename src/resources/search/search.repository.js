@@ -306,6 +306,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
 	}
 
+
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
 	// Return data
