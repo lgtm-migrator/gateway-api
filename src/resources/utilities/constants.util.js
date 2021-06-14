@@ -36,6 +36,23 @@ const _teamNotificationTypesHuman = Object.freeze({
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
 
+const _questionActions = {
+	guidance: {
+		key: 'guidance',
+		icon: 'far fa-question-circle',
+		color: '#475da7',
+		toolTip: 'Guidance',
+		order: 1,
+	},
+	updates: {
+		key: 'requestAmendment',
+		icon: 'fas fa-exclamation-circle',
+		color: '#F0BB24',
+		toolTip: 'Request applicant updates answer',
+		order: 2,
+	},
+};
+
 const _userQuestionActions = {
 	custodian: {
 		reviewer: {
@@ -49,24 +66,46 @@ const _userQuestionActions = {
 				},
 			],
 			inReview: {
-				custodian: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
-				applicant: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
+				custodian: {
+					latestVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+					previousVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+				},
+				applicant: {
+					latestVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+					previousVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+				},
 			},
 			approved: [
 				{
@@ -116,31 +155,53 @@ const _userQuestionActions = {
 				},
 			],
 			inReview: {
-				custodian: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-					{
-						key: 'requestAmendment',
-						icon: 'fas fa-exclamation-circle',
-						color: '#F0BB24',
-						toolTip: 'Request applicant updates answer',
-						order: 2,
-					},
-				],
-				applicant: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
+				custodian: {
+					latestVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+						{
+							key: 'requestAmendment',
+							icon: 'fas fa-exclamation-circle',
+							color: '#F0BB24',
+							toolTip: 'Request applicant updates answer',
+							order: 2,
+						},
+					],
+					previousVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+				},
+				applicant: {
+					latestVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+					previousVersion: [
+						{
+							key: 'guidance',
+							icon: 'far fa-question-circle',
+							color: '#475da7',
+							toolTip: 'Guidance',
+							order: 1,
+						},
+					],
+				},
 			},
 			approved: [
 				{
@@ -313,6 +374,7 @@ const _notificationTypes = {
 	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
 	DEADLINEWARNING: 'DeadlineWarning',
 	DEADLINEPASSED: 'DeadlinePassed',
+	APPLICATIONAMENDED: 'ApplicationAmended',
 	RETURNED: 'Returned',
 	MEMBERADDED: 'MemberAdded',
 	MEMBERREMOVED: 'MemberRemoved',
@@ -347,6 +409,15 @@ const _submissionTypes = {
 	INPROGRESS: 'inProgress',
 	INITIAL: 'initial',
 	RESUBMISSION: 'resubmission',
+	AMENDED: 'amendment',
+	EXTENDED: 'extension',
+	RENEWAL: 'renewal',
+};
+
+const _submissionNotifications = {
+	[`${_submissionTypes.INITIAL}`]: _notificationTypes.SUBMITTED,
+	[`${_submissionTypes.RESUBMISSION}`]: _notificationTypes.RESUBMITTED,
+	[`${_submissionTypes.AMENDED}`]:_notificationTypes.APPLICATIONAMENDED
 };
 
 const _formActions = {
@@ -401,8 +472,8 @@ const _mailchimpSubscriptionStatuses = {
 
 const _logTypes = {
 	SYSTEM: 'System',
-	USER: 'User'
-}
+	USER: 'User',
+};
 
 export default {
 	userTypes: _userTypes,
@@ -413,6 +484,7 @@ export default {
 	teamNotificationTypesHuman: _teamNotificationTypesHuman,
 	teamNotificationEmailContentTypes: _teamNotificationEmailContentTypes,
 	userQuestionActions: _userQuestionActions,
+	questionActions: _questionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
 	notificationTypes: _notificationTypes,
@@ -426,5 +498,6 @@ export default {
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
-	logTypes: _logTypes
+	logTypes: _logTypes,
+	submissionNotifications: _submissionNotifications
 };
