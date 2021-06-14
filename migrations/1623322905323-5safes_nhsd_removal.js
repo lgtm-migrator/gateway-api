@@ -1,5 +1,7 @@
 import { PublisherModel } from '../src/resources/publisher/publisher.model';
 import { DataRequestSchemaModel } from '../src/resources/datarequest/datarequest.schemas.model';
+import { Data as ToolModel } from '../src/resources/tool/data.model';
+
 /**
  * Make any changes you need to make to the database here
  */
@@ -12,6 +14,8 @@ async function up() {
 	);
 
 	await DataRequestSchemaModel.findOneAndDelete({ publisher: 'ALLIANCE > NHS DIGITAL' });
+
+	await ToolModel.updateMany({ 'datasetfields.publisher': 'ALLIANCE > NHS DIGITAL' }, { $set: { is5Safes: false } });
 }
 
 /**
