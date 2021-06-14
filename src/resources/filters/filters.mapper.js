@@ -510,16 +510,16 @@ export const datasetFilters = [
 	},
 	{
 		id: 40,
-		label: 'Commerical use',
-		key: 'commercialUse',
-		dataPath: 'commercialUse',
+		label: 'Commercial use',
+		key: 'commericalUse',
+		dataPath: 'commericalUse',
 		type: 'boolean',
 		tooltip: null,
 		closed: true,
 		isSearchable: false,
 		selectedCount: 0,
-		filters: [{ id: 998, label: 'Consented for commerical uses', value: 'Consented for commerical uses', checked: false }],
-		highlighted: ['consented for commerical uses'],
+		filters: [{ id: 998, label: 'Consented for commercial uses', value: 'Consented for commercial uses', checked: false }],
+		highlighted: ['consented for commercial uses'],
 		beta: true
 	},
 ];
