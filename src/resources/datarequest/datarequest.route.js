@@ -252,4 +252,14 @@ router.post(
 	(req, res) => amendmentController.requestAmendments(req, res)
 );
 
+// @route   POST api/v1/data-access-request/:id/amend
+// @desc    Trigger amendment action on a data access request application, creating a new major version unlocked for editing
+// @access  Private - Applicant
+router.post(
+	'/:id/amend',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Triggering an amendment to a Data Access Request application' }),
+	(req, res) => dataRequestController.createAmendment(req, res)
+);
+
 module.exports = router;

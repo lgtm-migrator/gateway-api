@@ -36,6 +36,23 @@ const _teamNotificationTypesHuman = Object.freeze({
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
 
+const _questionActions = {
+	guidance: {
+		key: 'guidance',
+		icon: 'far fa-question-circle',
+		color: '#475da7',
+		toolTip: 'Guidance',
+		order: 1,
+	},
+	updates: {
+		key: 'requestAmendment',
+		icon: 'fas fa-exclamation-circle',
+		color: '#F0BB24',
+		toolTip: 'Request applicant updates answer',
+		order: 2,
+	},
+};
+
 const _userQuestionActions = {
 	custodian: {
 		reviewer: {
@@ -357,6 +374,7 @@ const _notificationTypes = {
 	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
 	DEADLINEWARNING: 'DeadlineWarning',
 	DEADLINEPASSED: 'DeadlinePassed',
+	APPLICATIONAMENDED: 'ApplicationAmended',
 	RETURNED: 'Returned',
 	MEMBERADDED: 'MemberAdded',
 	MEMBERREMOVED: 'MemberRemoved',
@@ -381,13 +399,6 @@ const _applicationStatuses = {
 	WITHDRAWN: 'withdrawn',
 };
 
-const _applicationTypes = {
-	INITIAL: 'Initial',
-	AMENDED: 'Amendment',
-	EXTENDED: 'Extension',
-	RENEWAL: 'Renewal',
-};
-
 const _amendmentModes = {
 	ADDED: 'added',
 	REMOVED: 'removed',
@@ -398,6 +409,15 @@ const _submissionTypes = {
 	INPROGRESS: 'inProgress',
 	INITIAL: 'initial',
 	RESUBMISSION: 'resubmission',
+	AMENDED: 'amendment',
+	EXTENDED: 'extension',
+	RENEWAL: 'renewal',
+};
+
+const _submissionNotifications = {
+	[`${_submissionTypes.INITIAL}`]: _notificationTypes.SUBMITTED,
+	[`${_submissionTypes.RESUBMISSION}`]: _notificationTypes.RESUBMITTED,
+	[`${_submissionTypes.AMENDED}`]:_notificationTypes.APPLICATIONAMENDED
 };
 
 const _formActions = {
@@ -464,10 +484,10 @@ export default {
 	teamNotificationTypesHuman: _teamNotificationTypesHuman,
 	teamNotificationEmailContentTypes: _teamNotificationEmailContentTypes,
 	userQuestionActions: _userQuestionActions,
+	questionActions: _questionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
 	notificationTypes: _notificationTypes,
-	applicationTypes: _applicationTypes,
 	applicationStatuses: _applicationStatuses,
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
@@ -479,4 +499,5 @@ export default {
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
 	logTypes: _logTypes,
+	submissionNotifications: _submissionNotifications
 };

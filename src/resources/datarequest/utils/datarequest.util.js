@@ -8,18 +8,23 @@ import dynamicForm from '../../utilities/dynamicForms/dynamicForm.util';
 const repeatedSectionRegex = /_[a-zA-Z|\d]{5}$/gm;
 
 const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '', activeParty, isLatestMinorVersion = true) => {
-	let formattedSchema = {};
-	const version = isLatestMinorVersion ? 'latestVersion' : 'previousVersion';
-	if (userType === constants.userTypes.CUSTODIAN) {
-		if (applicationStatus === constants.applicationStatuses.INREVIEW) {
-			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus][activeParty][version] };
-		} else {
-			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus]};
-		}
-	} else {
-		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][applicationStatus] };
+	if (
+		userType === constants.userTypes.CUSTODIAN &&
+		applicationStatus === constants.applicationStatuses.INREVIEW &&
+		activeParty === constants.userTypes.CUSTODIAN &&
+		role === constants.roleTypes.MANAGER &&
+		isLatestMinorVersion
+	)
+		return {
+			...jsonSchema,
+			questionActions: [constants.questionActions.guidance, constants.questionActions.updates],
+		};
+	else {
+		return {
+			...jsonSchema,
+			questionActions: [constants.questionActions.guidance],
+		};
 	}
-	return formattedSchema;
 };
 
 const getUserPermissionsForApplication = (application, userId, _id) => {
@@ -56,30 +61,18 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 };
 
 const extractApplicantNames = questionAnswers => {
-	let fullnames = [],
-		autoCompleteLookups = { fullname: ['email'] };
-	// spread questionAnswers to new var
-	let qa = { ...questionAnswers };
-	// get object keys of questionAnswers
-	let keys = Object.keys(qa);
-	// loop questionAnswer keys
-	for (const key of keys) {
-		// get value of key
-		let value = qa[key];
-		// split the key up for unique purposes
-		let [qId] = key.split('_');
-		// check if key in lookup
-		let lookup = autoCompleteLookups[`${qId}`];
-		// if key exists and it has an object do relevant data setting
-		if (typeof lookup !== 'undefined' && typeof value === 'object') {
-			switch (qId) {
-				case 'fullname':
-					fullnames.push(value.name);
-					break;
-			}
+	const fullNameQuestions = ['safepeopleprimaryapplicantfullname', 'safepeopleotherindividualsfullname'];
+	const fullNames = [];
+
+	if (isNil(questionAnswers)) return fullNames;
+
+	Object.keys(questionAnswers).forEach(key => {
+		if (fullNameQuestions.some(q => key.includes(q))) {
+			fullNames.push(questionAnswers[key]);
 		}
-	}
-	return fullnames;
+	});
+
+	return fullNames;
 };
 
 const findQuestion = (questionsArr, questionId) => {
@@ -183,8 +176,21 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 		// 4. Update audit fields to 'you' if the action was performed by the current user
 		requestedBy = matchCurrentUser(user, requestedBy);
 		updatedBy = matchCurrentUser(user, updatedBy);
+		let relevantActioner;
 		// 5. Update the generic question alerts to match the scenario
-		const relevantActioner = !isNil(updatedBy) && includeCompleted ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
+		if (userType === constants.userTypes.CUSTODIAN)
+			if (iterationStatus === 'inProgress' || iterationStatus === 'returned' || !includeCompleted) {
+				relevantActioner = requestedBy;
+			} else {
+				relevantActioner = updatedBy;
+			}
+		else if (userType === constants.userTypes.APPLICANT) {
+			if (!isNil(updatedBy) && includeCompleted) {
+				relevantActioner = updatedBy;
+			} else {
+				relevantActioner = publisher;
+			}
+		}
 		questionAlert.text = questionAlert.text.replace('#NAME#', relevantActioner);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',
@@ -247,7 +253,7 @@ const cloneIntoNewApplication = async (appToClone, context) => {
 		aboutApplication: {},
 		amendmentIterations: [],
 		applicationStatus: constants.applicationStatuses.INPROGRESS,
-		originId: _id
+		originId: _id,
 	};
 
 	// 4. Extract and append any user repeated sections from the original form
@@ -292,7 +298,7 @@ const copyUserRepeatedSections = (appToClone, schemaToUpdate) => {
 	repeatedQuestionIds.forEach(qId => {
 		// 3. Skip if question has already been copied in by a previous clone operation
 		let questionExists = questionSets.some(qS => !isNil(dynamicForm.findQuestionRecursive(qS.questions, qId)));
-		if(questionExists) {
+		if (questionExists) {
 			return;
 		}
 		// 4. Split question id to get original id and unique suffix
@@ -300,7 +306,7 @@ const copyUserRepeatedSections = (appToClone, schemaToUpdate) => {
 		// 5. Find the question in the new schema
 		questionSets.forEach(qS => {
 			// 6. Check if related group has already been copied in by this clone operation
-			if(copiedQuestionSuffixes.includes(uniqueSuffix)) {
+			if (copiedQuestionSuffixes.includes(uniqueSuffix)) {
 				return;
 			}
 			let question = dynamicForm.findQuestionRecursive(qS.questions, questionId);
@@ -320,22 +326,25 @@ const insertUserRepeatedSections = (questionSets, questionSet, schemaToUpdate, u
 	const { questionSetId, questions } = questionSet;
 	// 1. Determine if question is repeatable via a question set or question group
 	const repeatQuestionsId = `add-${questionSetId}`;
-	if(questionSets.some(qS => qS.questionSetId === repeatQuestionsId)) {
+	if (questionSets.some(qS => qS.questionSetId === repeatQuestionsId)) {
 		// 2. Replicate question set
 		let duplicateQuestionSet = dynamicForm.duplicateQuestionSet(repeatQuestionsId, schemaToUpdate, uniqueSuffix);
 		schemaToUpdate = dynamicForm.insertQuestionSet(repeatQuestionsId, duplicateQuestionSet, schemaToUpdate);
 	} else {
 		// 2. Find and replicate the question group
 		let duplicateQuestionsButton = dynamicForm.findQuestionRecursive(questions, repeatQuestionsId);
-		if(duplicateQuestionsButton) {
-			const { questionId, input: { questionIds, separatorText } } = duplicateQuestionsButton;
+		if (duplicateQuestionsButton) {
+			const {
+				questionId,
+				input: { questionIds, separatorText },
+			} = duplicateQuestionsButton;
 			let duplicateQuestions = dynamicForm.duplicateQuestions(questionSetId, questionIds, separatorText, schemaToUpdate, uniqueSuffix);
 			schemaToUpdate = dynamicForm.insertQuestions(questionSetId, questionId, duplicateQuestions, schemaToUpdate);
 		}
 	}
 	// 3. Return updated schema
 	return schemaToUpdate;
-}
+};
 
 const extractRepeatedQuestionIds = questionAnswers => {
 	// 1. Reduce original question answers to only answers relating to repeating sections
@@ -357,4 +366,7 @@ export default {
 	setQuestionState: setQuestionState,
 	cloneIntoExistingApplication: cloneIntoExistingApplication,
 	cloneIntoNewApplication: cloneIntoNewApplication,
+	getLatestPublisherSchema: getLatestPublisherSchema,
+	containsUserRepeatedSections: containsUserRepeatedSections,
+	copyUserRepeatedSections: copyUserRepeatedSections,
 };

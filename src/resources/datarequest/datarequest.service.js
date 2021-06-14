@@ -6,6 +6,9 @@ import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
 import { processFile, fileStatus } from '../utilities/cloudStorage.util';
 import { amendmentService } from '../datarequest/amendment/dependency';
+import teamController from '../team/team.controller';
+
+const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestService {
 	constructor(dataRequestRepository) {
@@ -94,11 +97,20 @@ export default class DataRequestService {
 		};
 	}
 
-	async createApplication(data) {
-		const application = await this.dataRequestRepository.createApplication(data);
-		application.projectId = helper.generateFriendlyId(application._id);
-		application.createMajorVersion(1);
-		await this.dataRequestRepository.updateApplicationById(application._id, application);
+	async createApplication(data, applicationType = constants.submissionTypes.INITIAL, versionTree = {}) {
+		let application = await this.dataRequestRepository.createApplication(data);
+
+		if (applicationType === constants.submissionTypes.INITIAL) {
+			application.projectId = helper.generateFriendlyId(application._id);
+			application.createMajorVersion(1);
+		} else {
+			application.versionTree = versionTree;
+			const versionNumber = application.findNextVersion();
+			application.createMajorVersion(versionNumber);
+		}
+
+		application = await this.dataRequestRepository.updateApplicationById(application._id, application);
+
 		return application;
 	}
 
@@ -140,9 +152,10 @@ export default class DataRequestService {
 		return { isValidVersion, requestedMajorVersion, requestedMinorVersion };
 	}
 
-	buildVersionHistory = versionTree => {
+	buildVersionHistory = (versionTree, applicationId, requestedVersion) => {
 		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
 			const { applicationId: _id, link, displayTitle, detailedTitle } = versionTree[versionKey];
+			const isCurrent = applicationId.toString() === _id.toString() && (requestedVersion === versionKey || !requestedVersion);
 
 			const version = {
 				number: versionKey,
@@ -150,6 +163,7 @@ export default class DataRequestService {
 				link,
 				displayTitle,
 				detailedTitle,
+				isCurrent,
 			};
 
 			arr = [...arr, version];
@@ -157,7 +171,20 @@ export default class DataRequestService {
 			return arr;
 		}, []);
 
-		return orderBy(unsortedVersions, ['number'], ['desc']);
+		const orderedVersions = orderBy(unsortedVersions, ['number'], ['desc']);
+
+		// If a current version is not found, this means an unpublished version is in progress with the Custodian, therefore we must select the previous available version
+		if (!orderedVersions.some(v => v.isCurrent)) {
+			const previousVersion = parseFloat(requestedVersion) - 0.1;
+			const previousVersionIndex = orderedVersions.findIndex(v => parseFloat(v.number).toFixed(1) === previousVersion.toFixed(1));
+			if (previousVersionIndex !== -1) {
+				orderedVersions[previousVersionIndex].isCurrent = true;
+			} else {
+				orderedVersions[0].isCurrent = true;
+			}
+		}
+
+		return orderedVersions;
 	};
 
 	getProjectName(accessRecord) {
@@ -263,6 +290,56 @@ export default class DataRequestService {
 		return updateObj;
 	}
 
+	async createAmendment(accessRecord) {
+		// TODO persist messages + private notes between applications (copy)
+		const applicationType = constants.submissionTypes.AMENDED;
+		const applicationStatus = constants.applicationStatuses.INPROGRESS;
+
+		const {
+			userId,
+			authorIds,
+			datasetIds,
+			datasetTitles,
+			projectId,
+			questionAnswers,
+			aboutApplication,
+			publisher,
+			files,
+			versionTree,
+		} = accessRecord;
+
+		const { jsonSchema, _id: schemaId, isCloneable = false, formType } = await datarequestUtil.getLatestPublisherSchema(publisher);
+
+		let amendedApplication = {
+			applicationType,
+			applicationStatus,
+			userId,
+			authorIds,
+			datasetIds,
+			datasetTitles,
+			isCloneable,
+			projectId,
+			schemaId,
+			jsonSchema,
+			questionAnswers,
+			aboutApplication,
+			publisher,
+			formType,
+			files,
+		};
+
+		if (questionAnswers && Object.keys(questionAnswers).length > 0 && datarequestUtil.containsUserRepeatedSections(questionAnswers)) {
+			const updatedSchema = datarequestUtil.copyUserRepeatedSections(accessRecord, jsonSchema);
+			amendedApplication.jsonSchema = updatedSchema;
+		}
+
+		amendedApplication = await this.createApplication(amendedApplication, applicationType, versionTree);
+
+		await this.syncRelatedVersions(versionTree);
+
+		return amendedApplication;
+	}
+
 	async updateApplication(accessRecord, updateObj) {
 		// 1. Extract properties
 		let { applicationStatus, _id } = accessRecord;
@@ -288,11 +365,13 @@ export default class DataRequestService {
 	async uploadFiles(accessRecord, files = [], descriptions, ids, userId) {
 		let fileArr = [];
 		// Check and see if descriptions and ids are an array
-		let descriptionArray = Array.isArray(descriptions);
-		let idArray = Array.isArray(ids);
+		const descriptionArray = Array.isArray(descriptions);
+		const idArray = Array.isArray(ids);
+		const initialApplicationId = accessRecord.getInitialApplicationId();
 
 		// Process the files for scanning
-		for (let i = 0; i < files.length; i++) { //lgtm [js/type-confusion-through-parameter-tampering]
+		for (let i = 0; i < files.length; i++) {
+			//lgtm [js/type-confusion-through-parameter-tampering]
 			// Get description information
 			let description = descriptionArray ? descriptions[i] : descriptions;
 			// Get uniqueId
@@ -300,7 +379,7 @@ export default class DataRequestService {
 			// Remove - from uuidV4
 			let uniqueId = generatedId.replace(/-/gim, '');
 			// Send to db
-			const response = await processFile(files[i], accessRecord._id, uniqueId);
+			const response = await processFile(files[i], initialApplicationId, uniqueId);
 			// Deconstruct response
 			let { status } = response;
 			// Setup fileArr for mongoo
@@ -331,9 +410,19 @@ export default class DataRequestService {
 		return mediaFiles;
 	}
 
+	updateFileStatus(accessRecord, fileId, status) {
+		// 1. Get all major version Ids to update file status against
+		const versionIds = accessRecord.getRelatedVersionIds();
+
+		// 2. Update all applications with file status
+		this.dataRequestRepository.updateFileStatus(versionIds, fileId, status);
+	}
+
 	doInitialSubmission(accessRecord) {
-		// 1. Update application to submitted status
-		accessRecord.submissionType = constants.submissionTypes.INITIAL;
+		// 1. Update application type and submitted status
+		if (!accessRecord.applicationType) {
+			accessRecord.applicationType = constants.submissionTypes.INITIAL;
+		}
 		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
 		// 2. Check if workflow/5 Safes based application, set final status date if status will never change again
 		if (has(accessRecord.toObject(), 'publisherObj')) {
@@ -350,7 +439,53 @@ export default class DataRequestService {
 		return accessRecord;
 	}
 
-	syncRelatedApplications(versionTree) {
+	async doAmendSubmission(accessRecord, description) {
+		// 1. Amend submission goes straight into in review rather than submitted
+		accessRecord.applicationStatus = constants.applicationStatuses.INREVIEW;
+		accessRecord.submissionDescription = description;
+
+		// 2. Set submission and start review date as now
+		const dateSubmitted = new Date();
+		accessRecord.dateReviewStart = dateSubmitted;
+		accessRecord.dateSubmitted = dateSubmitted;
+		accessRecord.upadtedAt = dateSubmitted;
+
+		// 3. Start submission review process for Camunda workflow
+		let {
+			publisherObj: { name: publisher },
+		} = accessRecord;
+		let bpmContext = {
+			dateSubmitted,
+			applicationStatus: constants.applicationStatuses.SUBMITTED,
+			publisher,
+			businessKey: accessRecord._id.toString(),
+		};
+		await bpmController.postStartPreReview(bpmContext);
+
+		// 4. Call Camunda controller to get pre-review process
+		const managers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
+		const response = await bpmController.getProcess(accessRecord._id.toString());
+		const { data = {} } = response;
+		if (!isEmpty(data)) {
+			const [obj] = data;
+			const { id: taskId } = obj;
+			const bpmContext = {
+				taskId,
+				applicationStatus: constants.applicationStatuses.INREVIEW,
+				managerId: managers[0]._id.toString(),
+				publisher,
+				notifyManager: 'P999D',
+			};
+
+			// 5. Call Camunda controller to start manager review process
+			await bpmController.postStartManagerReview(bpmContext);
+		}
+
+		// 6. Return updated access record for saving
+		return accessRecord;
+	}
+
+	syncRelatedVersions(versionTree) {
 		// 1. Extract all major version _ids denoted by an application type on each node in the version tree
 		const applicationIds = Object.keys(versionTree).reduce((arr, key) => {
 			if (versionTree[key].applicationType) {
@@ -359,6 +494,6 @@ export default class DataRequestService {
 			return arr;
 		}, []);
 		// 2. Update all related applications
-		this.dataRequestRepository.syncRelatedApplications(applicationIds, versionTree);
+		this.dataRequestRepository.syncRelatedVersions(applicationIds, versionTree);
 	}
 }
