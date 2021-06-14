@@ -6,7 +6,9 @@ import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
 import { processFile, fileStatus } from '../utilities/cloudStorage.util';
 import { amendmentService } from '../datarequest/amendment/dependency';
-import { application } from 'express';
+import teamController from '../team/team.controller';
+
+const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestService {
 	constructor(dataRequestRepository) {
@@ -177,8 +179,7 @@ export default class DataRequestService {
 			const previousVersionIndex = orderedVersions.findIndex(v => parseFloat(v.number).toFixed(1) === previousVersion.toFixed(1));
 			if (previousVersionIndex !== -1) {
 				orderedVersions[previousVersionIndex].isCurrent = true;
-			}
-			else {
+			} else {
 				orderedVersions[0].isCurrent = true;
 			}
 		}
@@ -435,6 +436,52 @@ export default class DataRequestService {
 		const dateSubmitted = new Date();
 		accessRecord.dateSubmitted = dateSubmitted;
 		// 3. Return updated access record for saving
+		return accessRecord;
+	}
+
+	async doAmendSubmission(accessRecord, description) {
+		// 1. Amend submission goes straight into in review rather than submitted
+		accessRecord.applicationStatus = constants.applicationStatuses.INREVIEW;
+		accessRecord.submissionDescription = description;
+
+		// 2. Set submission and start review date as now
+		const dateSubmitted = new Date();
+		accessRecord.dateReviewStart = dateSubmitted;
+		accessRecord.dateSubmitted = dateSubmitted;
+		accessRecord.upadtedAt = dateSubmitted;
+
+		// 3. Start submission review process for Camunda workflow
+		let {
+			publisherObj: { name: publisher },
+		} = accessRecord;
+		let bpmContext = {
+			dateSubmitted,
+			applicationStatus: constants.applicationStatuses.SUBMITTED,
+			publisher,
+			businessKey: accessRecord._id.toString(),
+		};
+		await bpmController.postStartPreReview(bpmContext);
+
+		// 4. Call Camunda controller to get pre-review process
+		const managers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
+		const response = await bpmController.getProcess(accessRecord._id.toString());
+		const { data = {} } = response;
+		if (!isEmpty(data)) {
+			const [obj] = data;
+			const { id: taskId } = obj;
+			const bpmContext = {
+				taskId,
+				applicationStatus: constants.applicationStatuses.INREVIEW,
+				managerId: managers[0]._id.toString(),
+				publisher,
+				notifyManager: 'P999D',
+			};
+
+			// 5. Call Camunda controller to start manager review process
+			await bpmController.postStartManagerReview(bpmContext);
+		}
+
+		// 6. Return updated access record for saving
 		return accessRecord;
 	}
 

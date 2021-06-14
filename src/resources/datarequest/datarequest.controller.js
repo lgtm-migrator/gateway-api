@@ -141,7 +141,14 @@ export default class DataRequestController extends Controller {
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex, true);
 
 			// 12. Inject updates from any unreleased version e.g. 1.2
-			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex + 1, isLatestMinorVersion, false);
+			accessRecord = this.amendmentService.injectAmendments(
+				accessRecord,
+				userType,
+				requestingUser,
+				versionIndex + 1,
+				isLatestMinorVersion,
+				false
+			);
 
 			// 13. Append question actions depending on user type and application status
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
@@ -174,7 +181,7 @@ export default class DataRequestController extends Controller {
 					hasRecommended,
 					workflow,
 					files: accessRecord.files || [],
-					isLatestMinorVersion
+					isLatestMinorVersion,
 				},
 			});
 		} catch (err) {
@@ -290,6 +297,7 @@ export default class DataRequestController extends Controller {
 			const requestingUser = req.user;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
+			const { description = '' } = req.body;
 
 			// 2. Find the relevant data request application
 			let accessRecord = await this.dataRequestService.getApplicationToSubmitById(id);
@@ -315,12 +323,20 @@ export default class DataRequestController extends Controller {
 
 			// 5. Perform either initial submission or resubmission depending on application status
 			if (accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
-				accessRecord = this.dataRequestService.doInitialSubmission(accessRecord);
+				switch(accessRecord.applicationType) {
+					case constants.submissionTypes.AMENDED:
+						accessRecord = await this.dataRequestService.doAmendSubmission(accessRecord, description);
+						break;
+					case constants.submissionTypes.INITIAL:
+					default:
+						accessRecord = await this.dataRequestService.doInitialSubmission(accessRecord);
+						break;
+				}
 			} else if (
 				accessRecord.applicationStatus === constants.applicationStatuses.INREVIEW ||
 				accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED
 			) {
-				accessRecord = this.amendmentService.doResubmission(accessRecord, requestingUserObjectId.toString());
+				accessRecord = await this.amendmentService.doResubmission(accessRecord, requestingUserObjectId.toString());
 				await this.dataRequestService.syncRelatedVersions(accessRecord.versionTree);
 			}
 
@@ -343,12 +359,7 @@ export default class DataRequestController extends Controller {
 			// 9. Calculate notification type to send
 			const notificationType = constants.submissionNotifications[accessRecord.applicationType];
 
-			await this.createNotifications(
-				notificationType,
-				{},
-				accessRecord,
-				requestingUser
-			);
+			await this.createNotifications(notificationType, {}, accessRecord, requestingUser);
 
 			// 9. Start workflow process in Camunda if publisher requires it and it is the first submission
 			if (savedAccessRecord.workflowEnabled && savedAccessRecord.applicationType === constants.submissionTypes.INITIAL) {
@@ -406,28 +417,46 @@ export default class DataRequestController extends Controller {
 			if (dirtySchema) {
 				// 6. Support for versioning
 				if (accessRecord.amendmentIterations.length > 0) {
-
 					// Detemine which versions to return
 					let currentVersionIndex;
 					let previousVersionIndex;
 					const unreleasedVersionIndex = accessRecord.amendmentIterations.findIndex(iteration => _.isNil(iteration.dateReturned));
-					
-					if(unreleasedVersionIndex === -1) {
-						currentVersionIndex = accessRecord.amendmentIterations.length -1;
+
+					if (unreleasedVersionIndex === -1) {
+						currentVersionIndex = accessRecord.amendmentIterations.length - 1;
 					} else {
-						currentVersionIndex = accessRecord.amendmentIterations.length -2;
+						currentVersionIndex = accessRecord.amendmentIterations.length - 2;
 					}
 					previousVersionIndex = currentVersionIndex - 1;
 
 					// Inject updates from previous version
-					accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser, previousVersionIndex, true);
+					accessRecord = this.amendmentService.injectAmendments(
+						accessRecord,
+						constants.userTypes.APPLICANT,
+						requestingUser,
+						previousVersionIndex,
+						true
+					);
 
 					// Inject updates from current version
-					accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser, currentVersionIndex, true);
+					accessRecord = this.amendmentService.injectAmendments(
+						accessRecord,
+						constants.userTypes.APPLICANT,
+						requestingUser,
+						currentVersionIndex,
+						true
+					);
 
 					// Inject updates from possible unreleased version
-					if(unreleasedVersionIndex !== -1) {
-						accessRecord = this.amendmentService.injectAmendments(accessRecord, constants.userTypes.APPLICANT, requestingUser, unreleasedVersionIndex, true, false);
+					if (unreleasedVersionIndex !== -1) {
+						accessRecord = this.amendmentService.injectAmendments(
+							accessRecord,
+							constants.userTypes.APPLICANT,
+							requestingUser,
+							unreleasedVersionIndex,
+							true,
+							false
+						);
 					}
 				}
 			}

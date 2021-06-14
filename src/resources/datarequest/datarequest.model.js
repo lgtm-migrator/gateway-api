@@ -26,6 +26,9 @@ const DataRequestSchema = new Schema(
 			default: constants.submissionTypes.INITIAL,
 			enum: Object.values(constants.submissionTypes)
 		},
+		submissionDescription: {
+			type: String
+		},
 		archived: {
 			Boolean,
 			default: false,
