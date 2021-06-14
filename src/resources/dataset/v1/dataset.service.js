@@ -3,14 +3,15 @@ import { MetricsData } from '../../stats/metrics.model';
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { v4 as uuidv4 } from 'uuid';
+import { filtersService } from '../../filters/dependency';
 import { PublisherModel } from '../../publisher/publisher.model';
 import { metadataCatalogues, validateCatalogueParams } from '../dataset.util';
-import { has } from 'lodash';
+import { has, isEmpty } from 'lodash';
 
 let metadataQualityList = [],
 	phenotypesList = [],
 	dataUtilityList = [],
-	onboardedCustodians = [],
+	dataAccessRequestCustodians = [],
 	datasetsMDCList = [],
 	datasetsMDCIDs = [],
 	counter = 0;
@@ -50,13 +51,20 @@ export async function updateExternalDatasetServices(services) {
 				});
 
 			for (const dataUtility of dataUtilityList.data) {
-				await Data.findOneAndUpdate(
-					{ datasetid: dataUtility.id },
-					{
-						'datasetfields.datautility': dataUtility,
-					}
-				);
-				console.log(`DatasetID is ${dataUtility.id} and metadata richness is ${dataUtility.metadata_richness}`);
+				// we only hav dataUtility so will be only checking the score of allowable_uses
+				const dataset = await Data.findOne({ datasetid: dataUtility.id });
+				if (!isEmpty(dataset)) {
+					// deconstruct out datasetv2 if available
+					let { datasetv2 = {} } = dataset;
+					// set commercial use
+					dataset.commercialUse = filtersService.computeCommericalUse(dataUtility, datasetv2);
+					// set datautility
+					dataset.datasetfields.datautility = dataUtility;
+					// save dataset into db
+					await dataset.save();
+				}
+				// log details
+				//  console.log(`DatasetID is ${dataUtility.id} and metadata richness is ${dataUtility.metadata_richness}`);
 			}
 		}
 	}
@@ -71,7 +79,7 @@ export async function updateExternalDatasetServices(services) {
  * @param 	{Number} 			limit 				The maximum number of datasets to import from each catalogue requested
  */
 export async function importCatalogues(cataloguesToImport, override = false, limit) {
-	onboardedCustodians = await getCustodians();
+	dataAccessRequestCustodians = await getDataAccessRequestCustodians();
 	for (const catalogue in metadataCatalogues) {
 		if (!cataloguesToImport.includes(catalogue)) {
 			continue;
@@ -213,7 +221,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 		datasetsMDCIDs.push({ datasetid: datasetMDC.id });
 
 		const metadataQuality = metadataQualityList.data.find(x => x.id === datasetMDC.id);
-		const dataUtility = dataUtilityList.data.find(x => x.id === datasetMDC.id);
+		const dataUtility = dataUtilityList.data.find(x => x.id === datasetMDC.id) || {};
 		const phenotypes = phenotypesList.data[datasetMDC.id] || [];
 
 		const startImportTime = Date.now();
@@ -301,8 +309,10 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 		}
 
 		// Detect if dataset uses 5 Safes form for access
-		const is5Safes = onboardedCustodians.includes(datasetMDC.publisher);
+		const is5Safes = dataAccessRequestCustodians.includes(datasetMDC.publisher);
 		const hasTechnicalDetails = technicaldetails.length > 0;
+		// calculate commercialUse
+		const commercialUse = filtersService.computeCommericalUse(dataUtility, datasetv2Object);
 
 		if (datasetHDR) {
 			//Edit
@@ -347,6 +357,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 					source,
 					is5Safes: is5Safes,
 					hasTechnicalDetails,
+					commercialUse,
 					activeflag: 'active',
 					license: datasetv1Object.license,
 					tags: {
@@ -433,6 +444,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 			data.source = source;
 			data.is5Safes = is5Safes;
 			data.hasTechnicalDetails = hasTechnicalDetails;
+			data.commercialUse = commercialUse;
 
 			data.name = datasetMDC.label;
 			data.description = datasetMDC.description;
@@ -568,8 +580,8 @@ async function checkDifferentialValid(incomingMetadataCount, source, override) {
 	return true;
 }
 
-async function getCustodians() {
-	const publishers = await PublisherModel.find().select('name').lean();
+async function getDataAccessRequestCustodians() {
+	const publishers = await PublisherModel.find({ allowAccessRequestManagement: true }).select('name').lean();
 	return publishers.map(publisher => publisher.name);
 }
 

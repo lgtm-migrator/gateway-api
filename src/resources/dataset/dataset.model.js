@@ -15,6 +15,7 @@ const datasetSchema = new Schema(
 		source: String,
 		is5Safes: Boolean,
 		hasTechnicalDetails: Boolean,
+		commercialUse: Boolean,
 		resultsInsights: String,
 		link: String,
 		type: String,
@@ -70,7 +71,7 @@ const datasetSchema = new Schema(
 			phenotypes: [],
 		},
 		datasetv2: {},
-		isLatestVersion: Boolean
+		isLatestVersion: Boolean,
 	},
 	{
 		timestamps: true,
@@ -114,12 +115,12 @@ datasetSchema.virtual('submittedDataAccessRequests', {
 });
 
 // Pre hook query middleware
-datasetSchema.pre('find', function() {
-    this.where({type: 'dataset'});
+datasetSchema.pre('find', function () {
+	this.where({ type: 'dataset' });
 });
 
-datasetSchema.pre('findOne', function() {
-    this.where({type: 'dataset'});
+datasetSchema.pre('findOne', function () {
+	this.where({ type: 'dataset' });
 });
 
 // Load entity class

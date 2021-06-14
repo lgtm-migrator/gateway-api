@@ -2,7 +2,6 @@ import { Data } from '../tool/data.model';
 import { PublisherModel } from '../publisher/publisher.model';
 import { TeamModel } from '../team/team.model';
 import { UserModel } from '../user/user.model';
-import teamController from '../team/team.controller';
 import randomstring from 'randomstring';
 import { filtersService } from '../filters/dependency';
 import notificationBuilder from '../utilities/notificationBuilder';
@@ -823,6 +822,9 @@ module.exports = {
 								let technicalDetails = await module.exports.buildTechnicalDetails(dataset.structuralMetadata);
 								let metadataQuality = await module.exports.buildMetadataQuality(dataset, datasetv2Object, dataset.pid);
 
+								// call filterCommercialUsage to determine commericalUse field only pass in v2 a
+								let commercialUse = filtersService.computeCommericalUse({}, datasetv2Object);
+
 								let updatedDataset = await Data.findOneAndUpdate(
 									{ _id: id },
 									{
@@ -834,6 +836,7 @@ module.exports = {
 										tags: {
 											features: dataset.questionAnswers['properties/summary/keywords'] || [],
 										},
+										commercialUse,
 										hasTechnicalDetails: !_.isEmpty(technicalDetails) ? true : false,
 										'timestamps.updated': Date.now(),
 										'timestamps.published': Date.now(),

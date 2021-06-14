@@ -9,8 +9,8 @@ export default class Repository {
 		let queryObj = { ...query };
 
 		// Population from query
-		if(query.populate) {
-			populate = query.populate.split(',').join(' '); 
+		if (query.populate) {
+			populate = query.populate.split(',').join(' ');
 		}
 
 		// Filtering
@@ -78,6 +78,11 @@ export default class Repository {
 		return this.collection.findByIdAndUpdate(id, body, { new: true });
 	}
 
+	// @desc    Allows us to update existing Mongoose documents found by a query within the collection via the model inheriting this class
+	async updateByQuery(query = {}, body = {}) {
+		return this.collection.findOneAndUpdate(query, body, { new: true, upsert: true });
+	}
+
 	// @desc    Allows us to delete an existing Mongoose document within the collection via the model inheriting this class
 	async remove(document) {
 		const reloadedDocument = await this.reload(document);
@@ -118,9 +123,9 @@ export default class Repository {
 	}
 }
 
-export const processQueryParamOperators = (queryStr) => {
+export const processQueryParamOperators = queryStr => {
 	return queryStr.replace(/\"\b(gte|gt|lte|lt|eq)\b\":\"\b(\-?\d*\.?\d+)\b\"/g, (match, operator, value) => {
 		const parsedValue = parseFloat(value);
 		return `"$${operator}":${parsedValue}`;
 	});
-}
+};

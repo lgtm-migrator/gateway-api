@@ -16,7 +16,7 @@ module.exports = {
 	createMessage: async (req, res) => {
 		try {
 			const { _id: createdBy, firstname, lastname } = req.user;
-			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds } = req.body;
+			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds, firstMessage } = req.body;
 			let topicObj = {};
 			let team;
 			// 1. If the message type is 'message' and topic id is empty
@@ -31,7 +31,6 @@ module.exports = {
 
 				// 4. Get recipients for new message
 				let { publisher = '' } = tools[0];
-				
 				if (_.isEmpty(publisher)) {
 					console.error(`No publisher associated to this dataset`);
 					return res.status(500).json({ success: false, message: 'No publisher associated to this dataset' });
@@ -66,6 +65,7 @@ module.exports = {
 				messageID: parseInt(Math.random().toString().replace('0.', '')),
 				messageObjectID: parseInt(Math.random().toString().replace('0.', '')),
 				messageDescription,
+				firstMessage,
 				topic,
 				createdBy,
 				messageType,
@@ -78,14 +78,7 @@ module.exports = {
 			if (messageType === 'message') {
 				let optIn, subscribedEmails;
 				// 14. Find recipients who have opted in to email updates and exclude the requesting user
-				let messageRecipients = await UserModel.find({ _id: { $in: topicObj.recipients } }).populate('additionalInfo');
-				let optedInEmailRecipients = [...messageRecipients].filter(function (user) {
-					let {
-						additionalInfo: { emailNotifications },
-						_id,
-					} = user;
-					return emailNotifications === true && _id.toString() !== createdBy.toString();
-				});
+				let messageRecipients = await UserModel.find({ _id: { $in: topicObj.recipients } });
 
 				if (!_.isEmpty(team) || !_.isNil(team)) {
 					// 15. team all users for notificationType + generic email
@@ -107,17 +100,17 @@ module.exports = {
 							const memberIds = [...subscribedMembersByType].map(m => m.memberid);
 							// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object
 							const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
-							optedInEmailRecipients = [...teamNotificationEmails, ...memberEmails];
+							messageRecipients = [...teamNotificationEmails, ...memberEmails];
 						} else {
 							// only if not membersByType but has a team email setup
-							optedInEmailRecipients = [...optedInEmailRecipients, ...teamNotificationEmails];
+							messageRecipients = [...messageRecipients, ...teamNotificationEmails];
 						}
 					}
 				}
 
 				// 16. Send email
 				emailGenerator.sendEmail(
-					optedInEmailRecipients,
+					messageRecipients,
 					constants.hdrukEmail,
 					`You have received a new message on the HDR UK Innovation Gateway`,
 					`You have received a new message on the HDR UK Innovation Gateway. <br> Log in to view your messages here : <a href='${process.env.homeURL}'>HDR UK Innovation Gateway</a>`,

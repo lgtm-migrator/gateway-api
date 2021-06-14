@@ -63,9 +63,24 @@ const TopicSchema = new Schema(
 		],
 		tags: [
 			{
-				type: String,
+				id: {
+					type: String,
+				},
+				datasetId: {
+					type: String,
+				},
+				name: {
+					type: String,
+				},
+				publisher: {
+					type: String,
+				},
 			},
 		],
+		is5Safes: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	{
 		toJSON: { virtuals: true },
@@ -85,7 +100,7 @@ TopicSchema.pre(/^find/, function (next) {
 		path: 'createdBy',
 		select: 'firstname lastname',
 		path: 'topicMessages',
-		select: 'messageDescription createdDate isRead _id readBy',
+		select: 'messageDescription firstMessage createdDate isRead _id readBy',
 		options: { sort: '-createdDate' },
 		populate: {
 			path: 'createdBy',
