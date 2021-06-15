@@ -63,8 +63,16 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getDatasetsForApplicationByIds(arrDatasetIds);
 	}
 
-	deleteApplicationById(id) {
-		return this.dataRequestRepository.deleteApplicationById(id);
+	async deleteApplication(accessRecord) {
+		await this.dataRequestRepository.deleteApplicationById(accessRecord._id);
+
+		Object.keys(accessRecord.versionTree).forEach(key => {
+			if (accessRecord.versionTree[key].applicationId.toString() === accessRecord._id.toString()) {
+				return delete accessRecord.versionTree[key];
+			}
+		});
+
+		return await this.syncRelatedVersions(accessRecord.versionTree);
 	}
 
 	replaceApplicationById(id, newAcessRecord) {
@@ -152,9 +160,12 @@ export default class DataRequestService {
 		return { isValidVersion, requestedMajorVersion, requestedMinorVersion };
 	}
 
-	buildVersionHistory = (versionTree, applicationId, requestedVersion) => {
+	buildVersionHistory = (versionTree, applicationId, requestedVersion, userType) => {
 		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
-			const { applicationId: _id, link, displayTitle, detailedTitle } = versionTree[versionKey];
+			const { applicationId: _id, link, displayTitle, detailedTitle, applicationStatus } = versionTree[versionKey];
+
+			if (userType === constants.userTypes.CUSTODIAN && applicationStatus === constants.applicationStatuses.INPROGRESS) return arr;
+
 			const isCurrent = applicationId.toString() === _id.toString() && (requestedVersion === versionKey || !requestedVersion);
 
 			const version = {
@@ -418,7 +429,7 @@ export default class DataRequestService {
 		this.dataRequestRepository.updateFileStatus(versionIds, fileId, status);
 	}
 
-	doInitialSubmission(accessRecord) {
+	async doInitialSubmission(accessRecord) {
 		// 1. Update application type and submitted status
 		if (!accessRecord.applicationType) {
 			accessRecord.applicationType = constants.submissionTypes.INITIAL;
@@ -435,7 +446,9 @@ export default class DataRequestService {
 		}
 		const dateSubmitted = new Date();
 		accessRecord.dateSubmitted = dateSubmitted;
-		// 3. Return updated access record for saving
+		// 3. Update any connected version trees
+		await this.updateVersionStatus(accessRecord, constants.applicationStatuses.SUBMITTED);
+		// 4. Return updated access record for saving
 		return accessRecord;
 	}
 
@@ -450,7 +463,10 @@ export default class DataRequestService {
 		accessRecord.dateSubmitted = dateSubmitted;
 		accessRecord.upadtedAt = dateSubmitted;
 
-		// 3. Start submission review process for Camunda workflow
+		// 3. Update any connected version trees
+		await this.updateVersionStatus(accessRecord, constants.applicationStatuses.INREVIEW);
+
+		// 4. Start submission review process for Camunda workflow
 		let {
 			publisherObj: { name: publisher },
 		} = accessRecord;
@@ -462,7 +478,7 @@ export default class DataRequestService {
 		};
 		await bpmController.postStartPreReview(bpmContext);
 
-		// 4. Call Camunda controller to get pre-review process
+		// 5. Call Camunda controller to get pre-review process
 		const managers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
 		const response = await bpmController.getProcess(accessRecord._id.toString());
 		const { data = {} } = response;
@@ -477,12 +493,22 @@ export default class DataRequestService {
 				notifyManager: 'P999D',
 			};
 
-			// 5. Call Camunda controller to start manager review process
+			// 6. Call Camunda controller to start manager review process
 			await bpmController.postStartManagerReview(bpmContext);
 		}
 
-		// 6. Return updated access record for saving
+		// 7. Return updated access record for saving
 		return accessRecord;
+	}
+
+	async updateVersionStatus(accessRecord, newStatus) {
+		Object.keys(accessRecord.versionTree).forEach(key => {
+			if (accessRecord.versionTree[key].applicationId.toString() === accessRecord._id.toString()) {
+				return (accessRecord.versionTree[key].applicationStatus = newStatus);
+			}
+		});
+
+		return await this.syncRelatedVersions(accessRecord.versionTree);
 	}
 
 	syncRelatedVersions(versionTree) {

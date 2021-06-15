@@ -45,7 +45,7 @@ export default class DataRequestController extends Controller {
 					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
 					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
 					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
-					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree, accessRecord._id);
+					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree, accessRecord._id, null, constants.userTypes.APPLICANT);
 					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.APPLICANT);
 					return accessRecord;
 				})
@@ -164,7 +164,7 @@ export default class DataRequestController extends Controller {
 			const requestedFullVersion = `${requestedMajorVersion}.${
 				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
 			}`;
-			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree, accessRecord._id, requestedFullVersion);
+			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree, accessRecord._id, requestedFullVersion, userType);
 
 			// 15. Return application form
 			return res.status(200).json({
@@ -601,6 +601,9 @@ export default class DataRequestController extends Controller {
 					);
 				}
 				if (statusChange) {
+					//Update any connected version trees
+					this.dataRequestService.updateVersionStatus(accessRecord, accessRecord.applicationStatus);
+
 					// Send notifications to custodian team, main applicant and contributors regarding status change
 					await this.createNotifications(
 						constants.notificationTypes.STATUSCHANGE,
@@ -668,9 +671,9 @@ export default class DataRequestController extends Controller {
 					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
 				});
 			}
-
+			
 			// 6. Delete application
-			await this.dataRequestService.deleteApplicationById(appIdToDelete).catch(err => {
+			await this.dataRequestService.deleteApplication(appToDelete).catch(err => {
 				logger.logError(err, logCategory);
 			});
 
@@ -1614,12 +1617,15 @@ export default class DataRequestController extends Controller {
 			accessRecord.applicationStatus = constants.applicationStatuses.INREVIEW;
 			accessRecord.dateReviewStart = new Date();
 
-			// 7. Save update to access record
+			// 7. Update any connected version trees
+			this.dataRequestService.updateVersionStatus(accessRecord, constants.applicationStatuses.INREVIEW);
+
+			// 8. Save update to access record
 			await accessRecord.save().catch(err => {
 				logger.logError(err, logCategory);
 			});
 
-			// 8. Call Camunda controller to get pre-review process
+			// 9. Call Camunda controller to get pre-review process
 			const response = await bpmController.getProcess(id);
 			const { data = {} } = response;
 			if (!_.isEmpty(data)) {
@@ -1636,11 +1642,11 @@ export default class DataRequestController extends Controller {
 					notifyManager: 'P999D',
 				};
 
-				// 9. Call Camunda controller to start manager review process
+				// 10. Call Camunda controller to start manager review process
 				bpmController.postStartManagerReview(bpmContext);
 			}
 
-			// 10. Return aplication and successful response
+			// 11. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
 			// Return error response if something goes wrong

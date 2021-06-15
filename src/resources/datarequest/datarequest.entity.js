@@ -91,6 +91,7 @@ export const buildVersionTree = accessRecord => {
 		versionTree = {},
 		amendmentIterations = [],
 		applicationType = constants.submissionTypes.INITIAL,
+		applicationStatus = constants.applicationStatuses.INPROGRESS
 	} = accessRecord;
 	const versionKey = majorVersion ? majorVersion.toString() : '1.0';
 
@@ -125,6 +126,7 @@ export const buildVersionTree = accessRecord => {
 			detailedTitle,
 			link: `/data-access-request/${applicationId}?version=${versionKey}.0`,
 			applicationType,
+			applicationStatus
 		},
 	};
 
