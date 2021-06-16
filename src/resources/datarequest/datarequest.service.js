@@ -6,9 +6,6 @@ import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
 import { processFile, fileStatus } from '../utilities/cloudStorage.util';
 import { amendmentService } from '../datarequest/amendment/dependency';
-import teamController from '../team/team.controller';
-
-const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestService {
 	constructor(dataRequestRepository) {
