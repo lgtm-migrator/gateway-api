@@ -453,51 +453,19 @@ export default class DataRequestService {
 	}
 
 	async doAmendSubmission(accessRecord, description) {
-		// 1. Amend submission goes straight into in review rather than submitted
-		accessRecord.applicationStatus = constants.applicationStatuses.INREVIEW;
+		// 1. Amend submission goes to submitted status with text reason for amendment
+		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
 		accessRecord.submissionDescription = description;
 
-		// 2. Set submission and start review date as now
+		// 2. Set submission date as now
 		const dateSubmitted = new Date();
-		accessRecord.dateReviewStart = dateSubmitted;
 		accessRecord.dateSubmitted = dateSubmitted;
 		accessRecord.upadtedAt = dateSubmitted;
 
 		// 3. Update any connected version trees
-		await this.updateVersionStatus(accessRecord, constants.applicationStatuses.INREVIEW);
+		await this.updateVersionStatus(accessRecord, constants.applicationStatuses.SUBMITTED);
 
-		// 4. Start submission review process for Camunda workflow
-		let {
-			publisherObj: { name: publisher },
-		} = accessRecord;
-		let bpmContext = {
-			dateSubmitted,
-			applicationStatus: constants.applicationStatuses.SUBMITTED,
-			publisher,
-			businessKey: accessRecord._id.toString(),
-		};
-		await bpmController.postStartPreReview(bpmContext);
-
-		// 5. Call Camunda controller to get pre-review process
-		const managers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
-		const response = await bpmController.getProcess(accessRecord._id.toString());
-		const { data = {} } = response;
-		if (!isEmpty(data)) {
-			const [obj] = data;
-			const { id: taskId } = obj;
-			const bpmContext = {
-				taskId,
-				applicationStatus: constants.applicationStatuses.INREVIEW,
-				managerId: managers[0]._id.toString(),
-				publisher,
-				notifyManager: 'P999D',
-			};
-
-			// 6. Call Camunda controller to start manager review process
-			await bpmController.postStartManagerReview(bpmContext);
-		}
-
-		// 7. Return updated access record for saving
+		// 4. Return updated access record for saving
 		return accessRecord;
 	}
 
