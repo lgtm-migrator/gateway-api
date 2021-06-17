@@ -29,6 +29,8 @@ const addTool = async (req, res) => {
 			categories,
 			license,
 			authors,
+			authorsNew,
+			leadResearcher,
 			tags,
 			journal,
 			journalYear,
@@ -41,6 +43,8 @@ const addTool = async (req, res) => {
 		data.type = inputSanitizer.removeNonBreakingSpaces(type);
 		data.name = inputSanitizer.removeNonBreakingSpaces(name);
 		data.link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link));
+		data.authorsNew = inputSanitizer.removeNonBreakingSpaces(authorsNew);
+		data.leadResearcher = inputSanitizer.removeNonBreakingSpaces(leadResearcher);
 		data.journal = inputSanitizer.removeNonBreakingSpaces(journal);
 		data.journalYear = inputSanitizer.removeNonBreakingSpaces(journalYear);
 		data.description = inputSanitizer.removeNonBreakingSpaces(description);
@@ -129,6 +133,8 @@ const editTool = async (req, res) => {
 			categories,
 			license,
 			authors,
+			authorsNew,
+			leadResearcher,
 			tags,
 			journal,
 			journalYear,
@@ -167,6 +173,8 @@ const editTool = async (req, res) => {
 				link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link)),
 				description: inputSanitizer.removeNonBreakingSpaces(description),
 				resultsInsights: inputSanitizer.removeNonBreakingSpaces(resultsInsights),
+				authorsNew: inputSanitizer.removeNonBreakingSpaces(authorsNew),
+				leadResearcher: inputSanitizer.removeNonBreakingSpaces(leadResearcher),
 				journal: inputSanitizer.removeNonBreakingSpaces(journal),
 				journalYear: inputSanitizer.removeNonBreakingSpaces(journalYear),
 				categories: {
