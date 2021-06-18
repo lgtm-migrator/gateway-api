@@ -653,15 +653,11 @@ const getMemberDetails = (memberIds = [], users = []) => {
 	if (!_.isEmpty(memberIds) && !_.isEmpty(users)) {
 		return [...users].reduce(
 			(arr, user) => {
-				const member = [...memberIds].find(m => m.toString() === user._id.toString()) || {};
-				if (!_.isEmpty(member)) {
-					let { email, id } = user;
-					return {
-						memberEmails: [...arr['memberEmails'], { email }],
-						userIds: [...arr['userIds'], id],
-					};
-				}
-				return arr;
+				let { email, id } = user;
+				return {
+					memberEmails: [...arr['memberEmails'], { email }],
+					userIds: [...arr['userIds'], id],
+				};
 			},
 			{ memberEmails: [], userIds: [] }
 		);
