@@ -27,7 +27,7 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 // @desc     Returns List of Project Objects Authenticated
 // @access   Private
 router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	req.params.type = 'project'; 
+	req.params.type = 'project';
 	let role = req.user.role;
 
 	if (role === ROLES.Admin) {
@@ -88,6 +88,7 @@ router.get('/:projectID', async (req, res) => {
 				uploader: {
 					$concat: [{ $arrayElemAt: ['$uploaderIs.firstname', 0] }, ' ', { $arrayElemAt: ['$uploaderIs.lastname', 0] }],
 				},
+				uploaderId: '$uploader',
 			},
 		},
 	]);
