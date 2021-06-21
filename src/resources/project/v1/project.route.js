@@ -89,6 +89,7 @@ router.get('/:projectID', async (req, res) => {
 				uploader: {
 					$concat: [{ $arrayElemAt: ['$uploaderIs.firstname', 0] }, ' ', { $arrayElemAt: ['$uploaderIs.lastname', 0] }],
 				},
+				uploaderId: '$uploader',
 			},
 		},
 	]);
