@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import express from 'express';
 import { ROLES } from '../../user/user.roles';
 import { Reviews } from '../review.model';
@@ -16,10 +17,10 @@ import helperUtil from '../../utilities/helper.util';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const router = express.Router();
 
-// @router   POST /api/v1/add
+// @router   POST /api/v1/tool/add
 // @desc     Add tools user
 // @access   Private
-router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/', passport.authenticate('jwt'), async (req, res) => {
 	await addTool(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -29,11 +30,11 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 		});
 });
 
-// @router   PUT /api/v1/{id}
+// @router   PUT /api/v1/tool/{id}
 // @desc     Edit tools user
 // @access   Private
 // router.put('/{id}',
-router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.put('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('tool'), async (req, res) => {
 	await editTool(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -43,10 +44,10 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
 		});
 });
 
-// @router   GET /api/v1/get/admin
+// @router   GET /api/v1/tool/getList
 // @desc     Returns List of Tool objects
 // @access   Private
-router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/getList', passport.authenticate('jwt'), async (req, res) => {
 	req.params.type = 'tool';
 	let role = req.user.role;
 
@@ -69,7 +70,7 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/tool
 // @desc     Returns List of Tool Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
@@ -84,10 +85,10 @@ router.get('/', async (req, res) => {
 		});
 });
 
-// @router   PATCH /api/v1/status
+// @router   PATCH /api/v1/tool/{id}
 // @desc     Set tool status
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('tool'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -97,11 +98,9 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 		});
 });
 
-/**
- * {get} /tool/:id Tool
- *
- * Return the details on the tool based on the tool ID.
- */
+// @router   GET /api/v1/tool/{id}
+// @desc     Return the details on the tool based on the tool ID.
+// @access   Public
 router.get('/:id', async (req, res) => {
 	var query = Data.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.id) }, { type: 'tool' }] } },
@@ -236,7 +235,7 @@ router.get('/edit/:id', async (req, res) => {
  * When they submit, authenticate the user, validate the data and add review data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
-router.post('/review/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/review/add', passport.authenticate('jwt'), async (req, res) => {
 	let reviews = new Reviews();
 	const { toolID, reviewerID, rating, projectName, review } = req.body;
 
@@ -265,7 +264,7 @@ router.post('/review/add', passport.authenticate('jwt'), utils.checkIsInRole(ROL
  * When they submit, authenticate the user, validate the data and add reply data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
-router.post('/reply', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/reply', passport.authenticate('jwt'), async (req, res) => {
 	const { reviewID, replierID, reply } = req.body;
 	Reviews.findOneAndUpdate(
 		{ reviewID: reviewID },
@@ -298,7 +297,7 @@ router.put('/review/approve', passport.authenticate('jwt'), utils.checkIsInRole(
 
 			return res.json({ success: true });
 		}
-	).then(async res => {
+	).then(async () => {
 		const review = await Reviews.findOne({ reviewID: id });
 
 		await storeNotificationMessages(review);
@@ -352,7 +351,7 @@ router.delete('/review/delete', passport.authenticate('jwt'), utils.checkIsInRol
 // @router   GET /api/v1/project/tag/
 // @desc     Get tools by tag search
 // @access   Private
-router.get('/:type/tag', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/:type/tag', passport.authenticate('jwt'), async (req, res) => {
 	try {
 		// 1. Destructure tag name parameter passed
 		let { type } = req.params;

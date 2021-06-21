@@ -1,49 +1,7 @@
 import express from 'express';
-import _ from 'lodash';
-import { to } from 'await-to-js';
 import passport from 'passport';
 
-import { verifyPassword, getRedirectUrl } from '../auth/utils';
-import { login } from '../auth/strategies/jwt';
-import { getUserByEmail } from '../user/user.repository';
-
 const router = express.Router();
-
-// @router   POST /api/auth/login
-// @desc     login user
-// @access   Public
-router.post('/login', async (req, res) => {
-	const { email, password } = req.body;
-
-	const [err, user] = await to(getUserByEmail(email));
-
-	const authenticationError = () => {
-		return res.status(500).json({ success: false, data: 'Authentication error!' });
-	};
-
-	if (!(await verifyPassword(password, user.password))) {
-		console.error('Passwords do not match');
-		return authenticationError();
-	}
-
-	const [loginErr, token] = await to(login(req, user));
-
-	if (loginErr) {
-		console.error('Log in error', loginErr);
-		return authenticationError();
-	}
-
-	return res
-		.status(200)
-		.cookie('jwt', token, {
-			httpOnly: true,
-			secure: process.env.api_url ? true : false,
-		})
-		.json({
-			success: true,
-			data: getRedirectUrl(req.user.role),
-		});
-});
 
 // @router   POST /api/auth/logout
 // @desc     logout user
@@ -60,7 +18,7 @@ router.get('/logout', function (req, res) {
 // @desc     Return the logged in status of the user and their role.
 // @access   Private
 router.get('/status', function (req, res, next) {
-	passport.authenticate('jwt', function (err, user, info) {
+	passport.authenticate('jwt', function (err, user) {
 		if (err || !user) {
 			return res.json({
 				success: true,

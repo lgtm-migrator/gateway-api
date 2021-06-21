@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import express from 'express';
 import helper from '../../utilities/helper.util';
 import escape from 'escape-html';
@@ -10,10 +11,10 @@ import { addTool, editTool, setStatus, getTools, getToolsAdmin, getAllTools } fr
 
 const router = express.Router();
 
-// @router   POST /api/v1/
+// @router   POST /api/v1/project
 // @desc     Add project user
 // @access   Private
-router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/', passport.authenticate('jwt'), async (req, res) => {
 	await addTool(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -23,10 +24,10 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 		});
 });
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/project/getList
 // @desc     Returns List of Project Objects Authenticated
 // @access   Private
-router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/getList', passport.authenticate('jwt'), async (req, res) => {
 	req.params.type = 'project';
 	let role = req.user.role;
 
@@ -49,7 +50,7 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/project
 // @desc     Returns List of Project Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
@@ -64,7 +65,7 @@ router.get('/', async (req, res) => {
 		});
 });
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/project/{projectID}
 // @desc     Returns a Project object
 // @access   Public
 router.get('/:projectID', async (req, res) => {
@@ -92,7 +93,7 @@ router.get('/:projectID', async (req, res) => {
 			},
 		},
 	]);
-	q.exec((err, data) => {
+	q.exec(data => {
 		if (data.length > 0) {
 			data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
 			var p = Data.aggregate([
@@ -134,10 +135,10 @@ router.get('/:projectID', async (req, res) => {
 	});
 });
 
-// @router   PATCH /api/v1/status
+// @router   PATCH /api/v1/project/status/{id}
 // @desc     Set project status
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('project'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -147,10 +148,10 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 		});
 });
 
-// @router   PUT /api/v1/
+// @router   PUT /api/v1/project/{id}
 // @desc     Edit project
 // @access   Private
-router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.put('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('project'), async (req, res) => {
 	await editTool(req)
 		.then(response => {
 			return res.json({ success: true, response });
