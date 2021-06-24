@@ -1876,6 +1876,73 @@ const _generateMessageNotification = options => {
 	return body;
 };
 
+const _generateEntityNotification = options => {
+	let { resourceType, resourceName, resourceLink, subject, rejectionReason, activeflag, type, resourceAuthor } = options;
+
+	let authorBody;
+	if (activeflag === 'active') {
+		authorBody = `Your ${resourceType} ${resourceName} has been approved and is now live.`;
+	} else if (activeflag === 'archive') {
+		authorBody = `Your ${resourceType} ${resourceName} has been archived.`;
+	} else if (activeflag === 'rejected') {
+		authorBody = `Your ${resourceType} ${resourceName} has been rejected <br /><br />  Rejection reason: ${rejectionReason}.`;
+	} else if (activeflag === 'add') {
+		authorBody = `Your ${resourceType} ${resourceName} has been submitted for approval.`;
+	} else if (activeflag === 'edit') {
+		authorBody = `Your ${resourceType} ${resourceName} has been updated.`;
+	}
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${!_.isEmpty(type) && type === 'admin' ? `A new ${resourceType} has been added and is ready for review` : ``}
+                      ${!_.isEmpty(type) && type === 'author' ? `${subject}` : ``}
+                      ${
+												!_.isEmpty(type) && type === 'co-author'
+													? `${resourceAuthor} added you as an author of the tool ${resourceName}`
+													: ``
+											}
+										</th>
+										</tr>
+										<tr>
+										<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+											<p>
+                      ${!_.isEmpty(type) && type === 'admin' ? `Approval needed: new ${resourceType} ${resourceName}` : ``}
+                      ${!_.isEmpty(type) && type === 'author' ? authorBody : ``}
+                      ${
+												!_.isEmpty(type) && type === 'co-author'
+													? `${resourceAuthor} added you as an author of the tool ${resourceName}`
+													: ``
+											}
+                      </p>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+									<tr style="width: 100%; text-align: left;">
+										<td style=" font-size: 14px; color: #3c3c3b; padding: 5px 5px; width: 50%; text-align: left; vertical-align: top;">
+                    ${!_.isEmpty(type) && type === 'admin' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
+                    ${!_.isEmpty(type) && type === 'author' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
+                    ${!_.isEmpty(type) && type === 'co-author' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
 /**
  * [_sendEmail]
  *
@@ -2026,4 +2093,5 @@ export default {
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages
 	generateMessageNotification: _generateMessageNotification,
+	generateEntityNotification: _generateEntityNotification,
 };

@@ -103,13 +103,19 @@ const addTool = async (req, res) => {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
-			emailGenerator.sendEmail(
-				emailRecipients,
-				`${hdrukEmail}`,
-				`A new ${data.type} has been added and is ready for review`,
-				`Approval needed: new ${data.type} ${data.name} <br /><br />  ${toolLink}`,
-				false
-			);
+
+			// Create object to pass through email data
+			let options = {
+				resourceType: data.type,
+				resourceName: data.name,
+				resourceLink: toolLink,
+				type: 'admin',
+			};
+			// Create email body content
+			let html = emailGenerator.generateEntityNotification(options);
+
+			// Send email
+			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, `A new ${data.type} has been added and is ready for review`, html, false);
 		});
 
 		if (data.type === 'tool') {
@@ -436,24 +442,34 @@ async function createMessage(authorId, toolId, toolName, toolType, activeflag, r
 }
 
 async function sendEmailNotifications(tool, activeflag, rejectionReason) {
-	let subject;
-	let html;
 	// 1. Generate tool URL for linking user from email
 	const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id;
+	let resourceType = tool.type.charAt(0).toUpperCase() + tool.type.slice(1);
 
-	// 2. Build email body
+	// 2. Build email subject
+	let subject;
 	if (activeflag === 'active') {
-		subject = `Your ${tool.type} ${tool.name} has been approved and is now live`;
-		html = `Your ${tool.type} ${tool.name} has been approved and is now live <br /><br />  ${toolLink}`;
+		subject = `${resourceType} ${tool.name} has been approved and is now live`;
 	} else if (activeflag === 'archive') {
-		subject = `Your ${tool.type} ${tool.name} has been archived`;
-		html = `Your ${tool.type} ${tool.name} has been archived <br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.name} has been archived`;
 	} else if (activeflag === 'rejected') {
-		subject = `Your ${tool.type} ${tool.name} has been rejected`;
-		html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.name} has been rejected`;
 	}
 
-	// 3. Find all authors of the tool who have opted in to email updates
+	// 3. Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.name,
+		resourceLink: toolLink,
+		subject,
+		rejectionReason: rejectionReason,
+		activeflag,
+		type: 'author',
+	};
+	// 4. Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
+
+	// 5. Find all authors of the tool who have opted in to email updates
 	var q = UserModel.aggregate([
 		// Find all authors of this tool
 		{ $match: { $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] } },
@@ -465,11 +481,12 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
 	]);
 
-	// 4. Use the returned array of email recipients to generate and send emails with SendGrid
+	// 6. Use the returned array of email recipients to generate and send emails with SendGrid
 	q.exec((err, emailRecipients) => {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
+
 		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, false);
 	});
 }
@@ -490,7 +507,18 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
 	]);
 
-	// 3. Use the returned array of email recipients to generate and send emails with SendGrid
+	// 3. Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.name,
+		resourceLink: toolLink,
+		type: 'co-author',
+		resourceAuthor: toolOwner.name,
+	};
+	// 4. Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
+
+	// 5. Use the returned array of email recipients to generate and send emails with SendGrid
 	q.exec((err, emailRecipients) => {
 		if (err) {
 			return new Error({ success: false, error: err });
@@ -499,7 +527,7 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 			emailRecipients,
 			`${hdrukEmail}`,
 			`${toolOwner.name} added you as an author of the tool ${tool.name}`,
-			`${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`,
+			html,
 			false
 		);
 	});
