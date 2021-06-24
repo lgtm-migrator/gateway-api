@@ -1,0 +1,2 @@
+Contact: DataProtection@hdruk.ac.uk
+Policy: https://github.com/HDRUK/gateway-api/security-vulnerability-discloure-policy.txt
