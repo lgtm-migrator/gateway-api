@@ -76,8 +76,8 @@
 		"supertest": "^4.0.2"
 	},
 	"scripts": {
-		"start": "node --inspect=0.0.0.0:3001 index.js",
-		"server": "nodemon --inspect=0.0.0.0:3001 index.js",
+		"start": "node index.js",
+		"server": "nodemon index.js",
 		"debug": "nodemon --inspect=0.0.0.0:3001 index.js",
 		"build": "",
 		"test": "jest --runInBand",
