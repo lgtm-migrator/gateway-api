@@ -89,7 +89,7 @@ const checkAllowedToAccess = type => async (req, res, next) => {
 				if (!isEmpty(data) && [data.creator].includes(user.id)) return next();
 			} else if (type === 'collection') {
 				data = await Collections.findOne({ id: params.id }, { authors: 1 }).lean();
-				if (!isEmpty(data) && [data.authors].includes(user.id)) return next();
+				if (!isEmpty(data) && data.authors.includes(user.id)) return next();
 			} else {
 				data = await Data.findOne({ id: params.id }, { authors: 1, uploader: 1 }).lean();
 				if (!isEmpty(data) && [data.authors, data.uploader].includes(user.id)) return next();
