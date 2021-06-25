@@ -1878,19 +1878,20 @@ const _generateMessageNotification = options => {
 
 const _generateEntityNotification = options => {
 	let { resourceType, resourceName, resourceLink, subject, rejectionReason, activeflag, type, resourceAuthor } = options;
-
 	let authorBody;
 	if (activeflag === 'active') {
-		authorBody = `Your ${resourceType} ${resourceName} has been approved and is now live.`;
+		authorBody = `${resourceName} ${resourceType} has been approved by the HDR UK admin team and can be publicly viewed on the gateway, including in search results.`;
 	} else if (activeflag === 'archive') {
-		authorBody = `Your ${resourceType} ${resourceName} has been archived.`;
+		authorBody = `${resourceName} ${resourceType} has been archived by the HDR UK admin team.`;
 	} else if (activeflag === 'rejected') {
-		authorBody = `Your ${resourceType} ${resourceName} has been rejected <br /><br />  Rejection reason: ${rejectionReason}.`;
+		authorBody = `${resourceName} ${resourceType} has been rejected by the HDR UK admin team. <br /><br />  Reason for rejection: ${rejectionReason}`;
 	} else if (activeflag === 'add') {
-		authorBody = `Your ${resourceType} ${resourceName} has been submitted for approval.`;
+		authorBody = `${resourceName} ${resourceType} has been submitted to the HDR UK admin team for approval.`;
 	} else if (activeflag === 'edit') {
-		authorBody = `Your ${resourceType} ${resourceName} has been updated.`;
+		authorBody = `${resourceName} ${resourceType} has been edited, the updated version can now be viewed on the gateway.`;
 	}
+
+	let dashboardLink = process.env.homeURL + '/account?tab=' + resourceType + 's';
 
 	let body = `<div>
 						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -1909,7 +1910,7 @@ const _generateEntityNotification = options => {
                       ${!_.isEmpty(type) && type === 'author' ? `${subject}` : ``}
                       ${
 												!_.isEmpty(type) && type === 'co-author'
-													? `${resourceAuthor} added you as an author of the tool ${resourceName}`
+													? `${resourceAuthor} added you as an author of the ${resourceType} ${resourceName}`
 													: ``
 											}
 										</th>
@@ -1917,11 +1918,15 @@ const _generateEntityNotification = options => {
 										<tr>
 										<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
 											<p>
-                      ${!_.isEmpty(type) && type === 'admin' ? `Approval needed: new ${resourceType} ${resourceName}` : ``}
+                      ${
+												!_.isEmpty(type) && type === 'admin'
+													? `${resourceName} ${resourceType} has been added and is pending a review. View and then either approve or reject via the link below.`
+													: ``
+											}
                       ${!_.isEmpty(type) && type === 'author' ? authorBody : ``}
                       ${
 												!_.isEmpty(type) && type === 'co-author'
-													? `${resourceAuthor} added you as an author of the tool ${resourceName}`
+													? `${resourceAuthor} added you as an author of the ${resourceType} ${resourceName}`
 													: ``
 											}
                       </p>
@@ -1931,7 +1936,7 @@ const _generateEntityNotification = options => {
 								<tbody style="overflow-y: auto; overflow-x: hidden;">
 									<tr style="width: 100%; text-align: left;">
 										<td style=" font-size: 14px; color: #3c3c3b; padding: 5px 5px; width: 50%; text-align: left; vertical-align: top;">
-                    ${!_.isEmpty(type) && type === 'admin' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
+                    ${!_.isEmpty(type) && type === 'admin' ? `<a href=${dashboardLink}>View ${resourceType}s dashboard</a>` : ``}
                     ${!_.isEmpty(type) && type === 'author' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
                     ${!_.isEmpty(type) && type === 'co-author' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
 										</td>

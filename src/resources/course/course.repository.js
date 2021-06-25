@@ -443,6 +443,20 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
+
+			// Create object to pass through email data
+			options = {
+				resourceType: tool.type,
+				resourceName: tool.title,
+				resourceLink: toolLink,
+				subject,
+				rejectionReason: rejectionReason,
+				activeflag,
+				type: 'admin',
+			};
+
+			html = emailGenerator.generateEntityNotification(options);
+
 			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, adminCanUnsubscribe);
 		});
 	}
@@ -480,7 +494,7 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
-		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, `${toolOwner.name} added you as an author of the tool ${tool.name}`, html);
+		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, `${toolOwner.name} added you as an author of the course ${tool.name}`, html);
 	});
 }
 

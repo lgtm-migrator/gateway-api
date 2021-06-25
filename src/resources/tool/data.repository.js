@@ -526,7 +526,7 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 		emailGenerator.sendEmail(
 			emailRecipients,
 			`${hdrukEmail}`,
-			`${toolOwner.name} added you as an author of the tool ${tool.name}`,
+			`${toolOwner.name} added you as an author of the ${tool.type} ${tool.name}`,
 			html,
 			false
 		);
