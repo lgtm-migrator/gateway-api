@@ -8,21 +8,23 @@ import dynamicForm from '../../utilities/dynamicForms/dynamicForm.util';
 const repeatedSectionRegex = /_[a-zA-Z|\d]{5}$/gm;
 
 const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '', activeParty, isLatestMinorVersion = true) => {
-	let formattedSchema = {};
-	const version = isLatestMinorVersion ? 'latestVersion' : 'previousVersion';
-	if (userType === constants.userTypes.CUSTODIAN) {
-		if (applicationStatus === constants.applicationStatuses.INREVIEW) {
-			formattedSchema = {
-				...jsonSchema,
-				questionActions: constants.userQuestionActions[userType][role][applicationStatus][activeParty][version],
-			};
-		} else {
-			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus] };
-		}
-	} else {
-		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][applicationStatus] };
+	if (
+		userType === constants.userTypes.CUSTODIAN &&
+		applicationStatus === constants.applicationStatuses.INREVIEW &&
+		activeParty === constants.userTypes.CUSTODIAN &&
+		role === constants.roleTypes.MANAGER &&
+		isLatestMinorVersion
+	)
+		return {
+			...jsonSchema,
+			questionActions: [constants.questionActions.guidance, constants.questionActions.updates],
+		};
+	else {
+		return {
+			...jsonSchema,
+			questionActions: [constants.questionActions.guidance],
+		};
 	}
-	return formattedSchema;
 };
 
 const getUserPermissionsForApplication = (application, userId, _id) => {
@@ -59,30 +61,18 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 };
 
 const extractApplicantNames = questionAnswers => {
-	let fullnames = [],
-		autoCompleteLookups = { fullname: ['email'] };
-	// spread questionAnswers to new var
-	let qa = { ...questionAnswers };
-	// get object keys of questionAnswers
-	let keys = Object.keys(qa);
-	// loop questionAnswer keys
-	for (const key of keys) {
-		// get value of key
-		let value = qa[key];
-		// split the key up for unique purposes
-		let [qId] = key.split('_');
-		// check if key in lookup
-		let lookup = autoCompleteLookups[`${qId}`];
-		// if key exists and it has an object do relevant data setting
-		if (typeof lookup !== 'undefined' && typeof value === 'object') {
-			switch (qId) {
-				case 'fullname':
-					fullnames.push(value.name);
-					break;
-			}
+	const fullNameQuestions = ['safepeopleprimaryapplicantfullname', 'safepeopleotherindividualsfullname'];
+	const fullNames = [];
+
+	if (isNil(questionAnswers)) return fullNames;
+
+	Object.keys(questionAnswers).forEach(key => {
+		if (fullNameQuestions.some(q => key.includes(q))) {
+			fullNames.push(questionAnswers[key]);
 		}
-	}
-	return fullnames;
+	});
+
+	return fullNames;
 };
 
 const findQuestion = (questionsArr, questionId) => {
@@ -186,9 +176,21 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 		// 4. Update audit fields to 'you' if the action was performed by the current user
 		requestedBy = matchCurrentUser(user, requestedBy);
 		updatedBy = matchCurrentUser(user, updatedBy);
+		let relevantActioner;
 		// 5. Update the generic question alerts to match the scenario
-		const relevantActioner =
-			!isNil(updatedBy) && includeCompleted ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
+		if (userType === constants.userTypes.CUSTODIAN)
+			if (iterationStatus === 'inProgress' || iterationStatus === 'returned' || !includeCompleted) {
+				relevantActioner = requestedBy;
+			} else {
+				relevantActioner = updatedBy;
+			}
+		else if (userType === constants.userTypes.APPLICANT) {
+			if (!isNil(updatedBy) && includeCompleted) {
+				relevantActioner = updatedBy;
+			} else {
+				relevantActioner = publisher;
+			}
+		}
 		questionAlert.text = questionAlert.text.replace('#NAME#', relevantActioner);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',
@@ -369,4 +371,7 @@ export default {
 	cloneIntoExistingApplication: cloneIntoExistingApplication,
 	cloneIntoNewApplication: cloneIntoNewApplication,
 	injectMessagesAndNotesCount,
+	getLatestPublisherSchema: getLatestPublisherSchema,
+	containsUserRepeatedSections: containsUserRepeatedSections,
+	copyUserRepeatedSections: copyUserRepeatedSections,
 };

@@ -32,7 +32,7 @@ export default class AmendmentController extends Controller {
 			}
 
 			// 2. Retrieve DAR from database
-			const accessRecord = await this.dataRequestService.getApplicationWithTeamById(id); 
+			const accessRecord = await this.dataRequestService.getApplicationWithTeamById(id);
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
 			}
@@ -49,7 +49,11 @@ export default class AmendmentController extends Controller {
 			}
 
 			// 4. Get the requesting users permission levels
-			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord.toObject(), requestingUserId, requestingUserObjectId);
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord.toObject(),
+				requestingUserId,
+				requestingUserObjectId
+			);
 
 			// 5. Get the current iteration amendment party
 			let validParty = false;
@@ -104,11 +108,37 @@ export default class AmendmentController extends Controller {
 					console.error(err.message);
 					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
-					// 10. Update json schema and question answers with modifications since original submission
+					// 10. Update json schema and question answers with modifications since original submission and retain previous version requested updates
 					let accessRecordObj = accessRecord.toObject();
-					accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user);
 
-					// 11. Append question actions depending on user type and application status
+					// 11. Support for versioning
+					if (accessRecordObj.amendmentIterations.length > 0) {
+
+						// Detemine which versions to return
+						let currentVersionIndex;
+						let previousVersionIndex;
+						const unreleasedVersionIndex = accessRecordObj.amendmentIterations.findIndex(iteration => _.isNil(iteration.dateReturned));
+						
+						if(unreleasedVersionIndex === -1) {
+							currentVersionIndex = accessRecordObj.amendmentIterations.length -1;
+						} else {
+							currentVersionIndex = accessRecordObj.amendmentIterations.length -2;
+						}
+						previousVersionIndex = currentVersionIndex - 1;
+
+						// Inject updates from previous version
+						accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user, previousVersionIndex, true);
+
+						// Inject updates from current version
+						accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user, currentVersionIndex, true);
+
+						// Inject updates from possible unreleased version
+						if(unreleasedVersionIndex !== -1) {
+							accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user, unreleasedVersionIndex, true, false);
+						}
+					}
+
+					// 12. Append question actions depending on user type and application status
 					let userRole = activeParty === constants.userTypes.CUSTODIAN ? constants.roleTypes.MANAGER : '';
 					accessRecordObj.jsonSchema = datarequestUtil.injectQuestionActions(
 						accessRecordObj.jsonSchema,
@@ -118,7 +148,7 @@ export default class AmendmentController extends Controller {
 						activeParty
 					);
 
-					// 12. Count the number of answered/unanswered amendments
+					// 13. Count the number of answered/unanswered amendments
 					const { answeredAmendments = 0, unansweredAmendments = 0 } = this.amendmentService.countAmendments(accessRecord, userType);
 					return res.status(200).json({
 						success: true,
@@ -202,7 +232,6 @@ export default class AmendmentController extends Controller {
 					console.error(err.message);
 					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
-
 					// 10. Send update request notifications
 					this.amendmentService.createNotifications(constants.notificationTypes.RETURNED, accessRecord);
 					return res.status(200).json({

@@ -75,13 +75,16 @@ const whatIsRole = req => {
 };
 
 const checkIsUser = () => (req, res, next) => {
-	if (!req.user || req.params.userID !== req.user.id.toString())
-		return res.status(401).json({
-			status: 'error',
-			message: 'Unauthorised to perform this action.',
-		});
+	if (req.user) {
+		if (req.params.userID && req.params.userID === req.user.id.toString()) return next();
+		else if (req.params.id && req.params.id === req.user.id.toString()) return next();
+		else if (req.body.id && req.body.id.toString() === req.user.id.toString()) return next();
+	}
 
-	return next();
+	return res.status(401).json({
+		status: 'error',
+		message: 'Unauthorised to perform this action.',
+	});
 };
 
 const getRedirectUrl = role => {

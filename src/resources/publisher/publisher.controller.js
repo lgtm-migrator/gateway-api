@@ -93,7 +93,7 @@ export default class PublisherController extends Controller {
 					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
 					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
 					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
-					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree);
+					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree, accessRecord._id, null, constants.userTypes.CUSTODIAN);
 					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.CUSTODIAN);
 					return accessRecord;
 				})

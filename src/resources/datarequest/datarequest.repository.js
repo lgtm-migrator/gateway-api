@@ -15,7 +15,7 @@ export default class DataRequestRepository extends Repository {
 		return DataRequestModel.find({
 			$and: [{ ...query }, { $or: [{ userId }, { authorIds: userId }] }],
 		})
-			.select('-jsonSchema -questionAnswers -files')
+			.select('-jsonSchema -files')
 			.populate([{ path: 'mainApplicant', select: 'firstname lastname -id' }, { path: 'datasets' }])
 			.lean();
 	}
@@ -55,12 +55,13 @@ export default class DataRequestRepository extends Repository {
 				},
 				{ path: 'files.owner', select: 'firstname lastname' },
 			])
-			.sort({ createdAt: 1 })
+			.sort({ createdAt: -1 })
 			.lean();
 	}
 
 	getApplicationWithTeamById(id, options = {}) {
-		return DataRequestModel.findOne({ _id: id }, null, options).populate([ //lgtm [js/sql-injection]
+		return DataRequestModel.findOne({ _id: id }, null, options).populate([
+			//lgtm [js/sql-injection]
 			{
 				path: 'datasets dataset authors',
 			},
@@ -210,7 +211,28 @@ export default class DataRequestRepository extends Repository {
 		});
 	}
 
-	syncRelatedApplications(applicationIds, versionTree) {
-		return DataRequestModel.updateMany({ _id: { $in: applicationIds }}, { $set: { versionTree }});
+	async syncRelatedVersions(versionIds, versionTree) {
+		const majorVersions = await DataRequestModel.find().where('_id').in(versionIds).select({ versionTree: 1 });
+
+		for(const version of majorVersions) {
+
+			version.versionTree = versionTree;
+			
+			await version.save();
+		}
+	}
+
+	async updateFileStatus(versionIds, fileId, status) {
+		const majorVersions = await DataRequestModel.find({ _id: { $in: [versionIds] } }).select({ files: 1 });
+
+		for(const version of majorVersions) {
+			const fileIndex = version.files.findIndex(file => file.fileId === fileId);
+
+			if(fileIndex === -1) continue;
+
+			version.files[fileIndex].status = status;
+			
+			await version.save();
+		}
 	}
 }

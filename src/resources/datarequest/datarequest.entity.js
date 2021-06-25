@@ -10,6 +10,43 @@ export default class DataRequestClass extends Entity {
 	}
 
 	/**
+	 * Get application/major version Ids
+	 * @description Extracts all unique major version Ids relating to this access record instance i.e. ids for 1.0, 2.0, 3.0 ignoring minor versions
+	 */
+	getRelatedVersionIds() {
+		const versionIds = [];
+		// 1. Iterate through all versions in the tree
+		for (const versionKey in this.versionTree) {
+			const { applicationId, iterationId } = versions[versionKey];
+			// 2. If not unique or represents a minor version then ignore
+			if(versionIds.some(v => v === applicationId) || iterationId) continue;
+			// 3. If unique, push id to array for return
+			versionIds.push(applicationId);
+		}
+		// 4. Return unique array
+		return versionIds;
+	}
+
+	getInitialApplicationId() {
+		return this.versionTree['1.0'].applicationId;
+	}
+
+	/**
+	 * Get next major version increment available e.g. 2.0, 3.0
+	 * @description Parses the access record instance version tree to find the next available major version
+	 */
+	findNextVersion() {
+		const versions = [];
+
+		for (const version in this.versionTree) {
+			versions.push(parseInt(version));
+		}
+
+		versions.sort((a, b) => b - a);
+		return versions[0] + 1;
+	}
+
+	/**
 	 * Create a new major version e.g. 2.0, 3.0
 	 * @description Increments the major version of this access record instance and assigns an updated version tree
 	 */
@@ -53,9 +90,10 @@ export const buildVersionTree = accessRecord => {
 		majorVersion,
 		versionTree = {},
 		amendmentIterations = [],
-		applicationType = constants.applicationTypes.INITIAL,
+		applicationType = constants.submissionTypes.INITIAL,
+		applicationStatus = constants.applicationStatuses.INPROGRESS
 	} = accessRecord;
-	const versionKey = majorVersion ? majorVersion.toString() : '1';
+	const versionKey = majorVersion ? majorVersion.toString() : '1.0';
 
 	// 3. Reverse iterate through amendment iterations and construct minor versions
 	let minorVersions = {};
@@ -77,7 +115,7 @@ export const buildVersionTree = accessRecord => {
 
 	// 4. Create latest major version
 	const hasMinorVersions = amendmentIterations.length > 0;
-	const isInitial = applicationType === constants.applicationTypes.INITIAL;
+	const isInitial = applicationType === constants.submissionTypes.INITIAL;
 	const detailedTitle = `Version ${versionKey}.0${!hasMinorVersions && !isInitial ? ' (latest)' : ''}${
 		isInitial ? '' : ` | ${applicationType}`
 	}`;
@@ -87,7 +125,8 @@ export const buildVersionTree = accessRecord => {
 			displayTitle: `Version ${versionKey}.0${!hasMinorVersions && !isInitial ? ' (latest)' : ''}`,
 			detailedTitle,
 			link: `/data-access-request/${applicationId}?version=${versionKey}.0`,
-			applicationType
+			applicationType,
+			applicationStatus
 		},
 	};
 

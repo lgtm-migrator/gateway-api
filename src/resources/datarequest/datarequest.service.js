@@ -60,8 +60,16 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getDatasetsForApplicationByIds(arrDatasetIds);
 	}
 
-	deleteApplicationById(id) {
-		return this.dataRequestRepository.deleteApplicationById(id);
+	async deleteApplication(accessRecord) {
+		await this.dataRequestRepository.deleteApplicationById(accessRecord._id);
+
+		Object.keys(accessRecord.versionTree).forEach(key => {
+			if (accessRecord.versionTree[key].applicationId.toString() === accessRecord._id.toString()) {
+				return delete accessRecord.versionTree[key];
+			}
+		});
+
+		return await this.syncRelatedVersions(accessRecord.versionTree);
 	}
 
 	replaceApplicationById(id, newAcessRecord) {
@@ -94,11 +102,20 @@ export default class DataRequestService {
 		};
 	}
 
-	async createApplication(data) {
-		const application = await this.dataRequestRepository.createApplication(data);
-		application.projectId = helper.generateFriendlyId(application._id);
-		application.createMajorVersion(1);
-		await this.dataRequestRepository.updateApplicationById(application._id, application);
+	async createApplication(data, applicationType = constants.submissionTypes.INITIAL, versionTree = {}) {
+		let application = await this.dataRequestRepository.createApplication(data);
+
+		if (applicationType === constants.submissionTypes.INITIAL) {
+			application.projectId = helper.generateFriendlyId(application._id);
+			application.createMajorVersion(1);
+		} else {
+			application.versionTree = versionTree;
+			const versionNumber = application.findNextVersion();
+			application.createMajorVersion(versionNumber);
+		}
+
+		application = await this.dataRequestRepository.updateApplicationById(application._id, application);
+
 		return application;
 	}
 
@@ -140,9 +157,13 @@ export default class DataRequestService {
 		return { isValidVersion, requestedMajorVersion, requestedMinorVersion };
 	}
 
-	buildVersionHistory = versionTree => {
+	buildVersionHistory = (versionTree, applicationId, requestedVersion, userType) => {
 		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
-			const { applicationId: _id, link, displayTitle, detailedTitle } = versionTree[versionKey];
+			const { applicationId: _id, link, displayTitle, detailedTitle, applicationStatus } = versionTree[versionKey];
+
+			if (userType === constants.userTypes.CUSTODIAN && applicationStatus === constants.applicationStatuses.INPROGRESS) return arr;
+
+			const isCurrent = applicationId.toString() === _id.toString() && (requestedVersion === versionKey || !requestedVersion);
 
 			const version = {
 				number: versionKey,
@@ -150,6 +171,7 @@ export default class DataRequestService {
 				link,
 				displayTitle,
 				detailedTitle,
+				isCurrent,
 			};
 
 			arr = [...arr, version];
@@ -157,7 +179,20 @@ export default class DataRequestService {
 			return arr;
 		}, []);
 
-		return orderBy(unsortedVersions, ['number'], ['desc']);
+		const orderedVersions = orderBy(unsortedVersions, ['number'], ['desc']);
+
+		// If a current version is not found, this means an unpublished version is in progress with the Custodian, therefore we must select the previous available version
+		if (!orderedVersions.some(v => v.isCurrent)) {
+			const previousVersion = parseFloat(requestedVersion) - 0.1;
+			const previousVersionIndex = orderedVersions.findIndex(v => parseFloat(v.number).toFixed(1) === previousVersion.toFixed(1));
+			if (previousVersionIndex !== -1) {
+				orderedVersions[previousVersionIndex].isCurrent = true;
+			} else {
+				orderedVersions[0].isCurrent = true;
+			}
+		}
+
+		return orderedVersions;
 	};
 
 	getProjectName(accessRecord) {
@@ -263,6 +298,56 @@ export default class DataRequestService {
 		return updateObj;
 	}
 
+	async createAmendment(accessRecord) {
+		// TODO persist messages + private notes between applications (copy)
+		const applicationType = constants.submissionTypes.AMENDED;
+		const applicationStatus = constants.applicationStatuses.INPROGRESS;
+
+		const {
+			userId,
+			authorIds,
+			datasetIds,
+			datasetTitles,
+			projectId,
+			questionAnswers,
+			aboutApplication,
+			publisher,
+			files,
+			versionTree,
+		} = accessRecord;
+
+		const { jsonSchema, _id: schemaId, isCloneable = false, formType } = await datarequestUtil.getLatestPublisherSchema(publisher);
+
+		let amendedApplication = {
+			applicationType,
+			applicationStatus,
+			userId,
+			authorIds,
+			datasetIds,
+			datasetTitles,
+			isCloneable,
+			projectId,
+			schemaId,
+			jsonSchema,
+			questionAnswers,
+			aboutApplication,
+			publisher,
+			formType,
+			files,
+		};
+
+		if (questionAnswers && Object.keys(questionAnswers).length > 0 && datarequestUtil.containsUserRepeatedSections(questionAnswers)) {
+			const updatedSchema = datarequestUtil.copyUserRepeatedSections(accessRecord, jsonSchema);
+			amendedApplication.jsonSchema = updatedSchema;
+		}
+
+		amendedApplication = await this.createApplication(amendedApplication, applicationType, versionTree);
+
+		await this.syncRelatedVersions(versionTree);
+
+		return amendedApplication;
+	}
+
 	async updateApplication(accessRecord, updateObj) {
 		// 1. Extract properties
 		let { applicationStatus, _id } = accessRecord;
@@ -288,8 +373,9 @@ export default class DataRequestService {
 	async uploadFiles(accessRecord, files = [], descriptions, ids, userId) {
 		let fileArr = [];
 		// Check and see if descriptions and ids are an array
-		let descriptionArray = Array.isArray(descriptions);
-		let idArray = Array.isArray(ids);
+		const descriptionArray = Array.isArray(descriptions);
+		const idArray = Array.isArray(ids);
+		const initialApplicationId = accessRecord.getInitialApplicationId();
 
 		// Process the files for scanning
 		for (let i = 0; i < files.length; i++) {
@@ -301,7 +387,7 @@ export default class DataRequestService {
 			// Remove - from uuidV4
 			let uniqueId = generatedId.replace(/-/gim, '');
 			// Send to db
-			const response = await processFile(files[i], accessRecord._id, uniqueId);
+			const response = await processFile(files[i], initialApplicationId, uniqueId);
 			// Deconstruct response
 			let { status } = response;
 			// Setup fileArr for mongoo
@@ -332,9 +418,19 @@ export default class DataRequestService {
 		return mediaFiles;
 	}
 
-	doInitialSubmission(accessRecord) {
-		// 1. Update application to submitted status
-		accessRecord.submissionType = constants.submissionTypes.INITIAL;
+	updateFileStatus(accessRecord, fileId, status) {
+		// 1. Get all major version Ids to update file status against
+		const versionIds = accessRecord.getRelatedVersionIds();
+
+		// 2. Update all applications with file status
+		this.dataRequestRepository.updateFileStatus(versionIds, fileId, status);
+	}
+
+	async doInitialSubmission(accessRecord) {
+		// 1. Update application type and submitted status
+		if (!accessRecord.applicationType) {
+			accessRecord.applicationType = constants.submissionTypes.INITIAL;
+		}
 		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
 		// 2. Check if workflow/5 Safes based application, set final status date if status will never change again
 		if (has(accessRecord.toObject(), 'publisherObj')) {
@@ -347,11 +443,40 @@ export default class DataRequestService {
 		}
 		const dateSubmitted = new Date();
 		accessRecord.dateSubmitted = dateSubmitted;
-		// 3. Return updated access record for saving
+		// 3. Update any connected version trees
+		await this.updateVersionStatus(accessRecord, constants.applicationStatuses.SUBMITTED);
+		// 4. Return updated access record for saving
 		return accessRecord;
 	}
 
-	syncRelatedApplications(versionTree) {
+	async doAmendSubmission(accessRecord, description) {
+		// 1. Amend submission goes to submitted status with text reason for amendment
+		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
+		accessRecord.submissionDescription = description;
+
+		// 2. Set submission date as now
+		const dateSubmitted = new Date();
+		accessRecord.dateSubmitted = dateSubmitted;
+		accessRecord.upadtedAt = dateSubmitted;
+
+		// 3. Update any connected version trees
+		await this.updateVersionStatus(accessRecord, constants.applicationStatuses.SUBMITTED);
+
+		// 4. Return updated access record for saving
+		return accessRecord;
+	}
+
+	async updateVersionStatus(accessRecord, newStatus) {
+		Object.keys(accessRecord.versionTree).forEach(key => {
+			if (accessRecord.versionTree[key].applicationId.toString() === accessRecord._id.toString()) {
+				return (accessRecord.versionTree[key].applicationStatus = newStatus);
+			}
+		});
+
+		return await this.syncRelatedVersions(accessRecord.versionTree);
+	}
+
+	syncRelatedVersions(versionTree) {
 		// 1. Extract all major version _ids denoted by an application type on each node in the version tree
 		const applicationIds = Object.keys(versionTree).reduce((arr, key) => {
 			if (versionTree[key].applicationType) {
@@ -360,6 +485,6 @@ export default class DataRequestService {
 			return arr;
 		}, []);
 		// 2. Update all related applications
-		this.dataRequestRepository.syncRelatedApplications(applicationIds, versionTree);
+		this.dataRequestRepository.syncRelatedVersions(applicationIds, versionTree);
 	}
 }
