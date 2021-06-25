@@ -93,7 +93,9 @@ router.get('/:projectID', async (req, res) => {
 			},
 		},
 	]);
-	q.exec(data => {
+	q.exec((err, data) => {
+		if (err) return res.json({ success: false, error: err });
+
 		if (data.length > 0) {
 			data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
 			var p = Data.aggregate([
