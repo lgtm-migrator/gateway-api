@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import { isNil } from 'lodash';
 import bcrypt from 'bcrypt';
 
 import { UserModel } from './user.model';
@@ -17,10 +17,6 @@ export async function getUserById(id) {
 	return user;
 }
 
-export async function getUserByEmail(email) {
-	return await UserModel.findOne({ email }).exec();
-}
-
 export async function getUserByProviderId(providerId) {
 	return await UserModel.findOne({ providerId }).exec();
 }
@@ -32,8 +28,8 @@ export async function getUserByUserId(id) {
 export async function getServiceAccountByClientCredentials(clientId, clientSecret) {
 	// 1. Locate service account by clientId, return undefined if no document located
 	const id = clientId.toString();
-	const serviceAccount = await UserModel.findOne({ clientId:id, isServiceAccount: true });
-	if (_.isNil(serviceAccount)) {
+	const serviceAccount = await UserModel.findOne({ clientId: id, isServiceAccount: true });
+	if (isNil(serviceAccount)) {
 		return;
 	}
 	// 2. Extract hashed client secret from DB
@@ -58,7 +54,7 @@ export async function createServiceAccount(firstname, lastname, email, teamId) {
 	const id = teamId.toString();
 	const team = await TeamModel.findById(id);
 	// 3. Return undefined if no team found
-	if (_.isNil(team)) {
+	if (isNil(team)) {
 		return;
 	}
 	// 4. Generate Client Id and Client Secret
