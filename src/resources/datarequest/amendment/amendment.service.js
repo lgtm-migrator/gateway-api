@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import moment from 'moment';
 
 import { AmendmentModel } from './amendment.model';
 import constants from '../../utilities/constants.util';
@@ -6,6 +7,7 @@ import helperUtil from '../../utilities/helper.util';
 import datarequestUtil from '../utils/datarequest.util';
 import notificationBuilder from '../../utilities/notificationBuilder';
 import emailGenerator from '../../utilities/emailGenerator.util';
+import dynamicForm from '../../utilities/dynamicForms/dynamicForm.util';
 
 export default class AmendmentService {
 	constructor(amendmentRepository) {
@@ -200,7 +202,7 @@ export default class AmendmentService {
 
 	getAmendmentIterationDetailsByVersion(accessRecord, minorVersion) {
 		const { amendmentIterations = [] } = accessRecord;
-		
+
 		// 1. Calculate version index from version number by subtracting 1 for zero based array
 		let versionIndex = minorVersion - 1;
 
@@ -213,7 +215,7 @@ export default class AmendmentService {
 
 		// 3. Get active party for selected version index
 		const activeParty = this.getAmendmentIterationParty(accessRecord, versionIndex, isLatestMinorVersion);
-		
+
 		// 4. If version index was not determined, use latest available (if unreleased version is found, skip it)
 		if (isNaN(versionIndex)) {
 			const unreleasedVersionIndex = accessRecord.amendmentIterations.findIndex(iteration => _.isNil(iteration.dateReturned));
@@ -520,7 +522,7 @@ export default class AmendmentService {
 			return accessRecord;
 		}
 		// 2. Mark submission type as a resubmission later used to determine notification generation
-		accessRecord.applicationType = constants.submissionTypes.RESUBMISSION;
+		accessRecord.amendmentIterations[index].applicationType = constants.submissionTypes.RESUBMISSION;
 		accessRecord.submitAmendmentIteration(index, userId);
 		// 3. Return updated access record for saving
 		return accessRecord;
@@ -607,6 +609,42 @@ export default class AmendmentService {
 			}
 		}
 		return amendmentStatus;
+	}
+
+	highlightChanges(accessRecord) {
+		const { datasetIds, initialDatasetIds, questionAnswers, initialQuestionAnswers } = accessRecord;
+
+		if (!_.isEqual(datasetIds, initialDatasetIds)) {
+			accessRecord.areDatasetsAmended = true;
+		}
+
+		Object.keys(questionAnswers).forEach(questionId => {
+			if (!_.isEqual(questionAnswers[questionId], initialQuestionAnswers[questionId])) {
+				this.highlightQuestionChange(accessRecord, questionId);
+			}
+		});
+
+		return accessRecord;
+	}
+
+	highlightQuestionChange(accessRecord, questionId) {
+		const { dateSubmitted, mainApplicant } = accessRecord;
+
+		const questionAlert = {
+			status: 'WARNING',
+			options: [],
+			text: `${mainApplicant.firstname} ${mainApplicant.lastname} submitted an amendment on ${moment(dateSubmitted).format('Do MMM YYYY')}`,
+		};
+
+		accessRecord.jsonSchema.questionSets.forEach(questionSet => {
+			let question = dynamicForm.findQuestionRecursive(questionSet.questions, questionId);
+			if (question) {
+				question = datarequestUtil.setQuestionState(question, questionAlert, true);
+				questionSet.questions = datarequestUtil.updateQuestion(questionSet.questions, question);
+				accessRecord.jsonSchema = this.injectNavigationAmendment(accessRecord.jsonSchema, questionSet.questionSetId, constants.userTypes.CUSTODIAN, 'completed', 'returned'); 
+				return;
+			}
+		});
 	}
 
 	async createNotifications(type, accessRecord) {

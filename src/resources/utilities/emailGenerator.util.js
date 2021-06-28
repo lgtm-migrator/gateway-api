@@ -1,4 +1,4 @@
-import _, { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
+import _, { isNil, isEmpty, capitalize, groupBy, forEach, isEqual } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
@@ -185,20 +185,127 @@ const _formatSectionTitle = value => {
 	return capitalize(questionId);
 };
 
-const _buildSubjectTitle = (user, title, submissionType) => {
-	let subject = '';
-	if (user.toUpperCase() === 'DATACUSTODIAN') {
-		subject = `Someone has submitted an application to access ${title} dataset. Please let the applicant know as soon as there is progress in the review of their submission.`;
-	} else {
-		if (submissionType === constants.submissionTypes.INPROGRESS) {
-			subject = `You are in progress with a request access to ${title}. The custodian will be in contact after you submit the application.`;
-		} else if (submissionType === constants.submissionTypes.INITIAL) {
-			subject = `You have requested access to ${title}. The custodian will be in contact about the application.`;
-		} else {
-			subject = `You have made updates to your Data Access Request for ${title}. The custodian will be in contact about the application.`;
-		}
+const _getSubmissionDetails = (
+	userType,
+	userName,
+	userEmail,
+	datasetTitles,
+	initialDatasetTitles,
+	submissionType,
+	projectName,
+	isNationalCoreStudies,
+	dateSubmitted
+) => {
+	let body = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+  <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Related NCS project</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+				isNationalCoreStudies ? `<a style="color: #475da7;" href="${linkNationalCoreStudies}">View NCS project</a>` : 'no'
+			}</td>
+  </tr>  
+  <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of submission</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateSubmitted}</td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicant</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${userName}, ${_displayCorrectEmailAddress(
+		userEmail,
+		userType
+	)}</td>
+    </tr>
+  </table>`;
+
+	const amendBody = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+  <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of amendment submission</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateSubmitted}</td>
+  </tr>  
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicant</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${userName}, ${_displayCorrectEmailAddress(
+		userEmail,
+		userType
+	)}</td>
+    </tr>
+  </table>
+  <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+    <tr>
+      <td>
+        <h2 style="font-size: 18px; color: #29235c !important; margin: 30px 0 15px 0;">Datasets requested</h2>
+      </td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Previous datasets</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${initialDatasetTitles}</td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">New datasets</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+  </tr>
+  </table>`;
+
+	let heading, subject;
+	switch (submissionType) {
+		case constants.submissionTypes.INPROGRESS:
+			heading = 'Data access request application in progress';
+			subject = `You are in progress with a request access to ${datasetTitles}. The custodian will be in contact after you submit the application.`;
+			break;
+		case constants.submissionTypes.INITIAL:
+			heading = 'New data access request application';
+			subject = `You have requested access to ${datasetTitles}. The custodian will be in contact about the application.`;
+			break;
+		case constants.submissionTypes.RESUBMISSION:
+			heading = 'Existing data access request application with new updates';
+			subject = `You have made updates to your Data Access Request for ${datasetTitles}. The custodian will be in contact about the application.`;
+			break;
+		case constants.submissionTypes.AMENDED:
+			heading = 'Data access request application amended';
+			subject = `${userName} has made amendments to an approved application`;
+			body = amendBody;
+			break;
 	}
-	return subject;
+
+	return `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+  <table
+  align="center"
+  border="0"
+  cellpadding="0"
+  cellspacing="40"
+  width="700"
+  word-break="break-all"
+  style="font-family: Arial, sans-serif">
+  <thead>
+    <tr>
+      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+       ${heading}
+      </th>
+    </tr>
+    <tr>
+      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+       ${subject}
+      </th>
+    </tr>
+  </thead>
+  <tbody style="overflow-y: auto; overflow-x: hidden;">
+  <tr style="width: 100%; text-align: left;">
+    <td bgcolor="#fff" style="padding: 0; border: 0;">
+      ${body}
+    </td>
+  </tr>
+ `;
 };
 
 /**
@@ -211,76 +318,38 @@ const _buildSubjectTitle = (user, title, submissionType) => {
  * @return  {String} Questions Answered
  */
 const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) => {
+	const {
+		userType,
+		userName,
+		userEmail,
+		datasetTitles,
+		initialDatasetTitles,
+		submissionType,
+		submissionDescription,
+		applicationId,
+	} = options;
+	const dateSubmitted = moment().format('D MMM YYYY');
+	const { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
+	const linkNationalCoreStudies =
+		nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
+
 	let parent;
-	let { userType, userName, userEmail, datasetTitles, submissionType } = options;
-	let dateSubmitted = moment().format('D MMM YYYY');
-	let { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
-	let linkNationalCoreStudies = nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
-	let heading =
-		submissionType === constants.submissionTypes.INPROGRESS
-			? 'Data access request application in progress'
-			: constants.submissionTypes.INITIAL
-			? `New data access request application`
-			: `Existing data access request application with new updates`;
-	let subject = _buildSubjectTitle(userType, datasetTitles, submissionType);
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
 	let gatewayAttributionPolicy = `We ask that use of the Innovation Gateway be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage 2020.'`;
-	let table = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
-                <table
-                align="center"
-                border="0"
-                cellpadding="0"
-                cellspacing="40"
-                width="700"
-                word-break="break-all"
-                style="font-family: Arial, sans-serif">
-                <thead>
-                  <tr>
-                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                     ${heading}
-                    </th>
-                  </tr>
-                  <tr>
-                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     ${subject}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody style="overflow-y: auto; overflow-x: hidden;">
-                <tr style="width: 100%; text-align: left;">
-                  <td bgcolor="#fff" style="padding: 0; border: 0;">
-                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
-                    <tr>
-                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
-                      </tr>
-                      <tr>
-                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Related NCS project</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
-													isNationalCoreStudies ? `<a style="color: #475da7;" href="${linkNationalCoreStudies}">View NCS project</a>` : 'no'
-												}</td>
-                    </tr>  
-                    <tr>
-                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
-                      </tr>
-                      <tr>
-                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of submission</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateSubmitted}</td>
-                      </tr>
-                      <tr>
-                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicant</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${userName}, ${_displayCorrectEmailAddress(
+
+	let table = _getSubmissionDetails(
+		userType,
+		userName,
 		userEmail,
-		userType
-	)}</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-               `;
+		datasetTitles,
+		initialDatasetTitles,
+		submissionType,
+		projectName,
+		isNationalCoreStudies,
+		dateSubmitted
+	);
 
 	// Create json content payload for attaching to email
 	const jsonContent = {
@@ -301,7 +370,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
                   <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                   <tr>
                     <td>
-                      <h2 style="font-size: 18px; color: #29235c !important; margin: -25px 0 15px 0;">${page}</h2>
+                      <h2 style="font-size: 18px; color: #29235c !important; margin: 0 0 15px 0;">${page}</h2>
                     </td>
                   </tr>`;
 
@@ -340,11 +409,31 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		}
 		table += `</table></td></tr>`;
 	}
+
+	if (submissionDescription) {
+		table += `
+    <tr>
+      <td align='left'>
+        <h2 style="font-size: 18px; color: #29235c !important; margin: 0 0 5px -5px;">Message to data custodian:</h2>
+        <p style="font-size: 14px; color: #3c3c3b; width: 100%; margin-left: -5px;">${submissionDescription}</p>
+      </td>
+    </tr>`;
+	}
+
+	table += `<tr>
+  <td align='left'>
+    <div style="margin-left: -5px;">
+      ${_displayDARLink(applicationId)}
+    </div>
+  </td>
+</tr>`;
+
 	table += `<tr>
 			<td align='left'>
-				<p style="font-size: 14px;">${gatewayAttributionPolicy}</p>
+				<p style="font-size: 14px; margin-left: -5px;">${gatewayAttributionPolicy}</p>
 			</td>
 		</tr>`;
+
 	table += ` </tbody></table></div>`;
 
 	return { html: table, jsonContent };
@@ -465,6 +554,42 @@ const _generateEmail = async (aboutApplication, questions, pages, questionPanels
 	let fullQuestionSet = _getAllQuestionsFlattened(unNestedQuestions);
 	// fullQuestions [SafePeople: {Applicant: {}, Applicant_aca: {}}, SafeProject:{}]
 	let fullQuestions = _groupByPageSection([...questionList]);
+	// build up  email with  values
+	let { html, jsonContent } = _buildEmail(aboutApplication, fullQuestions, flatQuestionAnswers, options);
+	// return email
+	return { html, jsonContent };
+};
+
+const _generateAmendEmail = async (
+	aboutApplication,
+	questions,
+	pages,
+	questionPanels,
+	questionAnswers,
+	initialQuestionAnswers,
+	options
+) => {
+	// filter out unchanged answers
+	const changedAnswers = Object.keys(questionAnswers).reduce((obj, key) => {
+		if (isEqual(questionAnswers[key], initialQuestionAnswers[key])) {
+			return obj;
+		}
+		return { ...obj, [key]: questionAnswers[key] };
+	}, {});
+
+	// reset questionList arr
+	questionList = [];
+	// set questionAnswers
+	let flatQuestionAnswers = await _actualQuestionAnswers(changedAnswers, options);
+	// unnest each questionPanel if questionSets
+	let flatQuestionPanels = _unNestQuestionPanels(questionPanels);
+	// unnest question flat
+	let unNestedQuestions = _initalQuestionSpread(questions, pages, flatQuestionPanels);
+	// assigns to questionList
+	_getAllQuestionsFlattened(unNestedQuestions);
+	// filter to only changed questions
+  let changedQuestions = questionList.filter(q => Object.keys(changedAnswers).some(key => key === q.questionId));
+	let fullQuestions = _groupByPageSection([...changedQuestions]);
 	// build up  email with  values
 	let { html, jsonContent } = _buildEmail(aboutApplication, fullQuestions, flatQuestionAnswers, options);
 	// return email
@@ -1999,6 +2124,7 @@ export default {
 	generateAttachment: _generateAttachment,
 	//DAR
 	generateEmail: _generateEmail,
+	generateAmendEmail: _generateAmendEmail,
 	generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
 	generateDARClonedEmail: _generateDARClonedEmail,
