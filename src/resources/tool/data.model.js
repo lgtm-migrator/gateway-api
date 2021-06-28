@@ -116,6 +116,7 @@ const DataSchema = new Schema(
 		structuralMetadata: [],
 		percentageCompleted: {},
 		applicationStatusDesc: String,
+		applicationStatusAuthor: String,
 		timestamps: {
 			updated: Date,
 			created: Date,
