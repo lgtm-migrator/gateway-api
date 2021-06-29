@@ -118,9 +118,7 @@ const addTool = async (req, res) => {
 			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, `A new ${data.type} has been added and is ready for review`, html, false);
 		});
 
-		if (data.type === 'tool') {
-			await sendEmailNotificationToAuthors(data, toolCreator);
-		}
+		await sendEmailNotificationToAuthors(data, toolCreator);
 		await storeNotificationsForAuthors(data, toolCreator);
 
 		resolve(newDataObj);
@@ -208,7 +206,7 @@ const editTool = async (req, res) => {
 		).then(tool => {
 			if (tool == null) {
 				reject(new Error(`No record found with id of ${id}.`));
-			} else if (type === 'tool') {
+			} else {
 				// Send email notification of update to all authors who have opted in to updates
 				sendEmailNotificationToAuthors(data, toolCreator);
 				storeNotificationsForAuthors(data, toolCreator);
@@ -493,7 +491,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 
 async function sendEmailNotificationToAuthors(tool, toolOwner) {
 	// 1. Generate tool URL for linking user from email
-	const toolLink = process.env.homeURL + '/tool/' + tool.id;
+	const toolLink = process.env.homeURL + `/${tool.type}/` + tool.id;
 
 	// 2. Find all authors of the tool who have opted in to email updates
 	var q = UserModel.aggregate([
@@ -534,8 +532,6 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 }
 
 async function storeNotificationsForAuthors(tool, toolOwner) {
-	//store messages to alert a user has been added as an author
-	const toolLink = process.env.homeURL + '/tool/' + tool.id;
 	// clone deep the object tool take a deep clone of properties
 	let toolCopy = cloneDeep(tool);
 
