@@ -167,6 +167,7 @@ export default class DataRequestService {
 
 			const version = {
 				number: versionKey,
+				versionNumber: parseFloat(versionKey),
 				_id,
 				link,
 				displayTitle,
@@ -179,7 +180,7 @@ export default class DataRequestService {
 			return arr;
 		}, []);
 
-		const orderedVersions = orderBy(unsortedVersions, ['number'], ['desc']);
+		const orderedVersions = orderBy(unsortedVersions, ['versionNumber'], ['desc']);
 
 		// If a current version is not found, this means an unpublished version is in progress with the Custodian, therefore we must select the previous available version
 		if (!orderedVersions.some(v => v.isCurrent)) {
@@ -187,7 +188,7 @@ export default class DataRequestService {
 			const previousVersionIndex = orderedVersions.findIndex(v => parseFloat(v.number).toFixed(1) === previousVersion.toFixed(1));
 			if (previousVersionIndex !== -1) {
 				orderedVersions[previousVersionIndex].isCurrent = true;
-			} else {
+			} else if (orderedVersions.length > 0) {
 				orderedVersions[0].isCurrent = true;
 			}
 		}
@@ -324,12 +325,14 @@ export default class DataRequestService {
 			userId,
 			authorIds,
 			datasetIds,
+			initialDatasetIds: datasetIds,
 			datasetTitles,
 			isCloneable,
 			projectId,
 			schemaId,
 			jsonSchema,
 			questionAnswers,
+			initialQuestionAnswers: questionAnswers,
 			aboutApplication,
 			publisher,
 			formType,
