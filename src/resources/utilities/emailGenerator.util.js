@@ -194,7 +194,8 @@ const _getSubmissionDetails = (
 	submissionType,
 	projectName,
 	isNationalCoreStudies,
-	dateSubmitted
+	dateSubmitted,
+  linkNationalCoreStudies
 ) => {
 	let body = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
   <tr>
@@ -348,7 +349,8 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		submissionType,
 		projectName,
 		isNationalCoreStudies,
-		dateSubmitted
+		dateSubmitted,
+    linkNationalCoreStudies
 	);
 
 	// Create json content payload for attaching to email

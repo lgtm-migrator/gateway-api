@@ -166,7 +166,8 @@ export default class DataRequestService {
 			const isCurrent = applicationId.toString() === _id.toString() && (requestedVersion === versionKey || !requestedVersion);
 
 			const version = {
-				number: parseFloat(versionKey),
+				number: versionKey,
+				versionNumber: parseFloat(versionKey),
 				_id,
 				link,
 				displayTitle,
@@ -179,7 +180,7 @@ export default class DataRequestService {
 			return arr;
 		}, []);
 
-		const orderedVersions = orderBy(unsortedVersions, ['number'], ['desc']);
+		const orderedVersions = orderBy(unsortedVersions, ['versionNumber'], ['desc']);
 
 		// If a current version is not found, this means an unpublished version is in progress with the Custodian, therefore we must select the previous available version
 		if (!orderedVersions.some(v => v.isCurrent)) {
