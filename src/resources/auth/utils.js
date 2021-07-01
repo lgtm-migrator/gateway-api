@@ -57,6 +57,20 @@ const checkIsInRole = (...roles) => (req, res, next) => {
 	return next();
 };
 
+const checkIsAdminOrIsUser = () => (req, res, next) => {
+	if (req.user) {
+		if (req.user.role === ROLES.Admin) return next();
+		else if (req.params.userID && req.params.userID === req.user.id.toString()) return next();
+		else if (req.params.id && req.params.id === req.user.id.toString()) return next();
+		else if (req.body.id && req.body.id.toString() === req.user.id.toString()) return next();
+
+		return res.status(401).json({
+			status: 'error',
+			message: 'Unauthorised to perform this action.',
+		});
+	}
+};
+
 const whatIsRole = req => {
 	if (!req.user) {
 		return 'Reader';
@@ -103,4 +117,4 @@ const checkAllowedToAccess = type => async (req, res, next) => {
 	});
 };
 
-export { setup, signToken, camundaToken, checkIsInRole, whatIsRole, checkIsUser, checkAllowedToAccess };
+export { setup, signToken, camundaToken, checkIsInRole, whatIsRole, checkIsUser, checkIsAdminOrIsUser, checkAllowedToAccess };

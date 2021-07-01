@@ -5,6 +5,8 @@ import { utils } from '../auth';
 import { UserModel } from './user.model';
 import { Data } from '../tool/data.model';
 import helper from '../utilities/helper.util';
+import { ROLES } from './user.roles';
+
 //import { createServiceAccount } from './user.repository';
 
 const router = express.Router();
@@ -101,16 +103,22 @@ router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), utils.ch
 // @router   PATCH /api/v1/users/advancedSearch/roles/:id
 // @desc     Set advanced search roles for a user
 // @access   Private
-router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
+router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), utils.checkIsAdminOrIsUser(), async (req, res) => {
 	const { advancedSearchRoles } = req.body;
 	if (typeof advancedSearchRoles !== 'object') {
 		return res.status(400).json({ status: 'error', message: 'Invalid role(s) supplied.' });
 	}
-	let roles = advancedSearchRoles.map(role => role.toString());
-	let user = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles: roles }, { new: true }, err => {
+
+	const user = await UserModel.findOne({ id: req.params.id });
+	if (user.advancedSearchRoles && user.advancedSearchRoles.includes('BANNED')) {
+		return res.status(403).json({ status: 'error', message: 'User is banned.  No update applied.' });
+	}
+
+	const roles = advancedSearchRoles.map(role => role.toString());
+	const updatedUser = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles: roles }, { new: true }, err => {
 		if (err) return res.json({ success: false, error: err });
 	});
-	return res.status(200).json({ status: 'success', response: user });
+	return res.status(200).json({ status: 'success', response: updatedUser });
 });
 
 // @router   POST /api/v1/users/serviceaccount
