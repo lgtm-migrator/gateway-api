@@ -14,6 +14,7 @@ import inputSanitizer from '../utilities/inputSanitizer';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
+import { logActivity } from '../activitylog/activitylog.service';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -45,7 +46,12 @@ export default class DataRequestController extends Controller {
 					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
 					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
 					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
-					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree, accessRecord._id, null, constants.userTypes.APPLICANT);
+					accessRecord.versions = this.dataRequestService.buildVersionHistory(
+						accessRecord.versionTree,
+						accessRecord._id,
+						null,
+						constants.userTypes.APPLICANT
+					);
 					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.APPLICANT);
 					return accessRecord;
 				})
@@ -122,23 +128,18 @@ export default class DataRequestController extends Controller {
 			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, isLatestMinorVersion);
 
 			// 8. Get the workflow status for the requested application version for the requesting user
-			const {
-				inReviewMode,
-				reviewSections,
-				hasRecommended,
-				isManager,
-				workflow,
-			} = this.workflowService.getApplicationWorkflowStatusForUser(accessRecord, requestingUserObjectId);
+			const { inReviewMode, reviewSections, hasRecommended, isManager, workflow } =
+				this.workflowService.getApplicationWorkflowStatusForUser(accessRecord, requestingUserObjectId);
 
 			// 9. Get role type for requesting user, applicable for only Custodian users i.e. Manager/Reviewer role
 			const userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 
 			// 10. Handle amendment type application loading for Custodian showing any changes in the major version
-			if(applicationType === constants.submissionTypes.AMENDED && userType === constants.userTypes.CUSTODIAN) {
+			if (applicationType === constants.submissionTypes.AMENDED && userType === constants.userTypes.CUSTODIAN) {
 				const minorVersion = _.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion;
-				
-				if(accessRecord.amendmentIterations.length === 0 || (minorVersion === 0)) {
+
+				if (accessRecord.amendmentIterations.length === 0 || minorVersion === 0) {
 					accessRecord = this.amendmentService.highlightChanges(accessRecord);
 				}
 			}
@@ -333,7 +334,7 @@ export default class DataRequestController extends Controller {
 
 			// 5. Perform either initial submission or resubmission depending on application status
 			if (accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
-				switch(accessRecord.applicationType) {
+				switch (accessRecord.applicationType) {
 					case constants.submissionTypes.AMENDED:
 						accessRecord = await this.dataRequestService.doAmendSubmission(accessRecord, description);
 						notificationType = constants.notificationTypes.APPLICATIONAMENDED;
@@ -341,6 +342,7 @@ export default class DataRequestController extends Controller {
 					case constants.submissionTypes.INITIAL:
 					default:
 						accessRecord = await this.dataRequestService.doInitialSubmission(accessRecord);
+						await logActivity(constants.activityLogEvents.APPLICATION_SUBMITTED, { accessRequest: accessRecord, user: requestingUser });
 						notificationType = constants.notificationTypes.SUBMITTED;
 						break;
 				}
@@ -1657,7 +1659,10 @@ export default class DataRequestController extends Controller {
 				bpmController.postStartManagerReview(bpmContext);
 			}
 
-			// 11. Return aplication and successful response
+			// 11. Log event in the activity log
+			await logActivity(constants.activityLogEvents.REVIEW_PROCESS_STARTED, { accessRequest: accessRecord, user: req.user });
+
+			// 12. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
 			// Return error response if something goes wrong
@@ -1838,7 +1843,7 @@ export default class DataRequestController extends Controller {
 					userName: `${appFirstName} ${appLastName}`,
 					userType: 'applicant',
 					submissionType: constants.submissionTypes.INPROGRESS,
-					applicationId: accessRecord._id.toString()
+					applicationId: accessRecord._id.toString(),
 				};
 
 				// Build email template
@@ -1923,10 +1928,7 @@ export default class DataRequestController extends Controller {
 			case constants.notificationTypes.SUBMITTED:
 				// 1. Create notifications
 				// Custodian notification
-				if (
-					_.has(accessRecord.datasets[0], 'publisher.team.users') &&
-					accessRecord.datasets[0].publisher.allowAccessRequestManagement
-				) {
+				if (_.has(accessRecord.datasets[0], 'publisher.team.users') && accessRecord.datasets[0].publisher.allowAccessRequestManagement) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
 					// check if publisher.team has email notifications
@@ -1966,7 +1968,7 @@ export default class DataRequestController extends Controller {
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
-					applicationId: accessRecord._id.toString()
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -2050,7 +2052,7 @@ export default class DataRequestController extends Controller {
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
-					applicationId: accessRecord._id.toString()
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -2495,7 +2497,7 @@ export default class DataRequestController extends Controller {
 					initialDatasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
 					submissionDescription: accessRecord.submissionDescription,
-					applicationId: accessRecord._id.toString()
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {

@@ -469,6 +469,11 @@ const _logTypes = {
 	USER: 'User',
 };
 
+const _activityLogEvents = {
+	APPLICATION_SUBMITTED: 'applicationSubmitted',
+	REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
+};
+
 export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
@@ -492,5 +497,6 @@ export default {
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
-	logTypes: _logTypes
+	logTypes: _logTypes,
+	activityLogEvents: _activityLogEvents,
 };
