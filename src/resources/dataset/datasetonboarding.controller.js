@@ -1619,4 +1619,22 @@ module.exports = {
 				break;
 		}
 	},
+
+	//DELETE api/v1/dataset-onboarding/delete/:id
+	deleteDraftDataset: async (req, res) => {
+		try {
+			let id = req.params.id;
+
+			let dataset = await Data.findOneAndRemove({ _id: id, activeflag: 'draft' });
+			let draftDatasetName = dataset.name;
+
+			return res.status(200).json({
+				success: true,
+				data: draftDatasetName,
+			});
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
+		}
+	},
 };
