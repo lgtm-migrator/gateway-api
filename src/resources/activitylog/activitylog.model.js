@@ -1,7 +1,9 @@
 import { model, Schema } from 'mongoose';
+import constants from '../utilities/constants.util';
 
 const ActivityLogSchema = new Schema({
-	eventType: { type: String, required: true },
+	eventType: { type: String, required: true, enum: Object.values(constants.activityLogEvents) },
+	logType: { type: String, required: true, enum: Object.values(constants.activityLogTypes) },
 	userTypes: [],
 	timestamp: { type: Date, required: true },
 	user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
@@ -13,4 +15,4 @@ const ActivityLogSchema = new Schema({
 	detailedHtml: String,
 });
 
-export const ActivityLogModel = model('ActivityLog', ActivityLogSchema);
+export const ActivityLog = model('ActivityLog', ActivityLogSchema);

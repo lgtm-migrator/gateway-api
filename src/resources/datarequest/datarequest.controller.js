@@ -14,17 +14,17 @@ import inputSanitizer from '../utilities/inputSanitizer';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
-import { logActivity } from '../activitylog/activitylog.service';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
-	constructor(dataRequestService, workflowService, amendmentService) {
+	constructor(dataRequestService, workflowService, amendmentService, activityLogService) {
 		super(dataRequestService);
 		this.dataRequestService = dataRequestService;
 		this.workflowService = workflowService;
 		this.amendmentService = amendmentService;
+		this.activityLogService = activityLogService;
 	}
 
 	// ###### APPLICATION CRUD OPERATIONS #######
@@ -342,7 +342,7 @@ export default class DataRequestController extends Controller {
 					case constants.submissionTypes.INITIAL:
 					default:
 						accessRecord = await this.dataRequestService.doInitialSubmission(accessRecord);
-						await logActivity(constants.activityLogEvents.APPLICATION_SUBMITTED, { accessRequest: accessRecord, user: requestingUser });
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_SUBMITTED, { accessRequest: accessRecord, user: requestingUser });
 						notificationType = constants.notificationTypes.SUBMITTED;
 						break;
 				}
@@ -1660,7 +1660,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 11. Log event in the activity log
-			await logActivity(constants.activityLogEvents.REVIEW_PROCESS_STARTED, { accessRequest: accessRecord, user: req.user });
+			await this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PROCESS_STARTED, { accessRequest: accessRecord, user: req.user });
 
 			// 12. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });

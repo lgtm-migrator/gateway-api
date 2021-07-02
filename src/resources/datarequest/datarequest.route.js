@@ -7,7 +7,7 @@ import { param } from 'express-validator';
 import { logger } from '../utilities/logger';
 import DataRequestController from './datarequest.controller';
 import AmendmentController from './amendment/amendment.controller';
-import { dataRequestService, workflowService, amendmentService } from './dependency';
+import { dataRequestService, workflowService, amendmentService, activityLogService } from './dependency';
 
 const fs = require('fs');
 const path = './tmp';
