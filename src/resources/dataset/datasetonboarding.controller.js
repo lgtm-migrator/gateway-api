@@ -46,7 +46,7 @@ module.exports = {
 
 			const datasets = await Data.find(query)
 				.select(
-					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc percentageCompleted datasetv2.summary.publisher.name'
+					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name'
 				)
 				.sort({ 'timestamps.updated': -1 })
 				.lean();
@@ -650,7 +650,7 @@ module.exports = {
 			// 1. Id is the _id object in MongoDb not the generated id or dataset Id
 			// 2. Get the userId
 			const id = req.params.id || null;
-			let { _id, id: userId } = req.user;
+			let { _id, id: userId, firstname, lastname } = req.user;
 			let { applicationStatus, applicationStatusDesc = '' } = req.body;
 
 			if (!id) return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
@@ -895,6 +895,7 @@ module.exports = {
 					{
 						activeflag: constants.datatsetStatuses.REJECTED,
 						applicationStatusDesc: applicationStatusDesc,
+						applicationStatusAuthor: `${firstname} ${lastname}`,
 						'timestamps.rejected': Date.now(),
 						'timestamps.updated': Date.now(),
 					},
@@ -942,7 +943,10 @@ module.exports = {
 						console.error('Error when trying to logout of the MDC - ' + err.message);
 					});
 				}
-				await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.ARCHIVE });
+				await Data.findOneAndUpdate(
+					{ _id: id },
+					{ activeflag: constants.datatsetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
+				);
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'unarchive') {
 				let dataset = await Data.findOne({ _id: id }).lean();

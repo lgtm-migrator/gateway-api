@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { Collections } from './collections.model';
@@ -8,7 +9,7 @@ import helper from '../utilities/helper.util';
 
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 
-const getCollectionObjects = async (req, res) => {
+const getCollectionObjects = async req => {
 	let relatedObjects = [];
 	await Collections.find(
 		{ id: parseInt(req.params.collectionID) },
@@ -46,7 +47,7 @@ const getCollectionObjects = async (req, res) => {
 function getCollectionObject(objectId, objectType, pid, updated) {
 	let id = pid && pid.length > 0 ? pid : objectId;
 
-	return new Promise(async (resolve, reject) => {
+	return new Promise(async resolve => {
 		let data;
 		if (objectType !== 'dataset' && objectType !== 'course') {
 			data = await Data.find(
@@ -341,8 +342,8 @@ function generateCollectionEmailContent(role, publicflag, collectionName, collec
 			</div>`;
 }
 
-const getCollectionsAdmin = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getCollectionsAdmin = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 40;
 		let searchString = '';
@@ -382,8 +383,8 @@ const getCollectionsAdmin = async (req, res) => {
 	});
 };
 
-const getCollections = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getCollections = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 40;
 		let idString = req.user.id;
@@ -422,7 +423,7 @@ const getCollections = async (req, res) => {
 		});
 
 		function getUserCollections(query) {
-			return new Promise((resolve, reject) => {
+			return new Promise(resolve => {
 				query.exec((err, data) => {
 					data &&
 						data.map(dat => {
@@ -457,7 +458,7 @@ function getObjectResult(searchAll, searchQuery, startIndex, limit) {
 			.skip(parseInt(startIndex))
 			.limit(parseInt(limit));
 	}
-	return new Promise((resolve, reject) => {
+	return new Promise(resolve => {
 		q.exec((err, data) => {
 			if (typeof data === 'undefined') {
 				resolve([]);
@@ -480,7 +481,7 @@ function getCountsByStatus(idString) {
 		q = Collections.find({ authors: parseInt(idString) }, { id: 1, name: 1, activeflag: 1 });
 	}
 
-	return new Promise((resolve, reject) => {
+	return new Promise(resolve => {
 		q.exec((err, data) => {
 			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
 			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length;

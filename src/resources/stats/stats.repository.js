@@ -177,7 +177,7 @@ export default class StatsRepository extends Repository {
 	}
 
 	async getDataAccessRequestStats(startMonth, endMonth) {
-		const dateQuery = startMonth && endMonth ? { dateSubmitted: { $gte: startMonth, $lt: endMonth }} : {};
+		const dateQuery = startMonth && endMonth ? { dateSubmitted: { $gte: startMonth, $lt: endMonth } } : {};
 		const excludedDatasets = await this.getExcludedDatasetIds();
 		const accessRequests = await DataRequestModel.find(
 			{
@@ -418,6 +418,7 @@ export default class StatsRepository extends Repository {
 					title: {
 						$exists: true,
 					},
+					activeflag: 'active',
 				},
 			},
 			{
@@ -432,6 +433,7 @@ export default class StatsRepository extends Repository {
 					description: 1,
 					id: 1,
 					counter: 1,
+					activeflag: 1,
 				},
 			},
 			{
@@ -445,7 +447,8 @@ export default class StatsRepository extends Repository {
 					domains: { $first: '$domains' },
 					description: { $first: '$description' },
 					id: { $first: '$id' },
-					counter: { $sum: '$counter' },
+					counter: { $first: '$counter' },
+					activeflag: { $first: '$activeflag' },
 				},
 			},
 			{
@@ -461,7 +464,7 @@ export default class StatsRepository extends Repository {
 	}
 
 	async getActiveCourseCount() {
-		return Course.countDocuments({ activeflag: 'active'});
+		return Course.countDocuments({ activeflag: 'active' });
 	}
 
 	async getPopularEntitiesByType(entityType) {
@@ -481,6 +484,7 @@ export default class StatsRepository extends Repository {
 					pid: {
 						$ne: 'fd8d0743-344a-4758-bb97-f8ad84a37357', //PID for HDR-UK Papers dataset
 					},
+					activeflag: 'active',
 				},
 			},
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
@@ -518,7 +522,7 @@ export default class StatsRepository extends Repository {
 					lastname: { $first: '$lastname' },
 					id: { $first: '$id' },
 					categories: { $first: '$categories' },
-					counter: { $sum: '$counter' },
+					counter: { $first: '$counter' },
 					programmingLanguage: { $first: '$programmingLanguage' },
 					tags: { $first: '$tags' },
 					description: { $first: '$description' },
