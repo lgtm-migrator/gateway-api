@@ -15,12 +15,12 @@ export async function createUser({ firstname, lastname, email, providerId, provi
 			role,
 		});
 		// if a user has been created send new introduction email
-		if(user) {
+		if (user) {
 			const msg = {
 				to: email,
 				from: 'gateway@hdruk.ac.uk',
-				templateId: process.env.SENDGRID_INTRO_EMAIL
-			}
+				templateId: process.env.SENDGRID_INTRO_EMAIL,
+			};
 			emailGeneratorUtil.sendIntroEmail(msg);
 		}
 		// return user via promise
@@ -39,8 +39,8 @@ export async function updateUser({ id, firstname, lastname, email, discourseKey,
 					email,
 					discourseKey,
 					discourseUsername,
-					feedback, 
-					news
+					feedback,
+					news,
 				}
 			)
 		);
@@ -57,5 +57,21 @@ export async function updateRedirectURL({ id, redirectURL }) {
 				}
 			)
 		);
+	});
+}
+
+export async function setCohortDiscoveryAccess(id, roles) {
+	return new Promise(async (resolve, reject) => {
+		const user = await UserModel.findOne({ id }, { advancedSearchRoles: 1 }).lean();
+		if (!user) return reject({ statusCode: 400, message: 'No user exists for id provided.' });
+
+		if (user.advancedSearchRoles && user.advancedSearchRoles.includes('BANNED')) {
+			return reject({ statusCode: 403, message: 'User is banned.  No update applied.' });
+		}
+
+		const updatedUser = await UserModel.findOneAndUpdate({ id }, { advancedSearchRoles: roles }, { new: true }, err => {
+			if (err) return reject({ statusCode: 500, message: err });
+		}).lean();
+		return resolve(updatedUser);
 	});
 }

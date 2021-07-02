@@ -5,6 +5,9 @@ import { utils } from '../auth';
 import { UserModel } from './user.model';
 import { Data } from '../tool/data.model';
 import helper from '../utilities/helper.util';
+import { ROLES } from './user.roles';
+import { setCohortDiscoveryAccess } from './user.service';
+import { upperCase } from 'lodash';
 //import { createServiceAccount } from './user.repository';
 
 const router = express.Router();
@@ -98,25 +101,40 @@ router.patch('/advancedSearch/terms/:id', passport.authenticate('jwt'), utils.ch
 	return res.status(200).json({ status: 'success', response: user });
 });
 
-// @router   PATCH /api/v1/users/advancedSearch/roles/:id
-// @desc     Set advanced search roles for a user
+// @router   PATCH /api/v1/users/advancedSearch/customRoles/:id
+// @desc     Allow admin to set custom advanced search roles for a user
 // @access   Private
-router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), utils.checkIsAdminOrIsUser(), async (req, res) => {
+router.patch('/advancedSearch/customRoles/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
 	const { advancedSearchRoles } = req.body;
 	if (typeof advancedSearchRoles !== 'object') {
 		return res.status(400).json({ status: 'error', message: 'Invalid role(s) supplied.' });
 	}
 
-	const user = await UserModel.findOne({ id: req.params.id });
-	if (user.advancedSearchRoles && user.advancedSearchRoles.includes('BANNED')) {
-		return res.status(403).json({ status: 'error', message: 'User is banned.  No update applied.' });
-	}
+	await setCohortDiscoveryAccess(req.params.id, advancedSearchRoles)
+		.then(response => {
+			return res.status(200).json({ status: 'success', response });
+		})
+		.catch(err => {
+			return res.status(err.statusCode).json({ status: 'error', message: err.message });
+		});
+});
 
-	const roles = advancedSearchRoles.map(role => role.toString());
-	const updatedUser = await UserModel.findOneAndUpdate({ id: req.params.id }, { advancedSearchRoles: roles }, { new: true }, err => {
-		if (err) return res.json({ success: false, error: err });
-	});
-	return res.status(200).json({ status: 'success', response: updatedUser });
+// @router   PATCH /api/v1/users/advancedSearch/roles/:id
+// @desc     Grant basic advanced search role for an Open Athens user
+// @access   Private
+router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
+	if (upperCase(req.user.provider) !== 'OIDC')
+		return res.status(403).json({ status: 'error', message: 'Only Open Athens users are permitted to use this route.' });
+
+	const advancedSearchRoles = ['GENERAL_ACCESS'];
+
+	await setCohortDiscoveryAccess(req.params.id, advancedSearchRoles)
+		.then(response => {
+			return res.status(200).json({ status: 'success', response });
+		})
+		.catch(err => {
+			return res.status(err.statusCode).json({ status: 'error', message: err.message });
+		});
 });
 
 // @router   POST /api/v1/users/serviceaccount
