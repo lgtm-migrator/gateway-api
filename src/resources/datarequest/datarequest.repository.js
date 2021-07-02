@@ -107,7 +107,7 @@ export default class DataRequestRepository extends Repository {
 	getApplicationToSubmitById(id) {
 		return DataRequestModel.findOne({ _id: id }).populate([
 			{
-				path: 'datasets dataset',
+				path: 'datasets dataset initialDatasets',
 				populate: {
 					path: 'publisher',
 					populate: {

@@ -11,6 +11,7 @@ const DataRequestSchema = new Schema(
 		authorIds: [Number],
 		dataSetId: String,
 		datasetIds: [{ type: String }],
+		initialDatasetIds: [{ type: String }],
 		datasetTitles: [{ type: String }],
 		isCloneable: Boolean,
 		projectId: String,
@@ -40,6 +41,10 @@ const DataRequestSchema = new Schema(
 			default: {},
 		},
 		questionAnswers: {
+			type: Object,
+			default: {},
+		},
+		initialQuestionAnswers: {
 			type: Object,
 			default: {},
 		},
@@ -133,6 +138,13 @@ DataRequestSchema.virtual('authors', {
 	ref: 'User',
 	foreignField: 'id',
 	localField: 'authorIds',
+});
+
+DataRequestSchema.virtual('initialDatasets', {
+	ref: 'Data',
+	foreignField: 'datasetid',
+	localField: 'initialDatasetIds',
+	justOne: false,
 });
 
 // Load entity class

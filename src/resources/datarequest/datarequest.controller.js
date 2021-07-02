@@ -122,7 +122,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 6. Set edit mode for applicants who have not yet submitted
-			const { applicationStatus, jsonSchema, versionTree } = accessRecord;
+			const { applicationStatus, jsonSchema, versionTree, applicationType } = accessRecord;
 			accessRecord.readOnly = this.dataRequestService.getApplicationIsReadOnly(userType, applicationStatus);
 
 			// 7. Count amendments for the latest version - returns 0 immediately if not viewing latest version
@@ -141,13 +141,22 @@ export default class DataRequestController extends Controller {
 			const userRole =
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 
-			// 10. Inject completed update requests from previous version to the requested version e.g. 1.1 if 1.2 requested
+			// 10. Handle amendment type application loading for Custodian showing any changes in the major version
+			if (applicationType === constants.submissionTypes.AMENDED && userType === constants.userTypes.CUSTODIAN) {
+				const minorVersion = _.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion;
+
+				if (accessRecord.amendmentIterations.length === 0 || minorVersion === 0) {
+					accessRecord = this.amendmentService.highlightChanges(accessRecord);
+				}
+			}
+
+			// 11. Inject completed update requests from previous version to the requested version e.g. 1.1 if 1.2 requested
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex - 1, true);
 
-			// 11. Inject updates for current version
+			// 12. Inject updates for current version
 			accessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser, versionIndex, true);
 
-			// 12. Inject updates from any unreleased version e.g. 1.2
+			// 13. Inject updates from any unreleased version e.g. 1.2
 			accessRecord = this.amendmentService.injectAmendments(
 				accessRecord,
 				userType,
@@ -157,7 +166,7 @@ export default class DataRequestController extends Controller {
 				false
 			);
 
-			// 13. Append question actions depending on user type and application status
+			// 14. Append question actions depending on user type and application status
 			accessRecord.jsonSchema = datarequestUtil.injectQuestionActions(
 				jsonSchema,
 				userType,
@@ -167,7 +176,7 @@ export default class DataRequestController extends Controller {
 				isLatestMinorVersion
 			);
 
-			// 13. Inject message and note counts
+			// 15. Inject message and note counts
 			const messages = await this.topicService.getTopicsForDAR(id, constants.DARMessageTypes.DARMESSAGE);
 			let notes = [];
 			if (userType === constants.userTypes.APPLICANT) {
@@ -179,13 +188,13 @@ export default class DataRequestController extends Controller {
 				accessRecord.jsonSchema = datarequestUtil.injectMessagesAndNotesCount(accessRecord.jsonSchema, messages, notes);
 			}
 
-			// 14. Build version selector
+			// 16. Build version selector
 			const requestedFullVersion = `${requestedMajorVersion}.${
 				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
 			}`;
 			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree, accessRecord._id, requestedFullVersion, userType);
 
-			// 15. Return application form
+			// 17. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -317,6 +326,7 @@ export default class DataRequestController extends Controller {
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 			const { description = '' } = req.body;
+			let notificationType;
 
 			// 2. Find the relevant data request application
 			let accessRecord = await this.dataRequestService.getApplicationToSubmitById(id);
@@ -345,10 +355,12 @@ export default class DataRequestController extends Controller {
 				switch (accessRecord.applicationType) {
 					case constants.submissionTypes.AMENDED:
 						accessRecord = await this.dataRequestService.doAmendSubmission(accessRecord, description);
+						notificationType = constants.notificationTypes.APPLICATIONAMENDED;
 						break;
 					case constants.submissionTypes.INITIAL:
 					default:
 						accessRecord = await this.dataRequestService.doInitialSubmission(accessRecord);
+						notificationType = constants.notificationTypes.SUBMITTED;
 						break;
 				}
 			} else if (
@@ -357,6 +369,7 @@ export default class DataRequestController extends Controller {
 			) {
 				accessRecord = await this.amendmentService.doResubmission(accessRecord, requestingUserObjectId.toString());
 				await this.dataRequestService.syncRelatedVersions(accessRecord.versionTree);
+				notificationType = constants.notificationTypes.RESUBMITTED;
 			}
 
 			// 6. Ensure a valid submission is taking place
@@ -375,12 +388,10 @@ export default class DataRequestController extends Controller {
 			// 8. Inject amendments from minor versions
 			savedAccessRecord = this.amendmentService.injectAmendments(accessRecord, userType, requestingUser);
 
-			// 9. Calculate notification type to send
-			const notificationType = constants.submissionNotifications[accessRecord.applicationType];
+			// 9. Send notifications
+			await this.createNotifications(notificationType, {}, accessRecord.toObject(), requestingUser);
 
-			await this.createNotifications(notificationType, {}, accessRecord, requestingUser);
-
-			// 9. Start workflow process in Camunda if publisher requires it and it is the first submission
+			// 10. Start workflow process in Camunda if publisher requires it and it is the first submission
 			if (savedAccessRecord.workflowEnabled && savedAccessRecord.applicationType === constants.submissionTypes.INITIAL) {
 				let {
 					publisherObj: { name: publisher },
@@ -395,7 +406,7 @@ export default class DataRequestController extends Controller {
 				bpmController.postStartPreReview(bpmContext);
 			}
 
-			// 10. Return aplication and successful response
+			// 11. Return aplication and successful response
 			return res.status(200).json({ status: 'success', data: savedAccessRecord });
 		} catch (err) {
 			// Return error response if something goes wrong
@@ -1846,6 +1857,7 @@ export default class DataRequestController extends Controller {
 					userName: `${appFirstName} ${appLastName}`,
 					userType: 'applicant',
 					submissionType: constants.submissionTypes.INPROGRESS,
+					applicationId: accessRecord._id.toString(),
 				};
 
 				// Build email template
@@ -1930,10 +1942,7 @@ export default class DataRequestController extends Controller {
 			case constants.notificationTypes.SUBMITTED:
 				// 1. Create notifications
 				// Custodian notification
-				if (
-					_.has(accessRecord.datasets[0].toObject(), 'publisher.team.users') &&
-					accessRecord.datasets[0].publisher.allowAccessRequestManagement
-				) {
+				if (_.has(accessRecord.datasets[0], 'publisher.team.users') && accessRecord.datasets[0].publisher.allowAccessRequestManagement) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
 					// check if publisher.team has email notifications
@@ -1973,6 +1982,7 @@ export default class DataRequestController extends Controller {
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -2056,6 +2066,7 @@ export default class DataRequestController extends Controller {
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -2476,7 +2487,7 @@ export default class DataRequestController extends Controller {
 				// Applicant notification
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully resubmitted with updates to ${publisher}`,
+					`Your Data Access Request for ${datasetTitles} was successfully submitted with amendments to ${publisher}`,
 					'data access request',
 					accessRecord._id
 				);
@@ -2484,19 +2495,23 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						accessRecord.authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${datasetTitles} was successfully resubmitted with updates to ${publisher} by ${firstname} ${lastname}`,
+						`A Data Access Request you are contributing to for ${datasetTitles} was successfully submitted with amendments to ${publisher} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
 					);
 				}
 				// 2. Send emails to custodian and applicant
 				// Create object to pass to email generator
+				const initialDatasetTitles = accessRecord.initialDatasets.map(dataset => dataset.name).join(', ');
 				options = {
 					userType: '',
 					userEmail: appEmail,
 					publisher,
 					datasetTitles,
+					initialDatasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
+					submissionDescription: accessRecord.submissionDescription,
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -2504,15 +2519,16 @@ export default class DataRequestController extends Controller {
 					options = {
 						...options,
 						userType: emailRecipientType,
-						submissionType: constants.submissionTypes.RESUBMISSION,
+						submissionType: constants.submissionTypes.AMENDED,
 					};
 					// Build email template
-					({ html, jsonContent } = await emailGenerator.generateEmail(
+					({ html, jsonContent } = await emailGenerator.generateAmendEmail(
 						aboutApplication,
 						questions,
 						pages,
 						questionPanels,
 						questionAnswers,
+						accessRecord.initialQuestionAnswers,
 						options
 					));
 					// Send emails to custodian team members who have opted in to email notifications
@@ -2531,7 +2547,7 @@ export default class DataRequestController extends Controller {
 						await emailGenerator.sendEmail(
 							emailRecipients,
 							constants.hdrukEmail,
-							`Data Access Request to ${publisher} for ${datasetTitles} has been updated with updates`,
+							`Data Access Request to ${publisher} for ${datasetTitles} has been amended with updates`,
 							html,
 							false,
 							attachments

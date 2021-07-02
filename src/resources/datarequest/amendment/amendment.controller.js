@@ -118,13 +118,22 @@ export default class AmendmentController extends Controller {
 						let currentVersionIndex;
 						let previousVersionIndex;
 						const unreleasedVersionIndex = accessRecordObj.amendmentIterations.findIndex(iteration => _.isNil(iteration.dateReturned));
-						
-						if(unreleasedVersionIndex === -1) {
-							currentVersionIndex = accessRecordObj.amendmentIterations.length -1;
+
+						if (unreleasedVersionIndex === -1) {
+							currentVersionIndex = accessRecordObj.amendmentIterations.length - 1;
 						} else {
-							currentVersionIndex = accessRecordObj.amendmentIterations.length -2;
+							currentVersionIndex = accessRecordObj.amendmentIterations.length - 2;
 						}
 						previousVersionIndex = currentVersionIndex - 1;
+
+						// Handle amendment type application loading for Custodian showing any changes in the major version
+						if (
+							accessRecordObj.applicationType === constants.submissionTypes.AMENDED &&
+							userType === constants.userTypes.CUSTODIAN &&
+							currentVersionIndex === -1
+						) {
+							accessRecordObj = this.amendmentService.highlightChanges(accessRecordObj);
+						}
 
 						// Inject updates from previous version
 						accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user, previousVersionIndex, true);
@@ -133,9 +142,18 @@ export default class AmendmentController extends Controller {
 						accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user, currentVersionIndex, true);
 
 						// Inject updates from possible unreleased version
-						if(unreleasedVersionIndex !== -1) {
-							accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user, unreleasedVersionIndex, true, false);
+						if (unreleasedVersionIndex !== -1) {
+							accessRecordObj = this.amendmentService.injectAmendments(
+								accessRecordObj,
+								userType,
+								req.user,
+								unreleasedVersionIndex,
+								true,
+								false
+							);
 						}
+					} else if (accessRecordObj.applicationType === constants.submissionTypes.AMENDED && userType === constants.userTypes.CUSTODIAN) {
+						accessRecordObj = this.amendmentService.highlightChanges(accessRecordObj);
 					}
 
 					// 12. Append question actions depending on user type and application status

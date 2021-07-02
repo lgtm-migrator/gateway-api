@@ -778,12 +778,6 @@ const _submissionTypes = {
 	RENEWAL: 'renewal',
 };
 
-const _submissionNotifications = {
-	[`${_submissionTypes.INITIAL}`]: _notificationTypes.SUBMITTED,
-	[`${_submissionTypes.RESUBMISSION}`]: _notificationTypes.RESUBMITTED,
-	[`${_submissionTypes.AMENDED}`]: _notificationTypes.APPLICATIONAMENDED,
-};
-
 const _formActions = {
 	ADDREPEATABLESECTION: 'addRepeatableSection',
 	REMOVEREPEATABLESECTION: 'removeRepeatableSection',
@@ -870,5 +864,4 @@ export default {
 	datatsetStatuses: _datatsetStatuses,
 	logTypes: _logTypes,
 	DARMessageTypes: _DARMessageTypes,
-	submissionNotifications: _submissionNotifications,
 };
