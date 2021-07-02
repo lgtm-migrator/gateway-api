@@ -1838,6 +1838,39 @@ const _generateMetadataOnboardingRejected = options => {
 	return body;
 };
 
+const _generateMetadataOnboardingDraftDeleted = options => {
+	let { publisherName, draftDatasetName } = options;
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      <span>Draft dataset deleted</span>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+                  <tr>
+                    <td style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      <p>${publisherName} has deleted the draft dataset for ${draftDatasetName}.</p>
+                    </td>
+                  </tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
 const _generateMessageNotification = options => {
 	let { firstMessage, firstname, lastname, messageDescription, openMessagesLink } = options;
 
@@ -2094,6 +2127,7 @@ export default {
 	generateMetadataOnboardingSumbitted: _generateMetadataOnboardingSumbitted,
 	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
 	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
+	generateMetadataOnboardingDraftDeleted: _generateMetadataOnboardingDraftDeleted,
 	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages

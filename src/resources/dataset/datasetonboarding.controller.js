@@ -1617,6 +1617,41 @@ module.exports = {
 					false
 				);
 				break;
+			case constants.notificationTypes.DRAFTDATASETDELETED:
+				let draftDatasetName = context.name;
+				let publisherName = context.datasetv2.summary.publisher.name;
+
+				// 1. Get relevant team members to notify
+				team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
+
+				for (let member of team.members) {
+					if (member.roles.some(role => ['manager', 'metadata_editor'].includes(role))) teamMembers.push(member.memberid);
+				}
+
+				teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
+					.populate('additionalInfo')
+					.lean();
+
+				for (let member of teamMembersDetails) {
+					teamMembersIds.push(member.id);
+				}
+
+				// 2. Create user notifications
+				notificationBuilder.triggerNotificationMessage(
+					teamMembersIds,
+					`${publisherName} has deleted the draft dataset for ${draftDatasetName}.`,
+					'draft dataset deleted',
+					context._id,
+					context.datasetv2.summary.publisher.identifier
+				);
+				// 3. Create email
+				options = {
+					publisherName,
+					draftDatasetName,
+				};
+				html = emailGenerator.generateMetadataOnboardingDraftDeleted(options);
+				emailGenerator.sendEmail(teamMembersDetails, constants.hdrukEmail, `Draft dataset deleted`, html, false);
+				break;
 		}
 	},
 
@@ -1627,6 +1662,8 @@ module.exports = {
 
 			let dataset = await Data.findOneAndRemove({ _id: id, activeflag: 'draft' });
 			let draftDatasetName = dataset.name;
+
+			await module.exports.createNotifications(constants.notificationTypes.DRAFTDATASETDELETED, dataset);
 
 			return res.status(200).json({
 				success: true,
