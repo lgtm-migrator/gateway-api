@@ -69,7 +69,8 @@ export async function setCohortDiscoveryAccess(id, roles) {
 			return reject({ statusCode: 403, message: 'User is banned.  No update applied.' });
 		}
 
-		const updatedUser = await UserModel.findOneAndUpdate({ id }, { advancedSearchRoles: roles }, { new: true }, err => {
+		const rolesCleansed = roles.map(role => role.toString());
+		const updatedUser = await UserModel.findOneAndUpdate({ id }, { advancedSearchRoles: rolesCleansed }, { new: true }, err => {
 			if (err) return reject({ statusCode: 500, message: err });
 		}).lean();
 		return resolve(updatedUser);
