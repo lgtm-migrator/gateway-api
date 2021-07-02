@@ -187,6 +187,25 @@ export default class DataRequestRepository extends Repository {
 			]);
 	}
 
+	getPermittedUsersForVersions(versionIds) {
+		return DataRequestModel.find({ $or: [{ _id: { $in: versionIds } }, { 'amendmentIterations._id': { $in: versionIds } }] })
+			.select('userId authorIds publisher')
+			.populate([
+				{
+					path: 'publisherObj',
+					select: '_id',
+					populate: {
+						path: 'team',
+						select: 'members',
+						populate: {
+							path: 'users',
+						},
+					},
+				},
+			])
+			.lean();
+	}
+
 	updateApplicationById(id, data, options = {}) {
 		return DataRequestModel.findByIdAndUpdate(id, data, { ...options }); //lgtm [js/sql-injection]
 	}
@@ -214,10 +233,9 @@ export default class DataRequestRepository extends Repository {
 	async syncRelatedVersions(versionIds, versionTree) {
 		const majorVersions = await DataRequestModel.find().where('_id').in(versionIds).select({ versionTree: 1 });
 
-		for(const version of majorVersions) {
-
+		for (const version of majorVersions) {
 			version.versionTree = versionTree;
-			
+
 			await version.save();
 		}
 	}
@@ -225,13 +243,13 @@ export default class DataRequestRepository extends Repository {
 	async updateFileStatus(versionIds, fileId, status) {
 		const majorVersions = await DataRequestModel.find({ _id: { $in: [versionIds] } }).select({ files: 1 });
 
-		for(const version of majorVersions) {
+		for (const version of majorVersions) {
 			const fileIndex = version.files.findIndex(file => file.fileId === fileId);
 
-			if(fileIndex === -1) continue;
+			if (fileIndex === -1) continue;
 
 			version.files[fileIndex].status = status;
-			
+
 			await version.save();
 		}
 	}

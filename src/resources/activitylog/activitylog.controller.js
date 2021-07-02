@@ -1,7 +1,5 @@
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
-import { isEmpty } from 'lodash';
-import constants from '../utilities/constants.util';
 
 const logCategory = 'Activity Log';
 
@@ -14,18 +12,11 @@ export default class ActivityLogController extends Controller {
 	async searchLogs(req, res) {
 		try {
 			// Extract required log params
-			const { versionIds = [], type = '' } = req.body;
-
-			if(isEmpty(versionIds) || !Object.values(constants.activityLogTypes).includes(type)) {
-				return res.status(400).json({
-					success: false,
-					message: 'You must provide a valid log category and array of version identifiers to retrieve corresponding logs',
-				})
-			}
+			const { versionIds = [], type = '', userType } = req.body;
 
             // Find the logs
-			const options = { lean: true };
-            const logs = await this.activityLogService.searchLogs(versionIds, type);
+            const logs = await this.activityLogService.searchLogs(versionIds, type, userType);
+			
             // Return the logs
 			return res.status(200).json({
 				success: true,

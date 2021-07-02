@@ -5,8 +5,9 @@ export default class activityLogService {
 		this.activityLogRepository = activityLogRepository;
 	}
 
-	async searchLogs(query = {}, options = {} ) {
-		return this.activityLogRepository.searchLogs(query, options);
+	async searchLogs(versionIds, type, userType) {
+		const logs = await this.activityLogRepository.searchLogs(versionIds, type, userType);
+		return logs;
 	} 
 
 	async logActivity(eventType, context) {

@@ -490,4 +490,25 @@ export default class DataRequestService {
 		// 2. Update all related applications
 		this.dataRequestRepository.syncRelatedVersions(applicationIds, versionTree);
 	}
+
+	async checkUserAuthForVersions(versionIds, requestingUser) {
+		const { _id: requestingUserObjectId, id: requestingUserId } = requestingUser;
+		let requestingUserType;
+
+		const requestedVersions = await this.dataRequestRepository.getPermittedUsersForVersions(versionIds);
+
+		requestedVersions.forEach(accessRecord => {
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
+
+			if (!authorised) return { authorised };
+
+			requestingUserType = userType;
+		});
+
+		return { authorised: true, userType: requestingUserType };
+	}
 }
