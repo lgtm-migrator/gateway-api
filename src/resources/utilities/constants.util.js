@@ -44,12 +44,26 @@ const _questionActions = {
 		toolTip: 'Guidance',
 		order: 1,
 	},
+	messages: {
+		key: 'messages',
+		icon: 'far fa-comment-alt',
+		color: '#475da7',
+		toolTip: 'Messages',
+		order: 2,
+	},
+	notes: {
+		key: 'notes',
+		icon: 'far fa-edit',
+		color: '#475da7',
+		toolTip: 'Notes',
+		order: 3,
+	},
 	updates: {
 		key: 'requestAmendment',
 		icon: 'fas fa-exclamation-circle',
 		color: '#F0BB24',
 		toolTip: 'Request applicant updates answer',
-		order: 2,
+		order: 4,
 	},
 };
 

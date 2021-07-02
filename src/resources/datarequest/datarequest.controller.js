@@ -168,10 +168,16 @@ export default class DataRequestController extends Controller {
 			);
 
 			// 13. Inject message and note counts
-			accessRecord.jsonSchema = datarequestUtil.injectMessagesAndNotesCount(accessRecord.jsonSchema, userType);
-			//Get all messages
-			//Get notes if applicant
-			//Get notes if team
+			const messages = await this.topicService.getTopicsForDAR(id, constants.DARMessageTypes.DARMESSAGE);
+			let notes = [];
+			if (userType === constants.userTypes.APPLICANT) {
+				notes = await this.topicService.getTopicsForDAR(id, constants.DARMessageTypes.DARNOTESAPPLICANT);
+			} else if (userType === constants.userTypes.CUSTODIAN) {
+				notes = await this.topicService.getTopicsForDAR(id, constants.DARMessageTypes.DARNOTESCUSTODIAN);
+			}
+			if (messages.length > 0 || notes.length > 0) {
+				accessRecord.jsonSchema = datarequestUtil.injectMessagesAndNotesCount(accessRecord.jsonSchema, messages, notes);
+			}
 
 			// 14. Build version selector
 			const requestedFullVersion = `${requestedMajorVersion}.${
@@ -2679,8 +2685,6 @@ export default class DataRequestController extends Controller {
 			}
 
 			await this.messageService.createMessageForDAR(messageBody, topic._id, requestingUserObjectId, userType);
-
-			//update message/note count in json
 
 			return res.status(200).json({
 				status: 'success',

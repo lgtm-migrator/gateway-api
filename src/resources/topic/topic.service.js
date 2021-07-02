@@ -3,6 +3,10 @@ export default class TopicService {
 		this.topicRepository = topicRepository;
 	}
 
+	getTopicsForDAR(applicationID, messageType) {
+		return this.topicRepository.getTopicsForDAR(applicationID, messageType);
+	}
+
 	getTopicForDAR(applicationID, questionID, messageType) {
 		return this.topicRepository.getTopicForDAR(applicationID, questionID, messageType);
 	}

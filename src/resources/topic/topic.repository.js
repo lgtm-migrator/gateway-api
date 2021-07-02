@@ -7,6 +7,13 @@ export default class TopicRepository extends Repository {
 		this.topicModel = TopicModel;
 	}
 
+	getTopicsForDAR(title, messageType) {
+		return TopicModel.find({
+			title,
+			messageType,
+		}).lean();
+	}
+
 	getTopicForDAR(title, subTitle, messageType) {
 		return TopicModel.findOne({
 			title,

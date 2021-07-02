@@ -17,12 +17,17 @@ const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '
 	)
 		return {
 			...jsonSchema,
-			questionActions: [constants.questionActions.guidance, constants.questionActions.updates],
+			questionActions: [
+				constants.questionActions.guidance,
+				constants.questionActions.messages,
+				constants.questionActions.notes,
+				constants.questionActions.updates,
+			],
 		};
 	else {
 		return {
 			...jsonSchema,
-			questionActions: [constants.questionActions.guidance],
+			questionActions: [constants.questionActions.guidance, constants.questionActions.messages, constants.questionActions.notes],
 		};
 	}
 };
@@ -42,7 +47,7 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 		} else if (has(application, 'publisherObj.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.publisherObj.team, _id);
 		}
-		if (isTeamMember && application.applicationStatus !== constants.applicationStatuses.INPROGRESS) {
+		if (isTeamMember) {
 			userType = constants.userTypes.CUSTODIAN;
 			authorised = true;
 		}
@@ -356,7 +361,35 @@ const extractRepeatedQuestionIds = questionAnswers => {
 	}, []);
 };
 
-const injectMessagesAndNotesCount = (jsonSchema, userType) => {
+const injectMessagesAndNotesCount = (jsonSchema, messages, notes) => {
+	let messageNotesArray = [];
+
+	messages.forEach(topic => {
+		messageNotesArray.push({ question: topic.subTitle, messageCount: topic.topicMessages.length, notesCount: 0 });
+	});
+
+	notes.forEach(topic => {
+		if (messageNotesArray.find(x => x.question === topic.subTitle)) {
+			let existingTopic = messageNotesArray.find(x => x.question === topic.subTitle);
+			existingTopic.notesCount = topic.topicMessages.length;
+		} else {
+			messageNotesArray.push({ question: topic.subTitle, messageCount: 0, notesCount: topic.topicMessages.length });
+		}
+	});
+
+	jsonSchema.questionSets.forEach(questionPanel => {
+		if (questionPanel.questions.find(x => messageNotesArray.some(e => e.question === x.questionId))) {
+			let foundQuestions = questionPanel.questions.filter(x => messageNotesArray.some(e => e.question === x.questionId));
+			foundQuestions.forEach(question => {
+				let messageNoteQuestion = messageNotesArray.find(x => x.question === question.questionId);
+				question.counts = {
+					messagesCount: messageNoteQuestion.messageCount,
+					notesCount: messageNoteQuestion.notesCount,
+				};
+			});
+		}
+	});
+
 	return jsonSchema;
 };
 
