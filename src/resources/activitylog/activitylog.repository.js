@@ -8,7 +8,7 @@ export default class ActivityLogRepository extends Repository {
 	}
 
 	async searchLogs(versionIds, logType, userType) {
-		return ActivityLog.find({ versionId: { $in: versionIds }, logType, userTypes: userType });
+		return ActivityLog.find({ versionId: { $in: versionIds }, logType, userTypes: userType }).lean();
 	}
 
 	async createActivityLog(log) {
