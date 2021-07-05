@@ -74,7 +74,7 @@ export default class activityLogService {
 			html: `<b>Application approved</b> by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
 			user: user._id,
 			version: version.detailedTitle,
-			versionId: version.applicationId,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
 			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
 		};
 
@@ -95,7 +95,7 @@ export default class activityLogService {
 			detailedHtml: `Conditions: ${accessRequest.applicationStatusDesc}`,
 			user: user._id,
 			version: version.detailedTitle,
-			versionId: version.applicationId,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
 			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
 		};
 
@@ -116,7 +116,7 @@ export default class activityLogService {
 			detailedHtml: `Reason for rejection: ${accessRequest.applicationStatusDesc}`,
 			user: user._id,
 			version: version.detailedTitle,
-			versionId: version.applicationId,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
 			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
 		};
 
@@ -175,7 +175,7 @@ export default class activityLogService {
 			html: `Updates submitted by applicant <b>${user.firstname} ${user.lastname}</b>. <a href="${version.link}">${version.displayTitle}</a> of this application has been created.`,
 			user: user._id,
 			version: version.detailedTitle,
-			versionId: version.applicationId,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
 			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
 		};
 
@@ -198,7 +198,7 @@ export default class activityLogService {
 			html: `Applicant <b>${user.firstname} ${user.lastname}</b> added <b>${collaborator.firstname} ${collaborator.lastname}</b> as a collaborator`,
 			user: user._id,
 			version: version.detailedTitle,
-			versionId: version.applicationId,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
 			userTypes: [constants.userTypes.APPLICANT],
 		};
 
@@ -221,7 +221,7 @@ export default class activityLogService {
 			html: `Applicant <b>${user.firstname} ${user.lastname}</b> removed <b>${collaborator.firstname} ${collaborator.lastname}</b> as a collaborator`,
 			user: user._id,
 			version: version.detailedTitle,
-			versionId: version.applicationId,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
 			userTypes: [constants.userTypes.APPLICANT],
 		};
 
