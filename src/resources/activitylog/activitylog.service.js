@@ -96,10 +96,10 @@ export default class activityLogService {
 	async logActivity(eventType, context) {
 		switch (eventType) {
 			case constants.activityLogEvents.APPLICATION_SUBMITTED:
-				logApplicationSubmittedEvent(context);
+				this.logApplicationSubmittedEvent(context);
 				break;
 			case constants.activityLogEvents.REVIEW_PROCESS_STARTED:
-				logReviewProcessStartedEvent(context);
+				this.logReviewProcessStartedEvent(context);
 				break;
 		}
 	}
