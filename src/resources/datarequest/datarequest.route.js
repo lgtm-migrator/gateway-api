@@ -7,7 +7,7 @@ import { param } from 'express-validator';
 import { logger } from '../utilities/logger';
 import DataRequestController from './datarequest.controller';
 import AmendmentController from './amendment/amendment.controller';
-import { dataRequestService, workflowService, amendmentService } from './dependency';
+import { dataRequestService, workflowService, amendmentService, activityLogService } from './dependency';
 
 const fs = require('fs');
 const path = './tmp';
@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 });
 const multerMid = multer({ storage: storage });
 const logCategory = 'Data Access Request';
-const dataRequestController = new DataRequestController(dataRequestService, workflowService, amendmentService);
+const dataRequestController = new DataRequestController(dataRequestService, workflowService, amendmentService, activityLogService);
 const amendmentController = new AmendmentController(amendmentService, dataRequestService);
 const router = express.Router();
 

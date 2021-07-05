@@ -469,6 +469,17 @@ const _logTypes = {
 	USER: 'User',
 };
 
+// Activity log related enums 
+
+const _activityLogEvents = {
+	APPLICATION_SUBMITTED: 'applicationSubmitted',
+	REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
+};
+
+const _activityLogTypes = {
+	DATA_ACCESS_REQUEST: 'data_request'
+}
+
 export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
@@ -492,5 +503,7 @@ export default {
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
-	logTypes: _logTypes
+	logTypes: _logTypes,
+	activityLogEvents: _activityLogEvents,
+	activityLogTypes: _activityLogTypes
 };
