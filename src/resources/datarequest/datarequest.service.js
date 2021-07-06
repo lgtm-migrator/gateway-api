@@ -509,6 +509,6 @@ export default class DataRequestService {
 			requestingUserType = userType;
 		});
 
-		return { authorised: true, userType: requestingUserType };
+		return { authorised: true, userType: requestingUserType, accessRecords: requestedVersions };
 	}
 }

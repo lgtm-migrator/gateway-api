@@ -12,10 +12,10 @@ export default class ActivityLogController extends Controller {
 	async searchLogs(req, res) {
 		try {
 			// Extract required log params
-			const { versionIds = [], type = '', userType } = req.body;
+			const { versionIds = [], type = '', userType, accessRecords } = req.body;
 
             // Find the logs
-            const logs = await this.activityLogService.searchLogs(versionIds, type, userType);
+            const logs = await this.activityLogService.searchLogs(versionIds, type, userType, accessRecords);
 			
             // Return the logs
 			return res.status(200).json({

@@ -29,7 +29,7 @@ const authoriseUser = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { versionIds = [] } = req.body;
 
-	const { authorised, userType } = await dataRequestService.checkUserAuthForVersions(versionIds, requestingUser);
+	const { authorised, userType, accessRecords } = await dataRequestService.checkUserAuthForVersions(versionIds, requestingUser);
 	if (!authorised) {
 		return res.status(401).json({
 			success: false,
@@ -37,6 +37,7 @@ const authoriseUser = async (req, res, next) => {
 		});
 	}
 	req.body.userType = userType;
+    req.body.accessRecords = accessRecords;
 
 	next();
 };
