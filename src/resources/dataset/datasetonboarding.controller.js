@@ -1612,7 +1612,7 @@ module.exports = {
 				emailGenerator.sendEmail(
 					teamMembersDetails,
 					constants.hdrukEmail,
-					`Your dataset version has been reviewed and rejected`,
+					`Your dataset version requires revision before it can be accepted on the Gateway`,
 					html,
 					false
 				);

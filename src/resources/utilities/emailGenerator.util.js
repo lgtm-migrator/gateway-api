@@ -1796,15 +1796,15 @@ const _generateMetadataOnboardingRejected = options => {
 
 	if (!_.isEmpty(comment)) {
 		commentHTML = `<tr>
-      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-        Reason for rejection
-      </th>
-    </tr>
-    <tr>
-      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-        ${comment}
-      </th>
-    </tr>`;
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Comment from reviewer:
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      "${comment}"
+                    </th>
+                  </tr>`;
 	}
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -1817,14 +1817,14 @@ const _generateMetadataOnboardingRejected = options => {
                 style="font-family: Arial, sans-serif">
                 <thead>
                   <tr>
-                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                    Your dataset version has been reviewed and rejected
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;"> 
+                      Your dataset version requires revision before it can be accepted on the Gateway
                     </th>
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                    The submitted version of ${name} has been reviewed and rejected by the HDRUK admins. Please view and create a new version of this dataset and make the necessary changes if you would like to make another submission to the Gateway.
-                  </th>
+                      Thank you for submitting ${name}, which has been reviewed by the team at HDR UK. The dataset version cannot be approved for release on the Gateway at this time. Please look at the comment from the reviewer below and make any necessary changes on a new version of the dataset before resubmitting.
+                    </th>
                   </tr>
                   ${commentHTML}
                   <tr>
