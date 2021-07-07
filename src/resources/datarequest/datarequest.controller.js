@@ -337,12 +337,19 @@ export default class DataRequestController extends Controller {
 				switch (accessRecord.applicationType) {
 					case constants.submissionTypes.AMENDED:
 						accessRecord = await this.dataRequestService.doAmendSubmission(accessRecord, description);
+						await this.activityLogService.logActivity(constants.activityLogEvents.AMENDMENT_SUBMITTED, {
+							accessRequest: accessRecord,
+							user: requestingUser,
+						});
 						notificationType = constants.notificationTypes.APPLICATIONAMENDED;
 						break;
 					case constants.submissionTypes.INITIAL:
 					default:
 						accessRecord = await this.dataRequestService.doInitialSubmission(accessRecord);
-						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_SUBMITTED, { accessRequest: accessRecord, user: requestingUser });
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_SUBMITTED, {
+							accessRequest: accessRecord,
+							user: requestingUser,
+						});
 						notificationType = constants.notificationTypes.SUBMITTED;
 						break;
 				}
@@ -352,6 +359,10 @@ export default class DataRequestController extends Controller {
 			) {
 				accessRecord = await this.amendmentService.doResubmission(accessRecord, requestingUserObjectId.toString());
 				await this.dataRequestService.syncRelatedVersions(accessRecord.versionTree);
+				await this.activityLogService.logActivity(constants.activityLogEvents.UPDATES_SUBMITTED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 				notificationType = constants.notificationTypes.RESUBMITTED;
 			}
 
@@ -612,10 +623,45 @@ export default class DataRequestController extends Controller {
 						accessRecord,
 						requestingUser
 					);
+
+					let addedAuthors = [...newAuthors].filter(author => !currentAuthors.includes(author));
+					await addedAuthors.forEach(addedAuthor =>
+						this.activityLogService.logActivity(constants.activityLogEvents.COLLABORATOR_ADDEDD, {
+							accessRequest: accessRecord,
+							user: req.user,
+							collaboratorId: addedAuthor,
+						})
+					);
+
+					let removedAuthors = [...currentAuthors].filter(author => !newAuthors.includes(author));
+					await removedAuthors.forEach(removedAuthor =>
+						this.activityLogService.logActivity(constants.activityLogEvents.COLLABORATOR_REMOVED, {
+							accessRequest: accessRecord,
+							user: req.user,
+							collaboratorId: removedAuthor,
+						})
+					);
 				}
 				if (statusChange) {
 					//Update any connected version trees
 					this.dataRequestService.updateVersionStatus(accessRecord, accessRecord.applicationStatus);
+
+					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED)
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_APPROVED, {
+							accessRequest: accessRecord,
+							user: req.user,
+						});
+					else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_APPROVED_WITH_CONDITIONS, {
+							accessRequest: accessRecord,
+							user: req.user,
+						});
+					} else if (accessRecord.applicationStatus === constants.applicationStatuses.REJECTED) {
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_REJECTED, {
+							accessRequest: accessRecord,
+							user: req.user,
+						});
+					}
 
 					// Send notifications to custodian team, main applicant and contributors regarding status change
 					await this.createNotifications(
@@ -1660,7 +1706,10 @@ export default class DataRequestController extends Controller {
 			}
 
 			// 11. Log event in the activity log
-			await this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PROCESS_STARTED, { accessRequest: accessRecord, user: req.user });
+			await this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PROCESS_STARTED, {
+				accessRequest: accessRecord,
+				user: req.user,
+			});
 
 			// 12. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });

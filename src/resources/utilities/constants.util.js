@@ -469,16 +469,23 @@ const _logTypes = {
 	USER: 'User',
 };
 
-// Activity log related enums 
+// Activity log related enums
 
 const _activityLogEvents = {
 	APPLICATION_SUBMITTED: 'applicationSubmitted',
 	REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
+	UPDATES_SUBMITTED: 'updatesSubmitted',
+	AMENDMENT_SUBMITTED: 'amendmentSubmitted',
+	APPLICATION_APPROVED: 'applicationApproved',
+	APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
+	APPLICATION_REJECTED: 'applicationRejected',
+	COLLABORATOR_ADDEDD: 'collaboratorAdded',
+	COLLABORATOR_REMOVED: 'collaboratorRemoved',
 };
 
 const _activityLogTypes = {
-	DATA_ACCESS_REQUEST: 'data_request'
-}
+	DATA_ACCESS_REQUEST: 'data_request',
+};
 
 export default {
 	userTypes: _userTypes,
@@ -505,5 +512,5 @@ export default {
 	datatsetStatuses: _datatsetStatuses,
 	logTypes: _logTypes,
 	activityLogEvents: _activityLogEvents,
-	activityLogTypes: _activityLogTypes
+	activityLogTypes: _activityLogTypes,
 };
