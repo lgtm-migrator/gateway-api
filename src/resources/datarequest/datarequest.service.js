@@ -161,8 +161,7 @@ export default class DataRequestService {
 		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
 			const { applicationId: _id, link, displayTitle, detailedTitle, applicationStatus } = versionTree[versionKey];
 
-			//if (userType === constants.userTypes.CUSTODIAN && applicationStatus === constants.applicationStatuses.INPROGRESS /* && !isShared */)
-			//	return arr;
+			if (userType === constants.userTypes.CUSTODIAN && applicationStatus === constants.applicationStatuses.INPROGRESS) return arr;
 
 			const isCurrent = applicationId.toString() === _id.toString() && (requestedVersion === versionKey || !requestedVersion);
 

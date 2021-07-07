@@ -47,7 +47,7 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 		} else if (has(application, 'publisherObj.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.publisherObj.team, _id);
 		}
-		if (isTeamMember) {
+		if (isTeamMember && (application.applicationStatus !== constants.applicationStatuses.INPROGRESS || application.isShared)) {
 			userType = constants.userTypes.CUSTODIAN;
 			authorised = true;
 		}
