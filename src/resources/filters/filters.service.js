@@ -175,7 +175,7 @@ export default class FiltersService {
 					...temporal,
 					...access,
 					...formatAndStandards,
-					publisher
+					publisher,
 				};
 				break;
 		}
