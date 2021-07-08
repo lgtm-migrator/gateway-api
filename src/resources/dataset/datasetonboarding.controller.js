@@ -139,7 +139,7 @@ module.exports = {
 			questionAnswers['properties/documentation/isPartOf'] = dataset.datasetv2.documentation.isPartOf;
 		//Coverage
 		if (!_.isNil(dataset.datasetv2.coverage.spatial) && !_.isEmpty(dataset.datasetv2.coverage.spatial))
-			questionAnswers['properties/coverage/spatial'] = dataset.datasetv2.coverage.spatial;
+			questionAnswers['properties/coverage/spatial'] = module.exports.returnAsArray(dataset.datasetv2.coverage.spatial);
 		if (!_.isNil(dataset.datasetv2.coverage.typicalAgeRange) && !_.isEmpty(dataset.datasetv2.coverage.typicalAgeRange))
 			questionAnswers['properties/coverage/typicalAgeRange'] = dataset.datasetv2.coverage.typicalAgeRange;
 		if (
@@ -761,7 +761,7 @@ module.exports = {
 										isPartOf: dataset.questionAnswers['properties/documentation/isPartOf'] || [],
 									},
 									coverage: {
-										spatial: dataset.questionAnswers['properties/coverage/spatial'] || '',
+										spatial: dataset.questionAnswers['properties/coverage/spatial'] || [],
 										typicalAgeRange: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
 										physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
 										followup: dataset.questionAnswers['properties/coverage/followup'] || '',
@@ -843,7 +843,7 @@ module.exports = {
 										counter: previousCounter,
 										datasetfields: {
 											publisher: `${publisherData[0].publisherDetails.memberOf} > ${publisherData[0].publisherDetails.name}`,
-											geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || '',
+											geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || [],
 											physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
 											abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
 											releaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
