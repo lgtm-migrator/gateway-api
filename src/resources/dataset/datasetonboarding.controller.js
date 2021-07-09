@@ -1639,7 +1639,7 @@ module.exports = {
 				// 2. Create user notifications
 				notificationBuilder.triggerNotificationMessage(
 					teamMembersIds,
-					`${publisherName} has deleted the draft dataset for ${draftDatasetName}.`,
+					`The draft version of ${draftDatasetName} has been deleted.`,
 					'draft dataset deleted',
 					context._id,
 					context.datasetv2.summary.publisher.identifier

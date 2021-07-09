@@ -1861,7 +1861,9 @@ const _generateMetadataOnboardingDraftDeleted = options => {
 								<tbody style="overflow-y: auto; overflow-x: hidden;">
                   <tr>
                     <td style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                      <p>${publisherName} has deleted the draft dataset for ${draftDatasetName}.</p>
+                      <p>
+                        The draft version of ${draftDatasetName} has been deleted.
+                      </p>
                     </td>
                   </tr>
 								</tbody>
