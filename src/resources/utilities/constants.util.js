@@ -367,6 +367,11 @@ const _darPanelMapper = {
 // </DAR related enums>
 
 // <Team related enums>
+const _teamTypes = {
+	PUBLISHER: 'publisher',
+	ADMIN: 'admin',
+};
+
 const _roleTypes = {
 	MANAGER: 'manager',
 	REVIEWER: 'reviewer',
@@ -401,8 +406,8 @@ const _mailchimpSubscriptionStatuses = {
 
 const _logTypes = {
 	SYSTEM: 'System',
-	USER: 'User'
-}
+	USER: 'User',
+};
 
 export default {
 	userTypes: _userTypes,
@@ -420,11 +425,12 @@ export default {
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
 	formActions: _formActions,
+	teamTypes: _teamTypes,
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
-	logTypes: _logTypes
+	logTypes: _logTypes,
 };
