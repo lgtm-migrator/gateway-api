@@ -108,12 +108,23 @@ module.exports = {
 					}
 				}
 
+				// Create object to pass through email data
+				let options = {
+					firstMessage,
+					firstname,
+					lastname,
+					messageDescription,
+					openMessagesLink: process.env.homeURL + '/search?search=&tab=Datasets&openUserMessages=true',
+				};
+				// Create email body content
+				let html = emailGenerator.generateMessageNotification(options);
+
 				// 16. Send email
 				emailGenerator.sendEmail(
 					messageRecipients,
 					constants.hdrukEmail,
 					`You have received a new message on the HDR UK Innovation Gateway`,
-					`You have received a new message on the HDR UK Innovation Gateway. <br> Log in to view your messages here : <a href='${process.env.homeURL}'>HDR UK Innovation Gateway</a>`,
+					html,
 					false
 				);
 			}

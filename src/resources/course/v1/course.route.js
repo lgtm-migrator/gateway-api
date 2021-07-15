@@ -11,7 +11,7 @@ const router = express.Router();
 // @router   POST /api/v1/course
 // @desc     Add Course as user
 // @access   Private
-router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/', passport.authenticate('jwt'), async (req, res) => {
 	await addCourse(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -24,7 +24,7 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 // @router   PUT /api/v1/course/{id}
 // @desc     Edit Course as user
 // @access   Private
-router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.put('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('course'), async (req, res) => {
 	await editCourse(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -34,13 +34,13 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
 		});
 });
 
-// @router   GET /api/v1/get/admin
-// @desc     Returns List of Tool objects
-// @access   Private 
-router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+// @router   GET /api/v1/course/getList
+// @desc     Returns List of Course objects
+// @access   Private
+router.get('/getList', passport.authenticate('jwt'), async (req, res) => {
 	let role = req.user.role;
 
-	if (role === ROLES.Admin) { 
+	if (role === ROLES.Admin) {
 		await getCourseAdmin(req)
 			.then(data => {
 				return res.json({ success: true, data });
@@ -59,8 +59,8 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
-// @router   GET /api/v1/
-// @desc     Returns List of Tool Objects No auth
+// @router   GET /api/v1/course
+// @desc     Returns List of course Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
 router.get('/', async (req, res) => {
@@ -73,10 +73,10 @@ router.get('/', async (req, res) => {
 		});
 });
 
-// @router   PATCH /api/v1/status
+// @router   PATCH /api/v1/course/{id}
 // @desc     Set course status
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('course'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -87,9 +87,9 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 });
 
 /**
- * {get} /tool/:id Tool
+ * {get} /api/v1/course/:id Course
  *
- * Return the details on the tool based on the tool ID.
+ * Return the details on the tool based on the course ID.
  */
 router.get('/:id', async (req, res) => {
 	let id = parseInt(req.params.id);
@@ -143,9 +143,9 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
- * {get} /tool/edit/:id Tool
+ * {get} /api/v1/course/edit/:id Course
  *
- * Return the details on the tool based on the tool ID for edit.
+ * Return the details on the course based on the course ID for edit.
  */
 router.get('/edit/:id', async (req, res) => {
 	var query = Course.aggregate([
@@ -186,4 +186,5 @@ router.get('/edit/:id', async (req, res) => {
 //     }
 // );
 
+// eslint-disable-next-line no-undef
 module.exports = router;
