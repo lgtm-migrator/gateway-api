@@ -481,6 +481,7 @@ const _activityLogEvents = {
 	APPLICATION_REJECTED: 'applicationRejected',
 	COLLABORATOR_ADDEDD: 'collaboratorAdded',
 	COLLABORATOR_REMOVED: 'collaboratorRemoved',
+	PRESUBMISSION_MESSAGE: 'presubmissionMessage'
 };
 
 const _activityLogTypes = {

@@ -1,6 +1,7 @@
 import Repository from '../base/repository';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './schema/datarequest.schemas.model';
+import { TopicModel } from '../topic/topic.model';
 import { Data as ToolModel } from '../tool/data.model';
 
 export default class DataRequestRepository extends Repository {
@@ -189,7 +190,9 @@ export default class DataRequestRepository extends Repository {
 
 	getPermittedUsersForVersions(versionIds) {
 		return DataRequestModel.find({ $or: [{ _id: { $in: versionIds } }, { 'amendmentIterations._id': { $in: versionIds } }] })
-			.select('userId authorIds publisher majorVersion applicationType applicationStatus dateSubmitted amendmentIterations._id amendmentIterations.dateSubmitted')
+			.select(
+				'userId authorIds publisher majorVersion applicationType applicationStatus dateSubmitted amendmentIterations._id amendmentIterations.dateSubmitted'
+			)
 			.populate([
 				{
 					path: 'publisherObj',
@@ -204,6 +207,12 @@ export default class DataRequestRepository extends Repository {
 				},
 			])
 			.lean();
+	}
+
+	getRelatedPresubmissionTopic(userObjectId, datasetIds) {
+		return TopicModel.findOne({ recipients: userObjectId, 'datasets.datasetId': { $all: datasetIds }, linkedDataAccessApplication: { $exists : false } })
+			.select('_id')
+			.populate([{ path: 'topicMessages' }]);
 	}
 
 	updateApplicationById(id, data, options = {}) {

@@ -18,6 +18,10 @@ const TopicSchema = new Schema(
 				ref: 'User',
 			},
 		],
+		linkedDataAccessApplication: {
+			type: Schema.Types.ObjectId,
+			ref: 'data_request',
+		},
 		status: {
 			type: String,
 			enum: ['active', 'closed'],
