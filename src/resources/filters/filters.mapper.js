@@ -11,7 +11,7 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [],
 		highlighted: [],
-		beta: false
+		beta: false,
 	},
 	{
 		id: 2,
@@ -26,7 +26,7 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [],
 		highlighted: [],
-		beta: false
+		beta: false,
 	},
 	{
 		id: 3,
@@ -41,7 +41,7 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [],
 		highlighted: [],
-		beta: false
+		beta: false,
 	},
 	{
 		id: 4,
@@ -506,13 +506,13 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [{ id: 999, label: 'Contains Technical Metadata', value: 'Contains Technical Metadata', checked: false }],
 		highlighted: ['contains technical metadata'],
-		beta: false
+		beta: false,
 	},
 	{
 		id: 40,
 		label: 'Commercial use',
-		key: 'commericalUse',
-		dataPath: 'commericalUse',
+		key: 'commercialUse',
+		dataPath: 'commercialUse',
 		type: 'boolean',
 		tooltip: null,
 		closed: true,
@@ -520,6 +520,6 @@ export const datasetFilters = [
 		selectedCount: 0,
 		filters: [{ id: 998, label: 'Consented for commercial uses', value: 'Consented for commercial uses', checked: false }],
 		highlighted: ['consented for commercial uses'],
-		beta: true
+		beta: true,
 	},
 ];
