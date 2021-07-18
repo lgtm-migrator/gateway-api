@@ -515,10 +515,19 @@
 					"title": "Geographic Coverage",
 					"$comment": "dct:spatial",
 					"description": "The geographical area covered by the dataset. It is recommended that links are to entries in a well-maintained gazetteer such as https://www.geonames.org/ or https://what3words.com/daring.lion.race.",
-					"examples": ["https://www.geonames.org/2635167/united-kingdom-of-great-britain-and-northern-ireland.html"],
-					"allOf": [
+					"anyOf": [
 						{
-							"$ref": "#/definitions/url"
+							"$ref": "#/definitions/commaSeparatedValues"
+						},
+						{
+							"type": "array",
+							"items": {
+								"allOf": [
+									{
+										"$ref": "#/definitions/url"
+									}
+								]
+							}
 						}
 					]
 				},
