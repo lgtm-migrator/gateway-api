@@ -62,6 +62,10 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getDatasetsForApplicationByIds(arrDatasetIds);
 	}
 
+	linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus) {
+		return this.dataRequestRepository.linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus);
+	}
+
 	async deleteApplication(accessRecord) {
 		await this.dataRequestRepository.deleteApplicationById(accessRecord._id);
 
@@ -92,7 +96,7 @@ export default class DataRequestService {
 		const formType = schemaId.toString === constants.enquiryFormId ? constants.formTypes.Enquiry : constants.formTypes.Extended5Safe;
 
 		// 5. Link any matching presubmission message topics to this application
-		const preSubmissionTopic = await this.linkRelatedPresubmissionTopic(_id, userObjectId, datasetIds);
+		const presubmissionTopic = await this.linkRelatedPresubmissionTopic(_id, userObjectId, datasetIds, publisher);
 
 		// 6. Create new DataRequestModel
 		return {
@@ -108,16 +112,18 @@ export default class DataRequestService {
 			aboutApplication: {},
 			applicationStatus: constants.applicationStatuses.INPROGRESS,
 			formType,
-			preSubmissionTopic,
+			presubmissionTopic,
 		};
 	}
 
-	async linkRelatedPresubmissionTopic(applicationId, userObjectId, datasetIds) {
+	async linkRelatedPresubmissionTopic(applicationId, userObjectId, datasetIds, publisher) {
 		// Find a topic with matching datasets
+		let topicId;
 		const topic = await this.dataRequestRepository.getRelatedPresubmissionTopic(userObjectId, datasetIds);
 
 		if (topic) {
 			// If topic is found, create linkage from topic to application
+			topicId = topic._id;
 			topic.linkedDataAccessApplication = applicationId;
 			topic.save(err => {
 				if (!err) {
@@ -125,11 +131,16 @@ export default class DataRequestService {
 					activityLogService.logActivity(constants.activityLogEvents.PRESUBMISSION_MESSAGE, {
 						messages: topic.topicMessages,
 						applicationId,
+						publisher
 					});
 				}
 			});
 		}
+
+		return topicId;
 	}
+
+	
 
 	async createApplication(data, applicationType = constants.submissionTypes.INITIAL, versionTree = {}) {
 		let application = await this.dataRequestRepository.createApplication(data);

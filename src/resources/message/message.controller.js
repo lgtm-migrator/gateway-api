@@ -5,9 +5,10 @@ import mongoose from 'mongoose';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import teamController from '../team/team.controller';
-
 import { Data as ToolModel } from '../tool/data.model';
 import constants from '../utilities/constants.util';
+import { dataRequestService } from '../datarequest/dependency';
+import { activityLogService } from '../activitylog/dependency';
 
 const topicController = require('../topic/topic.controller');
 
@@ -18,19 +19,28 @@ module.exports = {
 			const { _id: createdBy, firstname, lastname } = req.user;
 			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds, firstMessage } = req.body;
 			let topicObj = {};
-			let team;
+			let team, publisher, createdByUserType;
 			// 1. If the message type is 'message' and topic id is empty
 			if (messageType === 'message') {
 				// 2. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
 				const tools = await ToolModel.find()
 					.where('_id')
 					.in(relatedObjectIds)
-					.populate({ path: 'publisher', populate: { path: 'team' } });
+					.populate({
+						path: 'publisher',
+						populate: {
+							path: 'team',
+							select: 'members',
+							populate: {
+								path: 'users',
+							},
+						},
+					});
 				// 3. Return undefined if no object(s) exists
 				if (_.isEmpty(tools)) return undefined;
 
 				// 4. Get recipients for new message
-				let { publisher = '' } = tools[0];
+				({ publisher = '' } = tools[0]);
 
 				if (_.isEmpty(publisher)) {
 					console.error(`No publisher associated to this dataset`);
@@ -42,26 +52,42 @@ module.exports = {
 					console.error(`No team associated to publisher, cannot message`);
 					return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
 				}
-
+				// 6. Set user type (if found in team, they are custodian)
+				createdByUserType = teamController.checkTeamPermissions('', team.toObject(), req.user._id)
+					? constants.userTypes.CUSTODIAN
+					: constants.userTypes.APPLICANT;
 				if (_.isEmpty(topic)) {
-					// 6. Create new topic
+					// 7. Create new topic
 					topicObj = await topicController.buildTopic({ createdBy, relatedObjectIds });
-					// 7. If topic was not successfully created, throw error response
+					// 8. If topic was not successfully created, throw error response
 					if (!topicObj) return res.status(500).json({ success: false, message: 'Could not save topic to database.' });
-					// 8. Pass new topic Id
+					// 9. Pass new topic Id
 					topic = topicObj._id;
 				} else {
-					// 9. Find the existing topic
+					// 10. Find the existing topic
 					topicObj = await topicController.findTopic(topic, createdBy);
-					// 10. Return not found if it was not found
+					// 11. Return not found if it was not found
 					if (!topicObj) {
 						return res.status(404).json({ success: false, message: 'The topic specified could not be found' });
 					}
 					topicObj.recipients = await topicController.buildRecipients(team, topicObj.createdBy);
 					await topicObj.save();
 				}
+				// 12. Update linkage to a matching presubmission DAR application
+				if (!topicObj.linkedDataAccessApplication) {
+					const accessRecord = await dataRequestService.linkRelatedApplicationByMessageContext(
+						topicObj._id,
+						req.user.id,
+						topicObj.datasets.map(dataset => dataset.datasetId),
+						constants.applicationStatuses.INPROGRESS
+					);
+					if (accessRecord) {
+						topicObj.linkedDataAccessApplication = accessRecord._id;
+						await topicObj.save();
+					}
+				}
 			}
-			// 11. Create new message
+			// 13. Create new message
 			const message = await MessagesModel.create({
 				messageID: parseInt(Math.random().toString().replace('0.', '')),
 				messageObjectID: parseInt(Math.random().toString().replace('0.', '')),
@@ -71,18 +97,19 @@ module.exports = {
 				createdBy,
 				messageType,
 				readBy: [new mongoose.Types.ObjectId(createdBy)],
+				...(createdByUserType && { createdByUserType }),
 			});
-			// 12. Return 500 error if message was not successfully created
+			// 14. Return 500 error if message was not successfully created
 			if (!message) return res.status(500).json({ success: false, message: 'Could not save message to database.' });
 
-			// 13. Prepare to send email if a new message has been created
+			// 15. Prepare to send email if a new message has been created
 			if (messageType === 'message') {
 				let optIn, subscribedEmails;
-				// 14. Find recipients who have opted in to email updates and exclude the requesting user
+				// 16. Find recipients who have opted in to email updates and exclude the requesting user
 				let messageRecipients = await UserModel.find({ _id: { $in: topicObj.recipients } });
 
 				if (!_.isEmpty(team) || !_.isNil(team)) {
-					// 15. team all users for notificationType + generic email
+					// 17. team all users for notificationType + generic email
 					// Retrieve notifications for the team based on type return {notificationType, subscribedEmails, optIn}
 					let teamNotifications = teamController.getTeamNotificationByType(team, constants.teamNotificationTypes.DATAACCESSREQUEST);
 					// only deconstruct if team notifications object returns - safeguard code
@@ -120,7 +147,7 @@ module.exports = {
 				// Create email body content
 				let html = emailGenerator.generateMessageNotification(options);
 
-				// 16. Send email
+				// 18. Send email
 				emailGenerator.sendEmail(
 					messageRecipients,
 					constants.hdrukEmail,
@@ -129,8 +156,17 @@ module.exports = {
 					false
 				);
 			}
-			// 17. Return successful response with message data
+			// 19. Return successful response with message data
 			message.createdByName = { firstname, lastname };
+
+			// 20. Update activity log if there is a linked DAR
+			if (topicObj.linkedDataAccessApplication) {
+				activityLogService.logActivity(constants.activityLogEvents.PRESUBMISSION_MESSAGE, {
+					messages: [message],
+					applicationId: topicObj.linkedDataAccessApplication,
+					publisher: publisher.name,
+				});
+			}
 
 			return res.status(201).json({ success: true, message });
 		} catch (err) {

@@ -14,4 +14,8 @@ export default class ActivityLogRepository extends Repository {
 	async createActivityLog(log) {
 		return this.create(log);
 	}
+
+	async createActivityLogs(logs) {
+		return ActivityLog.insertMany(logs);
+	}
 }

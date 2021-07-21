@@ -15,7 +15,7 @@ const DataRequestSchema = new Schema(
 		datasetTitles: [{ type: String }],
 		isCloneable: Boolean,
 		projectId: String,
-		preSubmissionTopic: { type: Schema.Types.ObjectId, ref: 'Topics' },
+		presubmissionTopic: { type: Schema.Types.ObjectId, ref: 'Topics' },
 		workflowId: { type: Schema.Types.ObjectId, ref: 'Workflow' },
 		workflow: { type: WorkflowSchema },
 		applicationStatus: {

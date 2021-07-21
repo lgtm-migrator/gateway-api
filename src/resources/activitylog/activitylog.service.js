@@ -1,6 +1,6 @@
 import constants from './../utilities/constants.util';
 import { UserModel } from '../user/user.model';
-import { isEmpty, last, orderBy } from 'lodash';
+import { chain, groupBy, isEmpty, last, orderBy } from 'lodash';
 import moment from 'moment';
 
 export default class activityLogService {
@@ -338,30 +338,65 @@ export default class activityLogService {
 
 	async logPresubmissionMessages(context) {
 		const logs = [];
-		const { applicationId, messages } = context;
-		//const version = accessRequest.versionTree[`${accessRequest.majorVersion}.0`];
-
-		// Reduce over messages creating groups
-		const groupedMessages = messages.reduce(arr, message => {}, []);
-
-		// Create log for each message group
-		groupedMessages.forEach(groupedMessage => {
+		const { applicationId, messages, publisher } = context;
+		
+		// Create log for each message submitted
+		messages.forEach(message => {
+			const { createdBy, userType, createdDate } = message;
+			const sender = this.getMessageSender(createdBy, userType, publisher);
 			const log = {
-				eventType: constants.activityLogEvents.APPLICATION_SUBMITTED,
+				eventType: constants.activityLogEvents.PRESUBMISSION_MESSAGE,
 				logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
-				timestamp: Date.now(),
-				plainText: `Version 1 application has been submitted by applicant ${user.firstname} ${user.lastname}`,
-				html: `<a href="${version.link}">Version 1</a> application has been submitted by applicant <b>${user.firstname} ${user.lastname}</b>`,
-				user: user._id,
-				version: version.detailedTitle,
-				versionId: version.applicationId,
+				timestamp: createdDate,
+				user: createdBy.userId,
+				version: 'Pre-submission',
+				versionId: applicationId,
 				userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+				isPresubmission: true,
+				...this.buildMessageText(sender, message),
+				...this.buildMessageHtml(sender, userType, message),
 			};
 
 			logs.push(log);
 		});
 
-		// Save all logs relating presubmissions messages
-		await this.activityLogRepository.createActivityLog(log);
+		// Save all logs relating to presubmissions messages
+		await this.activityLogRepository.createActivityLogs(logs);
+	}
+
+	getMessageSender(user, userType, publisher) {
+		let sender;
+		const { firstname, lastname } = user;
+		switch(userType) {
+			case constants.userTypes.APPLICANT:
+				sender = `applicant ${firstname} ${lastname}`;
+				break;
+			case constants.userTypes.CUSTODIAN:
+				sender = `${firstname} ${lastname} (${publisher})`;
+				break;
+		}
+		return sender;
+	}
+
+	buildMessageText(sender, messages) {
+		let plainText, detailedText;
+
+		plainText = `${messages.length} messages sent from ${sender}`;
+
+		return {
+			plainText,
+			detailedText
+		};
+	}
+
+	buildMessageHtml(sender, userType, messages) {
+		let html, detailedHtml;
+
+		html = `${messages.length} messages sent from <b>${sender}</b>`;
+
+		return {
+			html,
+			detailedHtml
+		};
 	}
 }
