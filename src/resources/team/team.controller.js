@@ -1,4 +1,5 @@
 import _ from 'lodash';
+
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
@@ -42,12 +43,12 @@ const getTeamMembers = async (req, res) => {
 				path: 'additionalInfo',
 				select: 'organisation bio showOrganisation showBio',
 			},
-		});
+		}).lean();
 		if (!team) {
 			return res.status(404).json({ success: false });
 		}
 		// 2. Check the current user is a member of the team
-		let authorised = checkTeamPermissions('', team.toObject(), req.user._id);
+		let authorised = checkTeamPermissions('', team, req.user._id);
 		// 3. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
