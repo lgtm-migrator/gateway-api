@@ -47,7 +47,7 @@ module.exports = {
 
 			const datasets = await Data.find(query)
 				.select(
-					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc percentageCompleted datasetv2.summary.publisher.name'
+					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name'
 				)
 				.sort({ 'timestamps.updated': -1 })
 				.lean();
@@ -140,7 +140,7 @@ module.exports = {
 			questionAnswers['properties/documentation/isPartOf'] = dataset.datasetv2.documentation.isPartOf;
 		//Coverage
 		if (!_.isNil(dataset.datasetv2.coverage.spatial) && !_.isEmpty(dataset.datasetv2.coverage.spatial))
-			questionAnswers['properties/coverage/spatial'] = dataset.datasetv2.coverage.spatial;
+			questionAnswers['properties/coverage/spatial'] = module.exports.returnAsArray(dataset.datasetv2.coverage.spatial);
 		if (!_.isNil(dataset.datasetv2.coverage.typicalAgeRange) && !_.isEmpty(dataset.datasetv2.coverage.typicalAgeRange))
 			questionAnswers['properties/coverage/typicalAgeRange'] = dataset.datasetv2.coverage.typicalAgeRange;
 		if (
@@ -651,7 +651,7 @@ module.exports = {
 			// 1. Id is the _id object in MongoDb not the generated id or dataset Id
 			// 2. Get the userId
 			const id = req.params.id || null;
-			let { _id, id: userId } = req.user;
+			let { _id, id: userId, firstname, lastname } = req.user;
 			let { applicationStatus, applicationStatusDesc = '' } = req.body;
 
 			if (!id) return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
@@ -762,7 +762,7 @@ module.exports = {
 										isPartOf: dataset.questionAnswers['properties/documentation/isPartOf'] || [],
 									},
 									coverage: {
-										spatial: dataset.questionAnswers['properties/coverage/spatial'] || '',
+										spatial: dataset.questionAnswers['properties/coverage/spatial'] || [],
 										typicalAgeRange: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
 										physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
 										followup: dataset.questionAnswers['properties/coverage/followup'] || '',
@@ -844,7 +844,7 @@ module.exports = {
 										counter: previousCounter,
 										datasetfields: {
 											publisher: `${publisherData[0].publisherDetails.memberOf} > ${publisherData[0].publisherDetails.name}`,
-											geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || '',
+											geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || [],
 											physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
 											abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
 											releaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
@@ -896,6 +896,7 @@ module.exports = {
 					{
 						activeflag: constants.datatsetStatuses.REJECTED,
 						applicationStatusDesc: applicationStatusDesc,
+						applicationStatusAuthor: `${firstname} ${lastname}`,
 						'timestamps.rejected': Date.now(),
 						'timestamps.updated': Date.now(),
 					},
@@ -943,7 +944,10 @@ module.exports = {
 						console.error('Error when trying to logout of the MDC - ' + err.message);
 					});
 				}
-				await Data.findOneAndUpdate({ _id: id }, { activeflag: constants.datatsetStatuses.ARCHIVE });
+				await Data.findOneAndUpdate(
+					{ _id: id },
+					{ activeflag: constants.datatsetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
+				);
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'unarchive') {
 				let dataset = await Data.findOne({ _id: id }).lean();
@@ -1609,11 +1613,66 @@ module.exports = {
 				emailGenerator.sendEmail(
 					teamMembersDetails,
 					constants.hdrukEmail,
-					`Your dataset version has been reviewed and rejected`,
+					`Your dataset version requires revision before it can be accepted on the Gateway`,
 					html,
 					false
 				);
 				break;
+			case constants.notificationTypes.DRAFTDATASETDELETED:
+				let draftDatasetName = context.name;
+				let publisherName = context.datasetv2.summary.publisher.name;
+
+				// 1. Get relevant team members to notify
+				team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
+
+				for (let member of team.members) {
+					if (member.roles.some(role => ['manager', 'metadata_editor'].includes(role))) teamMembers.push(member.memberid);
+				}
+
+				teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
+					.populate('additionalInfo')
+					.lean();
+
+				for (let member of teamMembersDetails) {
+					teamMembersIds.push(member.id);
+				}
+
+				// 2. Create user notifications
+				notificationBuilder.triggerNotificationMessage(
+					teamMembersIds,
+					`The draft version of ${draftDatasetName} has been deleted.`,
+					'draft dataset deleted',
+					context._id,
+					context.datasetv2.summary.publisher.identifier
+				);
+				// 3. Create email
+				options = {
+					publisherName,
+					draftDatasetName,
+				};
+				html = emailGenerator.generateMetadataOnboardingDraftDeleted(options);
+				emailGenerator.sendEmail(teamMembersDetails, constants.hdrukEmail, `Draft dataset deleted`, html, false);
+				break;
+		}
+	},
+
+	//DELETE api/v1/dataset-onboarding/delete/:id
+	deleteDraftDataset: async (req, res) => {
+		try {
+			let id = req.params.id;
+
+			let dataset = await Data.findOneAndRemove({ _id: id, activeflag: 'draft' });
+			let draftDatasetName = dataset.name;
+
+			await module.exports.createNotifications(constants.notificationTypes.DRAFTDATASETDELETED, dataset);
+
+			return res.status(200).json({
+				success: true,
+				data: draftDatasetName,
+			});
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 };

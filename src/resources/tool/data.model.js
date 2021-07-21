@@ -19,7 +19,12 @@ const DataSchema = new Schema(
 			programmingLanguageVersion: { type: String },
 		},
 		license: String,
+		// Appears as Uploaders in the F/E for tools, projects, papers
 		authors: [Number],
+		// Original uploader of entity
+		uploader: Number,
+		// List of authors
+		authorsNew: String,
 		tags: {
 			features: [String],
 			topics: [String],
@@ -38,7 +43,6 @@ const DataSchema = new Schema(
 				updated: String,
 			},
 		],
-		uploader: Number,
 		//tools related fields
 		programmingLanguage: [
 			{
@@ -55,6 +59,8 @@ const DataSchema = new Schema(
 			pdf: [String],
 			html: [String],
 		},
+		//project related fields
+		leadResearcher: String,
 
 		//person related fields
 		firstname: String,
@@ -110,6 +116,7 @@ const DataSchema = new Schema(
 		structuralMetadata: [],
 		percentageCompleted: {},
 		applicationStatusDesc: String,
+		applicationStatusAuthor: String,
 		timestamps: {
 			updated: Date,
 			created: Date,
@@ -162,7 +169,7 @@ DataSchema.virtual('user', {
 	ref: 'User',
 	foreignField: 'id',
 	localField: 'id',
-	justOne: true
+	justOne: true,
 });
 
 export const Data = model('Data', DataSchema);
