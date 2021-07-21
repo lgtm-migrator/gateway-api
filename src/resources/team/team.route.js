@@ -5,13 +5,18 @@ import teamController from './team.controller';
 
 const router = express.Router();
 
+// @route   GET api/v1/teams/getList
+// @desc     Returns List of all Teams
+// @access   Private
+router.get('/getList', passport.authenticate('jwt'), teamController.getTeamsList);
+
 // @route   GET api/teams/:id
 // @desc    GET A team by :id
 // @access  Public
-router.get('/:id', passport.authenticate('jwt'), teamController.getTeamById);
+router.get('/:id', passport.authenticate('jwt'), teamController.getTeamById); 
 
 // @route   GET api/teams/:id/members
-// @desc    GET all team members for team
+// @desc    GET all team members for team 
 // @access  Private
 router.get('/:id/members', passport.authenticate('jwt'), teamController.getTeamMembers);
 
@@ -46,4 +51,4 @@ router.put('/:id/notifications', passport.authenticate('jwt'), teamController.up
 // @access  Private
 router.put('/:id/notification-messages', passport.authenticate('jwt'), teamController.updateNotificationMessages);
 
-module.exports = router;
+module.exports = router; 
