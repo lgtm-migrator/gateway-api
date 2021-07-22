@@ -539,7 +539,7 @@ const getTeamsList = async (req, res) => {
     try {
         // 1. Get the publisher teams from the database 		
 		const teams = await TeamModel.find(
-			{ $and: [{ type: 'publisher' }, { active: true }]},
+			{ type: 'publisher', active: true },
 			{
 				_id: 1,
 				updatedAt: 1, 
