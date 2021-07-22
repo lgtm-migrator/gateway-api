@@ -51,4 +51,9 @@ router.put('/:id/notifications', passport.authenticate('jwt'), teamController.up
 // @access  Private
 router.put('/:id/notification-messages', passport.authenticate('jwt'), teamController.updateNotificationMessages);
 
-module.exports = router; 
+// @route   POST api/teams/add
+// @desc    Add a team
+// @access  Private
+router.post('/add', passport.authenticate('jwt'), teamController.addTeam); 
+
+module.exports = router;  

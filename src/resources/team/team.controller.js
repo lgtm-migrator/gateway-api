@@ -5,6 +5,7 @@ import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import notificationBuilder from '../utilities/notificationBuilder';
 import constants from '../utilities/constants.util';
+import axios from 'axios';
  
 // GET api/v1/teams/:id
 const getTeamById = async (req, res) => {
@@ -528,7 +529,7 @@ const deleteTeamMember = async (req, res) => {
 		res.status(500).json({ status: 'error', message: err.message });
 	}
 };
-
+ 
 /**
  * GET api/v1/teams/getList
  *
@@ -567,6 +568,78 @@ const getTeamsList = async (req, res) => {
         console.error(err.message);
         return res.status(500).json(err.message);
     }
+};
+
+/**
+ * Adds a publisher team
+ *
+ * 
+ */
+ const addTeam = async (req, res) => {
+	let newMdcFolderId;
+
+	try {
+		
+		//1. create new folder on MDC
+		let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
+		const loginDetails = {
+			username: process.env.MDC_Config_HDRUK_username || '',
+			password: process.env.MDC_Config_HDRUK_password || '',
+		};
+
+		await axios
+			.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
+				withCredentials: true,
+				timeout: 5000,
+			}) 
+			.then(async session => {
+				console.log(`session.headers: ${JSON.stringify(session.headers)}`)
+
+				axios.defaults.headers.Cookie = session.headers['set-cookie'][0]; // get cookie from request
+
+				const folderLabel = {
+					// label: 'Ciaras Test Folder 2',
+					label: req.body.label,
+				};
+
+				await axios
+					.post( 
+						metadataCatalogueLink + '/api/folders',
+						folderLabel,
+						{
+							withCredentials: true,
+							timeout: 60000,
+						}
+					)
+					.then(async newFolder => {
+						console.log(`newFolder id: ${newFolder.data.id}`)
+						newMdcFolderId = newFolder.data.id;
+
+					})
+					.catch(err => {
+						console.error('Error when trying to create new folder on the MDC - ' + err.message);
+					});
+
+			})
+			.catch(err => {
+				console.error('Error when trying to login to MDC - ' + err.message);
+			});
+
+		await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 })
+			.then(console.log('logged out'))
+			.catch(err => {
+			console.error('Error when trying to logout of the MDC - ' + err.message);
+		});
+
+		return res.status(200).json({ status: 'success' });
+
+	} catch (err) {
+		console.error(err.message);
+		return res.status(400).json({
+			success: false,
+			message: 'Error',
+		});
+	}
 };
 
 /**
@@ -890,4 +963,5 @@ export default {
 	getTeamMembersByRole: getTeamMembersByRole,
 	createNotifications: createNotifications,
 	getTeamsList: getTeamsList,
+	addTeam: addTeam,
 };
