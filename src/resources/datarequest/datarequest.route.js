@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 const multerMid = multer({ storage: storage });
 const logCategory = 'Data Access Request';
 const dataRequestController = new DataRequestController(dataRequestService, workflowService, amendmentService, activityLogService);
-const amendmentController = new AmendmentController(amendmentService, dataRequestService);
+const amendmentController = new AmendmentController(amendmentService, dataRequestService, activityLogService);
 const router = express.Router();
 
 // @route   GET api/v1/data-access-request

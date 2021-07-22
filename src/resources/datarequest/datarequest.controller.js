@@ -730,7 +730,7 @@ export default class DataRequestController extends Controller {
 					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
 				});
 			}
-			
+
 			// 6. Delete application
 			await this.dataRequestService.deleteApplication(appToDelete).catch(err => {
 				logger.logError(err, logCategory);
@@ -1361,6 +1361,18 @@ export default class DataRequestController extends Controller {
 			// Create our notifications to the custodian team managers if assigned a workflow to a DAR application
 			this.createNotifications(constants.notificationTypes.WORKFLOWASSIGNED, emailContext, accessRecord, requestingUser);
 
+			//Create activity log
+			this.activityLogService.logActivity(constants.activityLogEvents.WORKFLOW_ASSIGNED, {
+				accessRequest: accessRecord,
+				user: req.user,
+			});
+
+			//Create activity log
+			this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PHASE_STARTED, {
+				accessRequest: accessRecord,
+				user: req.user,
+			});
+
 			return res.status(200).json({
 				success: true,
 			});
@@ -1463,10 +1475,18 @@ export default class DataRequestController extends Controller {
 				// Create notifications to managers that the application is awaiting final approval
 				relevantStepIndex = activeStepIndex;
 				relevantNotificationType = constants.notificationTypes.FINALDECISIONREQUIRED;
+				this.activityLogService.logActivity(constants.activityLogEvents.FINAL_DECISION_REQUIRED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 			} else {
 				// Create notifications to reviewers of the next step that has been activated
 				relevantStepIndex = activeStepIndex + 1;
 				relevantNotificationType = constants.notificationTypes.REVIEWSTEPSTART;
+				this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PHASE_STARTED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 			}
 			// Get the email context only if required
 			if (relevantStepIndex !== activeStepIndex) {
@@ -1603,6 +1623,20 @@ export default class DataRequestController extends Controller {
 				logger.logError(err, logCategory);
 			});
 
+			if (approved) {
+				this.activityLogService.logActivity(constants.activityLogEvents.RECOMMENDATION_WITH_NO_ISSUE, {
+					comments,
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
+			} else {
+				this.activityLogService.logActivity(constants.activityLogEvents.RECOMMENDATION_WITH_ISSUE, {
+					comments,
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
+			}
+
 			// 15. Create emails and notifications
 			let relevantStepIndex = 0,
 				relevantNotificationType = '';
@@ -1610,10 +1644,18 @@ export default class DataRequestController extends Controller {
 				// Create notifications to reviewers of the next step that has been activated
 				relevantStepIndex = activeStepIndex + 1;
 				relevantNotificationType = constants.notificationTypes.REVIEWSTEPSTART;
+				this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PHASE_STARTED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 			} else if (bpmContext.stepComplete && bpmContext.finalPhaseApproved) {
 				// Create notifications to managers that the application is awaiting final approval
 				relevantStepIndex = activeStepIndex;
 				relevantNotificationType = constants.notificationTypes.FINALDECISIONREQUIRED;
+				this.activityLogService.logActivity(constants.activityLogEvents.FINAL_DECISION_REQUIRED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 			}
 			// Continue only if notification required
 			if (!_.isEmpty(relevantNotificationType)) {
