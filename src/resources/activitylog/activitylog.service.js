@@ -52,7 +52,7 @@ export default class activityLogService {
 			return arr;
 		}, []);
 
-		const orderedVersionEvents = orderBy([...presubmissionEvents, ...formattedVersionEvents], ['versionNumber'], ['desc']);
+		const orderedVersionEvents = orderBy([presubmissionEvents, ...formattedVersionEvents], ['versionNumber'], ['desc']);
 
 		return orderedVersionEvents;
 	}
@@ -77,7 +77,7 @@ export default class activityLogService {
 	getEventsForVersion(logs, versionId) {
 		let versionEvents = [];
 		if (versionId) {
-			versionEvents = logs.filter(log => log.versionId.toString() === versionId.toString());
+			versionEvents = logs.filter(log => log.versionId.toString() === versionId.toString() && !log.isPresubmission);
 		} else {
 			versionEvents = logs.filter(log => log.isPresubmission);
 		}
@@ -342,19 +342,19 @@ export default class activityLogService {
 		
 		// Create log for each message submitted
 		messages.forEach(message => {
-			const { createdBy, userType, createdDate } = message;
-			const sender = this.getMessageSender(createdBy, userType, publisher);
+			const { createdBy, createdByName, createdByUserType, createdDate } = message;
+			const sender = this.buildMessageSender(createdByName, createdByUserType, publisher);
 			const log = {
 				eventType: constants.activityLogEvents.PRESUBMISSION_MESSAGE,
 				logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 				timestamp: createdDate,
-				user: createdBy.userId,
+				user: createdBy,
 				version: 'Pre-submission',
 				versionId: applicationId,
 				userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
 				isPresubmission: true,
 				...this.buildMessageText(sender, message),
-				...this.buildMessageHtml(sender, userType, message),
+				...this.buildMessageHtml(sender, createdByUserType, message),
 			};
 
 			logs.push(log);
@@ -364,9 +364,9 @@ export default class activityLogService {
 		await this.activityLogRepository.createActivityLogs(logs);
 	}
 
-	getMessageSender(user, userType, publisher) {
+	buildMessageSender(createdByName, userType, publisher) {
 		let sender;
-		const { firstname, lastname } = user;
+		const { firstname, lastname } = createdByName;
 		switch(userType) {
 			case constants.userTypes.APPLICANT:
 				sender = `applicant ${firstname} ${lastname}`;
@@ -378,10 +378,10 @@ export default class activityLogService {
 		return sender;
 	}
 
-	buildMessageText(sender, messages) {
+	buildMessageText(sender) {
 		let plainText, detailedText;
 
-		plainText = `${messages.length} messages sent from ${sender}`;
+		plainText = `Messages sent from ${sender}`;
 
 		return {
 			plainText,
@@ -389,10 +389,10 @@ export default class activityLogService {
 		};
 	}
 
-	buildMessageHtml(sender, userType, messages) {
+	buildMessageHtml(sender) {
 		let html, detailedHtml;
 
-		html = `${messages.length} messages sent from <b>${sender}</b>`;
+		html = `Message sent from <b>${sender}</b>`;
 
 		return {
 			html,
