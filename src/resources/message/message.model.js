@@ -31,6 +31,7 @@ const MessageSchema = new Schema(
 				'dataset submitted',
 				'dataset approved',
 				'dataset rejected',
+				'draft dataset deleted',
 			],
 		},
 		publisherName: {

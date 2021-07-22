@@ -48,6 +48,10 @@ const TopicSchema = new Schema(
 			type: Boolean,
 			default: false,
 		},
+		is5Safes: {
+			type: Boolean,
+			default: false
+		},
 		unreadMessages: {
 			type: Number,
 			default: 0,

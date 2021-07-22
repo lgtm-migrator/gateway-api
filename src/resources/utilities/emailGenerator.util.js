@@ -1923,15 +1923,15 @@ const _generateMetadataOnboardingRejected = options => {
 
 	if (!_.isEmpty(comment)) {
 		commentHTML = `<tr>
-      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-        Reason for rejection
-      </th>
-    </tr>
-    <tr>
-      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-        ${comment}
-      </th>
-    </tr>`;
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Comment from reviewer:
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      "${comment}"
+                    </th>
+                  </tr>`;
 	}
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -1944,14 +1944,14 @@ const _generateMetadataOnboardingRejected = options => {
                 style="font-family: Arial, sans-serif">
                 <thead>
                   <tr>
-                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                    Your dataset version has been reviewed and rejected
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;"> 
+                      Your dataset version requires revision before it can be accepted on the Gateway
                     </th>
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                    The submitted version of ${name} has been reviewed and rejected by the HDRUK admins. Please view and create a new version of this dataset and make the necessary changes if you would like to make another submission to the Gateway.
-                  </th>
+                      Thank you for submitting ${name}, which has been reviewed by the team at HDR UK. The dataset version cannot be approved for release on the Gateway at this time. Please look at the comment from the reviewer below and make any necessary changes on a new version of the dataset before resubmitting.
+                    </th>
                   </tr>
                   ${commentHTML}
                   <tr>
@@ -1965,11 +1965,45 @@ const _generateMetadataOnboardingRejected = options => {
 	return body;
 };
 
+const _generateMetadataOnboardingDraftDeleted = options => {
+	let { publisherName, draftDatasetName } = options;
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      <span>Draft dataset deleted</span>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+                  <tr>
+                    <td style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      <p>
+                        The draft version of ${draftDatasetName} has been deleted.
+                      </p>
+                    </td>
+                  </tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
 const _generateMessageNotification = options => {
 	let { firstMessage, firstname, lastname, messageDescription, openMessagesLink } = options;
 
 	let body = `<div>
-						<img src="https://storage.googleapis.com/hdruk-gateway_prod-cms/web-assets/HDRUK_logo_colour.png" alt="HDR UK Logo" width="127" height="63" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 24px; margin-top: 24px;">
 						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
 							<table
 							align="center"
@@ -2004,6 +2038,78 @@ const _generateMessageNotification = options => {
 	return body;
 };
 
+const _generateEntityNotification = options => {
+	let { resourceType, resourceName, resourceLink, subject, rejectionReason, activeflag, type, resourceAuthor } = options;
+	let authorBody;
+	if (activeflag === 'active') {
+		authorBody = `${resourceName} ${resourceType} has been approved by the HDR UK admin team and can be publicly viewed on the gateway, including in search results.`;
+	} else if (activeflag === 'archive') {
+		authorBody = `${resourceName} ${resourceType} has been archived by the HDR UK admin team.`;
+	} else if (activeflag === 'rejected') {
+		authorBody = `${resourceName} ${resourceType} has been rejected by the HDR UK admin team. <br /><br />  Reason for rejection: ${rejectionReason}`;
+	} else if (activeflag === 'add') {
+		authorBody = `${resourceName} ${resourceType} has been submitted to the HDR UK admin team for approval.`;
+	} else if (activeflag === 'edit') {
+		authorBody = `${resourceName} ${resourceType} has been edited, the updated version can now be viewed on the gateway.`;
+	}
+
+	let dashboardLink = process.env.homeURL + '/account?tab=' + resourceType + 's';
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${!_.isEmpty(type) && type === 'admin' ? `A new ${resourceType} has been added and is ready for review` : ``}
+                      ${!_.isEmpty(type) && type === 'author' ? `${subject}` : ``}
+                      ${
+												!_.isEmpty(type) && type === 'co-author'
+													? `${resourceAuthor} added you as an author of the ${resourceType} ${resourceName}`
+													: ``
+											}
+										</th>
+										</tr>
+										<tr>
+										<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+											<p>
+                      ${
+												!_.isEmpty(type) && type === 'admin'
+													? `${resourceName} ${resourceType} has been added and is pending a review. View and then either approve or reject via the link below.`
+													: ``
+											}
+                      ${!_.isEmpty(type) && type === 'author' ? authorBody : ``}
+                      ${
+												!_.isEmpty(type) && type === 'co-author'
+													? `${resourceAuthor} added you as an author of the ${resourceType} ${resourceName}`
+													: ``
+											}
+                      </p>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+									<tr style="width: 100%; text-align: left;">
+										<td style=" font-size: 14px; color: #3c3c3b; padding: 5px 5px; width: 50%; text-align: left; vertical-align: top;">
+                    ${!_.isEmpty(type) && type === 'admin' ? `<a href=${dashboardLink}>View ${resourceType}s dashboard</a>` : ``}
+                    ${!_.isEmpty(type) && type === 'author' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
+                    ${!_.isEmpty(type) && type === 'co-author' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
 /**
  * [_sendEmail]
  *
@@ -2019,7 +2125,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 
 	// 3. Build each email object for SendGrid extracting email addresses from user object with unique unsubscribe link (to)
 	for (let recipient of recipients) {
-		let body = html + _generateEmailFooter(recipient, allowUnsubscribe);
+		let body = _generateEmailHeader + html + _generateEmailFooter(recipient, allowUnsubscribe);
 		let msg = {
 			to: recipient.email,
 			from: from,
@@ -2063,6 +2169,10 @@ const _sendIntroEmail = msg => {
 		}
 	});
 };
+
+const _generateEmailHeader = `
+    <img src="https://storage.googleapis.com/hdruk-gateway_prod-cms/web-assets/HDRUK_logo_colour.png" alt="HDR UK Logo" width="127" height="63" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 24px; margin-top: 24px;"></img>
+  `;
 
 const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 	// 1. Generate HTML for unsubscribe link if allowed depending on context
@@ -2147,8 +2257,10 @@ export default {
 	generateMetadataOnboardingSumbitted: _generateMetadataOnboardingSumbitted,
 	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
 	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
+	generateMetadataOnboardingDraftDeleted: _generateMetadataOnboardingDraftDeleted,
 	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages
 	generateMessageNotification: _generateMessageNotification,
+	generateEntityNotification: _generateEntityNotification,
 };

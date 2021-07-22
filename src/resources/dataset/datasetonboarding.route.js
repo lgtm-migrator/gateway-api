@@ -43,4 +43,9 @@ router.post('/:id', passport.authenticate('jwt'), datasetOnboardingController.su
 // @access  Private - Custodian Manager/Reviewer ?
 router.put('/:id', passport.authenticate('jwt'), datasetOnboardingController.changeDatasetVersionStatus);
 
+// @route   DELETE /api/v1/dataset-onboarding/delete/:id
+// @desc     Delete Draft Dataset
+// @access   Private - Custodian Manager ?
+router.delete('/delete/:id', passport.authenticate('jwt'), datasetOnboardingController.deleteDraftDataset);
+
 module.exports = router;

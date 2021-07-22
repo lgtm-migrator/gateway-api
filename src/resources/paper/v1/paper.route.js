@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import express from 'express';
 import { Data } from '../../tool/data.model';
 import { ROLES } from '../../user/user.roles';
@@ -8,10 +9,10 @@ import helper from '../../utilities/helper.util';
 import escape from 'escape-html';
 const router = express.Router();
 
-// @router   POST /api/v1/
+// @router   POST /api/v1/paper
 // @desc     Add paper user
 // @access   Private
-router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/', passport.authenticate('jwt'), async (req, res) => {
 	await addTool(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -21,10 +22,10 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 		});
 });
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/paper/getList
 // @desc     Returns List of Paper Objects Authenticated
 // @access   Private
-router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/getList', passport.authenticate('jwt'), async (req, res) => {
 	req.params.type = 'paper';
 	let role = req.user.role;
 
@@ -47,10 +48,10 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
-// @router   POST /api/v1/
+// @router   POST /api/v1/validate
 // @desc     Validates that a paper link does not exist on the gateway
 // @access   Private
-router.post('/validate', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/validate', passport.authenticate('jwt'), async (req, res) => {
 	try {
 		// 1. Deconstruct message body which contains the link entered by the user against a paper
 		const { link } = req.body;
@@ -73,7 +74,7 @@ router.post('/validate', passport.authenticate('jwt'), utils.checkIsInRole(ROLES
 	}
 });
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/paper
 // @desc     Returns List of Paper Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
@@ -88,10 +89,10 @@ router.get('/', async (req, res) => {
 		});
 });
 
-// @router   PATCH /api/v1/
+// @router   PATCH /api/v1/paper/{id}
 // @desc     Change status of the Paper object.
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('paper'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -101,10 +102,10 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 		});
 });
 
-// @router   PUT /api/v1/
+// @router   PUT /api/v1/paper/{id}
 // @desc     Returns edited Paper object.
 // @access   Private
-router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.put('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('paper'), async (req, res) => {
 	await editTool(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -113,11 +114,10 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
 			return res.json({ success: false, err });
 		});
 });
-/**
- * {get} /paper​/:paper​ID Paper
- *
- * Return the details on the paper based on the tool ID.
- */
+
+// @router   GET /api/v1/paper/{paperID}
+// @desc     Return the details on the paper based on the tool ID.
+// @access   Public
 router.get('/:paperID', async (req, res) => {
 	var q = Data.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.paperID) }, { type: 'paper' }] } },
@@ -157,6 +157,9 @@ router.get('/:paperID', async (req, res) => {
 	});
 });
 
+// @router   GET /api/v1/paper/edit/{paperID}
+// @desc     Return the details on the paper based on the paper ID without reverse linked related resources.
+// @access   Public
 router.get('/edit/:paperID', async (req, res) => {
 	var query = Data.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.paperID) }] } },
