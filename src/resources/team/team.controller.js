@@ -536,8 +536,18 @@ const deleteTeamMember = async (req, res) => {
  *
  */
 const getTeamsList = async (req, res) => {
-    try {
-        // 1. Get the publisher teams from the database 		
+    try { 
+        // 1. Check the current user is a member of the HDR admin team
+        const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+
+		const hdrAdminTeamMember = hdrAdminTeam.members.filter( member => member.memberid.toString() === req.user._id.toString() )
+		
+        // 2. If not return unauthorised 
+		if(_.isEmpty(hdrAdminTeamMember)){
+			return res.status(401).json({ success: false, message: 'Unauthorised' });
+		}
+
+		// 3. Get the publisher teams from the database 
 		const teams = await TeamModel.find(
 			{ type: 'publisher', active: true },
 			{
@@ -550,17 +560,7 @@ const getTeamsList = async (req, res) => {
 			.populate('publisher', { name: 1 })
 			.populate('users', { firstname: 1, lastname: 1 })
 			.lean();
- 
-        // 2. Check the current user is a member of the HDR admin team
-        const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
-
-		const hdrAdminTeamMember = hdrAdminTeam.members.filter( member => member.memberid.toString() === req.user._id.toString() )
-		
-        // 3. If not return unauthorised 
-		if(_.isEmpty(hdrAdminTeamMember)){
-			return res.status(401).json({ success: false, message: 'Unauthorised' });
-		}
-
+	
         // 4. Return team
         return res.status(200).json({ success: true, teams });
     } catch (err) {
