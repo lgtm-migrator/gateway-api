@@ -8,7 +8,7 @@ const router = express.Router();
 // @route   GET api/v1/teams/getList
 // @desc     Returns List of all Teams
 // @access   Private
-router.get('/getList', passport.authenticate('jwt'), teamController.getTeamsList);
+router.get('/', passport.authenticate('jwt'), teamController.getTeamsList);
 
 // @route   GET api/teams/:id
 // @desc    GET A team by :id

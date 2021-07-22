@@ -530,7 +530,7 @@ const deleteTeamMember = async (req, res) => {
 };
 
 /**
- * GET api/v1/teams/getList
+ * GET api/v1/teams
  *
  * @desc Get the list of all publisher teams
  *
