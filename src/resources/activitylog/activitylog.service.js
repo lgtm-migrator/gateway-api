@@ -191,6 +191,9 @@ export default class activityLogService {
 			case constants.activityLogEvents.RECOMMENDATION_WITH_NO_ISSUE:
 				this.logReccomendationWithNoIssueEvent(context);
 				break;
+			case constants.activityLogEvents.DEADLINE_PASSED:
+				this.logDeadlinePassedEvent(context);
+				break;
 			case constants.activityLogEvents.FINAL_DECISION_REQUIRED:
 				this.logFinalDecisionRequiredEvent(context);
 				break;
@@ -341,7 +344,6 @@ export default class activityLogService {
 		const currentVersion = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
 		const previousVersion = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length - 1}`];
 
-		//mettere gli update qui.
 		const questionAnswers = accessRequest.amendmentIterations[accessRequest.amendmentIterations.length - 1].questionAnswers;
 		const numberOfUpdatesSubmitted = Object.keys(questionAnswers).length;
 
@@ -349,21 +351,19 @@ export default class activityLogService {
 
 		Object.keys(questionAnswers).forEach(questionId => {
 			const previousAnswer = accessRequest.questionAnswers[questionId];
-			const questionSet = accessRequest.jsonSchema.questionSets.filter(
-				qs => qs.questionSetId === questionAnswers[questionId].questionSetId
-			);
+			const questionSet = accessRequest.jsonSchema.questionSets.find(qs => qs.questionSetId === questionAnswers[questionId].questionSetId);
 
 			const updatedAnswer = questionAnswers[questionId].answer;
 
-			const questionPanel = accessRequest.jsonSchema.questionPanels.filter(qp => qp.panelId === questionSet[0].questionSetId);
+			const questionPanel = accessRequest.jsonSchema.questionPanels.find(qp => qp.panelId === questionSet.questionSetId);
 
-			const page = accessRequest.jsonSchema.pages.filter(p => p.pageId === questionPanel[0].pageId);
+			const page = accessRequest.jsonSchema.pages.find(p => p.pageId === questionPanel.pageId);
 
-			const question = this.getActiveQuestion(questionSet[0].questions, questionId);
+			const question = this.getActiveQuestion(questionSet.questions, questionId);
 
 			detHtml = detHtml.concat(
 				`<div class='activity-log-detail'>` +
-					`<div class='activity-log-detail-header'>${page[0].title + ' | ' + questionSet[0].questionSetHeader}</div>` +
+					`<div class='activity-log-detail-header'>${page.title + ' | ' + questionSet.questionSetHeader}</div>` +
 					`<div class='activity-log-detail-row'>` +
 					`<div class='activity-log-detail-row-question'>Question</div>` +
 					`<div class='activity-log-detail-row-answer'>${question.question}</div>` +
@@ -419,7 +419,6 @@ export default class activityLogService {
 		const { accessRequest, user } = context;
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length - 1}`];
 
-		//mettere gli update qui.
 		const questionAnswers = accessRequest.amendmentIterations[accessRequest.amendmentIterations.length - 1].questionAnswers;
 		const numberOfUpdatesRequested = Object.keys(questionAnswers).length;
 
@@ -427,19 +426,17 @@ export default class activityLogService {
 
 		Object.keys(questionAnswers).forEach(questionId => {
 			const answer = accessRequest.questionAnswers[questionId];
-			const questionSet = accessRequest.jsonSchema.questionSets.filter(
-				qs => qs.questionSetId === questionAnswers[questionId].questionSetId
-			);
+			const questionSet = accessRequest.jsonSchema.questionSets.find(qs => qs.questionSetId === questionAnswers[questionId].questionSetId);
 
-			const questionPanel = accessRequest.jsonSchema.questionPanels.filter(qp => qp.panelId === questionSet[0].questionSetId);
+			const questionPanel = accessRequest.jsonSchema.questionPanels.find(qp => qp.panelId === questionSet.questionSetId);
 
-			const page = accessRequest.jsonSchema.pages.filter(p => p.pageId === questionPanel[0].pageId);
+			const page = accessRequest.jsonSchema.pages.find(p => p.pageId === questionPanel.pageId);
 
-			const question = this.getActiveQuestion(questionSet[0].questions, questionId);
+			const question = this.getActiveQuestion(questionSet.questions, questionId);
 
 			detHtml = detHtml.concat(
 				`<div class='activity-log-detail'>` +
-					`<div class='activity-log-detail-header'>${page[0].title + ' | ' + questionSet[0].questionSetHeader}</div>` +
+					`<div class='activity-log-detail-header'>${page.title + ' | ' + questionSet.questionSetHeader}</div>` +
 					`<div class='activity-log-detail-row'>` +
 					`<div class='activity-log-detail-row-question'>Question</div>` +
 					`<div class='activity-log-detail-row-answer'>${question.question}</div>` +
@@ -525,11 +522,8 @@ export default class activityLogService {
 
 		const { workflow } = accessRequest;
 
-		let detHtml = '';
-
-		detHtml = detHtml.concat(`<div class='activity-log-detail'><div class='activity-log-detail-header'>${workflow.workflowName}</div>`);
-
-		detHtml = detHtml.concat(
+		const detHtml =
+			`<div class='activity-log-detail'><div class='activity-log-detail-header'>${workflow.workflowName}</div>` +
 			workflow.steps
 				.map(step => {
 					return (
@@ -541,10 +535,8 @@ export default class activityLogService {
 						`</div>`
 					);
 				})
-				.join(' ')
-		);
-
-		detHtml = detHtml.concat(`</div>`);
+				.join(' ') +
+			`</div>`;
 
 		const log = {
 			eventType: constants.activityLogEvents.WORKFLOW_ASSIGNED,
@@ -735,5 +727,61 @@ export default class activityLogService {
 			plainText,
 			detailedText
 		};
+	}
+	
+	async logDeadlinePassedEvent(context) {
+		const { accessRequest } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const systemGeneratedUser = await UserModel.findOne({
+			firstname: constants.systemGeneratedUser.FIRSTNAME,
+			lastname: constants.systemGeneratedUser.LASTNAME,
+		});
+
+		const { workflow } = accessRequest;
+
+		const step = workflow.steps.find(step => step.active);
+
+		const { startDateTime, deadline } = step;
+		const dateDeadline = moment(startDateTime).add(deadline, 'days');
+		const daysSinceDeadlinePassed = moment().diff(dateDeadline, 'days');
+
+		const detHtml =
+			`<div class='activity-log-detail'><div class='activity-log-detail-row-question'>Recommendations required from:</div>` +
+			step.reviewers
+				.map(reviewer => {
+					return `<div class='activity-log-detail-row-answer'>` + reviewer.firstname + ' ' + reviewer.lastname + `</div>`;
+				})
+				.join('');
+		+`</div>`;
+
+		const detText =
+			`Recommendations required from:` +
+			step.reviewers.map(reviewer => {
+				return reviewer.firstname + ' ' + reviewer.lastname;
+			}) +
+			`</div>`;
+
+		const log = {
+			eventType: constants.activityLogEvents.DEADLINE_PASSED,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			plainText: `Deadline was ${daysSinceDeadlinePassed} ${daysSinceDeadlinePassed > 1 ? 'days' : 'day'} ago for ${step.stepName} ${
+				workflow.steps.findIndex(step => step.active) + 1
+			} out of ${workflow.steps.length} phases`,
+			html: `<b>Deadline was ${daysSinceDeadlinePassed} ${
+				daysSinceDeadlinePassed > 1 ? 'days' : 'day'
+			} ago</b> for <a class='activity-log-detail-link' href="${version.link}">${step.stepName}</a> (<b>${
+				workflow.steps.findIndex(step => step.active) + 1
+			} out of ${workflow.steps.length} phases</b>)`,
+			detailedHtml: detHtml,
+			detailedText: detText,
+			user: systemGeneratedUser._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
 	}
 }
