@@ -679,20 +679,6 @@ export default class activityLogService {
 		await this.activityLogRepository.createActivityLogs(logs);
 	}
 
-	buildMessageSender(createdBy, userType, publisher) {
-		let sender;
-		const { firstname, lastname } = createdBy;
-		switch(userType) {
-			case constants.userTypes.APPLICANT:
-				sender = `${firstname} ${lastname} (applicant)`;
-				break;
-			case constants.userTypes.CUSTODIAN:
-				sender = `${firstname} ${lastname} (${publisher})`;
-				break;
-		}
-		return sender;
-	}
-
 	buildMessage(createdBy, userType, publisher, createdDate, messageBody, onClickScript) {
 		const sentTime = moment(createdDate).format('HH:mm');
 		const { firstname, lastname } = createdBy;
@@ -728,7 +714,7 @@ export default class activityLogService {
 			detailedText
 		};
 	}
-	
+
 	async logDeadlinePassedEvent(context) {
 		const { accessRequest } = context;
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
