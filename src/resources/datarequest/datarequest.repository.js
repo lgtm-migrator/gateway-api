@@ -217,7 +217,7 @@ export default class DataRequestRepository extends Repository {
 			linkedDataAccessApplication: { $exists: false },
 		})
 			.select('_id')
-			.populate({ path: 'topicMessages', options: { lean: true }, populate: { path: 'createdBy' } });
+			.populate({ path: 'topicMessages', populate: { path: 'createdBy' } });
 	}
 
 	linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus) {

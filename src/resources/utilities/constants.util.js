@@ -481,7 +481,14 @@ const _activityLogEvents = {
 	APPLICATION_REJECTED: 'applicationRejected',
 	COLLABORATOR_ADDEDD: 'collaboratorAdded',
 	COLLABORATOR_REMOVED: 'collaboratorRemoved',
-	PRESUBMISSION_MESSAGE: 'presubmissionMessage'
+	PRESUBMISSION_MESSAGE: 'presubmissionMessage',
+	UPDATE_REQUESTED: 'updateRequested',
+	UPDATE_SUBMITTED: 'updateSubmitted',
+	WORKFLOW_ASSIGNED: 'workflowAssigned',
+	REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
+	RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
+	RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
+	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
 };
 
 const _activityLogTypes = {

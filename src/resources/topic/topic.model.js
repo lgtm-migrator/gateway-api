@@ -108,12 +108,12 @@ TopicSchema.pre(/^find/, function (next) {
 		path: 'createdBy',
 		select: 'firstname lastname',
 		path: 'topicMessages',
-		select: 'messageDescription firstMessage createdDate isRead _id readBy',
+		select: 'messageDescription firstMessage createdDate isRead _id readBy createdByUserType',
 		options: { sort: '-createdDate' },
 		populate: {
 			path: 'createdBy',
 			model: 'User',
-			select: '-_id firstname lastname',
+			select: 'firstname lastname',
 		},
 	});
 

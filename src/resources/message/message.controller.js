@@ -157,18 +157,20 @@ module.exports = {
 				);
 			}
 			// 19. Return successful response with message data
-			message.createdByName = { firstname, lastname };
+			const messageObj = message.toObject();
+			messageObj.createdByName = { firstname, lastname };
+			messageObj.createdBy = { _id: createdBy, firstname, lastname };
 
 			// 20. Update activity log if there is a linked DAR
 			if (topicObj.linkedDataAccessApplication) {
 				activityLogService.logActivity(constants.activityLogEvents.PRESUBMISSION_MESSAGE, {
-					messages: [message],
+					messages: [messageObj],
 					applicationId: topicObj.linkedDataAccessApplication,
 					publisher: publisher.name,
 				});
 			}
 
-			return res.status(201).json({ success: true, message });
+			return res.status(201).json({ success: true, messageObj });
 		} catch (err) {
 			console.error(err.message);
 			return res.status(500).json(err.message);
