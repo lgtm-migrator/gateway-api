@@ -16,17 +16,15 @@ import {
 	sendEmailNotifications,
 	generateCollectionEmailSubject,
 } from './collections.repository';
-
-const inputSanitizer = require('../utilities/inputSanitizer');
-
-const urlValidator = require('../utilities/urlValidator');
+import inputSanitizer from '../utilities/inputSanitizer';
+import urlValidator from '../utilities/urlValidator';
 
 const router = express.Router();
 
 // @router   GET /api/v1/collections/getList
 // @desc     Returns List of Collections
 // @access   Private
-router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/getList', passport.authenticate('jwt'), async (req, res) => {
 	let role = req.user.role;
 
 	if (role === ROLES.Admin) {
@@ -48,6 +46,9 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
+// @router   GET /api/v1/collections/{collectionID}
+// @desc     Returns collection based on id
+// @access   Public
 router.get('/:collectionID', async (req, res) => {
 	var q = Collections.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.collectionID) }] } },
@@ -64,6 +65,9 @@ router.get('/:collectionID', async (req, res) => {
 	});
 });
 
+// @router   GET /api/v1/collections/relatedobjects/{collectionID}
+// @desc     Returns related resources for collection based on id
+// @access   Public
 router.get('/relatedobjects/:collectionID', async (req, res) => {
 	await getCollectionObjects(req)
 		.then(data => {
@@ -74,6 +78,9 @@ router.get('/relatedobjects/:collectionID', async (req, res) => {
 		});
 });
 
+// @router   GET /api/v1/collections/entityid/{entityID}
+// @desc     Returns collections that contant the entity id
+// @access   Public
 router.get('/entityid/:entityID', async (req, res) => {
 	let entityID = req.params.entityID;
 	let dataVersions = await Data.find({ pid: entityID }, { _id: 0, datasetid: 1 });
@@ -115,8 +122,12 @@ router.get('/entityid/:entityID', async (req, res) => {
 	});
 });
 
-router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	let { id, name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag, collectionCreator } = req.body;
+// @router   PUT /api/v1/collections/edit/{id}
+// @desc     Edit Collection
+// @access   Private
+router.put('/edit/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('collection'), async (req, res) => {
+	let id = req.params.id;
+	let { name, description, imageLink, authors, relatedObjects, publicflag, keywords, previousPublicFlag, collectionCreator } = req.body;
 	imageLink = urlValidator.validateURL(imageLink);
 	let updatedon = Date.now();
 
@@ -124,7 +135,8 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 
 	await Collections.findOneAndUpdate(
 		{ id: collectionId },
-		{ //lgtm [js/sql-injection]
+		{
+			//lgtm [js/sql-injection]
 			name: inputSanitizer.removeNonBreakingSpaces(name),
 			description: inputSanitizer.removeNonBreakingSpaces(description),
 			imageLink: imageLink,
@@ -132,7 +144,7 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 			relatedObjects: relatedObjects,
 			publicflag: publicflag,
 			keywords: keywords,
-			updatedon: updatedon
+			updatedon: updatedon,
 		},
 		err => {
 			if (err) {
@@ -158,7 +170,10 @@ router.put('/edit', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	});
 });
 
-router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+// @router   POST /api/v1/collections/add
+// @desc     Add Collection
+// @access   Private
+router.post('/add', passport.authenticate('jwt'), async (req, res) => {
 	let collections = new Collections();
 
 	const collectionCreator = req.body.collectionCreator;
@@ -195,71 +210,40 @@ router.post('/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admi
 	});
 });
 
-router.put('/status', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	let { id, activeflag } = req.body;
-	let isAuthorAdmin = false;
-	let collectionId = parseInt(id);
+// @router   PUT /api/v1/collections/status/{id}
+// @desc     Edit Collection
+// @access   Private
+router.put('/status/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('collection'), async (req, res) => {
+	const collectionId = parseInt(req.params.id);
+	let { activeflag } = req.body;
+	activeflag = activeflag.toString();
 
-	let q = Collections.aggregate([{ $match: { $and: [{ id: parseInt(req.body.id) }, { authors: req.user.id }] } }]);
-	q.exec((err, data) => {
-		if (data.length === 1) {
-			isAuthorAdmin = true;
+	Collections.findOneAndUpdate({ id: collectionId }, { activeflag }, err => {
+		if (err) {
+			return res.json({ success: false, error: err });
 		}
-
-		if (req.user.role === 'Admin') {
-			isAuthorAdmin = true;
-		}
-
-		if (isAuthorAdmin) {
-			Collections.findOneAndUpdate(
-				{ id: collectionId },
-				{ //lgtm [js/sql-injection]
-					activeflag: activeflag,
-				},
-				err => {
-					if (err) {
-						return res.json({ success: false, error: err });
-					}
-				}
-			).then(() => {
-				return res.json({ success: true });
-			});
-		} else {
-			return res.json({ success: false, error: 'Not authorised' });
-		}
+	}).then(() => {
+		return res.json({ success: true });
 	});
 });
 
-router.delete('/delete/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
-	var isAuthorAdmin = false;
-
-	var q = Collections.aggregate([{ $match: { $and: [{ id: parseInt(req.params.id) }, { authors: req.user.id }] } }]);
-	q.exec((err, data) => {
-		if (data.length === 1) {
-			isAuthorAdmin = true;
-		}
-
-		if (req.user.role === 'Admin') {
-			isAuthorAdmin = true;
-		}
-
-		if (isAuthorAdmin) {
-			Collections.findOneAndRemove({ id: req.params.id }, err => {
-				if (err) return res.send(err);
-				return res.json({ success: true });
-			});
-		} else {
-			return res.json({ success: false, error: 'Not authorised' });
-		}
+// @router   DELETE /api/v1/collections/delete/{id}
+// @desc     Delete Collection
+// @access   Private
+router.delete('/delete/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('collection'), async (req, res) => {
+	const id = parseInt(req.params.id);
+	Collections.findOneAndRemove({ id }, err => {
+		if (err) return res.send(err);
+		return res.json({ success: true });
 	});
 });
 
+// eslint-disable-next-line no-undef
 module.exports = router;
 
 async function createMessage(authorId, collections, activeflag, collectionCreator, isEdit) {
 	let message = new MessagesModel();
 
-	const collectionLink = process.env.homeURL + '/collection/' + collections.id;
 	const messageRecipients = await UserModel.find({ $or: [{ role: 'Admin' }, { id: { $in: collections.authors } }] });
 	async function saveMessage() {
 		message.messageID = parseInt(Math.random().toString().replace('0.', ''));

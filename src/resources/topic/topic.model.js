@@ -18,6 +18,10 @@ const TopicSchema = new Schema(
 				ref: 'User',
 			},
 		],
+		linkedDataAccessApplication: {
+			type: Schema.Types.ObjectId,
+			ref: 'data_request',
+		},
 		status: {
 			type: String,
 			enum: ['active', 'closed'],
@@ -41,6 +45,10 @@ const TopicSchema = new Schema(
 			},
 		],
 		isDeleted: {
+			type: Boolean,
+			default: false,
+		},
+		is5Safes: {
 			type: Boolean,
 			default: false,
 		},
@@ -77,10 +85,6 @@ const TopicSchema = new Schema(
 				},
 			},
 		],
-		is5Safes: {
-			type: Boolean,
-			default: false,
-		},
 	},
 	{
 		toJSON: { virtuals: true },
@@ -96,18 +100,22 @@ TopicSchema.virtual('topicMessages', {
 });
 
 TopicSchema.pre(/^find/, function (next) {
-	this.populate({
-		path: 'createdBy',
-		select: 'firstname lastname',
-		path: 'topicMessages',
-		select: 'messageDescription firstMessage createdDate isRead _id readBy',
-		options: { sort: '-createdDate' },
-		populate: {
+	this.populate([
+		{
 			path: 'createdBy',
-			model: 'User',
-			select: '-_id firstname lastname',
+			select: 'firstname lastname',
 		},
-	});
+		{
+			path: 'topicMessages',
+			select: 'messageDescription firstMessage createdDate isRead _id readBy createdByUserType',
+			options: { sort: '-createdDate' },
+			populate: {
+				path: 'createdBy',
+				model: 'User',
+				select: 'firstname lastname',
+			},
+		},
+	]);
 
 	next();
 });

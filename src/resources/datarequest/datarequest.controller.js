@@ -216,7 +216,7 @@ export default class DataRequestController extends Controller {
 			const arrDatasetIds = resolvedIds.split(',');
 
 			// 2. Get the user details
-			const { id: requestingUserId, firstname, lastname } = req.user;
+			const { _id: requestingUserObjectId, id: requestingUserId, firstname, lastname } = req.user;
 
 			// 3. Find the matching record
 			let accessRecord = await this.dataRequestService.getApplicationByDatasets(
@@ -242,7 +242,7 @@ export default class DataRequestController extends Controller {
 				} = datasets[0];
 
 				// 1. GET the template from the custodian or take the default (Cannot have dataset specific question sets for multiple datasets)
-				accessRecord = await this.dataRequestService.buildApplicationForm(publisher, arrDatasetIds, arrDatasetNames, requestingUserId);
+				accessRecord = await this.dataRequestService.buildApplicationForm(publisher, arrDatasetIds, arrDatasetNames, requestingUserId, requestingUserObjectId);
 
 				// 2. Ensure a question set was found
 				if (!accessRecord) {

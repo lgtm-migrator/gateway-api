@@ -1,6 +1,6 @@
 import constants from './../utilities/constants.util';
 import { UserModel } from '../user/user.model';
-import _, { orderBy } from 'lodash';
+import { isEmpty, last, orderBy } from 'lodash';
 import moment from 'moment';
 
 export default class activityLogService {
@@ -38,6 +38,8 @@ export default class activityLogService {
 	}
 
 	formatLogs(logs, versions) {
+		const presubmissionEvents = this.buildPresubmissionEvents(logs);
+
 		const formattedVersionEvents = versions.reduce((arr, version) => {
 			const {
 				majorVersion: majorVersionNumber,
@@ -74,13 +76,39 @@ export default class activityLogService {
 			return arr;
 		}, []);
 
+		if(!isEmpty(presubmissionEvents)) {
+			formattedVersionEvents.push(presubmissionEvents);
+		}
+
 		const orderedVersionEvents = orderBy(formattedVersionEvents, ['versionNumber'], ['desc']);
 
 		return orderedVersionEvents;
 	}
 
+	buildPresubmissionEvents(logs) {
+		const presubmissionEvents = this.getEventsForVersion(logs);
+
+		if (isEmpty(presubmissionEvents)) return {};
+
+		const firstMessageDate = moment(last(presubmissionEvents).timestamp).format('D MMMM YYYY');
+
+		return {
+			version: `Pre-submission`,
+			versionNumber: 0,
+			meta: {
+				dateSubmitted: firstMessageDate,
+			},
+			events: presubmissionEvents,
+		};
+	}
+
 	getEventsForVersion(logs, versionId) {
-		const versionEvents = logs.filter(log => log.versionId.toString() === versionId.toString());
+		let versionEvents = [];
+		if (versionId) {
+			versionEvents = logs.filter(log => log.versionId.toString() === versionId.toString() && !log.isPresubmission);
+		} else {
+			versionEvents = logs.filter(log => log.isPresubmission);
+		}
 		const orderedVersionEvents = orderBy(versionEvents, ['timestamp'], ['desc']);
 		return orderedVersionEvents;
 	}
@@ -144,6 +172,9 @@ export default class activityLogService {
 				break;
 			case constants.activityLogEvents.COLLABORATOR_REMOVED:
 				this.logCollaboratorRemovedEvent(context);
+				break;
+			case constants.activityLogEvents.PRESUBMISSION_MESSAGE:
+				this.logPresubmissionMessages(context);
 				break;
 			case constants.activityLogEvents.UPDATE_REQUESTED:
 				this.logUpdateRequestedEvent(context);
@@ -619,6 +650,69 @@ export default class activityLogService {
 		};
 
 		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logPresubmissionMessages(context) {
+		const logs = [];
+		const { applicationId, messages, publisher } = context;
+		
+		// Create log for each message submitted
+		messages.forEach(message => {
+			const { createdBy, createdByUserType, createdDate } = message;
+
+			if(!createdByUserType) return;
+
+			const log = {
+				eventType: constants.activityLogEvents.PRESUBMISSION_MESSAGE,
+				logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+				timestamp: createdDate,
+				user: createdBy._id,
+				version: 'Pre-submission',
+				versionId: applicationId,
+				userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+				isPresubmission: true,
+				...this.buildMessage(createdBy, createdByUserType, publisher, createdDate, message.messageDescription, `window.currentComponent.toggleDrawer(&quot;${message.topic}&quot;)`),
+			};
+			logs.push(log);
+		});
+		// Save all logs relating to presubmissions messages
+		await this.activityLogRepository.createActivityLogs(logs);
+	}
+
+	buildMessage(createdBy, userType, publisher, createdDate, messageBody, onClickScript) {
+		const sentTime = moment(createdDate).format('HH:mm');
+		const { firstname, lastname } = createdBy;
+		let plainText, detailedText, html, detailedHtml;
+
+		switch(userType) {
+			case constants.userTypes.APPLICANT:
+				plainText = `Message sent from applicant ${firstname} ${lastname}`;
+				detailedText = `Message sent from applicant ${firstname} ${lastname} at ${createdDate.toString()}: ${messageBody}`;
+				html = `<a href='javascript:;' onClick='${onClickScript}'>Message</a> sent from applicant <b>${firstname} ${lastname}</b>`;
+				detailedHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>${firstname} ${lastname} ${sentTime}</div>` +
+			`<div class='activity-log-detail-row'>${messageBody}</div>` +
+			`</div>`;
+				break;
+			case constants.userTypes.CUSTODIAN:
+				plainText = `Message sent from ${firstname} ${lastname} (${publisher})`;
+				detailedText = `Message sent from ${firstname} ${lastname} (${publisher}) at ${createdDate.toString()}: ${messageBody}`;
+				html = `<a href='javascript:;' onClick='${onClickScript}'>Message</a> sent from <b>${firstname} ${lastname} (${publisher})</b>`;
+				detailedHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>${firstname} ${lastname} (${publisher}) ${sentTime}</div>` +
+			`<div class='activity-log-detail-row'>${messageBody}</div>` +
+			`</div>`;
+				break;
+		}
+
+		return {
+			html,
+			detailedHtml,
+			plainText,
+			detailedText
+		};
 	}
 
 	async logDeadlinePassedEvent(context) {

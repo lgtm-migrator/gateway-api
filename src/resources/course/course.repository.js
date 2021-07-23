@@ -15,7 +15,7 @@ export async function getObjectById(id) {
 	return await Course.findOne({ id }).exec();
 }
 
-const addCourse = async (req, res) => {
+const addCourse = async req => {
 	return new Promise(async (resolve, reject) => {
 		let course = new Course();
 		course.id = parseInt(Math.random().toString().replace('0.', ''));
@@ -73,7 +73,7 @@ const addCourse = async (req, res) => {
 	});
 };
 
-const editCourse = async (req, res) => {
+const editCourse = async req => {
 	return new Promise(async (resolve, reject) => {
 		let id = req.params.id;
 
@@ -105,7 +105,8 @@ const editCourse = async (req, res) => {
 
 		Course.findOneAndUpdate(
 			{ id: id },
-			{ 	//lgtm [js/sql-injection]
+			{
+				//lgtm [js/sql-injection]
 				title: inputSanitizer.removeNonBreakingSpaces(req.body.title),
 				link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link)),
 				provider: inputSanitizer.removeNonBreakingSpaces(req.body.provider),
@@ -143,7 +144,7 @@ const editCourse = async (req, res) => {
 	});
 };
 
-const deleteCourse = async (req, res) => {
+const deleteCourse = async req => {
 	return new Promise(async (resolve, reject) => {
 		const { id } = req.params.id;
 		Course.findOneAndDelete({ id: req.params.id }, err => {
@@ -158,8 +159,8 @@ const deleteCourse = async (req, res) => {
 	});
 };
 
-const getAllCourses = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getAllCourses = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 1000;
 		let typeString = '';
@@ -189,8 +190,8 @@ const getAllCourses = async (req, res) => {
 	});
 };
 
-const getCourseAdmin = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getCourseAdmin = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 40;
 		let typeString = '';
@@ -230,8 +231,8 @@ const getCourseAdmin = async (req, res) => {
 	});
 };
 
-const getCourse = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getCourse = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 40;
 		let idString = req.user.id;
@@ -283,7 +284,7 @@ const getCourse = async (req, res) => {
 	});
 };
 
-const setStatus = async (req, res) => {
+const setStatus = async req => {
 	return new Promise(async (resolve, reject) => {
 		try {
 			const { activeflag, rejectionReason } = req.body;
@@ -356,29 +357,37 @@ async function createMessage(authorId, toolId, toolName, toolType, activeflag, r
 
 async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 	let subject;
-	let html;
 	let adminCanUnsubscribe = true;
 	// 1. Generate tool URL for linking user from email
 	const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id;
+	let resourceType = tool.type.charAt(0).toUpperCase() + tool.type.slice(1);
 
-	// 2. Build email body
+	// 2. Build email subject
 	if (activeflag === 'active') {
-		subject = `Your ${tool.type} ${tool.title} has been approved and is now live`;
-		html = `Your ${tool.type} ${tool.title} has been approved and is now live <br /><br />  ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been approved and is now live`;
 	} else if (activeflag === 'archive') {
-		subject = `Your ${tool.type} ${tool.title} has been archived`;
-		html = `Your ${tool.type} ${tool.title} has been archived <br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been archived`;
 	} else if (activeflag === 'rejected') {
-		subject = `Your ${tool.type} ${tool.title} has been rejected`;
-		html = `Your ${tool.type} ${tool.title} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been rejected`;
 	} else if (activeflag === 'add') {
-		subject = `Your ${tool.type} ${tool.title} has been submitted for approval`;
-		html = `Your ${tool.type} ${tool.title} has been submitted for approval<br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been submitted for approval`;
 		adminCanUnsubscribe = false;
 	} else if (activeflag === 'edit') {
-		subject = `Your ${tool.type} ${tool.title} has been updated`;
-		html = `Your ${tool.type} ${tool.title} has been updated<br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been updated`;
 	}
+
+	// Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.title,
+		resourceLink: toolLink,
+		subject,
+		rejectionReason: rejectionReason,
+		activeflag,
+		type: 'author',
+	};
+	// Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
 
 	if (adminCanUnsubscribe) {
 		// 3. Find the creator of the course and admins if they have opted in to email updates
@@ -434,6 +443,20 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
+
+			// Create object to pass through email data
+			options = {
+				resourceType: tool.type,
+				resourceName: tool.title,
+				resourceLink: toolLink,
+				subject,
+				rejectionReason: rejectionReason,
+				activeflag,
+				type: 'admin',
+			};
+
+			html = emailGenerator.generateEntityNotification(options);
+
 			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, adminCanUnsubscribe);
 		});
 	}
@@ -455,17 +478,23 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
 	]);
 
-	// 3. Use the returned array of email recipients to generate and send emails with SendGrid
+	// 3. Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.name,
+		resourceLink: toolLink,
+		type: 'co-author',
+		resourceAuthor: toolOwner.name,
+	};
+	// 4. Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
+
+	// 5. Use the returned array of email recipients to generate and send emails with SendGrid
 	q.exec((err, emailRecipients) => {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
-		emailGenerator.sendEmail(
-			emailRecipients,
-			`${hdrukEmail}`,
-			`${toolOwner.name} added you as an author of the tool ${tool.name}`,
-			`${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`
-		);
+		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, `${toolOwner.name} added you as an author of the course ${tool.name}`, html);
 	});
 }
 
@@ -538,7 +567,7 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 function getCountsByStatus() {
 	let q = Course.find({}, { id: 1, title: 1, activeflag: 1 });
 
-	return new Promise((resolve, reject) => {
+	return new Promise(resolve => {
 		q.exec((err, data) => {
 			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
 			const reviewCount = data.filter(dat => dat.activeflag === 'review').length;
@@ -555,7 +584,7 @@ function getCountsByStatus() {
 function getCountsByStatusCreator(idString) {
 	let q = Course.find({ $and: [{ type: 'course' }, { creator: parseInt(idString) }] }, { id: 1, title: 1, activeflag: 1 });
 
-	return new Promise((resolve, reject) => {
+	return new Promise(resolve => {
 		q.exec((err, data) => {
 			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
 			const reviewCount = data.filter(dat => dat.activeflag === 'review').length;
