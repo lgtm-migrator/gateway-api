@@ -50,7 +50,7 @@ const TopicSchema = new Schema(
 		},
 		is5Safes: {
 			type: Boolean,
-			default: false
+			default: false,
 		},
 		unreadMessages: {
 			type: Number,
@@ -85,10 +85,6 @@ const TopicSchema = new Schema(
 				},
 			},
 		],
-		is5Safes: {
-			type: Boolean,
-			default: false,
-		},
 	},
 	{
 		toJSON: { virtuals: true },
@@ -104,18 +100,22 @@ TopicSchema.virtual('topicMessages', {
 });
 
 TopicSchema.pre(/^find/, function (next) {
-	this.populate({
-		path: 'createdBy',
-		select: 'firstname lastname',
-		path: 'topicMessages',
-		select: 'messageDescription firstMessage createdDate isRead _id readBy createdByUserType',
-		options: { sort: '-createdDate' },
-		populate: {
+	this.populate([
+		{
 			path: 'createdBy',
-			model: 'User',
 			select: 'firstname lastname',
 		},
-	});
+		{
+			path: 'topicMessages',
+			select: 'messageDescription firstMessage createdDate isRead _id readBy createdByUserType',
+			options: { sort: '-createdDate' },
+			populate: {
+				path: 'createdBy',
+				model: 'User',
+				select: 'firstname lastname',
+			},
+		},
+	]);
 
 	next();
 });
