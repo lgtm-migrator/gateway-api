@@ -488,10 +488,16 @@ const _activityLogEvents = {
 	RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
 	RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
 	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
+	DEADLINE_PASSED: 'deadlinePassed',
 };
 
 const _activityLogTypes = {
 	DATA_ACCESS_REQUEST: 'data_request',
+};
+
+const _systemGeneratedUser = {
+	FIRSTNAME: 'System',
+	LASTNAME: 'Generated',
 };
 
 export default {
@@ -520,4 +526,5 @@ export default {
 	logTypes: _logTypes,
 	activityLogEvents: _activityLogEvents,
 	activityLogTypes: _activityLogTypes,
+	systemGeneratedUser: _systemGeneratedUser,
 };

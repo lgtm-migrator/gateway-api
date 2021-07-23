@@ -1793,6 +1793,9 @@ export default class DataRequestController extends Controller {
 			// 4. Send emails based on deadline elapsed or approaching
 			if (emailContext.deadlineElapsed) {
 				this.createNotifications(constants.notificationTypes.DEADLINEPASSED, emailContext, accessRecord, requestingUser);
+				await this.activityLogService.logActivity(constants.activityLogEvents.DEADLINE_PASSED, {
+					accessRequest: accessRecord,
+				});
 			} else {
 				this.createNotifications(constants.notificationTypes.DEADLINEWARNING, emailContext, accessRecord, requestingUser);
 			}
