@@ -751,6 +751,7 @@ const _notificationTypes = {
 	DATASETSUBMITTED: 'DatasetSubmitted',
 	DATASETAPPROVED: 'DatasetApproved',
 	DATASETREJECTED: 'DatasetRejected',
+	MESSAGESENT: 'MessageSent',
 };
 
 const _applicationStatuses = {

@@ -28,6 +28,7 @@ const MessageSchema = new Schema(
 				'team unlinked',
 				'edit',
 				'workflow',
+				'data access message sent',
 				'dataset submitted',
 				'dataset approved',
 				'dataset rejected',

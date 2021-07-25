@@ -1839,6 +1839,9 @@ export default class DataRequestController extends Controller {
 			remainingReviewers = [],
 			remainingReviewerUserIds = [],
 			dateDeadline,
+			userType = '',
+			messageBody = '',
+			questionWithAnswer = {},
 		} = context;
 
 		switch (type) {
@@ -2555,6 +2558,65 @@ export default class DataRequestController extends Controller {
 					}
 				}
 				break;
+			case constants.notificationTypes.MESSAGESENT:
+				let title = projectName !== 'No project name set' ? projectName : datasetTitles;
+				if (userType === constants.userTypes.APPLICANT) {
+					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
+					const custodianManagersIds = custodianManagers.map(user => user.id);
+					const custodianReviewers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.REVIEWER);
+					const custodianReviewersIds = custodianManagers.map(user => user.id);
+
+					await notificationBuilder.triggerNotificationMessage(
+						[...custodianManagersIds, ...custodianReviewersIds, ...accessRecord.authors.map(author => author.id)],
+						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						'data access message sent',
+						accessRecord._id
+					);
+
+					html = emailGenerator.generateNewDARMessage({
+						id: accessRecord._id,
+						datasetTitles,
+						applicants,
+						firstname: user.firstname,
+						lastname: user.lastname,
+						messageBody,
+						questionWithAnswer,
+					});
+
+					await emailGenerator.sendEmail(
+						[...custodianManagers, ...custodianReviewers, ...accessRecord.authors],
+						constants.hdrukEmail,
+						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						html,
+						false
+					);
+				} else if (userType === constants.userTypes.CUSTODIAN) {
+					await notificationBuilder.triggerNotificationMessage(
+						[accessRecord.userId, ...accessRecord.authors.map(author => author.id)],
+						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname} from ${accessRecord.publisherObj.name}`,
+						'data access message sent',
+						accessRecord._id
+					);
+
+					html = emailGenerator.generateNewDARMessage({
+						id: accessRecord._id,
+						datasetTitles,
+						applicants,
+						firstname: user.firstname,
+						lastname: user.lastname,
+						messageBody,
+						questionWithAnswer,
+					});
+
+					await emailGenerator.sendEmail(
+						[accessRecord.mainApplicant, ...accessRecord.authors],
+						constants.hdrukEmail,
+						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						html,
+						false
+					);
+				}
+				break;
 		}
 	}
 
@@ -2669,8 +2731,9 @@ export default class DataRequestController extends Controller {
 			const { questionId, messageType, messageBody } = req.body;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
+			const requestingUser = req.user;
 
-			let accessRecord = await this.dataRequestService.getApplicationById(id);
+			let accessRecord = await this.dataRequestService.getApplicationWithTeamById(id, { lean: true });
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
 			}
@@ -2701,6 +2764,48 @@ export default class DataRequestController extends Controller {
 			}
 
 			await this.messageService.createMessageForDAR(messageBody, topic._id, requestingUserObjectId, userType);
+
+			if (messageType === constants.DARMessageTypes.DARMESSAGE) {
+				let foundQuestion = {},
+					foundQuestionSet = {},
+					foundPage = {};
+
+				for (let questionSet of accessRecord.jsonSchema.questionSets) {
+					for (let question of questionSet.questions) {
+						if (question.questionId === questionId) {
+							foundQuestion = question;
+							foundQuestionSet = questionSet;
+							break;
+						}
+					}
+					if (!_.isEmpty(foundQuestion)) break;
+				}
+
+				const panel = dynamicForm.findQuestionPanel(foundQuestionSet.questionSetId, accessRecord.jsonSchema.questionPanels);
+
+				for (let page of accessRecord.jsonSchema.pages) {
+					if (page.pageId === panel.pageId) {
+						foundPage = page;
+						break;
+					}
+				}
+
+				this.createNotifications(
+					constants.notificationTypes.MESSAGESENT,
+					{
+						userType,
+						messageBody,
+						questionWithAnswer: {
+							question: foundQuestion.question,
+							questionPanel: foundQuestionSet.questionSetHeader,
+							page: foundPage.title,
+							answer: accessRecord.questionAnswers[questionId] || '',
+						},
+					},
+					accessRecord,
+					requestingUser
+				);
+			}
 
 			return res.status(200).json({
 				status: 'success',
