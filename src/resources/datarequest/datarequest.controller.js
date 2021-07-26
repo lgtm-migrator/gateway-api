@@ -2790,6 +2790,11 @@ export default class DataRequestController extends Controller {
 					}
 				}
 
+				const answer =
+					accessRecord.questionAnswers && accessRecord.questionAnswers[questionId]
+						? accessRecord.questionAnswers[questionId]
+						: 'No answer for this question';
+
 				this.createNotifications(
 					constants.notificationTypes.MESSAGESENT,
 					{
@@ -2799,7 +2804,7 @@ export default class DataRequestController extends Controller {
 							question: foundQuestion.question,
 							questionPanel: foundQuestionSet.questionSetHeader,
 							page: foundPage.title,
-							answer: accessRecord.questionAnswers[questionId] || '',
+							answer,
 						},
 					},
 					accessRecord,
