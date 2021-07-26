@@ -9,25 +9,25 @@ export default class TopicRepository extends Repository {
 
 	getTopicsForDAR(title, messageType) {
 		return TopicModel.find({
-			title,
-			messageType,
+			title: { $eq: title },
+			messageType: { $eq: messageType },
 		}).lean();
 	}
 
 	getTopicForDAR(title, subTitle, messageType) {
 		return TopicModel.findOne({
-			title,
-			subTitle,
-			messageType,
+			title: { $eq: title },
+			subTitle: { $eq: subTitle },
+			messageType: { $eq: messageType },
 		}).lean();
 	}
 
 	createTopicForDAR(title, subTitle, messageType) {
 		return TopicModel.create({
-			title,
-			subTitle,
+			title: { $eq: title },
+			subTitle: { $eq: subTitle },
 			createdDate: Date.now(),
-			messageType,
+			messageType: { $eq: messageType },
 		});
 	}
 }
