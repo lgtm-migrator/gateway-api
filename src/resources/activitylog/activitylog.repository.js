@@ -19,8 +19,8 @@ export default class ActivityLogRepository extends Repository {
 		return ActivityLog.insertMany(logs);
 	}
 
-	getLog(id) {
-		return ActivityLog.findById(id, 'versionId').lean();
+	getLog(id, type) {
+		return ActivityLog.findOne({ _id: id, logType: type }, 'versionId eventType').lean();
 	}
 
 	deleteLog(id) {

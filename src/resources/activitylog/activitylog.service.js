@@ -13,9 +13,8 @@ export default class activityLogService {
 		return this.formatLogs(logs, versions, includePresubmission);
 	}
 
-	getLog(id) {
-		return this.activityLogRepository.getLog(id);
-
+	getLog(id, type) {
+		return this.activityLogRepository.getLog(id, type);
 	}
 
 	deleteLog(id) {

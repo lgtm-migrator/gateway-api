@@ -43,7 +43,8 @@ const authoriseView = async (req, res, next) => {
 };
 
 const validateCreateRequest = (req, res, next) => {
-	const { versionId,  description, timestamp, type } = req.body;
+	const { versionId,  description, timestamp } = req.body;
+	const { type } = req.params;
 
 	if (!versionId || !description || !timestamp || !Object.values(constants.activityLogTypes).includes(type)) {
 		return res.status(400).json({
@@ -58,6 +59,7 @@ const validateCreateRequest = (req, res, next) => {
 const authoriseCreate = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { versionId } = req.body;
+	const { type } = req.params;
 
 	const { authorised, userType, accessRecords } = await dataRequestService.checkUserAuthForVersions([versionId], requestingUser);
 	if(isEmpty(accessRecords)) {
@@ -76,6 +78,7 @@ const authoriseCreate = async (req, res, next) => {
 	req.body.userType = userType;
     req.body.accessRecord = accessRecords[0];
 	req.body.versionTitle = accessRecords[0].getVersionById(versionId).detailedTitle;
+	req.body.type = type;
 	
 	next();
 };
@@ -95,9 +98,9 @@ const validateDeleteRequest = (req, res, next) => {
 
 const authoriseDelete = async (req, res, next) => {
 	const requestingUser = req.user;
-	const { id } = req.params;
+	const { id, type } = req.params;
 
-	const log = await activityLogService.getLog(id);
+	const log = await activityLogService.getLog(id, type);
 
 	if(!log) {
 		return res.status(404).json({
@@ -119,9 +122,17 @@ const authoriseDelete = async (req, res, next) => {
 			message: 'You are not authorised to perform this action',
 		});
 	}
+	if (log.eventType !== constants.activityLogEvents.MANUAL_EVENT) {
+		return res.status(400).json({
+			success: false,
+			message: 'You cannot delete a system generated log entry',
+		});
+	}
 
 	req.body.userType = userType;
     req.body.accessRecord = accessRecords[0];
+	req.body.versionId = log.versionId;
+	req.body.type = type;
 	
 	next();
 };
@@ -136,14 +147,14 @@ router.post('/', passport.authenticate('jwt'), validateViewRequest, authoriseVie
 // @route   POST /api/v2/activitylog/event
 // @desc    Creates a new manual event in the activity log identified in the payload
 // @access  Private
-router.post('/event', passport.authenticate('jwt'), validateCreateRequest, authoriseCreate, logger.logRequestMiddleware({ logCategory, action: 'Created manual event' }), (req, res) =>
+router.post('/:type', passport.authenticate('jwt'), validateCreateRequest, authoriseCreate, logger.logRequestMiddleware({ logCategory, action: 'Created manual event' }), (req, res) =>
 	activityLogController.createLog(req, res)
 );
 
 // @route   DELETE /api/v2/activitylog/id
 // @desc    Delete a manual event from the activity log
 // @access  Private
-router.delete('/:id', passport.authenticate('jwt'), validateDeleteRequest, authoriseDelete, logger.logRequestMiddleware({ logCategory, action: 'Deleted manual event' }), (req, res) =>
+router.delete('/:type/:id', passport.authenticate('jwt'), validateDeleteRequest, authoriseDelete, logger.logRequestMiddleware({ logCategory, action: 'Deleted manual event' }), (req, res) =>
 	activityLogController.deleteLog(req, res)
 );
 
