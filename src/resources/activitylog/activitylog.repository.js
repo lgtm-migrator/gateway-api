@@ -18,4 +18,12 @@ export default class ActivityLogRepository extends Repository {
 	async createActivityLogs(logs) {
 		return ActivityLog.insertMany(logs);
 	}
+
+	getLog(id) {
+		return ActivityLog.findById(id, 'versionId').lean();
+	}
+
+	deleteLog(id) {
+		return ActivityLog.deleteOne({ _id: id });
+	}
 }

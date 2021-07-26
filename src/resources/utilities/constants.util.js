@@ -9,6 +9,11 @@ const _formTypes = Object.freeze({
 	Extended5Safe: '5 safe',
 });
 
+const _activityLogNotifications = Object.freeze({
+	MANUALEVENTADDED: 'manualEventAdded',
+	MANUALEVENTREMOVED: 'manualEventRemoved',
+});
+
 const _teamNotificationTypes = Object.freeze({
 	DATAACCESSREQUEST: 'dataAccessRequest',
 	METADATAONBOARDING: 'metaDataOnboarding',
@@ -490,6 +495,7 @@ const _activityLogEvents = {
 	RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
 	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
 	DEADLINE_PASSED: 'deadlinePassed',
+	MANUAL_EVENT: 'manualEvent',
 };
 
 const _activityLogTypes = {
@@ -528,4 +534,5 @@ export default {
 	activityLogEvents: _activityLogEvents,
 	activityLogTypes: _activityLogTypes,
 	systemGeneratedUser: _systemGeneratedUser,
+	activityLogNotifications: _activityLogNotifications
 };

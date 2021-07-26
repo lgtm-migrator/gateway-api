@@ -539,7 +539,7 @@ export default class DataRequestService {
 
 		requestedVersions.forEach(accessRecord => {
 			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
-				accessRecord,
+				accessRecord.toObject(),
 				requestingUserId,
 				requestingUserObjectId
 			);

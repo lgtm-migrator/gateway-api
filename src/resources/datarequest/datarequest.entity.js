@@ -1,4 +1,5 @@
 import { last } from 'lodash';
+import { version } from 'moment';
 
 import Entity from '../base/entity';
 import constants from '../utilities/constants.util';
@@ -19,7 +20,7 @@ export default class DataRequestClass extends Entity {
 		for (const versionKey in this.versionTree) {
 			const { applicationId, iterationId } = versions[versionKey];
 			// 2. If not unique or represents a minor version then ignore
-			if(versionIds.some(v => v === applicationId) || iterationId) continue;
+			if (versionIds.some(v => v === applicationId) || iterationId) continue;
 			// 3. If unique, push id to array for return
 			versionIds.push(applicationId);
 		}
@@ -73,6 +74,15 @@ export default class DataRequestClass extends Entity {
 
 		this.createMinorVersion();
 	}
+
+	getVersionById(versionId) {
+		return Object.keys(this.versionTree).reduce((obj, key) => {
+			if(this.versionTree[key].applicationId.toString() === versionId.toString() || this.versionTree[key].iterationId.toString() === versionId.toString()) {
+				obj = this.versionTree[key];
+			}
+			return obj;
+		}, {});
+	}
 }
 
 /**
@@ -91,7 +101,7 @@ export const buildVersionTree = accessRecord => {
 		versionTree = {},
 		amendmentIterations = [],
 		applicationType = constants.submissionTypes.INITIAL,
-		applicationStatus = constants.applicationStatuses.INPROGRESS
+		applicationStatus = constants.applicationStatuses.INPROGRESS,
 	} = accessRecord;
 	const versionKey = majorVersion ? majorVersion.toString() : '1.0';
 
@@ -126,7 +136,7 @@ export const buildVersionTree = accessRecord => {
 			detailedTitle,
 			link: `/data-access-request/${applicationId}?version=${versionKey}.0`,
 			applicationType,
-			applicationStatus
+			applicationStatus,
 		},
 	};
 
