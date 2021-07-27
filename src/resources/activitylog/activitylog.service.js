@@ -671,9 +671,9 @@ export default class activityLogService {
 
 		// Create log for each message submitted
 		messages.forEach(message => {
-			const { createdBy, createdByUserType, createdDate } = message;
+			const { createdBy, userType, createdDate } = message;
 
-			if (!createdByUserType) return;
+			if (!userType) return;
 
 			const log = {
 				eventType: constants.activityLogEvents.PRESUBMISSION_MESSAGE,
@@ -686,7 +686,7 @@ export default class activityLogService {
 				isPresubmission: true,
 				...this.buildMessage(
 					createdBy,
-					createdByUserType,
+					userType,
 					publisher,
 					createdDate,
 					message.messageDescription,

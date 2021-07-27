@@ -20,7 +20,7 @@ export default class ActivityLogRepository extends Repository {
 	}
 
 	getLog(id, type) {
-		return ActivityLog.findOne({ _id: id, logType: type }, 'versionId eventType').lean();
+		return ActivityLog.findOne({ _id: id, logType: type }, 'versionId eventType plainText timestamp').lean();
 	}
 
 	deleteLog(id) {

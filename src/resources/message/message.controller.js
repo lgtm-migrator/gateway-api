@@ -19,7 +19,7 @@ module.exports = {
 			const { _id: createdBy, firstname, lastname } = req.user;
 			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds, firstMessage } = req.body;
 			let topicObj = {};
-			let team, publisher, createdByUserType;
+			let team, publisher, userType;
 			// 1. If the message type is 'message' and topic id is empty
 			if (messageType === 'message') {
 				// 2. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
@@ -53,7 +53,7 @@ module.exports = {
 					return res.status(500).json({ success: false, message: 'No team associated to publisher, cannot message' });
 				}
 				// 6. Set user type (if found in team, they are custodian)
-				createdByUserType = teamController.checkTeamPermissions('', team.toObject(), req.user._id)
+				userType = teamController.checkTeamPermissions('', team.toObject(), req.user._id)
 					? constants.userTypes.CUSTODIAN
 					: constants.userTypes.APPLICANT;
 				if (_.isEmpty(topic)) {
@@ -97,7 +97,7 @@ module.exports = {
 				createdBy,
 				messageType,
 				readBy: [new mongoose.Types.ObjectId(createdBy)],
-				...(createdByUserType && { createdByUserType }),
+				...(userType && { userType }),
 			});
 			// 14. Return 500 error if message was not successfully created
 			if (!message) return res.status(500).json({ success: false, message: 'Could not save message to database.' });

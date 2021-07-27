@@ -1,6 +1,9 @@
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import constants from '../utilities/constants.util';
+import teamController from '../team/team.controller';
+import notificationBuilder from '../utilities/notificationBuilder';
+import emailGenerator from '../utilities/emailGenerator.util';
 
 const logCategory = 'Activity Log';
 
@@ -49,7 +52,7 @@ export default class ActivityLogController extends Controller {
 			});
 
 			// Send notifications
-			this.createNotifications(constants.activityLogNotifications.MANUALEVENTADDED, {}, accessRecord, req.user);
+			this.createNotifications(constants.activityLogNotifications.MANUALEVENTADDED, { description, timestamp }, accessRecord, req.user);
 
 			// Get logs for version that was updated
 			const [affectedVersion] = await this.activityLogService.searchLogs([versionId], type, userType, [accessRecord], false);
@@ -75,11 +78,14 @@ export default class ActivityLogController extends Controller {
 			const { id } = req.params;
 			const { versionId, type, userType, accessRecord } = req.body;
 
+			// Get log to be deleted required for email content
+			const log = await this.activityLogService.getLog(id, type);
+
 			// Delete event log
 			await this.activityLogService.deleteLog(id);
 
 			// Send notifications
-			this.createNotifications(constants.activityLogNotifications.MANUALEVENTREMOVED, {}, accessRecord, req.user);
+			this.createNotifications(constants.activityLogNotifications.MANUALEVENTREMOVED, { description: log.plainText, timestamp: log.timestamp }, accessRecord, req.user);
 
 			// Get logs for version that was updated
 			const [affectedVersion] = await this.activityLogService.searchLogs([versionId], type, userType, [accessRecord], false);
@@ -99,5 +105,80 @@ export default class ActivityLogController extends Controller {
 		}
 	}
 
-	createNotifications(type, context, accessRecord, user) {}
+	async createNotifications(type, context, accessRecord, user) {
+		let teamMembers, teamMembersIds, emailRecipients, html, options;
+		const { description, timestamp } = context;
+		const { publisherObj: { name: publisher } = {}, _id, aboutApplication: { projectName = 'No project name set' } = {} } = accessRecord;
+
+		switch (type) {
+			case constants.activityLogNotifications.MANUALEVENTADDED:
+				// 1. Create notifications
+				// Retrieve all custodian team members
+				teamMembers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+				teamMembersIds = teamMembers.map(user => user.id);
+				// Create in-app notifications
+				await notificationBuilder.triggerNotificationMessage(
+					teamMembersIds,
+					`A new event has been added to an activity log`,
+					'data access request log updated',
+					_id,
+					publisher
+				);
+
+				// 2. Send emails to all custodian team members
+				emailRecipients = [...teamMembers];
+
+				// Create object to pass through email data
+				options = {
+					id: _id,
+					userName: `${user.firstname} ${user.lastname}`,
+					publisher,
+					description,
+					timestamp,
+					projectName,
+				};
+				// Create email body content
+				html = emailGenerator.generateActivityLogManualEventCreated(options);
+				// Send email
+				await emailGenerator.sendEmail(emailRecipients, constants.hdrukEmail, `A new event has been added to an activity log`, html, false);
+				break;
+			case constants.activityLogNotifications.MANUALEVENTREMOVED:
+				// 1. Create notifications
+				// Retrieve all custodian team members
+				teamMembers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+				teamMembersIds = teamMembers.map(user => user.id);
+				// Create in-app notifications
+				await notificationBuilder.triggerNotificationMessage(
+					teamMembersIds,
+					`An event has been deleted from an activity log`,
+					'data access request log updated',
+					_id,
+					publisher
+				);
+
+				// 2. Send emails to all custodian team members
+				emailRecipients = [...teamMembers];
+
+				// Create object to pass through email data
+				options = {
+					id: _id,
+					userName: `${user.firstname} ${user.lastname}`,
+					publisher,
+					description,
+					timestamp,
+					projectName,
+				};
+				// Create email body content
+				html = emailGenerator.generateActivityLogManualEventDeleted(options);
+				// Send email
+				await emailGenerator.sendEmail(
+					emailRecipients,
+					constants.hdrukEmail,
+					`An event has been deleted from an activity log`,
+					html,
+					false
+				);
+				break;
+		}
+	}
 }
