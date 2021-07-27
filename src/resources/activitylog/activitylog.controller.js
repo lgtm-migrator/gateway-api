@@ -119,7 +119,7 @@ export default class ActivityLogController extends Controller {
 				// Create in-app notifications
 				await notificationBuilder.triggerNotificationMessage(
 					teamMembersIds,
-					`A new event has been added to an activity log`,
+					`${user.firstname} ${user.lastname} (${publisher}) has added an event to the activity log of '${projectName || `No project name set`}' data access request application`,
 					'data access request log updated',
 					_id,
 					publisher
@@ -150,7 +150,7 @@ export default class ActivityLogController extends Controller {
 				// Create in-app notifications
 				await notificationBuilder.triggerNotificationMessage(
 					teamMembersIds,
-					`An event has been deleted from an activity log`,
+					`${user.firstname} ${user.lastname} (${publisher}) has deleted an event from the activity log of '${projectName || `No project name set`}' data access request application`,
 					'data access request log updated',
 					_id,
 					publisher
