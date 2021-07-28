@@ -25,6 +25,7 @@ const MessageSchema = new Schema(
 				'data access request',
 				'data access request received',
 				'data access request unlinked',
+				'data access request log updated',
 				'team',
 				'team unlinked',
 				'edit',
@@ -32,7 +33,7 @@ const MessageSchema = new Schema(
 				'dataset submitted',
 				'dataset approved',
 				'dataset rejected',
-				'draft dataset deleted',
+				'draft dataset deleted'
 			],
 		},
 		publisherName: {
@@ -70,7 +71,7 @@ const MessageSchema = new Schema(
 		createdByName: {
 			type: Object,
 		},
-		createdByUserType: {
+		userType: {
 			type: String,
 			enum: constants.userTypes,
 		},

@@ -8,9 +8,17 @@ export default class activityLogService {
 		this.activityLogRepository = activityLogRepository;
 	}
 
-	async searchLogs(versionIds, type, userType, versions) {
+	async searchLogs(versionIds, type, userType, versions, includePresubmission) {
 		const logs = await this.activityLogRepository.searchLogs(versionIds, type, userType);
-		return this.formatLogs(logs, versions);
+		return this.formatLogs(logs, versions, includePresubmission);
+	}
+
+	getLog(id, type) {
+		return this.activityLogRepository.getLog(id, type);
+	}
+
+	deleteLog(id) {
+		return this.activityLogRepository.deleteLog(id);
 	}
 
 	getActiveQuestion(questionsArr, questionId) {
@@ -37,8 +45,11 @@ export default class activityLogService {
 		}
 	}
 
-	formatLogs(logs, versions) {
-		const presubmissionEvents = this.buildPresubmissionEvents(logs);
+	formatLogs(logs, versions, includePresubmission = true) {
+		let presubmissionEvents = [];
+		if (includePresubmission) {
+			presubmissionEvents = this.buildPresubmissionEvents(logs);
+		}
 
 		const formattedVersionEvents = versions.reduce((arr, version) => {
 			const {
@@ -76,7 +87,7 @@ export default class activityLogService {
 			return arr;
 		}, []);
 
-		if(!isEmpty(presubmissionEvents)) {
+		if (!isEmpty(presubmissionEvents)) {
 			formattedVersionEvents.push(presubmissionEvents);
 		}
 
@@ -197,6 +208,8 @@ export default class activityLogService {
 			case constants.activityLogEvents.FINAL_DECISION_REQUIRED:
 				this.logFinalDecisionRequiredEvent(context);
 				break;
+			case constants.activityLogEvents.MANUAL_EVENT:
+				this.logManualEvent(context);
 		}
 	}
 
@@ -655,12 +668,12 @@ export default class activityLogService {
 	async logPresubmissionMessages(context) {
 		const logs = [];
 		const { applicationId, messages, publisher } = context;
-		
+
 		// Create log for each message submitted
 		messages.forEach(message => {
-			const { createdBy, createdByUserType, createdDate } = message;
+			const { createdBy, userType, createdDate } = message;
 
-			if(!createdByUserType) return;
+			if (!userType) return;
 
 			const log = {
 				eventType: constants.activityLogEvents.PRESUBMISSION_MESSAGE,
@@ -671,7 +684,14 @@ export default class activityLogService {
 				versionId: applicationId,
 				userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
 				isPresubmission: true,
-				...this.buildMessage(createdBy, createdByUserType, publisher, createdDate, message.messageDescription, `window.currentComponent.toggleDrawer(&quot;${message.topic}&quot;)`),
+				...this.buildMessage(
+					createdBy,
+					userType,
+					publisher,
+					createdDate,
+					message.messageDescription,
+					`window.currentComponent.toggleDrawer(&quot;${message.topic}&quot;)`
+				),
 			};
 			logs.push(log);
 		});
@@ -684,26 +704,26 @@ export default class activityLogService {
 		const { firstname, lastname } = createdBy;
 		let plainText, detailedText, html, detailedHtml;
 
-		switch(userType) {
+		switch (userType) {
 			case constants.userTypes.APPLICANT:
 				plainText = `Message sent from applicant ${firstname} ${lastname}`;
 				detailedText = `Message sent from applicant ${firstname} ${lastname} at ${createdDate.toString()}: ${messageBody}`;
 				html = `<a href='javascript:;' onClick='${onClickScript}'>Message</a> sent from applicant <b>${firstname} ${lastname}</b>`;
 				detailedHtml =
-			`<div class='activity-log-detail'>` +
-			`<div class='activity-log-detail-header'>${firstname} ${lastname} ${sentTime}</div>` +
-			`<div class='activity-log-detail-row'>${messageBody}</div>` +
-			`</div>`;
+					`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${firstname} ${lastname} ${sentTime}</div>` +
+					`<div class='activity-log-detail-row'>${messageBody}</div>` +
+					`</div>`;
 				break;
 			case constants.userTypes.CUSTODIAN:
 				plainText = `Message sent from ${firstname} ${lastname} (${publisher})`;
 				detailedText = `Message sent from ${firstname} ${lastname} (${publisher}) at ${createdDate.toString()}: ${messageBody}`;
 				html = `<a href='javascript:;' onClick='${onClickScript}'>Message</a> sent from <b>${firstname} ${lastname} (${publisher})</b>`;
 				detailedHtml =
-			`<div class='activity-log-detail'>` +
-			`<div class='activity-log-detail-header'>${firstname} ${lastname} (${publisher}) ${sentTime}</div>` +
-			`<div class='activity-log-detail-row'>${messageBody}</div>` +
-			`</div>`;
+					`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${firstname} ${lastname} (${publisher}) ${sentTime}</div>` +
+					`<div class='activity-log-detail-row'>${messageBody}</div>` +
+					`</div>`;
 				break;
 		}
 
@@ -711,7 +731,7 @@ export default class activityLogService {
 			html,
 			detailedHtml,
 			plainText,
-			detailedText
+			detailedText,
 		};
 	}
 
@@ -768,6 +788,25 @@ export default class activityLogService {
 			userTypes: [constants.userTypes.CUSTODIAN],
 		};
 
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logManualEvent(context) {
+		const { versionId, versionTitle, description, timestamp, user = {} } = context;
+
+		const log = {
+			eventType: constants.activityLogEvents.MANUAL_EVENT,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp,
+			user: user._id,
+			version: versionTitle,
+			versionId,
+			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+			html: `<b>New event "${description}"</b> added by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
+			plainText: `New event "${description}" added by custodian manager ${user.firstname} ${user.lastname}`,
+		};
+
+		// Save all logs relating to presubmissions messages
 		await this.activityLogRepository.createActivityLog(log);
 	}
 }
