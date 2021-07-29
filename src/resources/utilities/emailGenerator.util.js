@@ -195,7 +195,7 @@ const _getSubmissionDetails = (
 	projectName,
 	isNationalCoreStudies,
 	dateSubmitted,
-  linkNationalCoreStudies
+	linkNationalCoreStudies
 ) => {
 	let body = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
   <tr>
@@ -350,7 +350,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		projectName,
 		isNationalCoreStudies,
 		dateSubmitted,
-    linkNationalCoreStudies
+		linkNationalCoreStudies
 	);
 
 	// Create json content payload for attaching to email
@@ -590,7 +590,7 @@ const _generateAmendEmail = async (
 	// assigns to questionList
 	_getAllQuestionsFlattened(unNestedQuestions);
 	// filter to only changed questions
-  let changedQuestions = questionList.filter(q => Object.keys(changedAnswers).some(key => key === q.questionId));
+	let changedQuestions = questionList.filter(q => Object.keys(changedAnswers).some(key => key === q.questionId));
 	let fullQuestions = _groupByPageSection([...changedQuestions]);
 	// build up  email with  values
 	let { html, jsonContent } = _buildEmail(aboutApplication, fullQuestions, flatQuestionAnswers, options);
@@ -1834,6 +1834,113 @@ const _generateAddedToTeam = options => {
 	return body;
 };
 
+const _generateNewDARMessage = options => {
+	let { id, projectName, datasetTitles, applicants, firstname, lastname, messageBody, questionWithAnswer } = options;
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      New message about an application
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      ${firstname} ${lastname} sent a message regarding their application form
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Application name</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													projectName || 'No project name set'
+												}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            
+              <thead>
+              <tr>
+                <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                  Message from ${firstname} ${lastname}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td bgcolor="#fff" style="padding: 0; border: 0;">
+                <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top;">${messageBody}</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top;">
+                        ${_displayDARLink(id)}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+              
+           
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${questionWithAnswer.page}
+                    </th>
+                  </tr>
+                  <tr>
+                  <th style="border: 0; color: #29235c; font-size: 18px; text-align: left;">
+                    ${questionWithAnswer.questionPanel}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Question</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													questionWithAnswer.question
+												}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Answer</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													questionWithAnswer.answer
+												}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+	return body;
+};
+
 const _generateMetadataOnboardingSumbitted = options => {
 	let { name, publisher } = options;
 
@@ -2250,6 +2357,7 @@ export default {
 	generateTeamNotificationEmail: _generateTeamNotificationEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
+	generateNewDARMessage: _generateNewDARMessage,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
