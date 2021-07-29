@@ -9,7 +9,7 @@ describe('injectQuestionActions', () => {
 	const data = _.cloneDeep(dataRequest);
 	const guidance = { key: 'guidance', icon: 'far fa-question-circle', color: '#475da7', toolTip: 'Guidance', order: 1 };
 	const messages = { key: 'messages', icon: 'far fa-comment-alt', color: '#475da7', toolTip: 'Messages', order: 2 };
-	const notes = { key: 'messages', icon: 'far fa-edit', color: '#475da7', toolTip: 'Notes', order: 3 };
+	const notes = { key: 'notes', icon: 'far fa-edit', color: '#475da7', toolTip: 'Notes', order: 3 };
 	const requestAmendment = {
 		key: 'requestAmendment',
 		icon: 'fas fa-exclamation-circle',
