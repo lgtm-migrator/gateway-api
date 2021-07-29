@@ -12,4 +12,8 @@ export default class CohortProfilingService {
 	async getCohortProfilingByVariable(pid, tableName, variable, value, sort, limit) {
 		return this.cohortProfilingRepository.getCohortProfilingByVariable(pid, tableName, variable, value, sort, limit);
 	}
+
+	async saveCohortProfiling(req, res) {
+		return this.cohortProfilingRepository.saveCohortProfiling(req, res);
+	}
 }
