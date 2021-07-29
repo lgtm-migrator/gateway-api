@@ -2,11 +2,14 @@ import _ from 'lodash';
 
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
+import { PublisherModel } from '../publisher/publisher.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import notificationBuilder from '../utilities/notificationBuilder';
 import constants from '../utilities/constants.util';
 import axios from 'axios';
- 
+const inputSanitizer = require('../utilities/inputSanitizer');
+const { ObjectId } = require('mongodb');
+
 // GET api/v1/teams/:id
 const getTeamById = async (req, res) => {
 	try {
@@ -38,13 +41,15 @@ const getTeamById = async (req, res) => {
 const getTeamMembers = async (req, res) => {
 	try {
 		// 1. Get the team from the database
-		const team = await TeamModel.findOne({ _id: req.params.id }).populate({
-			path: 'users',
-			populate: {
-				path: 'additionalInfo',
-				select: 'organisation bio showOrganisation showBio',
-			},
-		}).lean();
+		const team = await TeamModel.findOne({ _id: req.params.id })
+			.populate({
+				path: 'users',
+				populate: {
+					path: 'additionalInfo',
+					select: 'organisation bio showOrganisation showBio',
+				},
+			})
+			.lean();
 		if (!team) {
 			return res.status(404).json({ success: false });
 		}
@@ -529,58 +534,71 @@ const deleteTeamMember = async (req, res) => {
 		res.status(500).json({ status: 'error', message: err.message });
 	}
 };
- 
+
 /**
- * GET api/v1/teams/getList
+ * GET api/v1/teams
  *
  * @desc Get the list of all publisher teams
  *
  */
 const getTeamsList = async (req, res) => {
-    try {
-        // 1. Get the publisher teams from the database 		
+	try {
+		// 1. Check the current user is a member of the HDR admin team
+		const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+
+		const hdrAdminTeamMember = hdrAdminTeam.members.filter(member => member.memberid.toString() === req.user._id.toString());
+
+		// 2. If not return unauthorised
+		if (_.isEmpty(hdrAdminTeamMember)) {
+			return res.status(401).json({ success: false, message: 'Unauthorised' });
+		}
+
+		// 3. Get the publisher teams from the database
 		const teams = await TeamModel.find(
 			{ type: 'publisher', active: true },
 			{
 				_id: 1,
-				updatedAt: 1, 
+				updatedAt: 1,
 				members: 1,
-				membersCount: {$size: '$members'} 
+				membersCount: { $size: '$members' },
 			}
 		)
 			.populate('publisher', { name: 1 })
 			.populate('users', { firstname: 1, lastname: 1 })
 			.lean();
- 
-        // 2. Check the current user is a member of the HDR admin team
-        const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
 
-		const hdrAdminTeamMember = hdrAdminTeam.members.filter( member => member.memberid.toString() === req.user._id.toString() )
-		
-        // 3. If not return unauthorised 
-		if(_.isEmpty(hdrAdminTeamMember)){
-			return res.status(401).json({ success: false, message: 'Unauthorised' });
-		}
-
-        // 4. Return team
-        return res.status(200).json({ success: true, teams });
-    } catch (err) {
-        console.error(err.message);
-        return res.status(500).json(err.message);
-    }
+		// 4. Return team
+		return res.status(200).json({ success: true, teams });
+	} catch (err) {
+		console.error(err.message);
+		return res.status(500).json(err.message);
+	}
 };
 
 /**
  * Adds a publisher team
  *
- * 
+ *
  */
- const addTeam = async (req, res) => {
-	let newMdcFolderId;
+const addTeam = async (req, res) => {
+	let mdcFolderId;
+	let teamManagerIds = [];
+
+	const { name, memberOf, contactPoint, teamManagers } = req.body;
+
+	// 1. Check the current user is a member of the HDR admin team
+	const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+
+	console.log(`userid: ${req.user._id.toString()}`);
+	const hdrAdminTeamMember = hdrAdminTeam.members.filter(member => member.memberid.toString() === req.user._id.toString());
+
+	// 2. If not return unauthorised
+	if (_.isEmpty(hdrAdminTeamMember)) {
+		return res.status(401).json({ success: false, message: 'Unauthorised' });
+	}
 
 	try {
-		
-		//1. create new folder on MDC
+		//3. log into MDC
 		let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 		const loginDetails = {
 			username: process.env.MDC_Config_HDRUK_username || '',
@@ -591,48 +609,85 @@ const getTeamsList = async (req, res) => {
 			.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
 				withCredentials: true,
 				timeout: 5000,
-			}) 
+			})
 			.then(async session => {
-				console.log(`session.headers: ${JSON.stringify(session.headers)}`)
-
 				axios.defaults.headers.Cookie = session.headers['set-cookie'][0]; // get cookie from request
 
 				const folderLabel = {
-					// label: 'Ciaras Test Folder 2',
-					label: req.body.label,
+					label: name,
 				};
 
+				//4. create new folder on MDC
 				await axios
-					.post( 
-						metadataCatalogueLink + '/api/folders',
-						folderLabel,
-						{
-							withCredentials: true,
-							timeout: 60000,
-						}
-					)
+					.post(metadataCatalogueLink + '/api/folders', folderLabel, {
+						withCredentials: true,
+						timeout: 60000,
+					})
 					.then(async newFolder => {
-						console.log(`newFolder id: ${newFolder.data.id}`)
-						newMdcFolderId = newFolder.data.id;
+						mdcFolderId = newFolder.data.id;
 
+						//5. Update the newly created folder to be public
+						await axios
+							.put(`${metadataCatalogueLink}/api/folders/${mdcFolderId}/readByEveryone`, {
+								withCredentials: true,
+								timeout: 60000,
+							})
+							.then(async res => {
+								console.log(`public flag res: ${res}`);
+							})
+							.catch(err => {
+								console.error('Error when making folder public on the MDC - ' + err.message);
+							});
 					})
 					.catch(err => {
 						console.error('Error when trying to create new folder on the MDC - ' + err.message);
 					});
-
 			})
 			.catch(err => {
 				console.error('Error when trying to login to MDC - ' + err.message);
 			});
 
-		await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 })
-			.then(console.log('logged out'))
-			.catch(err => {
+		//6. log out of MDC
+		await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
 			console.error('Error when trying to logout of the MDC - ' + err.message);
 		});
 
-		return res.status(200).json({ status: 'success' });
+		// 7. Create the publisher
+		let publisher = new PublisherModel();
 
+		publisher.name = `${inputSanitizer.removeNonBreakingSpaces(memberOf)} > ${inputSanitizer.removeNonBreakingSpaces(name)}`;
+		publisher.publisherDetails = {
+			name: inputSanitizer.removeNonBreakingSpaces(name),
+			memberOf: inputSanitizer.removeNonBreakingSpaces(memberOf),
+			contactPoint: inputSanitizer.removeNonBreakingSpaces(contactPoint),
+		};
+		publisher.mdcFolderId = mdcFolderId;
+
+		let newPublisher = await publisher.save();
+		if (!newPublisher) reject(new Error(`Can't persist publisher object to DB.`));
+
+		let publisherId = newPublisher._id.toString();
+
+		// 8. Create the team
+		let team = new TeamModel();
+
+		team._id = ObjectId(publisherId);
+		team.type = 'publisher';
+
+		for (let manager of teamManagers) {
+			await getManagerInfo(manager.id, teamManagerIds);
+		}
+
+		team.members = teamManagerIds;
+
+		let newTeam = await team.save();
+
+		let data = {
+			teamPublisherId: publisherId,
+			publisherName: name,
+		};
+
+		return res.status(200).json({ success: true, data });
 	} catch (err) {
 		console.error(err.message);
 		return res.status(400).json({
@@ -641,6 +696,24 @@ const getTeamsList = async (req, res) => {
 		});
 	}
 };
+
+async function getManagerInfo(managerId, teamManagerIds) {
+	let managerInfo = await UserModel.findOne(
+		{ id: managerId },
+		{
+			_id: 1,
+			id: 1,
+		}
+	).exec();
+
+	//Add _ids of each manager into an array alongside their role
+	teamManagerIds.push({
+		roles: ['manager'],
+		memberid: ObjectId(managerInfo._id.toString()),
+	});
+
+	return teamManagerIds;
+}
 
 /**
  * Check a users permission levels for a team
