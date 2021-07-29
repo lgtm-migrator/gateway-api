@@ -84,15 +84,15 @@ export default class CohortProfilingRepository extends Repository {
 		return cohortProfiling;
 	}
 
-	getDataClassesWithNamesCleansed(dataClasses) {
-		return dataClasses.map(dataClass => {
-			const index = dataClass.name.indexOf('dbo.');
-			dataClass.name = index > -1 ? dataClass.name.substring(index + 4) : dataClass.name;
-			dataClass.name = dataClass.name.replace(/#/g, '');
+	// getDataClassesWithNamesCleansed(dataClasses) {
+	// 	return dataClasses.map(dataClass => {
+	// 		const index = dataClass.name.indexOf('dbo.');
+	// 		dataClass.name = index > -1 ? dataClass.name.substring(index + 4) : dataClass.name;
+	// 		dataClass.name = dataClass.name.replace(/#/g, '');
 
-			return dataClass;
-		});
-	}
+	// 		return dataClass;
+	// 	});
+	// }
 
 	getTransformedDataElements(dataClasses) {
 		return dataClasses.map(dataClass => {
@@ -123,7 +123,7 @@ export default class CohortProfilingRepository extends Repository {
 
 	async saveCohortProfiling(profilingData) {
 		return new Promise(async (resolve, reject) => {
-			let dataClassesTransformed = this.getDataClassesWithNamesCleansed(profilingData.dataClasses);
+			let dataClassesTransformed = profilingData.dataClasses;
 			dataClassesTransformed.dataElements = this.getTransformedDataElements(dataClassesTransformed);
 
 			const newDataObj = await CohortProfiling.updateOne(
