@@ -56,4 +56,38 @@ export default class CohortProfilingController extends Controller {
 			return res.status(500).json({ success: false, message: err.message });
 		}
 	}
+
+	async saveCohortProfiling(req, res) {
+		try {
+			// Extract secret key
+			let key = req.body.key;
+			if (!key) {
+				return res.status(400).json({ success: false, error: 'Cohort Profiling key must be provided' });
+			}
+			// Check for key
+			if (key !== process.env.COHORT_PROFILING_SECRET) {
+				return res.status(400).json({ success: false, error: 'Incorrect Cohort Profiling key provided' });
+			}
+
+			// Check data file has been provided
+			if (isEmpty(req.file)) {
+				return res.status(404).json({
+					success: false,
+					message: 'You must supply a JSON file with a key of file',
+				});
+			}
+
+			// Extract profiling data from file
+			const profilingData = JSON.parse(req.file.buffer);
+
+			// Save Cohort Profiling data to the database
+			const cohortProfiling = await this.cohortProfilingService.saveCohortProfiling(profilingData);
+
+			// Return Cohort Profiling data
+			return res.status(200).json({ success: true, cohortProfiling });
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({ success: false, message: err.message });
+		}
+	}
 }

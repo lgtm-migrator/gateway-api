@@ -2,19 +2,28 @@ import { model, Schema } from 'mongoose';
 
 const CohortProfilingSchema = new Schema(
 	{
-		id: {
-			type: Number,
-			unique: true,
-		},
-		tableName: String,
-		pids: [], // pids of gateway datasets that use this table
-		variables: [
+		pid: String,
+		dataClasses: [
 			{
-				maxLength: Number,
-				completeness: Number,
-				numRows: Number,
+				_id: false,
 				name: String,
-				values: [{ value: String, frequency: Number }],
+				dataElements: [
+					{
+						_id: false,
+						field: String,
+						length: Number,
+						completeness: Number,
+						rows: Number,
+						frequencies: [
+							{
+								_id: false,
+								value: String,
+								frequency: Number,
+								frequencyAsPercentage: Number,
+							},
+						],
+					},
+				],
 			},
 		],
 	},
