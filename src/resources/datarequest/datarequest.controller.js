@@ -2771,14 +2771,11 @@ export default class DataRequestController extends Controller {
 					foundPage = {};
 
 				for (let questionSet of accessRecord.jsonSchema.questionSets) {
-					for (let question of questionSet.questions) {
-						if (question.questionId === questionId) {
-							foundQuestion = question;
-							foundQuestionSet = questionSet;
-							break;
-						}
+					foundQuestion = datarequestUtil.findQuestion(questionSet.questions, questionId);
+					if (foundQuestion) {
+						foundQuestionSet = questionSet;
+						break;
 					}
-					if (!_.isEmpty(foundQuestion)) break;
 				}
 
 				const panel = dynamicForm.findQuestionPanel(foundQuestionSet.questionSetId, accessRecord.jsonSchema.questionPanels);
