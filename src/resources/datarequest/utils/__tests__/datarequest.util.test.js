@@ -8,13 +8,16 @@ describe('injectQuestionActions', () => {
 	// Arrange
 	const data = _.cloneDeep(dataRequest);
 	const guidance = { key: 'guidance', icon: 'far fa-question-circle', color: '#475da7', toolTip: 'Guidance', order: 1 };
+	const messages = { key: 'messages', icon: 'far fa-comment-alt', color: '#475da7', toolTip: 'Messages', order: 2 };
+	const notes = { key: 'messages', icon: 'far fa-edit', color: '#475da7', toolTip: 'Notes', order: 3 };
 	const requestAmendment = {
 		key: 'requestAmendment',
 		icon: 'fas fa-exclamation-circle',
 		color: '#F0BB24',
 		toolTip: 'Request applicant updates answer',
-		order: 2,
+		order: 4,
 	};
+
 	const cases = [
 		[
 			data[0].jsonSchema,
@@ -22,7 +25,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.INPROGRESS,
 			'',
 			constants.userTypes.APPLICANT,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -30,7 +33,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.APPROVED,
 			'',
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -38,7 +41,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.APPROVEDWITHCONDITIONS,
 			'',
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -46,7 +49,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.INREVIEW,
 			'',
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -54,7 +57,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.WITHDRAWN,
 			'',
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -62,7 +65,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.SUBMITTED,
 			'',
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -70,7 +73,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.APPROVED,
 			constants.roleTypes.MANAGER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -78,7 +81,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.APPROVEDWITHCONDITIONS,
 			constants.roleTypes.MANAGER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -86,7 +89,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.INREVIEW,
 			constants.roleTypes.MANAGER,
 			constants.userTypes.CUSTODIAN,
-			[guidance, requestAmendment],
+			[guidance, messages, notes, requestAmendment],
 		],
 		[
 			data[0].jsonSchema,
@@ -94,7 +97,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.INREVIEW,
 			constants.roleTypes.MANAGER,
 			constants.userTypes.APPLICANT,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -102,7 +105,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.WITHDRAWN,
 			constants.roleTypes.MANAGER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -110,7 +113,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.SUBMITTED,
 			constants.roleTypes.MANAGER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -118,7 +121,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.APPROVED,
 			constants.roleTypes.REVIEWER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -126,7 +129,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.APPROVEDWITHCONDITIONS,
 			constants.roleTypes.REVIEWER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -134,7 +137,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.INREVIEW,
 			constants.roleTypes.REVIEWER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -142,7 +145,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.WITHDRAWN,
 			constants.roleTypes.REVIEWER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 		[
 			data[0].jsonSchema,
@@ -150,7 +153,7 @@ describe('injectQuestionActions', () => {
 			constants.applicationStatuses.SUBMITTED,
 			constants.roleTypes.REVIEWER,
 			constants.userTypes.CUSTODIAN,
-			[guidance],
+			[guidance, messages, notes],
 		],
 	];
 	test.each(cases)(
