@@ -377,16 +377,16 @@ const injectMessagesAndNotesCount = (jsonSchema, messages, notes) => {
 		}
 	});
 
-	jsonSchema.questionSets.forEach(questionPanel => {
-		if (questionPanel.questions.find(x => messageNotesArray.some(e => e.question === x.questionId))) {
-			let foundQuestions = questionPanel.questions.filter(x => messageNotesArray.some(e => e.question === x.questionId));
-			foundQuestions.forEach(question => {
-				let messageNoteQuestion = messageNotesArray.find(x => x.question === question.questionId);
+	messageNotesArray.forEach(messageNoteQuestion => {
+		for (let questionPanel of jsonSchema.questionSets) {
+			let question = findQuestion(questionPanel.questions, messageNoteQuestion.question);
+			if (question) {
 				question.counts = {
 					messagesCount: messageNoteQuestion.messageCount,
 					notesCount: messageNoteQuestion.notesCount,
 				};
-			});
+				break;
+			}
 		}
 	});
 

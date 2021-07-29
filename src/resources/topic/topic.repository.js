@@ -24,10 +24,10 @@ export default class TopicRepository extends Repository {
 
 	createTopicForDAR(title, subTitle, messageType) {
 		return TopicModel.create({
-			title: { $eq: title },
-			subTitle: { $eq: subTitle },
+			title,
+			subTitle,
 			createdDate: Date.now(),
-			messageType: { $eq: messageType },
+			messageType,
 		});
 	}
 }
