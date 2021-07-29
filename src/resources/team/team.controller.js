@@ -583,6 +583,7 @@ const getTeamsList = async (req, res) => {
 const addTeam = async (req, res) => {
 	let mdcFolderId;
 	let teamManagerIds = [];
+	let recipients = [];
 
 	const { name, memberOf, contactPoint, teamManagers } = req.body;
 
@@ -675,12 +676,15 @@ const addTeam = async (req, res) => {
 		team.type = 'publisher';
 
 		for (let manager of teamManagers) {
-			await getManagerInfo(manager.id, teamManagerIds);
+			await getManagerInfo(manager.id, teamManagerIds, recipients);
 		}
 
 		team.members = teamManagerIds;
 
 		let newTeam = await team.save();
+
+		// 9. Send email and notification to managers
+		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user);
 
 		let data = {
 			teamPublisherId: publisherId,
@@ -697,12 +701,13 @@ const addTeam = async (req, res) => {
 	}
 };
 
-async function getManagerInfo(managerId, teamManagerIds) {
+async function getManagerInfo(managerId, teamManagerIds, recipients) {
 	let managerInfo = await UserModel.findOne(
 		{ id: managerId },
 		{
 			_id: 1,
 			id: 1,
+			email: 1,
 		}
 	).exec();
 
@@ -710,6 +715,11 @@ async function getManagerInfo(managerId, teamManagerIds) {
 	teamManagerIds.push({
 		roles: ['manager'],
 		memberid: ObjectId(managerInfo._id.toString()),
+	});
+
+	recipients.push({
+		id: managerInfo.id,
+		email: managerInfo.email,
 	});
 
 	return teamManagerIds;
@@ -902,7 +912,9 @@ const getTeamNotificationEmails = (optIn = false, subscribedEmails) => {
 };
 
 const createNotifications = async (type, context, team, user) => {
-	const teamName = getTeamName(team);
+	if (type !== 'TeamAdded') {
+		const teamName = getTeamName(team);
+	}
 	let options = {};
 	let html = '';
 
@@ -961,6 +973,32 @@ const createNotifications = async (type, context, team, user) => {
 				html,
 				false
 			);
+			break;
+		case constants.notificationTypes.TEAMADDED:
+			const { recipients } = context;
+			const recipientIds = recipients.map(recipient => recipient.id);
+
+			//1. Create notifications
+			notificationBuilder.triggerNotificationMessage(
+				recipientIds,
+				`You have been assigned as a team manger to the team ${team}`,
+				'team',
+				team
+			);
+
+			//2. Create email
+			options = {
+				team,
+			};
+			html = emailGenerator.generateNewTeamManagers(options);
+			emailGenerator.sendEmail(
+				recipients,
+				constants.hdrukEmail,
+				`You have been assigned as a team manger to the team ${team}`,
+				html,
+				false
+			);
+
 			break;
 		case constants.notificationTypes.MEMBERROLECHANGED:
 			break;

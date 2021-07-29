@@ -195,7 +195,7 @@ const _getSubmissionDetails = (
 	projectName,
 	isNationalCoreStudies,
 	dateSubmitted,
-  linkNationalCoreStudies
+	linkNationalCoreStudies
 ) => {
 	let body = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
   <tr>
@@ -350,7 +350,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		projectName,
 		isNationalCoreStudies,
 		dateSubmitted,
-    linkNationalCoreStudies
+		linkNationalCoreStudies
 	);
 
 	// Create json content payload for attaching to email
@@ -590,7 +590,7 @@ const _generateAmendEmail = async (
 	// assigns to questionList
 	_getAllQuestionsFlattened(unNestedQuestions);
 	// filter to only changed questions
-  let changedQuestions = questionList.filter(q => Object.keys(changedAnswers).some(key => key === q.questionId));
+	let changedQuestions = questionList.filter(q => Object.keys(changedAnswers).some(key => key === q.questionId));
 	let fullQuestions = _groupByPageSection([...changedQuestions]);
 	// build up  email with  values
 	let { html, jsonContent } = _buildEmail(aboutApplication, fullQuestions, flatQuestionAnswers, options);
@@ -1834,6 +1834,47 @@ const _generateAddedToTeam = options => {
 	return body;
 };
 
+const _generateNewTeamManagers = options => {
+	let { team } = options;
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      <span>New team added</span>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+                  <tr>
+                    <td style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      <p>
+                        The team ${team} has been added to the Gateway. You were assigned as a team manager and can now:
+                        <br />
+                        <ul>
+                          <li>Manage members</li>
+                          <li>Create and assign workflows</li>
+                          <li>Review assigned data access request applications</li>
+                          <li>Make the final decision on data access request applications</li>
+                        </ul>
+                      </p>
+                    </td>
+                  </tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
 const _generateMetadataOnboardingSumbitted = options => {
 	let { name, publisher } = options;
 
@@ -2250,6 +2291,7 @@ export default {
 	generateTeamNotificationEmail: _generateTeamNotificationEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
+	generateNewTeamManagers: _generateNewTeamManagers,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
