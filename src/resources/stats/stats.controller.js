@@ -12,7 +12,9 @@ export default class StatsController extends Controller {
 	async getSnapshots(req, res) {
 		try {
 			// Find the relevant snapshots
-			let snapshots = await this.statsService.getSnapshots(req.query);
+			let snapshots = await this.statsService.getSnapshots(req.query).catch(err => {
+				logger.logError(err, logCategory);
+			});
 			// Return the snapshots
 			return res.status(200).json({
 				success: true,

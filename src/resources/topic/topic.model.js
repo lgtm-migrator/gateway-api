@@ -12,6 +12,10 @@ const TopicSchema = new Schema(
 			default: '',
 			trim: true,
 		},
+		messageType: {
+			type: String,
+			enum: ['DAR_Message', 'DAR_Notes_Applicant', 'DAR_Notes_Custodian'],
+		},
 		recipients: [
 			{
 				type: Schema.Types.ObjectId,
@@ -104,7 +108,7 @@ TopicSchema.pre(/^find/, function (next) {
 		path: 'createdBy',
 		select: 'firstname lastname',
 		path: 'topicMessages',
-		select: 'messageDescription firstMessage createdDate isRead _id readBy',
+		select: 'messageDescription firstMessage createdDate isRead _id readBy userType',
 		options: { sort: '-createdDate' },
 		populate: {
 			path: 'createdBy',
