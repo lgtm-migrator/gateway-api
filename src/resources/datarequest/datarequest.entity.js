@@ -1,5 +1,4 @@
-import { last } from 'lodash';
-import { version } from 'moment';
+import { last, capitalize } from 'lodash';
 
 import Entity from '../base/entity';
 import constants from '../utilities/constants.util';
@@ -127,7 +126,7 @@ export const buildVersionTree = accessRecord => {
 	const hasMinorVersions = amendmentIterations.length > 0;
 	const isInitial = applicationType === constants.submissionTypes.INITIAL;
 	const detailedTitle = `Version ${versionKey}.0${!hasMinorVersions && !isInitial ? ' (latest)' : ''}${
-		isInitial ? '' : ` | ${applicationType}`
+		isInitial ? '' : ` | ${capitalize(applicationType)}`
 	}`;
 	const majorVersionObj = {
 		[`${versionKey}.0`]: {
