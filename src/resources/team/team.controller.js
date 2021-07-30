@@ -542,7 +542,6 @@ const deleteTeamMember = async (req, res) => {
  *
  */
 const getTeamsList = async (req, res) => {
-
 	try {
 		// 1. Check the current user is a member of the HDR admin team
 		const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
@@ -686,12 +685,7 @@ const addTeam = async (req, res) => {
 		// 9. Send email and notification to managers
 		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user, publisherId);
 
-		let data = {
-			teamPublisherId: publisherId,
-			publisherName: name,
-		};
-
-		return res.status(200).json({ success: true, data });
+		return res.status(200).json({ success: true });
 	} catch (err) {
 		console.error(err.message);
 		return res.status(400).json({
