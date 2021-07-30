@@ -3,18 +3,6 @@ import constants from '../../utilities/constants.util';
 import teamController from '../../team/team.controller';
 import moment from 'moment';
 
-const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '') => {
-	let formattedSchema = {};
-	if (userType === constants.userTypes.CUSTODIAN) {
-		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus] };
-	} else {
-        //let test = JSON.stringify(constants.userQuestionActions[userType][applicationStatus]);
-        //questionActions: [{"key":"guidance","icon":"far fa-question-circle","color":"#475da7","toolTip":"Guidance","order":1}]
-		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][applicationStatus] };
-	}
-	return formattedSchema;
-};
-
 const getUserPermissionsForApplication = (application, userId, _id) => {
 	try {
 		let authorised = false,
@@ -91,7 +79,7 @@ const findQuestion = (questionsArr, questionId) => {
 					return typeof option.conditionalQuestions !== 'undefined' && option.conditionalQuestions.length > 0;
 				})
 				.forEach(option => {
-					if(!child) {
+					if (!child) {
 						child = findQuestion(option.conditionalQuestions, questionId);
 					}
 				});
@@ -178,15 +166,10 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 		updatedBy = matchCurrentUser(user, updatedBy);
 		// 5. Update the generic question alerts to match the scenario
 		let relevantActioner = !_.isNil(updatedBy) ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
-		questionAlert.text = questionAlert.text.replace(
-			'#NAME#',
-			relevantActioner
-		);
+		questionAlert.text = questionAlert.text.replace('#NAME#', relevantActioner);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',
-			userType === !_.isNil(dateUpdated)
-				? moment(dateUpdated).format('Do MMM YYYY')
-				: moment(dateRequested).format('Do MMM YYYY')
+			userType === !_.isNil(dateUpdated) ? moment(dateUpdated).format('Do MMM YYYY') : moment(dateRequested).format('Do MMM YYYY')
 		);
 		// 6. Return the built question alert
 		return questionAlert;
@@ -208,7 +191,6 @@ const matchCurrentUser = (user, auditField) => {
 };
 
 export default {
-	injectQuestionActions: injectQuestionActions,
 	getUserPermissionsForApplication: getUserPermissionsForApplication,
 	extractApplicantNames: extractApplicantNames,
 	findQuestion: findQuestion,

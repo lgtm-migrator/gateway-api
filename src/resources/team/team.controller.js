@@ -542,6 +542,7 @@ const deleteTeamMember = async (req, res) => {
  *
  */
 const getTeamsList = async (req, res) => {
+
 	try {
 		// 1. Check the current user is a member of the HDR admin team
 		const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
