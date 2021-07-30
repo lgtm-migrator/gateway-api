@@ -52,7 +52,7 @@ export default class ActivityLogController extends Controller {
 			});
 
 			// Send notifications
-			this.createNotifications(constants.activityLogNotifications.MANUALEVENTADDED, { description, timestamp }, accessRecord, req.user);
+			await this.createNotifications(constants.activityLogNotifications.MANUALEVENTADDED, { description, timestamp }, accessRecord, req.user);
 
 			// Get logs for version that was updated
 			const [affectedVersion] = await this.activityLogService.searchLogs([versionId], type, userType, [accessRecord], false);
