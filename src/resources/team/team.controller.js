@@ -584,13 +584,11 @@ const addTeam = async (req, res) => {
 	let mdcFolderId;
 	let teamManagerIds = [];
 	let recipients = [];
-
 	const { name, memberOf, contactPoint, teamManagers } = req.body;
 
 	// 1. Check the current user is a member of the HDR admin team
 	const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
 
-	console.log(`userid: ${req.user._id.toString()}`);
 	const hdrAdminTeamMember = hdrAdminTeam.members.filter(member => member.memberid.toString() === req.user._id.toString());
 
 	// 2. If not return unauthorised
@@ -682,9 +680,10 @@ const addTeam = async (req, res) => {
 		team.members = teamManagerIds;
 
 		let newTeam = await team.save();
+		if (!newTeam) reject(new Error(`Can't persist team object to DB.`));
 
 		// 9. Send email and notification to managers
-		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user);
+		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user, publisherId);
 
 		let data = {
 			teamPublisherId: publisherId,
@@ -711,7 +710,6 @@ async function getManagerInfo(managerId, teamManagerIds, recipients) {
 		}
 	).exec();
 
-	//Add _ids of each manager into an array alongside their role
 	teamManagerIds.push({
 		roles: ['manager'],
 		memberid: ObjectId(managerInfo._id.toString()),
@@ -911,7 +909,7 @@ const getTeamNotificationEmails = (optIn = false, subscribedEmails) => {
 	return [];
 };
 
-const createNotifications = async (type, context, team, user) => {
+const createNotifications = async (type, context, team, user, publisherId) => {
 	if (type !== 'TeamAdded') {
 		const teamName = getTeamName(team);
 	}
@@ -977,15 +975,14 @@ const createNotifications = async (type, context, team, user) => {
 		case constants.notificationTypes.TEAMADDED:
 			const { recipients } = context;
 			const recipientIds = recipients.map(recipient => recipient.id);
-
 			//1. Create notifications
 			notificationBuilder.triggerNotificationMessage(
 				recipientIds,
 				`You have been assigned as a team manger to the team ${team}`,
-				'team',
-				team
+				'team added',
+				team,
+				publisherId
 			);
-
 			//2. Create email
 			options = {
 				team,
@@ -998,7 +995,6 @@ const createNotifications = async (type, context, team, user) => {
 				html,
 				false
 			);
-
 			break;
 		case constants.notificationTypes.MEMBERROLECHANGED:
 			break;
