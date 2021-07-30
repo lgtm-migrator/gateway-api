@@ -1836,6 +1836,7 @@ const _generateAddedToTeam = options => {
 
 const _generateNewTeamManagers = options => {
 	let { team } = options;
+
 	let body = `<div>
 						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
 							<table
