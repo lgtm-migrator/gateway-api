@@ -921,8 +921,9 @@ const getTeamNotificationEmails = (optIn = false, subscribedEmails) => {
 };
 
 const createNotifications = async (type, context, team, user, publisherId) => {
+	let teamName;
 	if (type !== 'TeamAdded') {
-		const teamName = getTeamName(team);
+		teamName = getTeamName(team);
 	}
 	let options = {};
 	let html = '';
