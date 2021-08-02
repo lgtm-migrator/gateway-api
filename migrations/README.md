@@ -29,7 +29,7 @@ Complete the scripts required for the UP process, and if possible, the DOWN proc
 
 With the scripts written, the functions can be tested by running the following command, replacing 'my_new_migration_script' with the name of the script you want to execute.
 
-./node_modules/.bin/migrate up my_new_migration_script
+node -r esm migrations/migrate.js up my_new_migration_script
 
 When this process is completed, the connected database will have a new document representing your migration scripts inside the 'migrations' collection, which tracks the state of the migration.  If you need to run your scripts multiple times for test purposes, you can change the state of the migration to 'Down'. 
 
