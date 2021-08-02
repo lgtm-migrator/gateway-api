@@ -146,6 +146,7 @@ const _notificationTypes = {
 	DATASETSUBMITTED: 'DatasetSubmitted',
 	DATASETAPPROVED: 'DatasetApproved',
 	DATASETREJECTED: 'DatasetRejected',
+	TEAMADDED: 'TeamAdded',
 	MESSAGESENT: 'MessageSent',
 };
 

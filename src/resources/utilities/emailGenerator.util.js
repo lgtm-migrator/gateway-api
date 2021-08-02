@@ -1834,6 +1834,48 @@ const _generateAddedToTeam = options => {
 	return body;
 };
 
+const _generateNewTeamManagers = options => {
+	let { team } = options;
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      <span>New team added</span>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+                  <tr>
+                    <td style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      <p>
+                        The team ${team} has been added to the Gateway. You were assigned as a team manager and can now:
+                        <br />
+                        <ul>
+                          <li>Manage members</li>
+                          <li>Create and assign workflows</li>
+                          <li>Review assigned data access request applications</li>
+                          <li>Make the final decision on data access request applications</li>
+                        </ul>
+                      </p>
+                    </td>
+                  </tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+  	return body;
+};
+
 const _generateNewDARMessage = options => {
 	let { id, projectName, datasetTitles, applicants, firstname, lastname, messageBody, questionWithAnswer } = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -2357,6 +2399,7 @@ export default {
 	generateTeamNotificationEmail: _generateTeamNotificationEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
+	generateNewTeamManagers: _generateNewTeamManagers,
 	generateNewDARMessage: _generateNewDARMessage,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
