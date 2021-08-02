@@ -19,11 +19,13 @@ const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
-	constructor(dataRequestService, workflowService, amendmentService) {
+	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService) {
 		super(dataRequestService);
 		this.dataRequestService = dataRequestService;
 		this.workflowService = workflowService;
 		this.amendmentService = amendmentService;
+		this.topicService = topicService;
+		this.messageService = messageService;
 	}
 
 	// ###### APPLICATION CRUD OPERATIONS #######
@@ -45,7 +47,12 @@ export default class DataRequestController extends Controller {
 					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
 					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
 					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
-					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree, accessRecord._id, null, constants.userTypes.APPLICANT);
+					accessRecord.versions = this.dataRequestService.buildVersionHistory(
+						accessRecord.versionTree,
+						accessRecord._id,
+						null,
+						constants.userTypes.APPLICANT
+					);
 					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.APPLICANT);
 					return accessRecord;
 				})
@@ -135,10 +142,10 @@ export default class DataRequestController extends Controller {
 				userType === constants.userTypes.APPLICANT ? '' : isManager ? constants.roleTypes.MANAGER : constants.roleTypes.REVIEWER;
 
 			// 10. Handle amendment type application loading for Custodian showing any changes in the major version
-			if(applicationType === constants.submissionTypes.AMENDED && userType === constants.userTypes.CUSTODIAN) {
+			if (applicationType === constants.submissionTypes.AMENDED && userType === constants.userTypes.CUSTODIAN) {
 				const minorVersion = _.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion;
-				
-				if(accessRecord.amendmentIterations.length === 0 || (minorVersion === 0)) {
+
+				if (accessRecord.amendmentIterations.length === 0 || minorVersion === 0) {
 					accessRecord = this.amendmentService.highlightChanges(accessRecord);
 				}
 			}
@@ -169,13 +176,25 @@ export default class DataRequestController extends Controller {
 				isLatestMinorVersion
 			);
 
-			// 15. Build version selector
+			// 15. Inject message and note counts
+			const messages = await this.topicService.getTopicsForDAR(id, constants.DARMessageTypes.DARMESSAGE);
+			let notes = [];
+			if (userType === constants.userTypes.APPLICANT) {
+				notes = await this.topicService.getTopicsForDAR(id, constants.DARMessageTypes.DARNOTESAPPLICANT);
+			} else if (userType === constants.userTypes.CUSTODIAN) {
+				notes = await this.topicService.getTopicsForDAR(id, constants.DARMessageTypes.DARNOTESCUSTODIAN);
+			}
+			if (messages.length > 0 || notes.length > 0) {
+				accessRecord.jsonSchema = datarequestUtil.injectMessagesAndNotesCount(accessRecord.jsonSchema, messages, notes);
+			}
+
+			// 16. Build version selector
 			const requestedFullVersion = `${requestedMajorVersion}.${
 				_.isNil(requestedMinorVersion) ? accessRecord.amendmentIterations.length : requestedMinorVersion
 			}`;
 			accessRecord.versions = this.dataRequestService.buildVersionHistory(versionTree, accessRecord._id, requestedFullVersion, userType);
 
-			// 16. Return application form
+			// 17. Return application form
 			return res.status(200).json({
 				status: 'success',
 				data: {
@@ -333,7 +352,7 @@ export default class DataRequestController extends Controller {
 
 			// 5. Perform either initial submission or resubmission depending on application status
 			if (accessRecord.applicationStatus === constants.applicationStatuses.INPROGRESS) {
-				switch(accessRecord.applicationType) {
+				switch (accessRecord.applicationType) {
 					case constants.submissionTypes.AMENDED:
 						accessRecord = await this.dataRequestService.doAmendSubmission(accessRecord, description);
 						notificationType = constants.notificationTypes.APPLICATIONAMENDED;
@@ -682,7 +701,7 @@ export default class DataRequestController extends Controller {
 					message: 'This application is no longer in pre-submission status and therefore this action cannot be performed',
 				});
 			}
-			
+
 			// 6. Delete application
 			await this.dataRequestService.deleteApplication(appToDelete).catch(err => {
 				logger.logError(err, logCategory);
@@ -1820,6 +1839,9 @@ export default class DataRequestController extends Controller {
 			remainingReviewers = [],
 			remainingReviewerUserIds = [],
 			dateDeadline,
+			userType = '',
+			messageBody = '',
+			questionWithAnswer = {},
 		} = context;
 
 		switch (type) {
@@ -1838,7 +1860,7 @@ export default class DataRequestController extends Controller {
 					userName: `${appFirstName} ${appLastName}`,
 					userType: 'applicant',
 					submissionType: constants.submissionTypes.INPROGRESS,
-					applicationId: accessRecord._id.toString()
+					applicationId: accessRecord._id.toString(),
 				};
 
 				// Build email template
@@ -1923,10 +1945,7 @@ export default class DataRequestController extends Controller {
 			case constants.notificationTypes.SUBMITTED:
 				// 1. Create notifications
 				// Custodian notification
-				if (
-					_.has(accessRecord.datasets[0], 'publisher.team.users') &&
-					accessRecord.datasets[0].publisher.allowAccessRequestManagement
-				) {
+				if (_.has(accessRecord.datasets[0], 'publisher.team.users') && accessRecord.datasets[0].publisher.allowAccessRequestManagement) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
 					// check if publisher.team has email notifications
@@ -1966,7 +1985,7 @@ export default class DataRequestController extends Controller {
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
-					applicationId: accessRecord._id.toString()
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -2050,7 +2069,7 @@ export default class DataRequestController extends Controller {
 					publisher,
 					datasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
-					applicationId: accessRecord._id.toString()
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -2495,7 +2514,7 @@ export default class DataRequestController extends Controller {
 					initialDatasetTitles,
 					userName: `${appFirstName} ${appLastName}`,
 					submissionDescription: accessRecord.submissionDescription,
-					applicationId: accessRecord._id.toString()
+					applicationId: accessRecord._id.toString(),
 				};
 				// Iterate through the recipient types
 				for (let emailRecipientType of constants.submissionEmailRecipientTypes) {
@@ -2539,6 +2558,266 @@ export default class DataRequestController extends Controller {
 					}
 				}
 				break;
+			case constants.notificationTypes.MESSAGESENT:
+				let title = projectName !== 'No project name set' ? projectName : datasetTitles;
+				if (userType === constants.userTypes.APPLICANT) {
+					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
+					const custodianManagersIds = custodianManagers.map(user => user.id);
+					const custodianReviewers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.REVIEWER);
+					const custodianReviewersIds = custodianManagers.map(user => user.id);
+
+					await notificationBuilder.triggerNotificationMessage(
+						[...custodianManagersIds, ...custodianReviewersIds, ...accessRecord.authors.map(author => author.id)],
+						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						'data access message sent',
+						accessRecord._id
+					);
+
+					html = emailGenerator.generateNewDARMessage({
+						id: accessRecord._id,
+						datasetTitles,
+						applicants,
+						firstname: user.firstname,
+						lastname: user.lastname,
+						messageBody,
+						questionWithAnswer,
+					});
+
+					await emailGenerator.sendEmail(
+						[...custodianManagers, ...custodianReviewers, ...accessRecord.authors],
+						constants.hdrukEmail,
+						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						html,
+						false
+					);
+				} else if (userType === constants.userTypes.CUSTODIAN) {
+					await notificationBuilder.triggerNotificationMessage(
+						[accessRecord.userId, ...accessRecord.authors.map(author => author.id)],
+						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname} from ${accessRecord.publisherObj.name}`,
+						'data access message sent',
+						accessRecord._id
+					);
+
+					html = emailGenerator.generateNewDARMessage({
+						id: accessRecord._id,
+						datasetTitles,
+						applicants,
+						firstname: user.firstname,
+						lastname: user.lastname,
+						messageBody,
+						questionWithAnswer,
+					});
+
+					await emailGenerator.sendEmail(
+						[accessRecord.mainApplicant, ...accessRecord.authors],
+						constants.hdrukEmail,
+						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						html,
+						false
+					);
+				}
+				break;
+		}
+	}
+
+	// ###### CONTEXTUAL MESSAGING & NOTES #######
+
+	//PUT api/v1/data-access-request/:id/share
+	async updateSharedDARFlag(req, res) {
+		try {
+			const {
+				params: { id },
+			} = req;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+
+			let accessRecord = await this.dataRequestService.getApplicationById(id);
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
+			}
+
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
+			if (!authorised || userType !== constants.userTypes.APPLICANT) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			await this.dataRequestService.updateApplicationById(id, { isShared: true }).catch(err => {
+				logger.logError(err, logCategory);
+			});
+
+			return res.status(200).json({
+				status: 'success',
+			});
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the application',
+			});
+		}
+	}
+
+	//GET api/v1/data-access-request/:id/:messageType
+	async getMessages(req, res) {
+		try {
+			const {
+				params: { id },
+				query: { messageType, questionId },
+			} = req;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+
+			let accessRecord = await this.dataRequestService.getApplicationById(id);
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
+			}
+
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} else if (
+				userType === constants.userTypes.APPLICANT &&
+				![constants.DARMessageTypes.DARNOTESAPPLICANT, constants.DARMessageTypes.DARMESSAGE].includes(messageType)
+			) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} else if (
+				userType === constants.userTypes.CUSTODIAN &&
+				![constants.DARMessageTypes.DARNOTESCUSTODIAN, constants.DARMessageTypes.DARMESSAGE].includes(messageType)
+			) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			const topic = await this.topicService.getTopicForDAR(id, questionId, messageType);
+
+			let messages = [];
+			if (!_.isEmpty(topic) && !_.isEmpty(topic.topicMessages)) {
+				for (let topicMessage of topic.topicMessages.reverse()) {
+					messages.push({
+						name: `${topicMessage.createdBy.firstname} ${topicMessage.createdBy.lastname}`,
+						date: moment(topicMessage.createdDate).format('D MMM YYYY HH:mm'),
+						content: topicMessage.messageDescription,
+						userType: topicMessage.userType,
+					});
+				}
+			}
+
+			return res.status(200).json({
+				status: 'success',
+				messages,
+			});
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the application',
+			});
+		}
+	}
+
+	//POST api/v1/data-access-request/:id/messages
+	async submitMessage(req, res) {
+		try {
+			const {
+				params: { id },
+			} = req;
+			const { questionId, messageType, messageBody } = req.body;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+			const requestingUser = req.user;
+
+			let accessRecord = await this.dataRequestService.getApplicationWithTeamById(id, { lean: true });
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
+			}
+
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord,
+				requestingUserId,
+				requestingUserObjectId
+			);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} else if (
+				userType === constants.userTypes.APPLICANT &&
+				![constants.DARMessageTypes.DARNOTESAPPLICANT, constants.DARMessageTypes.DARMESSAGE].includes(messageType)
+			) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			} else if (
+				userType === constants.userTypes.CUSTODIAN &&
+				![constants.DARMessageTypes.DARNOTESCUSTODIAN, constants.DARMessageTypes.DARMESSAGE].includes(messageType)
+			) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			let topic = await this.topicService.getTopicForDAR(id, questionId, messageType);
+
+			if (_.isEmpty(topic)) {
+				topic = await this.topicService.createTopicForDAR(id, questionId, messageType);
+			}
+
+			await this.messageService.createMessageForDAR(messageBody, topic._id, requestingUserObjectId, userType);
+
+			if (messageType === constants.DARMessageTypes.DARMESSAGE) {
+				let foundQuestion = {},
+					foundQuestionSet = {},
+					foundPage = {};
+
+				for (let questionSet of accessRecord.jsonSchema.questionSets) {
+					foundQuestion = datarequestUtil.findQuestion(questionSet.questions, questionId);
+					if (foundQuestion) {
+						foundQuestionSet = questionSet;
+						break;
+					}
+				}
+
+				const panel = dynamicForm.findQuestionPanel(foundQuestionSet.questionSetId, accessRecord.jsonSchema.questionPanels);
+
+				for (let page of accessRecord.jsonSchema.pages) {
+					if (page.pageId === panel.pageId) {
+						foundPage = page;
+						break;
+					}
+				}
+
+				const answer =
+					accessRecord.questionAnswers && accessRecord.questionAnswers[questionId]
+						? accessRecord.questionAnswers[questionId]
+						: 'No answer for this question';
+
+				this.createNotifications(
+					constants.notificationTypes.MESSAGESENT,
+					{
+						userType,
+						messageBody,
+						questionWithAnswer: {
+							question: foundQuestion.question,
+							questionPanel: foundQuestionSet.questionSetHeader,
+							page: foundPage.title,
+							answer,
+						},
+					},
+					accessRecord,
+					requestingUser
+				);
+			}
+
+			return res.status(200).json({
+				status: 'success',
+			});
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the application',
+			});
 		}
 	}
 }

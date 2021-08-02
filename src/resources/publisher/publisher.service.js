@@ -35,13 +35,15 @@ export default class PublisherService {
 	}
 
 	async getPublisherDataAccessRequests(id, requestingUserId, isManager) {
-		const excludedApplicationStatuses = ['inProgress'];
+		const excludedApplicationStatuses = [];
 		if (!isManager) {
 			excludedApplicationStatuses.push('submitted');
 		}
 		const query = { publisher: id, applicationStatus: { $nin: excludedApplicationStatuses } };
 
 		let applications = await this.publisherRepository.getPublisherDataAccessRequests(query);
+
+		applications = this.filterInProgressApplications(applications);
 
 		if (!isManager) {
 			applications = this.filterApplicationsForReviewer(applications, requestingUserId);
@@ -72,6 +74,18 @@ export default class PublisherService {
 			if (found) {
 				return app;
 			}
+		});
+
+		return filteredApplications;
+	}
+
+	filterInProgressApplications(applications) {
+		const filteredApplications = [...applications].filter(app => {
+			if (app.applicationStatus !== 'inProgress') return app;
+
+			if (app.isShared) return app;
+
+			return;
 		});
 
 		return filteredApplications;
