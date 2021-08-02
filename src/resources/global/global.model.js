@@ -4,17 +4,17 @@ const GlobalSchema = new Schema(
 	{
 		languageCode: {
 			type: String,
-			require: true
+			require: true,
 		},
 		localeId: {
 			type: String,
 			require: true,
-			unique: true
+			unique: true,
 		},
 		entry: {
 			type: Object,
-			default: {}
-		}
+			default: {},
+		},
 	},
 	{
 		timestamps: true,
