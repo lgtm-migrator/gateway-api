@@ -1,10 +1,11 @@
 import _ from 'lodash';
+
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import notificationBuilder from '../utilities/notificationBuilder';
 import constants from '../utilities/constants.util';
-
+ 
 // GET api/v1/teams/:id
 const getTeamById = async (req, res) => {
 	try {
@@ -42,12 +43,12 @@ const getTeamMembers = async (req, res) => {
 				path: 'additionalInfo',
 				select: 'organisation bio showOrganisation showBio',
 			},
-		});
+		}).lean();
 		if (!team) {
 			return res.status(404).json({ success: false });
 		}
 		// 2. Check the current user is a member of the team
-		let authorised = checkTeamPermissions('', team.toObject(), req.user._id);
+		let authorised = checkTeamPermissions('', team, req.user._id);
 		// 3. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
@@ -529,6 +530,46 @@ const deleteTeamMember = async (req, res) => {
 };
 
 /**
+ * GET api/v1/teams
+ *
+ * @desc Get the list of all publisher teams
+ *
+ */
+const getTeamsList = async (req, res) => {
+    try { 
+        // 1. Check the current user is a member of the HDR admin team
+        const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+
+		const hdrAdminTeamMember = hdrAdminTeam.members.filter( member => member.memberid.toString() === req.user._id.toString() )
+		
+        // 2. If not return unauthorised 
+		if(_.isEmpty(hdrAdminTeamMember)){
+			return res.status(401).json({ success: false, message: 'Unauthorised' });
+		}
+
+		// 3. Get the publisher teams from the database 
+		const teams = await TeamModel.find(
+			{ type: 'publisher', active: true },
+			{
+				_id: 1,
+				updatedAt: 1, 
+				members: 1,
+				membersCount: {$size: '$members'} 
+			}
+		)
+			.populate('publisher', { name: 1 })
+			.populate('users', { firstname: 1, lastname: 1 })
+			.lean();
+	
+        // 4. Return team
+        return res.status(200).json({ success: true, teams });
+    } catch (err) {
+        console.error(err.message);
+        return res.status(500).json(err.message);
+    }
+};
+
+/**
  * Check a users permission levels for a team
  *
  * @param {enum} role The role required for the action
@@ -848,4 +889,5 @@ export default {
 	checkTeamPermissions: checkTeamPermissions,
 	getTeamMembersByRole: getTeamMembersByRole,
 	createNotifications: createNotifications,
+	getTeamsList: getTeamsList,
 };

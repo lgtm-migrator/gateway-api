@@ -303,7 +303,7 @@ router.put('/review/approve', passport.authenticate('jwt'), utils.checkIsInRole(
 		await storeNotificationMessages(review);
 
 		// Send email notififcation of approval to authors and admins who have opted in
-		await sendEmailNotifications(review);
+		await sendEmailNotifications(review, activeflag);
 	});
 });
 
@@ -425,11 +425,11 @@ async function storeNotificationMessages(review) {
 	return { success: true, id: message.messageID };
 }
 
-async function sendEmailNotifications(review) {
+async function sendEmailNotifications(review, activeflag) {
 	// 1. Retrieve tool for authors and reviewer user plus generate URL for linking tool
 	const tool = await Data.findOne({ id: review.toolID });
 	const reviewer = await UserModel.findOne({ id: review.reviewerID });
-	const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name;
+	const toolLink = process.env.homeURL + '/tool/' + tool.id;
 
 	// 2. Query Db for all admins or authors of the tool who have opted in to email updates
 	var q = UserModel.aggregate([
@@ -464,12 +464,59 @@ async function sendEmailNotifications(review) {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
-		emailGenerator.sendEmail(
-			emailRecipients,
-			`${hdrukEmail}`,
-			`Someone reviewed your tool`,
-			`${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to your tool ${tool.name} <br /><br />  ${toolLink}`,
-			false
-		);
+
+		let subject;
+		if (activeflag === 'active') {
+			subject = `A review has been added to the ${tool.type} ${tool.name}`;
+		} else if (activeflag === 'rejected') {
+			subject = `A review on the ${tool.type} ${tool.name} has been rejected`;
+		} else if (activeflag === 'archive') {
+			subject = `A review on the ${tool.type} ${tool.name} has been archived`;
+		}
+
+		let html = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+											${subject}
+										</th>
+										</tr>
+										<tr>
+										<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+											<p>
+												${
+													activeflag === 'active'
+														? `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to the tool ${tool.name}.`
+														: activeflag === 'rejected'
+														? `A ${review.rating}-star review from ${reviewer.firstname} ${reviewer.lastname} on the ${tool.type} ${tool.name} has been rejected.`
+														: activeflag === 'archive'
+														? `A ${review.rating}-star review from ${reviewer.firstname} ${reviewer.lastname} on the ${tool.type} ${tool.name} has been archived.`
+														: ``
+												}	
+											</p>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+									<tr style="width: 100%; text-align: left;">
+										<td style=" font-size: 14px; color: #3c3c3b; padding: 5px 5px; width: 50%; text-align: left; vertical-align: top;">
+											<a href=${toolLink}>View ${tool.type}</a>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+
+		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, false);
 	});
 }
