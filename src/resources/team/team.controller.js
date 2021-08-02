@@ -584,6 +584,7 @@ const addTeam = async (req, res) => {
 	let mdcFolderId;
 	let teamManagerIds = [];
 	let recipients = [];
+	let folders = [];
 	const { name, memberOf, contactPoint, teamManagers } = req.body;
 
 	// 1. Check the current user is a member of the HDR admin team
@@ -597,7 +598,7 @@ const addTeam = async (req, res) => {
 	}
 
 	try {
-		//3. log into MDC
+		// 3. log into MDC
 		let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 		const loginDetails = {
 			username: process.env.MDC_Config_HDRUK_username || '',
@@ -616,7 +617,17 @@ const addTeam = async (req, res) => {
 					label: name,
 				};
 
-				//4. create new folder on MDC
+				// 4. Get all MDC folders
+				await axios
+					.get(metadataCatalogueLink + '/api/folders?all=true', {
+						withCredentials: true,
+						timeout: 60000,
+					})
+					.then(async res => {
+						folders = res.data.items.filter(item => item.label === name);
+					});
+
+				// 5. Create new folder on MDC
 				await axios
 					.post(metadataCatalogueLink + '/api/folders', folderLabel, {
 						withCredentials: true,
@@ -625,7 +636,7 @@ const addTeam = async (req, res) => {
 					.then(async newFolder => {
 						mdcFolderId = newFolder.data.id;
 
-						//5. Update the newly created folder to be public
+						// 6. Update the newly created folder to be public
 						await axios
 							.put(`${metadataCatalogueLink}/api/folders/${mdcFolderId}/readByEveryone`, {
 								withCredentials: true,
@@ -646,12 +657,17 @@ const addTeam = async (req, res) => {
 				console.error('Error when trying to login to MDC - ' + err.message);
 			});
 
-		//6. log out of MDC
+		// 7. Log out of MDC
 		await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
 			console.error('Error when trying to logout of the MDC - ' + err.message);
 		});
 
-		// 7. Create the publisher
+		// 8. If a MDC folder with the name already exists return unsuccessful
+		if (!_.isEmpty(folders)) {
+			return res.status(422).json({ success: false, message: 'Duplicate MDC folder name' });
+		}
+
+		// 9. Create the publisher
 		let publisher = new PublisherModel();
 
 		publisher.name = `${inputSanitizer.removeNonBreakingSpaces(memberOf)} > ${inputSanitizer.removeNonBreakingSpaces(name)}`;
@@ -667,7 +683,7 @@ const addTeam = async (req, res) => {
 
 		let publisherId = newPublisher._id.toString();
 
-		// 8. Create the team
+		// 10. Create the team
 		let team = new TeamModel();
 
 		team._id = ObjectId(publisherId);
@@ -682,7 +698,7 @@ const addTeam = async (req, res) => {
 		let newTeam = await team.save();
 		if (!newTeam) reject(new Error(`Can't persist team object to DB.`));
 
-		// 9. Send email and notification to managers
+		// 11. Send email and notification to managers
 		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user, publisherId);
 
 		return res.status(200).json({ success: true });
