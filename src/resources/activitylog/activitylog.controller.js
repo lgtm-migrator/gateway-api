@@ -85,7 +85,7 @@ export default class ActivityLogController extends Controller {
 			await this.activityLogService.deleteLog(id);
 
 			// Send notifications
-			this.createNotifications(constants.activityLogNotifications.MANUALEVENTREMOVED, { description: log.plainText, timestamp: log.timestamp }, accessRecord, req.user);
+			await this.createNotifications(constants.activityLogNotifications.MANUALEVENTREMOVED, { description: log.plainText, timestamp: log.timestamp }, accessRecord, req.user);
 
 			// Get logs for version that was updated
 			const [affectedVersion] = await this.activityLogService.searchLogs([versionId], type, userType, [accessRecord], false);
