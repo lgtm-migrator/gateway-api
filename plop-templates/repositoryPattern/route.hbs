@@ -1,0 +1,28 @@
+import express from 'express';
+import {{capitalise entityName}}Controller from './{{entityName}}.controller';
+import { {{entityName}}Service } from './dependency';
+import { logger } from '../utilities/logger';
+
+const router = express.Router();
+const {{entityName}}Controller = new {{capitalise entityName}}Controller({{entityName}}Service);
+const logCategory = '{{entityName}}';
+
+// @route   GET /api/v1/{{entityName}}s/id
+// @desc    Returns a {{entityName}} based on {{entityName}} ID provided
+// @access  Public
+router.get(
+	'/:id',
+	logger.logRequestMiddleware({ logCategory, action: 'Viewed {{entityName}} data' }),
+    (req, res) => {{entityName}}Controller.get{{capitalise entityName}}(req, res)
+);
+
+// @route   GET /api/v1/{{entityName}}s
+// @desc    Returns a collection of {{entityName}}s based on supplied query parameters
+// @access  Public
+router.get(
+	'/',
+	logger.logRequestMiddleware({ logCategory, action: 'Viewed {{entityName}}s data' }),
+    (req, res) => {{entityName}}Controller.get{{capitalise entityName}}s(req, res)
+);
+
+module.exports = router;
