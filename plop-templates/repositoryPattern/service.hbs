@@ -1,0 +1,17 @@
+export default class {{capitalise entityName}}Service {
+	constructor({{entityName}}Repository) {
+		this.{{entityName}}Repository = {{entityName}}Repository;
+	}
+
+	get{{capitalise entityName}}(id, query = {}, options = {}) {
+		// Protect for no id passed
+		if (!id) return;
+
+		query = { ...query, id };
+		return this.{{entityName}}Repository.get{{capitalise entityName}}(query, options);
+	}
+
+	get{{capitalise entityName}}s(query = {}) {
+		return this.{{entityName}}Repository.get{{capitalise entityName}}s(query);
+	}
+}
