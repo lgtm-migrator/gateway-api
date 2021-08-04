@@ -1,7 +1,7 @@
 const _ = require('lodash');
 
 module.exports = function (plop) {
-	plop.setHelper('capitalise', txt => _.capitalize(txt));
+	plop.setHelper('capitalise', string => string.charAt(0).toUpperCase() + string.slice(1));
 	// controller generator
 	plop.setGenerator('repositoryPattern', {
 		description: 'repository pattern files for new entity',
