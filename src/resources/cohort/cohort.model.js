@@ -6,7 +6,7 @@ const cohortSchema = new Schema(
 	{
 		id: Number,
 		pid: String,
-		description: String,
+		name: String,
 		status: String,
 		userId: Number,
 		uploaders: [],
@@ -14,12 +14,12 @@ const cohortSchema = new Schema(
 		version: Number,
 		changeLog: String,
 		updatedAt: Date,
+		lastRefresh: Date,
 
 		// fields from RQuest
 		request_id: String,
 		cohort: {},
 		items: [],
-		access_duration: {},
 	},
 	{
 		timestamps: true,

@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import { isNaN } from 'lodash';
 
 export default class Repository {
 	constructor(Model) {
@@ -12,7 +12,7 @@ export default class Repository {
 
 		// Check if each param should be a Number.  Allows searching for a value in a Numbers array
 		Object.keys(queryObj).forEach(key => {
-			queryObj[key] = _.isNaN(queryObj[key] * 1) ? queryObj[key] : queryObj[key] * 1;
+			queryObj[key] = isNaN(queryObj[key] * 1) ? queryObj[key] : queryObj[key] * 1;
 		});
 
 		// Population from query
