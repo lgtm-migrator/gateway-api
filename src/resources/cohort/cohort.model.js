@@ -18,7 +18,6 @@ const cohortSchema = new Schema(
 		// fields from RQuest
 		request_id: String,
 		cohort: {},
-		access_duration: {},
 		items: [],
 		access_duration: {},
 	},
