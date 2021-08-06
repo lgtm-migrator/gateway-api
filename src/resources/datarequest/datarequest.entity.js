@@ -76,7 +76,10 @@ export default class DataRequestClass extends Entity {
 
 	getVersionById(versionId) {
 		return Object.keys(this.versionTree).reduce((obj, key) => {
-			if(this.versionTree[key].applicationId.toString() === versionId.toString() || this.versionTree[key].iterationId.toString() === versionId.toString()) {
+			if (
+				this.versionTree[key].applicationId.toString() === versionId.toString() ||
+				(this.versionTree[key].iterationId && this.versionTree[key].iterationId.toString() === versionId.toString())
+			) {
 				obj = this.versionTree[key];
 			}
 			return obj;

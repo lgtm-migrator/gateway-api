@@ -266,7 +266,7 @@ export default class activityLogService {
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Application approved with conditions by custodian manager ${user.firstname} ${user.lastname}`,
-			detailedText: `Conditions: ${accessRequest.applicationStatusDesc}`,
+			detailedText: `Conditions:\n${accessRequest.applicationStatusDesc}`,
 			html: `<b>Application approved with conditions</b> by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
 			detailedHtml: detHtml,
 			user: user._id,
@@ -293,7 +293,7 @@ export default class activityLogService {
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Application rejected by custodian manager ${user.firstname} ${user.lastname}`,
-			detailedText: `Reason for rejection: ${accessRequest.applicationStatusDesc}`,
+			detailedText: `Reason for rejection:\n${accessRequest.applicationStatusDesc}`,
 			html: `<b>Application rejected</b> by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
 			detailedHtml: detHtml,
 			user: user._id,
@@ -339,7 +339,7 @@ export default class activityLogService {
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Amendment submitted by applicant ${user.firstname} ${user.lastname}. ${version.displayTitle} of this application has been created.`,
-			detailedText: `Reason for amendment: ${accessRequest.submissionDescription}`,
+			detailedText: `Reason for amendment:\n${accessRequest.submissionDescription}`,
 			html: `<a class='activity-log-detail-link' href="${version.link}">Amendment submitted</a> by applicant <b>${user.firstname} ${user.lastname}</b>. <a class='activity-log-detail-link' href="${version.link}">${version.displayTitle}</a> of this application has been created.`,
 			detailedHtml: detHtml,
 			user: user._id,
@@ -361,6 +361,7 @@ export default class activityLogService {
 		const numberOfUpdatesSubmitted = Object.keys(questionAnswers).length;
 
 		let detHtml = '';
+		let detText = '';
 
 		Object.keys(questionAnswers).forEach(questionId => {
 			const previousAnswer = accessRequest.questionAnswers[questionId];
@@ -391,13 +392,19 @@ export default class activityLogService {
 					`</div>` +
 					`</div>`
 			);
+
+			detText = detText.concat(
+				`${page.title + ' | ' + questionSet.questionSetHeader}\nQuestion: ${
+					question.question
+				}\nPrevious Answer: ${previousAnswer}\nUpdated Answer: ${updatedAnswer}\n\n`
+			);
 		});
 
 		const logUpdate = {
 			eventType: constants.activityLogEvents.UPDATE_SUBMITTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
-
+			detailedText: detText,
 			plainText: `${numberOfUpdatesSubmitted} ${numberOfUpdatesSubmitted > 1 ? 'updates' : 'update'} requested by custodian manager ${
 				user.firstname
 			} ${user.lastname}.`,
@@ -436,6 +443,7 @@ export default class activityLogService {
 		const numberOfUpdatesRequested = Object.keys(questionAnswers).length;
 
 		let detHtml = '';
+		let detText = '';
 
 		Object.keys(questionAnswers).forEach(questionId => {
 			const answer = accessRequest.questionAnswers[questionId];
@@ -460,6 +468,10 @@ export default class activityLogService {
 					`</div>` +
 					`</div>`
 			);
+
+			detText = detText.concat(
+				`${page.title + ' | ' + questionSet.questionSetHeader}\nQuestion: ${question.question}\nAnswer: ${answer}\n\n`
+			);
 		});
 
 		const log = {
@@ -470,6 +482,7 @@ export default class activityLogService {
 			plainText: `${numberOfUpdatesRequested} ${numberOfUpdatesRequested > 1 ? 'updates' : 'update'} requested by custodian manager ${
 				user.firstname
 			} ${user.lastname}.`,
+			detailedText: detText,
 			html: `<a class='activity-log-detail-link' href="${version.link}">${numberOfUpdatesRequested} ${
 				numberOfUpdatesRequested > 1 ? ' updates ' : ' update '
 			} requested</a> by custodian manager <b>${user.firstname} ${user.lastname}</b>.`,
@@ -551,11 +564,18 @@ export default class activityLogService {
 				.join(' ') +
 			`</div>`;
 
+		const detText = `${workflow.workflowName}\n${workflow.steps
+			.map(step => {
+				return step.stepName + ' ' + step.reviewers.map(reviewer => reviewer.firstname + ' ' + reviewer.lastname).join() + '\n';
+			})
+			.join('')}`;
+
 		const log = {
 			eventType: constants.activityLogEvents.WORKFLOW_ASSIGNED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `${workflow.workflowName} has been assigned by custodian manager ${user.firstname} ${user.lastname}`,
+			detailedText: detText,
 			html: `<a class='activity-log-detail-link' href="${version.link}">${workflow.workflowName}</a> has been assigned by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
 			detailedHtml: detHtml,
 			user: user._id,
@@ -604,11 +624,14 @@ export default class activityLogService {
 			`<div class='activity-log-detail-row'>${comments}</div>` +
 			`</div>`;
 
+		const detText = `Recommendation: Issues found\n${comments}`;
+
 		const log = {
 			eventType: constants.activityLogEvents.RECOMMENDATION_WITH_ISSUE,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
-			plainText: `Recommendation with issues found sent by reviewer <b>${user.firstname} ${user.lastname}`,
+			plainText: `Recommendation with issues found sent by reviewer ${user.firstname} ${user.lastname}`,
+			detailedText: detText,
 			html: `<a class='activity-log-detail-link' href="${version.link}">Recommendation with issues found</a> sent by reviewer <b>${user.firstname} ${user.lastname}</b>`,
 			detailedHtml: detHtml,
 			user: user._id,
@@ -630,11 +653,14 @@ export default class activityLogService {
 			`<div class='activity-log-detail-row'>${comments}</div>` +
 			`</div>`;
 
+		const detText = `Recommendation: No issues found\n${comments}`;
+
 		const log = {
 			eventType: constants.activityLogEvents.RECOMMENDATION_WITH_NO_ISSUE,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
-			plainText: `Recommendation with no issues found sent by reviewer <b>${user.firstname} ${user.lastname}`,
+			plainText: `Recommendation with no issues found sent by reviewer ${user.firstname} ${user.lastname}`,
+			detailedText: detText,
 			html: `<a class='activity-log-detail-link' href="${version.link}">Recommendation with no issues found</a> sent by reviewer <b>${user.firstname} ${user.lastname}</b>`,
 			detailedHtml: detHtml,
 			user: user._id,
@@ -707,21 +733,21 @@ export default class activityLogService {
 		switch (userType) {
 			case constants.userTypes.APPLICANT:
 				plainText = `Message sent from applicant ${firstname} ${lastname}`;
-				detailedText = `Message sent from applicant ${firstname} ${lastname} at ${createdDate.toString()}: ${messageBody}`;
-				html = `<a href='javascript:;' onClick='${onClickScript}'>Message</a> sent from applicant <b>${firstname} ${lastname}</b>`;
+				detailedText = `${firstname} ${lastname}\n${messageBody}`;
+				html = `<a class='activity-log-detail-link' href='javascript:;' onClick='${onClickScript}'>Message</a> sent from applicant <b>${firstname} ${lastname}</b>`;
 				detailedHtml =
 					`<div class='activity-log-detail'>` +
-					`<div class='activity-log-detail-header'>${firstname} ${lastname} ${sentTime}</div>` +
+					`<div class='activity-log-detail-header'>${firstname} ${lastname}</div>` +
 					`<div class='activity-log-detail-row'>${messageBody}</div>` +
 					`</div>`;
 				break;
 			case constants.userTypes.CUSTODIAN:
-				plainText = `Message sent from ${firstname} ${lastname} (${publisher})`;
-				detailedText = `Message sent from ${firstname} ${lastname} (${publisher}) at ${createdDate.toString()}: ${messageBody}`;
-				html = `<a href='javascript:;' onClick='${onClickScript}'>Message</a> sent from <b>${firstname} ${lastname} (${publisher})</b>`;
+				plainText = `Message sent from ${firstname} ${lastname}`;
+				detailedText = `${firstname} ${lastname}\n${messageBody}`;
+				html = `<a class='activity-log-detail-link' href='javascript:;' onClick='${onClickScript}'>Message</a> sent from <b>${firstname} ${lastname} (${publisher})</b>`;
 				detailedHtml =
 					`<div class='activity-log-detail'>` +
-					`<div class='activity-log-detail-header'>${firstname} ${lastname} (${publisher}) ${sentTime}</div>` +
+					`<div class='activity-log-detail-header'>${firstname} ${lastname} (${publisher})</div>` +
 					`<div class='activity-log-detail-row'>${messageBody}</div>` +
 					`</div>`;
 				break;
@@ -763,10 +789,11 @@ export default class activityLogService {
 
 		const detText =
 			`Recommendations required from:` +
-			step.reviewers.map(reviewer => {
-				return reviewer.firstname + ' ' + reviewer.lastname;
-			}) +
-			`</div>`;
+			step.reviewers
+				.map(reviewer => {
+					return `${reviewer.firstname + ' ' + reviewer.lastname}\n`;
+				})
+				.join('');
 
 		const log = {
 			eventType: constants.activityLogEvents.DEADLINE_PASSED,
