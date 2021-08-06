@@ -294,7 +294,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			} else if (form === 'true' && !searchAll) {
 				queryObject.push({ $sort: { myEntity: -1, score: { $meta: 'textScore' } } });
 			} else if (form !== 'true' && searchAll) {
-				if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+				queryObject.push({ $sort: { latestUpdate: -1 } });
 			} else if (form !== 'true' && !searchAll) {
 				queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
 			}
