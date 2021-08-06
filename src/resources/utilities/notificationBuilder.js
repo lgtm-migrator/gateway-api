@@ -11,7 +11,7 @@ const triggerNotificationMessage = (messageRecipients, messageDescription, messa
 			messageID,
 			messageObjectID: typeof messageObjectID == 'number' ? messageObjectID : messageID,
 			messageTo: recipient,
-			messageDataRequestID: messageType === 'data access request' ? messageObjectID : null,
+			messageDataRequestID: messageType === 'data access request' || messageType === 'data access message sent' ? messageObjectID : null,
 			publisherName,
 			datasetID: messageType === 'dataset approved' || messageType === 'dataset rejected' ? messageObjectID : null,
 		});
