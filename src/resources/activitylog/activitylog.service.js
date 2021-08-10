@@ -1,6 +1,6 @@
 import constants from './../utilities/constants.util';
 import { UserModel } from '../user/user.model';
-import { orderBy, has, first } from 'lodash';
+import { orderBy, has, first, isEmpty, last } from 'lodash';
 import moment from 'moment';
 
 export default class activityLogService {
@@ -18,6 +18,7 @@ export default class activityLogService {
 			const {
 				majorVersion: majorVersionNumber,
 				dateSubmitted,
+				dateCreated,
 				applicationType,
 				applicationStatus,
 				_id: majorVersionId,
@@ -29,6 +30,8 @@ export default class activityLogService {
 			const majorVersion = this.buildVersionEvents(
 				`${majorVersionNumber}`,
 				dateSubmitted,
+				dateCreated,
+				null,
 				applicationType,
 				applicationStatus,
 				() => this.getEventsForVersion(logs, majorVersionId),
@@ -40,11 +43,13 @@ export default class activityLogService {
 			}
 
 			amendmentIterations.forEach((iterationMinorVersion, index) => {
-				const { dateSubmitted: minorVersionDateSubmitted, _id: minorVersionId } = iterationMinorVersion;
+				const { dateSubmitted: minorVersionDateSubmitted, dateCreated: minorVersionDateCreated, dateReturned: minorVersionDateReturned, _id: minorVersionId } = iterationMinorVersion;
 				const partyDurations = this.getPartyTimeDistribution(iterationMinorVersion);
 				const minorVersion = this.buildVersionEvents(
 					`${majorVersionNumber}.${index + 1}`,
 					minorVersionDateSubmitted,
+					minorVersionDateCreated,
+					minorVersionDateReturned,
 					'Update',
 					applicationStatus,
 					() => this.getEventsForVersion(logs, minorVersionId),
@@ -69,7 +74,7 @@ export default class activityLogService {
 		return orderedVersionEvents;
 	}
 
-	buildVersionEvents(versionNumber, dateSubmitted, applicationType, applicationStatus, getEventsFn, calculateTimeWithPartyfn) {
+	buildVersionEvents(versionNumber, dateSubmitted, dateCreated, dateReturned, applicationType, applicationStatus, getEventsFn, calculateTimeWithPartyfn) {
 		let daysSinceSubmission;
 
 		if (dateSubmitted) {
@@ -80,15 +85,27 @@ export default class activityLogService {
 			dateSubmitted = dateSubmitted.format('D MMMM YYYY');
 		}
 
+		if(dateCreated) {
+			dateCreated = moment(dateCreated);
+			dateCreated = dateCreated.format('D MMMM YYYY');
+		}
+
+		if(dateReturned) {
+			dateReturned = moment(dateReturned);
+			dateReturned = dateReturned.format('D MMMM YYYY');
+		}
+
 		return {
 			version: `Version ${versionNumber}`,
 			versionNumber: parseFloat(versionNumber),
 			meta: {
 				...(dateSubmitted && { dateSubmitted }),
+				...(dateCreated && { dateCreated }),
+				...(dateReturned && { dateReturned }),
 				...(daysSinceSubmission && { daysSinceSubmission }),
 				applicationType,
 				applicationStatus,
-				timeWithApplicants: calculateTimeWithPartyfn,
+				timeWithApplicants: calculateTimeWithPartyfn(),
 			},
 			events: getEventsFn(),
 		};
@@ -124,11 +141,11 @@ export default class activityLogService {
 			partyTimes = [
 				...this.getMajorVersionActivePartyDurations(version),
 				...minorVersions.reduce((arr, minorVersion) => {
-					return [...arr, this.getMinorVersionActivePartyDurations(minorVersion)];
+					return [...arr, ...this.getMinorVersionActivePartyDurations(minorVersion)];
 				}, []),
 			];
 		} else {
-			partyTimes = [...this.getMinorVersionActivePartyDurations(minorVersion)];
+			partyTimes = [...this.getMinorVersionActivePartyDurations(version)];
 		}
 
 		return partyTimes;
@@ -334,7 +351,7 @@ export default class activityLogService {
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.0`];
 
 		const log = {
-			eventType: constants.activityLogEvents.AMENDMENTS_SUBMITTED,
+			eventType: constants.activityLogEvents.AMENDMENT_SUBMITTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Amendments submitted by applicant ${user.firstname} ${user.lastname}. ${version.displayTitle} of this application has been created.`,
