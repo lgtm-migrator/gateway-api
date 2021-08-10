@@ -1,6 +1,6 @@
 import constants from './../utilities/constants.util';
 import { UserModel } from '../user/user.model';
-import { orderBy } from 'lodash';
+import { orderBy, has, first } from 'lodash';
 import moment from 'moment';
 
 export default class activityLogService {
@@ -24,25 +24,31 @@ export default class activityLogService {
 				amendmentIterations = [],
 			} = version;
 
+			const partyDurations = this.getPartyTimeDistribution(version);
+
 			const majorVersion = this.buildVersionEvents(
 				`${majorVersionNumber}`,
 				dateSubmitted,
 				applicationType,
 				applicationStatus,
-				() => { return this.getEventsForVersion(logs, majorVersionId) }
+				() => this.getEventsForVersion(logs, majorVersionId),
+				() => this.calculateTimeWithParty(partyDurations, constants.userTypes.APPLICANT)
 			);
+
 			if (majorVersion.events.length > 0) {
 				arr.push(majorVersion);
 			}
 
 			amendmentIterations.forEach((iterationMinorVersion, index) => {
 				const { dateSubmitted: minorVersionDateSubmitted, _id: minorVersionId } = iterationMinorVersion;
+				const partyDurations = this.getPartyTimeDistribution(iterationMinorVersion);
 				const minorVersion = this.buildVersionEvents(
 					`${majorVersionNumber}.${index + 1}`,
 					minorVersionDateSubmitted,
 					'Update',
 					applicationStatus,
-					() => { return this.getEventsForVersion(logs, minorVersionId) }
+					() => this.getEventsForVersion(logs, minorVersionId),
+					() => this.calculateTimeWithParty(partyDurations, constants.userTypes.APPLICANT)
 				);
 				if (minorVersion.events.length > 0) {
 					arr.push(minorVersion);
@@ -63,18 +69,16 @@ export default class activityLogService {
 		return orderedVersionEvents;
 	}
 
-	buildVersionEvents(versionNumber, dateSubmitted, applicationType, applicationStatus, getEventsFn) {
+	buildVersionEvents(versionNumber, dateSubmitted, applicationType, applicationStatus, getEventsFn, calculateTimeWithPartyfn) {
 		let daysSinceSubmission;
 
-		if(dateSubmitted) {
+		if (dateSubmitted) {
 			const dateNow = moment();
 			dateSubmitted = moment(dateSubmitted);
 			const numberDaysSinceSubmission = dateNow.diff(dateSubmitted, 'days');
 			daysSinceSubmission = `${numberDaysSinceSubmission} ${numberDaysSinceSubmission === 1 ? `day` : `days`}`;
 			dateSubmitted = dateSubmitted.format('D MMMM YYYY');
 		}
-
-		const timeWithApplicants = this.calculateTimeWithApplicants()
 
 		return {
 			version: `Version ${versionNumber}`,
@@ -84,14 +88,114 @@ export default class activityLogService {
 				...(daysSinceSubmission && { daysSinceSubmission }),
 				applicationType,
 				applicationStatus,
-				timeWithApplicants
+				timeWithApplicants: calculateTimeWithPartyfn,
 			},
 			events: getEventsFn(),
 		};
 	}
 
-	calculateTimeWithApplicants() {
-		return '100%';
+	calculateTimeWithParty(partyDurations, partyType) {
+		let totalTime = 0;
+
+		const partyTotalDurations = partyDurations.reduce((obj, timeRange) => {
+			const { from, to, party } = timeRange;
+			const toDate = moment(to);
+			const fromDate = moment(from);
+			const duration = moment.duration(toDate.diff(fromDate));
+			const durationSeconds = duration.asSeconds();
+			totalTime = totalTime + durationSeconds;
+
+			obj[party] = (obj[party] || 0) + durationSeconds;
+
+			return obj;
+		}, {});
+
+		const partyPercentage = Math.round(((partyTotalDurations[partyType] || 0) / totalTime) * 100);
+
+		return `${partyPercentage}%`;
+	}
+
+	getPartyTimeDistribution(version) {
+		const isMajorVersion = has(version, 'applicationStatus');
+		let partyTimes = [];
+
+		if (isMajorVersion) {
+			const { amendmentIterations: minorVersions } = version;
+			partyTimes = [
+				...this.getMajorVersionActivePartyDurations(version),
+				...minorVersions.reduce((arr, minorVersion) => {
+					return [...arr, this.getMinorVersionActivePartyDurations(minorVersion)];
+				}, []),
+			];
+		} else {
+			partyTimes = [...this.getMinorVersionActivePartyDurations(minorVersion)];
+		}
+
+		return partyTimes;
+	}
+
+	getMajorVersionActivePartyDurations(majorVersion) {
+		const { amendmentIterations: minorVersions = [] } = majorVersion;
+		let partyDurations = [];
+
+		if (majorVersion.dateSubmitted) {
+			if (isEmpty(minorVersions)) {
+				partyDurations.push({
+					from: moment(majorVersion.dateSubmitted),
+					to: moment(majorVersion.dateFinalStatus),
+					party: constants.userTypes.CUSTODIAN,
+				});
+			} else {
+				minorVersions.forEach((minorVersion, index) => {
+					if (minorVersion === first(minorVersions)) {
+						partyDurations.push({
+							from: moment(majorVersion.dateSubmitted),
+							to: moment(minorVersion.dateCreated),
+							party: constants.userTypes.CUSTODIAN,
+						});
+					}
+
+					if (minorVersion === last(minorVersions)) {
+						partyDurations.push({
+							from: moment(minorVersion.dateSubmitted),
+							to: moment(majorVersion.dateFinalStatus),
+							party: constants.userTypes.CUSTODIAN,
+						});
+					} else {
+						partyDurations.push({
+							from: moment(minorVersion.dateSubmitted),
+							to: moment(minorVersions[index + 1].dateCreated),
+							party: constants.userTypes.CUSTODIAN,
+						});
+					}
+				});
+			}
+		}
+
+		return partyDurations;
+	}
+
+	getMinorVersionActivePartyDurations(minorVersion) {
+		const { dateCreated, dateReturned, dateSubmitted } = minorVersion;
+		let partyDurations = [];
+
+		if (dateCreated) {
+			partyDurations.push({
+				from: moment(dateCreated),
+				to: moment(dateReturned),
+				party: constants.userTypes.CUSTODIAN,
+			});
+		}
+
+		if (dateReturned) {
+			partyDurations.push({
+				from: moment(dateReturned),
+				to: moment(dateSubmitted),
+				party: constants.userTypes.APPLICANT,
+			});
+		}
+
+		return partyDurations;
 	}
 
 	async logActivity(eventType, context) {
