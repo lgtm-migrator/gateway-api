@@ -13,8 +13,8 @@ async function up () {
 
   try {
     const publisher = await createPublisher();
-    const team = await createTeam(publisher._id, now);
-    const dataReqSchema = await createDataReqSchema(now);
+    await createTeam(publisher._id, now);
+    await createDataReqSchema(now);
   } catch (err) {
     console.log("Error occured during the migration. Error message: " + err);
   }
