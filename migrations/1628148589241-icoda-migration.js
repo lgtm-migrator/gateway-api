@@ -1,9 +1,8 @@
 import { PublisherModel as Publisher } from "../src/resources/publisher/publisher.model.js";
-import { UserModel as User} from "../src/resources/user/user.model.js";
 import { TeamModel as Team } from "../src/resources/team/team.model.js";
 import { DataRequestSchemaModel as DataReqSchema } from "../src/resources/datarequest/datarequest.schemas.model.js";
 
-const mongoose = require("mongoose");
+
 
 /**
  * Make any changes you need to make to the database here
@@ -13,8 +12,8 @@ async function up () {
   const now = new Date();
 
   try {
-    const publisher = await createPublisher(now);
-    const team = await createTeam(publisher._id, user);
+    const publisher = await createPublisher();
+    const team = await createTeam(publisher._id, now);
     const dataReqSchema = await createDataReqSchema(now);
   } catch (err) {
     console.log("Error occured during the migration. Error message: " + err);
@@ -28,7 +27,7 @@ async function up () {
 async function down () {
 }
 
-function createPublisher(timestamp) {
+function createPublisher() {
   let publisher = {  
         name: `ICODA accreditation`,
         active: true,
@@ -40,9 +39,8 @@ function createPublisher(timestamp) {
   return publisher.save();
 }
 
-function createTeam(publisherId, user, timestamp) {
+function createTeam(publisherId, timestamp) {
   let team = {
-        _id: '',
         active: true,
         members: [
           {
@@ -52,9 +50,6 @@ function createTeam(publisherId, user, timestamp) {
           }
         ],
         type: 'publisher',
-        __v: 17,
-        createdAt: "2021-08-09T11:51:08.004Z",
-        updatedAt: '',
         notifications: []
   }
 
@@ -67,7 +62,6 @@ function createTeam(publisherId, user, timestamp) {
 
 function createDataReqSchema(timestamp) {
   let drs = {
-        id: 6040430027486150,
         status: 'active',
         formType: '5 safe',
         version: 1,
@@ -253,9 +247,6 @@ function createDataReqSchema(timestamp) {
             }
           ]
         },
-        __v: 0,
-        createdAt: "2021-08-09T11:51:08.004Z",
-        updatedAt: '',
         publisher: 'ICODA accreditation'
       }
 
