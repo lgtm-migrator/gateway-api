@@ -2,7 +2,7 @@
 	"name": "hdruk-rdt-api",
 	"config": {
 		"mongodbMemoryServer": {
-			"version": "latest"
+			"version": "5.0.0-rc7"
 		}
 	},
 	"version": "0.1.1",

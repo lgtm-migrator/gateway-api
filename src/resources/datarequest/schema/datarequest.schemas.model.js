@@ -1,5 +1,6 @@
 import { model, Schema } from 'mongoose';
-import constants from '../utilities/constants.util';
+
+import constants from '../../utilities/constants.util';
 
 const DataRequestSchemas = new Schema({
   id: Number,

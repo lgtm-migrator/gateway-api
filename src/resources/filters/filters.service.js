@@ -12,7 +12,7 @@ export default class FiltersService {
 		// 1. Get filters from repository for the entity type and query provided
 		const options = { lean: false };
 		let filters = await this.filtersRepository.getFilters(id, query, options);
-		if (filters) {
+		if (filters && !has(query, 'fields')) {
 			filters = filters.mapDto();
 		}
 		return filters;

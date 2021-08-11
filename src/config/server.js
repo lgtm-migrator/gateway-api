@@ -52,7 +52,7 @@ configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
 
-var domains = [process.env.homeURL];
+var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
 
 var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
@@ -238,7 +238,7 @@ app.use('/api/v1/dataset-onboarding', require('../resources/dataset/datasetonboa
 app.use('/api/v1/datasets', require('../resources/dataset/v1/dataset.route'));
 app.use('/api/v2/datasets', require('../resources/dataset/v2/dataset.route'));
 
-app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/datarequest.schemas.route'));
+app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/schema/datarequest.schemas.route'));
 app.use('/api/v1/data-access-request', require('../resources/datarequest/datarequest.route'));
 
 app.use('/api/v1/collections', require('../resources/collections/collections.route'));

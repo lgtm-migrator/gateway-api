@@ -51,6 +51,7 @@ module.exports = {
 			console.error(err.message);
 		});
 	},
+
 	postUpdateProcess: async bpmContext => {
 		// Create Axios requet to start Camunda process
 		let { taskId, applicationStatus, dateSubmitted, publisher, actioner, archived } = bpmContext;
@@ -108,6 +109,7 @@ module.exports = {
 			console.error(err.message);
 		});
 	},
+
 	postStartManagerReview: async bpmContext => {
 		// Start manager-review process
 		let { applicationStatus, managerId, publisher, notifyManager, taskId } = bpmContext;
@@ -135,6 +137,7 @@ module.exports = {
 			console.error(err.message);
 		});
 	},
+
 	postManagerApproval: async bpmContext => {
 		// Manager has approved sectoin
 		let { businessKey } = bpmContext;
@@ -142,6 +145,7 @@ module.exports = {
 			console.error(err.message);
 		});
 	},
+
 	postStartStepReview: async bpmContext => {
 		//Start Step-Review process
 		let { businessKey } = bpmContext;
@@ -149,6 +153,7 @@ module.exports = {
 			console.error(err.message);
 		});
 	},
+
 	postCompleteReview: async bpmContext => {
 		//Start Next-Step process
 		let { businessKey } = bpmContext;

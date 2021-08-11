@@ -2,23 +2,34 @@ import { has, isEmpty, isNil } from 'lodash';
 import constants from '../../utilities/constants.util';
 import teamController from '../../team/team.controller';
 import moment from 'moment';
-import { DataRequestSchemaModel } from '../datarequest.schemas.model';
+import { DataRequestSchemaModel } from '../schema/datarequest.schemas.model';
 import dynamicForm from '../../utilities/dynamicForms/dynamicForm.util';
 
 const repeatedSectionRegex = /_[a-zA-Z|\d]{5}$/gm;
 
-const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '', activeParty) => {
-	let formattedSchema = {};
-	if (userType === constants.userTypes.CUSTODIAN) {
-		if (applicationStatus === constants.applicationStatuses.INREVIEW) {
-			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus][activeParty] };
-		} else {
-			formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][role][applicationStatus] };
-		}
-	} else {
-		formattedSchema = { ...jsonSchema, questionActions: constants.userQuestionActions[userType][applicationStatus] };
+const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '', activeParty, isLatestMinorVersion = true) => {
+	if (
+		userType === constants.userTypes.CUSTODIAN &&
+		applicationStatus === constants.applicationStatuses.INREVIEW &&
+		activeParty === constants.userTypes.CUSTODIAN &&
+		role === constants.roleTypes.MANAGER &&
+		isLatestMinorVersion
+	)
+		return {
+			...jsonSchema,
+			questionActions: [
+				constants.questionActions.guidance,
+				constants.questionActions.messages,
+				constants.questionActions.notes,
+				constants.questionActions.updates,
+			],
+		};
+	else {
+		return {
+			...jsonSchema,
+			questionActions: [constants.questionActions.guidance, constants.questionActions.messages, constants.questionActions.notes],
+		};
 	}
-	return formattedSchema;
 };
 
 const getUserPermissionsForApplication = (application, userId, _id) => {
@@ -36,7 +47,7 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 		} else if (has(application, 'publisherObj.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.publisherObj.team, _id);
 		}
-		if (isTeamMember) {
+		if (isTeamMember && (application.applicationStatus !== constants.applicationStatuses.INPROGRESS || application.isShared)) {
 			userType = constants.userTypes.CUSTODIAN;
 			authorised = true;
 		}
@@ -55,30 +66,18 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 };
 
 const extractApplicantNames = questionAnswers => {
-	let fullnames = [],
-		autoCompleteLookups = { fullname: ['email'] };
-	// spread questionAnswers to new var
-	let qa = { ...questionAnswers };
-	// get object keys of questionAnswers
-	let keys = Object.keys(qa);
-	// loop questionAnswer keys
-	for (const key of keys) {
-		// get value of key
-		let value = qa[key];
-		// split the key up for unique purposes
-		let [qId] = key.split('_');
-		// check if key in lookup
-		let lookup = autoCompleteLookups[`${qId}`];
-		// if key exists and it has an object do relevant data setting
-		if (typeof lookup !== 'undefined' && typeof value === 'object') {
-			switch (qId) {
-				case 'fullname':
-					fullnames.push(value.name);
-					break;
-			}
+	const fullNameQuestions = ['safepeopleprimaryapplicantfullname', 'safepeopleotherindividualsfullname'];
+	const fullNames = [];
+
+	if (isNil(questionAnswers)) return fullNames;
+
+	Object.keys(questionAnswers).forEach(key => {
+		if (fullNameQuestions.some(q => key.includes(q))) {
+			fullNames.push(questionAnswers[key]);
 		}
-	}
-	return fullnames;
+	});
+
+	return fullNames;
 };
 
 const findQuestion = (questionsArr, questionId) => {
@@ -170,7 +169,7 @@ const setQuestionState = (question, questionAlert, readOnly) => {
 	return question;
 };
 
-const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user, publisher) => {
+const buildQuestionAlert = (userType, iterationStatus, completed, amendment, user, publisher, includeCompleted = true) => {
 	// 1. Use a try catch to prevent conditions where the combination of params lead to no question alert required
 	try {
 		// 2. Static mapping allows us to determine correct flag to show based on scenario (params)
@@ -182,8 +181,21 @@ const buildQuestionAlert = (userType, iterationStatus, completed, amendment, use
 		// 4. Update audit fields to 'you' if the action was performed by the current user
 		requestedBy = matchCurrentUser(user, requestedBy);
 		updatedBy = matchCurrentUser(user, updatedBy);
+		let relevantActioner;
 		// 5. Update the generic question alerts to match the scenario
-		let relevantActioner = !isNil(updatedBy) ? updatedBy : userType === constants.userTypes.CUSTODIAN ? requestedBy : publisher;
+		if (userType === constants.userTypes.CUSTODIAN)
+			if (iterationStatus === 'inProgress' || iterationStatus === 'returned' || !includeCompleted) {
+				relevantActioner = requestedBy;
+			} else {
+				relevantActioner = updatedBy;
+			}
+		else if (userType === constants.userTypes.APPLICANT) {
+			if (!isNil(updatedBy) && includeCompleted) {
+				relevantActioner = updatedBy;
+			} else {
+				relevantActioner = publisher;
+			}
+		}
 		questionAlert.text = questionAlert.text.replace('#NAME#', relevantActioner);
 		questionAlert.text = questionAlert.text.replace(
 			'#DATE#',
@@ -246,7 +258,7 @@ const cloneIntoNewApplication = async (appToClone, context) => {
 		aboutApplication: {},
 		amendmentIterations: [],
 		applicationStatus: constants.applicationStatuses.INPROGRESS,
-		originId: _id
+		originId: _id,
 	};
 
 	// 4. Extract and append any user repeated sections from the original form
@@ -349,6 +361,38 @@ const extractRepeatedQuestionIds = questionAnswers => {
 	}, []);
 };
 
+const injectMessagesAndNotesCount = (jsonSchema, messages, notes) => {
+	let messageNotesArray = [];
+
+	messages.forEach(topic => {
+		messageNotesArray.push({ question: topic.subTitle, messageCount: topic.topicMessages.length, notesCount: 0 });
+	});
+
+	notes.forEach(topic => {
+		if (messageNotesArray.find(x => x.question === topic.subTitle)) {
+			let existingTopic = messageNotesArray.find(x => x.question === topic.subTitle);
+			existingTopic.notesCount = topic.topicMessages.length;
+		} else {
+			messageNotesArray.push({ question: topic.subTitle, messageCount: 0, notesCount: topic.topicMessages.length });
+		}
+	});
+
+	messageNotesArray.forEach(messageNoteQuestion => {
+		for (let questionPanel of jsonSchema.questionSets) {
+			let question = findQuestion(questionPanel.questions, messageNoteQuestion.question);
+			if (question) {
+				question.counts = {
+					messagesCount: messageNoteQuestion.messageCount,
+					notesCount: messageNoteQuestion.notesCount,
+				};
+				break;
+			}
+		}
+	});
+
+	return jsonSchema;
+};
+
 export default {
 	injectQuestionActions: injectQuestionActions,
 	getUserPermissionsForApplication: getUserPermissionsForApplication,
@@ -359,4 +403,8 @@ export default {
 	setQuestionState: setQuestionState,
 	cloneIntoExistingApplication: cloneIntoExistingApplication,
 	cloneIntoNewApplication: cloneIntoNewApplication,
+	injectMessagesAndNotesCount,
+	getLatestPublisherSchema: getLatestPublisherSchema,
+	containsUserRepeatedSections: containsUserRepeatedSections,
+	copyUserRepeatedSections: copyUserRepeatedSections,
 };

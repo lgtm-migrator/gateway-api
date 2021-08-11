@@ -357,29 +357,37 @@ async function createMessage(authorId, toolId, toolName, toolType, activeflag, r
 
 async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 	let subject;
-	let html;
 	let adminCanUnsubscribe = true;
 	// 1. Generate tool URL for linking user from email
 	const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id;
+	let resourceType = tool.type.charAt(0).toUpperCase() + tool.type.slice(1);
 
-	// 2. Build email body
+	// 2. Build email subject
 	if (activeflag === 'active') {
-		subject = `Your ${tool.type} ${tool.title} has been approved and is now live`;
-		html = `Your ${tool.type} ${tool.title} has been approved and is now live <br /><br />  ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been approved and is now live`;
 	} else if (activeflag === 'archive') {
-		subject = `Your ${tool.type} ${tool.title} has been archived`;
-		html = `Your ${tool.type} ${tool.title} has been archived <br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been archived`;
 	} else if (activeflag === 'rejected') {
-		subject = `Your ${tool.type} ${tool.title} has been rejected`;
-		html = `Your ${tool.type} ${tool.title} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been rejected`;
 	} else if (activeflag === 'add') {
-		subject = `Your ${tool.type} ${tool.title} has been submitted for approval`;
-		html = `Your ${tool.type} ${tool.title} has been submitted for approval<br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been submitted for approval`;
 		adminCanUnsubscribe = false;
 	} else if (activeflag === 'edit') {
-		subject = `Your ${tool.type} ${tool.title} has been updated`;
-		html = `Your ${tool.type} ${tool.title} has been updated<br /><br /> ${toolLink}`;
+		subject = `${resourceType} ${tool.title} has been updated`;
 	}
+
+	// Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.title,
+		resourceLink: toolLink,
+		subject,
+		rejectionReason: rejectionReason,
+		activeflag,
+		type: 'author',
+	};
+	// Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
 
 	if (adminCanUnsubscribe) {
 		// 3. Find the creator of the course and admins if they have opted in to email updates
@@ -435,6 +443,20 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
+
+			// Create object to pass through email data
+			options = {
+				resourceType: tool.type,
+				resourceName: tool.title,
+				resourceLink: toolLink,
+				subject,
+				rejectionReason: rejectionReason,
+				activeflag,
+				type: 'admin',
+			};
+
+			html = emailGenerator.generateEntityNotification(options);
+
 			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, adminCanUnsubscribe);
 		});
 	}
@@ -456,17 +478,23 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
 	]);
 
-	// 3. Use the returned array of email recipients to generate and send emails with SendGrid
+	// 3. Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.name,
+		resourceLink: toolLink,
+		type: 'co-author',
+		resourceAuthor: toolOwner.name,
+	};
+	// 4. Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
+
+	// 5. Use the returned array of email recipients to generate and send emails with SendGrid
 	q.exec((err, emailRecipients) => {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
-		emailGenerator.sendEmail(
-			emailRecipients,
-			`${hdrukEmail}`,
-			`${toolOwner.name} added you as an author of the tool ${tool.name}`,
-			`${toolOwner.name} added you as an author of the tool ${tool.name} <br /><br />  ${toolLink}`
-		);
+		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, `${toolOwner.name} added you as an author of the course ${tool.name}`, html);
 	});
 }
 
