@@ -58,7 +58,7 @@ export default class WorkflowService {
 		return this.workflowRepository.assignWorkflowToApplication(accessRecord, workflowId);
 	}
 
-	getWorkflowById(id){
+	getWorkflowById(id) {
 		return this.workflowRepository.getWorkflowById(id);
 	}
 
@@ -129,7 +129,7 @@ export default class WorkflowService {
 		) {
 			accessRecord.remainingActioners = this.getReviewManagers(team, requestingUserId).join(', ');
 		} else if (!isEmpty(workflow) && isEmpty(activeStep) && applicationStatus === constants.applicationStatuses.INREVIEW) {
-			remainingActioners = this.getReviewManagers(team, requestingUserId).join(', ');
+			accessRecord.remainingActioners = this.getReviewManagers(team, requestingUserId).join(', ');
 			accessRecord.reviewStatus = 'Final decision required';
 		} else {
 			accessRecord.remainingActioners = this.getRemainingReviewerNames(activeStep, team.users, requestingUserId);
@@ -522,7 +522,11 @@ export default class WorkflowService {
 	}
 
 	startWorkflow(accessRecord, requestingUserObjectId) {
-		const { publisherObj: { name: dataRequestPublisher }, _id, workflow } = accessRecord;
+		const {
+			publisherObj: { name: dataRequestPublisher },
+			_id,
+			workflow,
+		} = accessRecord;
 		const reviewerList = workflow.steps[0].reviewers.map(reviewer => reviewer._id.toString());
 		const bpmContext = {
 			businessKey: _id,
