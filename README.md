@@ -10,17 +10,21 @@ This is a NodeJS Express server, which provides the Back End API Server to the G
 To set up the API on your local do the following steps
 
 #### Step 1
+
 Clone the API repository.
 
 `git clone https://github.com/HDRUK/gateway-api`
 
-#### Step 2 
+#### Step 2
+
 Run the npm install
+
 ```
 npm install
 ```
 
 #### Step 3
+
 Create a .env file in the root of the project with this content:
 
 ```
@@ -56,9 +60,11 @@ DISCOURSE_CATEGORY_PROJECTS_ID=
 DISCOURSE_CATEGORY_DATASETS_ID=
 DISCOURSE_CATEGORY_PAPERS_ID=
 DISCOURSE_SSO_SECRET=
+
 ```
 
 #### Step 4
+
 Start the API via command line.
 
 `node server.js`

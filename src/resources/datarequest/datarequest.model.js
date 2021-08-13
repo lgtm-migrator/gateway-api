@@ -1,14 +1,17 @@
 import { model, Schema } from 'mongoose';
+
 import { WorkflowSchema } from '../workflow/workflow.model';
 import constants from '../utilities/constants.util';
+import DataRequestClass from './datarequest.entity';
 
 const DataRequestSchema = new Schema(
 	{
-		version: Number,
+		majorVersion: { type: Number, default: 1 },
 		userId: Number, // Main applicant
 		authorIds: [Number],
 		dataSetId: String,
 		datasetIds: [{ type: String }],
+		initialDatasetIds: [{ type: String }],
 		datasetTitles: [{ type: String }],
 		isCloneable: Boolean,
 		projectId: String,
@@ -18,6 +21,14 @@ const DataRequestSchema = new Schema(
 			type: String,
 			default: 'inProgress',
 			enum: ['inProgress', 'submitted', 'inReview', 'approved', 'rejected', 'approved with conditions', 'withdrawn'],
+		},
+		applicationType: {
+			type: String,
+			default: constants.submissionTypes.INITIAL,
+			enum: Object.values(constants.submissionTypes),
+		},
+		submissionDescription: {
+			type: String,
 		},
 		archived: {
 			Boolean,
@@ -30,6 +41,10 @@ const DataRequestSchema = new Schema(
 			default: {},
 		},
 		questionAnswers: {
+			type: Object,
+			default: {},
+		},
+		initialQuestionAnswers: {
 			type: Object,
 			default: {},
 		},
@@ -80,7 +95,9 @@ const DataRequestSchema = new Schema(
 				questionAnswers: { type: Object, default: {} },
 			},
 		],
-		originId: { type: Schema.Types.ObjectId, ref: 'data_request' }
+		originId: { type: Schema.Types.ObjectId, ref: 'data_request' },
+		versionTree: { type: Object, default: {} },
+		isShared: { Boolean, default: false },
 	},
 	{
 		timestamps: true,
@@ -122,5 +139,15 @@ DataRequestSchema.virtual('authors', {
 	foreignField: 'id',
 	localField: 'authorIds',
 });
+
+DataRequestSchema.virtual('initialDatasets', {
+	ref: 'Data',
+	foreignField: 'datasetid',
+	localField: 'initialDatasetIds',
+	justOne: false,
+});
+
+// Load entity class
+DataRequestSchema.loadClass(DataRequestClass);
 
 export const DataRequestModel = model('data_request', DataRequestSchema);
