@@ -3,9 +3,10 @@ import helper from '../utilities/helper.util';
 import { commericalConstants, validCommericalUseOptions } from './utils/filters.util';
 
 export default class FiltersService {
-	constructor(filtersRepository, datasetRepository) {
+	constructor(filtersRepository, datasetRepository, toolRepository) {
 		this.filtersRepository = filtersRepository;
 		this.datasetRepository = datasetRepository;
+		this.toolRepository = toolRepository;
 	}
 
 	async getFilters(id, query = {}) {
@@ -107,6 +108,11 @@ export default class FiltersService {
 							datasetv2.coverage,datasetv2.provenance.origin,datasetv2.provenance.temporal,datasetv2.accessibility.access,datasetv2.accessibility.formatAndStandards`;
 				entities = await this.datasetRepository.getDatasets({ ...query, fields }, { lean: true });
 				break;
+			case 'tool':
+				// Get minimal payload to build filters
+				fields = `categories.category, programmingLanguage.programmingLanguage, tags.features, tags.topics`;
+				entities = await this.toolRepository.getTools({ ...query, fields }, { lean: true });
+				break;
 		}
 		// 3. Loop over each entity
 		entities.forEach(entity => {
@@ -151,7 +157,7 @@ export default class FiltersService {
 		let filterValues = {};
 		// 1. Switch between entity type for varying filters
 		switch (type) {
-			case 'dataset':
+			case 'dataset': {
 				// 2. Extract all properties used for filtering
 				if (isEmpty(entity.datasetv2)) {
 					delete entity.datasetv2;
@@ -178,6 +184,24 @@ export default class FiltersService {
 					publisher,
 				};
 				break;
+			}
+			case 'tool': {
+				// 2. Extract all properties used for filtering
+				let {
+					categories: { category = '' } = {},
+					programmingLanguage: [...programmingLanguage] = [],
+					tags: { features = [], topics = [] } = {},
+				} = entity;
+
+				// 3. Create flattened filter props object
+				filterValues = {
+					type: category,
+					programmingLanguage: [...programmingLanguage.map(p => p.programmingLanguage)],
+					keywords: features,
+					domain: topics,
+				};
+				break;
+			}
 		}
 		// 4. Return filter values
 		return filterValues;

@@ -69,17 +69,16 @@ router.get('/', async (req, res) => {
 		const filters = await filtersService.buildFilters(type, filterQuery, useCachedFilters);
 		return res.json({
 			success: true,
-			filters
+			filters,
 		});
-	//const matchQuery = queryObject[0][`$match`];
-	//const useCachedFilters = matchQuery[`$and`] && matchQuery[`$and`].length === 2;
+		//const matchQuery = queryObject[0][`$match`];
+		//const useCachedFilters = matchQuery[`$and`] && matchQuery[`$and`].length === 2;
 
-	// Get paged results based on query params
-	// const [searchResults, filters] = await Promise.all(
-	// 	collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)),
-	// 	filtersService.buildFilters(type, matchQuery, useCachedFilters)
-	// );
-
+		// Get paged results based on query params
+		// const [searchResults, filters] = await Promise.all(
+		// 	collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)),
+		// 	filtersService.buildFilters(type, matchQuery, useCachedFilters)
+		// );
 
 		// await Promise.all([
 		// 	// getFilter(searchString, 'dataset', 'license', false, activeFiltersQuery),
@@ -113,32 +112,44 @@ router.get('/', async (req, res) => {
 		// 	});
 		// });
 	} else if (tab === 'Tools') {
-		let searchQuery = { $and: [{ activeflag: 'active' }] };
-		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
-		var activeFiltersQuery = getObjectFilters(searchQuery, req, 'tool');
+		const type = 'tool';
 
-		await Promise.all([
-			getFilter(searchString, 'tool', 'tags.topics', true, activeFiltersQuery),
-			getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
-			getFilter(searchString, 'tool', 'programmingLanguage.programmingLanguage', true, activeFiltersQuery),
-			getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery),
-		]).then(values => {
-			return res.json({
-				success: true,
-				allFilters: {
-					toolTopicFilter: values[0][0],
-					toolFeatureFilter: values[1][0],
-					toolLanguageFilter: values[2][0],
-					toolCategoryFilter: values[3][0],
-				},
-				filterOptions: {
-					toolTopicsFilterOptions: values[0][1],
-					featuresFilterOptions: values[1][1],
-					programmingLanguageFilterOptions: values[2][1],
-					toolCategoriesFilterOptions: values[3][1],
-				},
-			});
+		let defaultQuery = { $and: [{ activeflag: 'active', type }] };
+		if (searchString.length > 0) defaultQuery['$and'].push({ $text: { $search: searchString } });
+		const filterQuery = getObjectFilters(defaultQuery, req, type);
+		const useCachedFilters = isEqual(defaultQuery, filterQuery) && searchString.length === 0;
+
+		const filters = await filtersService.buildFilters(type, filterQuery, useCachedFilters);
+		return res.json({
+			success: true,
+			filters,
 		});
+		// let searchQuery = { $and: [{ activeflag: 'active' }] };
+		// if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
+		// var activeFiltersQuery = getObjectFilters(searchQuery, req, 'tool');
+
+		// await Promise.all([
+		// 	getFilter(searchString, 'tool', 'tags.topics', true, activeFiltersQuery),
+		// 	getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
+		// 	getFilter(searchString, 'tool', 'programmingLanguage.programmingLanguage', true, activeFiltersQuery),
+		// 	getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery),
+		// ]).then(values => {
+		// 	return res.json({
+		// 		success: true,
+		// 		allFilters: {
+		// 			toolTopicFilter: values[0][0],
+		// 			toolFeatureFilter: values[1][0],
+		// 			toolLanguageFilter: values[2][0],
+		// 			toolCategoryFilter: values[3][0],
+		// 		},
+		// 		filterOptions: {
+		// 			toolTopicsFilterOptions: values[0][1],
+		// 			featuresFilterOptions: values[1][1],
+		// 			programmingLanguageFilterOptions: values[2][1],
+		// 			toolCategoriesFilterOptions: values[3][1],
+		// 		},
+		// 	});
+		// });
 	} else if (tab === 'Projects') {
 		let searchQuery = { $and: [{ activeflag: 'active' }] };
 		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });

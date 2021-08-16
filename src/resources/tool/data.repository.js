@@ -6,6 +6,7 @@ import { createDiscourseTopic } from '../discourse/discourse.service';
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 const asyncModule = require('async');
+import { filtersService } from '../filters/dependency';
 import { utils } from '../auth';
 import { ROLES } from '../user/user.roles';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
@@ -207,6 +208,10 @@ const editTool = async (req, res) => {
 			if (tool == null) {
 				reject(new Error(`No record found with id of ${id}.`));
 			} else {
+				// Will need parameterized once v2 filters are implemented for projects, papers etc
+				if (tool.type === 'tool') {
+					filtersService.optimiseFilters('tool');
+				}
 				// Send email notification of update to all authors who have opted in to updates
 				sendEmailNotificationToAuthors(data, toolCreator);
 				storeNotificationsForAuthors(data, toolCreator);
@@ -403,6 +408,10 @@ const setStatus = async (req, res) => {
 				await createDiscourseTopic(tool);
 			}
 
+			// Will need parameterized once v2 filters are implemented for projects, papers etc
+			if (tool.type === 'tool') {
+				filtersService.optimiseFilters('tool');
+			}
 			// Send email notification of status update to admins and authors who have opted in
 			await sendEmailNotifications(tool, activeflag, rejectionReason);
 
