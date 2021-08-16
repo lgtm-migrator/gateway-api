@@ -3,13 +3,13 @@ import { TeamModel } from '../../team/team.model';
 import { UserModel } from '../../user/user.model';
 import notificationBuilder from '../../utilities/notificationBuilder';
 import emailGenerator from '../../utilities/emailGenerator.util';
-import { isEmpty, isNil, has, cloneDeep } from 'lodash';
+import { isEmpty, isNil, cloneDeep, isString, map, groupBy, orderBy } from 'lodash';
 import constants from '../../utilities/constants.util';
-import teamController from '../../team/team.controller';
 import moment from 'moment';
 import randomstring from 'randomstring';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
+var fs = require('fs');
 
 /**
  * Checks to see if the user has the correct permissions to access the dataset
@@ -22,7 +22,6 @@ import addFormats from 'ajv-formats';
 const getUserPermissionsForDataset = async (id, user) => {
 	try {
 		let authorised = false,
-			isTeamMember = false,
 			userType = '';
 
 		// Return default unauthorised with no user type if incorrect params passed
@@ -51,55 +50,30 @@ const getUserPermissionsForDataset = async (id, user) => {
 			});
 		}
 
-		const isMetadataAdmin = {};
-		//const adminArray = teams.filter(team => team.type === constants.teamTypes.ADMIN);
+		let isMetadataAdmin = {};
 		if (!isEmpty(teams.filter(team => team.type === constants.teamTypes.ADMIN))) {
 			isMetadataAdmin = teams
 				.filter(team => team.type === constants.teamTypes.ADMIN)
-				.roles.find(role => role === constants.roleTypes.METADATA_EDITOR);
+				.find(team => team.roles.includes(constants.roleTypes.ADMIN_DATASET));
 		}
 
-		/* if (adminArray[0].roles.includes(constants.roleTypes.ADMIN_DATASET)) {
-				const allTeams = await TeamModel.find({ type: { $ne: constants.teamTypes.ADMIN } }, { _id: 1, type: 1 })
-					.populate({
-						path: 'publisher',
-						select: 'name',
-					})
-					.lean();
-				allTeams.forEach(newTeam => {
-					const foundTeam = teams.find(team => team._id && team._id.toString() === newTeam._id.toString());
-					if (!isEmpty(foundTeam)) {
-						const foundRole = foundTeam.roles.find(role => role === constants.roleTypes.METADATA_EDITOR);
-						if (isEmpty(foundRole)) {
-							foundTeam.roles.push(constants.roleTypes.METADATA_EDITOR);
-							foundTeam.isAdmin = true;
-						}
-					} else {
-						teams.push({
-							_id: newTeam._id,
-							name: newTeam.publisher.name,
-							roles: [constants.roleTypes.METADATA_EDITOR],
-							type: newTeam.type,
-						});
-					}
-				});
-			}
-		} */
-
-		// Check if the user is a custodian team member and assign permissions if so
-		isTeamMember = teamController.checkTeamPermissions('', publisherId, user._id);
-
-		if (isTeamMember) {
-			userType = constants.userTypes.CUSTODIAN;
-			authorised = true;
+		if (!isEmpty(isMetadataAdmin)) {
+			return { authorised: true, userType: constants.userTypes.ADMIN };
 		}
-		// If user is not authenticated as a custodian, check if they are an author or the main applicant
-		if (application.applicationStatus === constants.applicationStatuses.INPROGRESS || isEmpty(userType)) {
-			if (application.authorIds.includes(userId) || application.userId === userId) {
-				userType = constants.userTypes.APPLICANT;
-				authorised = true;
+
+		let publisherTeam = {};
+		if (!isEmpty(teams.find(team => team._id.toString() === publisherId))) {
+			publisherTeam = teams.find(team => team._id.toString() === publisherId);
+		}
+
+		if (!isEmpty(publisherTeam)) {
+			if (publisherTeam.roles.find(role => role.includes(constants.roleTypes.METADATA_EDITOR))) {
+				return { authorised: true, userType: constants.roleTypes.METADATA_EDITOR };
+			} else if (publisherTeam.roles.find(role => role.includes(constants.roleTypes.MANAGER))) {
+				return { authorised: true, userType: constants.roleTypes.MANAGER };
 			}
 		}
+
 		return { authorised, userType };
 	} catch (error) {
 		console.error(error);

@@ -2,6 +2,7 @@
 const _userTypes = {
 	CUSTODIAN: 'custodian',
 	APPLICANT: 'applicant',
+	ADMIN: 'admin',
 };
 
 const _formTypes = Object.freeze({

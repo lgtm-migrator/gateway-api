@@ -36,15 +36,13 @@ const getTeamById = async (req, res) => {
 const getTeamMembers = async (req, res) => {
 	try {
 		// 1. Get the team from the database
-		const team = await TeamModel.findOne({ _id: req.params.id })
-			.populate({
-				path: 'users',
-				populate: {
-					path: 'additionalInfo',
-					select: 'organisation bio showOrganisation showBio',
-				},
-			})
-			.lean();
+		const team = await TeamModel.findOne({ _id: req.params.id }).populate({
+			path: 'users',
+			populate: {
+				path: 'additionalInfo',
+				select: 'organisation bio showOrganisation showBio',
+			},
+		});
 		if (!team) {
 			return res.status(404).json({ success: false });
 		}
