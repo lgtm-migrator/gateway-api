@@ -114,10 +114,10 @@ module.exports = {
 			const currentVersionId = req.body.currentVersionId || null;
 
 			//Check user type and authentication to submit application
-			/* let { authorised, userType } = await datasetonboardingUtil.getUserPermissionsForDataset(currentVersionId, req.user);
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(currentVersionId, req.user);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			} */
+			}
 
 			//If no publisher then return error
 			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Dataset publisher could not be found.' });
@@ -231,7 +231,7 @@ module.exports = {
 				body: data,
 			} = req;
 			// 2. Check user type and authentication to submit application
-			let { authorised, userType } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
@@ -311,7 +311,7 @@ module.exports = {
 			if (!id) return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
 
 			// 3. Check user type and authentication to submit dataset
-			let { authorised, userType } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
@@ -338,13 +338,13 @@ module.exports = {
 			// 1. Id is the _id object in MongoDb not the generated id or dataset Id
 			// 2. Get the userId
 			const id = req.params.id || null;
-			let { _id, id: userId, firstname, lastname } = req.user;
+			let { firstname, lastname } = req.user;
 			let { applicationStatus, applicationStatusDesc = '' } = req.body;
 
 			if (!id) return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
 
 			// 3. Check user type and authentication to submit application
-			let { authorised, userType } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
@@ -742,7 +742,7 @@ module.exports = {
 			let id = req.params.id;
 
 			//Check user type and authentication to submit application
-			let { authorised, userType } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
