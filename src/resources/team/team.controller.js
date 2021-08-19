@@ -1,11 +1,10 @@
-import _ from 'lodash';
-
+import { isEmpty, has, difference, includes, isNull, filter, some } from 'lodash';
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import notificationBuilder from '../utilities/notificationBuilder';
 import constants from '../utilities/constants.util';
- 
+
 // GET api/v1/teams/:id
 const getTeamById = async (req, res) => {
 	try {
@@ -43,19 +42,23 @@ const getTeamMembers = async (req, res) => {
 				path: 'additionalInfo',
 				select: 'organisation bio showOrganisation showBio',
 			},
-		}).lean();
+		});
 		if (!team) {
 			return res.status(404).json({ success: false });
 		}
 		// 2. Check the current user is a member of the team
-		let authorised = checkTeamPermissions('', team, req.user._id);
-		// 3. If not return unauthorised
+		let authorised = checkTeamPermissions('', team.toObject(), req.user._id);
+		// 3. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 4. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 4. Format response to include user info
+		// 5. Format response to include user info
 		let users = formatTeamUsers(team);
-		// 5. Return team members
+		// 6. Return team members
 		return res.status(200).json({ success: true, members: users });
 	} catch (err) {
 		console.error(err.message);
@@ -66,28 +69,32 @@ const getTeamMembers = async (req, res) => {
 const formatTeamUsers = team => {
 	let { users = [] } = team;
 	users = users.map(user => {
-		let {
-			firstname,
-			lastname,
-			id,
-			_id,
-			email,
-			additionalInfo: { organisation, bio, showOrganisation, showBio },
-		} = user;
-		let userMember = team.members.find(el => el.memberid.toString() === user._id.toString());
-		let { roles = [] } = userMember;
-		return {
-			firstname,
-			lastname,
-			id,
-			_id,
-			email,
-			roles,
-			organisation: showOrganisation ? organisation : '',
-			bio: showBio ? bio : '',
-		};
+		if (user.id) {
+			let {
+				firstname,
+				lastname,
+				id,
+				_id,
+				email,
+				additionalInfo: { organisation, bio, showOrganisation, showBio },
+			} = user;
+			let userMember = team.members.find(el => el.memberid.toString() === user._id.toString());
+			let { roles = [] } = userMember;
+			return {
+				firstname,
+				lastname,
+				id,
+				_id,
+				email,
+				roles,
+				organisation: showOrganisation ? organisation : '',
+				bio: showBio ? bio : '',
+			};
+		}
 	});
-	return users;
+	return users.filter(user => {
+		return user;
+	});
 };
 
 /**
@@ -116,11 +123,15 @@ const addTeamMembers = async (req, res) => {
 		}
 		// 4. Ensure the user has permissions to perform this operation
 		let authorised = checkTeamPermissions('manager', team.toObject(), req.user._id);
-		// 5. If not return unauthorised
+		// 5. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 6. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 6. Filter out any existing members to avoid duplication
+		// 7. Filter out any existing members to avoid duplication
 		let teamObj = team.toObject();
 		newMembers = [...newMembers].filter(newMem => !teamObj.members.some(mem => newMem.memberid.toString() === mem.memberid.toString()));
 
@@ -260,19 +271,19 @@ const updateNotifications = async (req, res) => {
 		let missingOptIns = {};
 
 		// 9. if member has notifications - backend check to ensure optIn is true if team notifications opted out for member
-		if (!_.isEmpty(memberNotifications) && !_.isEmpty(teamNotifications)) {
+		if (!isEmpty(memberNotifications) && !isEmpty(teamNotifications)) {
 			missingOptIns = findMissingOptIns(memberNotifications, teamNotifications);
 		}
 
 		// 10. return missingOptIns to FE and do not update
-		if (!_.isEmpty(missingOptIns)) return res.status(400).json({ success: false, message: missingOptIns });
+		if (!isEmpty(missingOptIns)) return res.status(400).json({ success: false, message: missingOptIns });
 
 		// 11. if manager updates team notifications, check if we have any team notifications optedOut
 		if (isManager) {
 			// 1. filter team.notification types that are opted out ie { optIn: false, ... }
 			const optedOutTeamNotifications = [...teamNotifications].filter(notification => !notification.optIn) || [];
 			// 2. if there are opted out team notifications find members who have these notifications turned off and turn on if any
-			if (!_.isEmpty(optedOutTeamNotifications)) {
+			if (!isEmpty(optedOutTeamNotifications)) {
 				// loop over each notification type that has optOut
 				optedOutTeamNotifications.forEach(teamNotification => {
 					// get notification type
@@ -282,7 +293,7 @@ const updateNotifications = async (req, res) => {
 						// get member notifications
 						let { notifications = [] } = member;
 						// if notifications exist
-						if (!_.isEmpty(notifications)) {
+						if (!isEmpty(notifications)) {
 							// find the notification by notificationType
 							let notificationIndex = notifications.findIndex(n => n.notificationType.toUpperCase() === notificationType.toUpperCase());
 							// if notificationType exists update optIn and notificationMessage
@@ -299,7 +310,7 @@ const updateNotifications = async (req, res) => {
 
 			// compare db / payload notifications for each type and send email ** when more types update email logic only to capture multiple types as it only outs one currently as per design ***
 			// check if team has team.notificaitons loop over db notifications array - process emails missing / added for the type if manager has saved
-			if (!_.isEmpty(notifications)) {
+			if (!isEmpty(notifications)) {
 				// get manager who has submitted the request
 				let manager = [...users].find(user => user._id.toString() === member.memberid.toString());
 
@@ -310,18 +321,18 @@ const updateNotifications = async (req, res) => {
 					const notificationPayload =
 						[...teamNotifications].find(n => n.notificationType.toUpperCase() === notificationType.toUpperCase()) || {};
 					// if found process next phase
-					if (!_.isEmpty(notificationPayload)) {
+					if (!isEmpty(notificationPayload)) {
 						//  get db subscribedEmails and rename to dbSubscribedEmails
 						let { subscribedEmails: dbSubscribedEmails, optIn: dbOptIn } = dbNotification;
 						//  get incoming subscribedEmails and rename to payLoadSubscribedEmails
 						let { subscribedEmails: payLoadSubscribedEmails, optIn: payLoadOptIn } = notificationPayload;
 						// compare team.notifications by notificationType subscribed emails against the incoming payload to get emails that have been removed
-						const removedEmails = _.difference([...dbSubscribedEmails], [...payLoadSubscribedEmails]) || [];
+						const removedEmails = difference([...dbSubscribedEmails], [...payLoadSubscribedEmails]) || [];
 						// compare incoming payload notificationTypes subscribed emails to get emails that have been added against db
-						const addedEmails = _.difference([...payLoadSubscribedEmails], [...dbSubscribedEmails]) || [];
+						const addedEmails = difference([...payLoadSubscribedEmails], [...dbSubscribedEmails]) || [];
 						// get all members who have notifications by the type
 						const subscribedMembersByType = filterMembersByNoticationTypes([...members], [notificationType]);
-						if (!_.isEmpty(subscribedMembersByType)) {
+						if (!isEmpty(subscribedMembersByType)) {
 							// build cleaner array of memberIds from subscribedMembersByType
 							const memberIds = [...subscribedMembersByType].map(m => m.memberid);
 							// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object in team
@@ -336,7 +347,7 @@ const updateNotifications = async (req, res) => {
 								emailAddresses: [],
 							};
 							// check if removed emails and send email subscribedEmails or if the emails are turned off
-							if (!_.isEmpty(removedEmails) || (dbOptIn && !payLoadOptIn)) {
+							if (!isEmpty(removedEmails) || (dbOptIn && !payLoadOptIn)) {
 								// update the options
 								options = {
 									...options,
@@ -371,7 +382,7 @@ const updateNotifications = async (req, res) => {
 								);
 							}
 							// check if added emails and send email to subscribedEmails or if the dbOpt is false but the manager is turning back on team notifications
-							if (!_.isEmpty(addedEmails) || (!dbOptIn && payLoadOptIn)) {
+							if (!isEmpty(addedEmails) || (!dbOptIn && payLoadOptIn)) {
 								// update options
 								options = {
 									...options,
@@ -483,11 +494,15 @@ const deleteTeamMember = async (req, res) => {
 		}
 		// 4. Ensure the user has permissions to perform this operation
 		let authorised = checkTeamPermissions('manager', team.toObject(), req.user._id);
-		// 5. If not return unauthorised
+		// 5. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 6. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 6. Ensure at least one manager will remain if this member is deleted
+		// 7. Ensure at least one manager will remain if this member is deleted
 		let { members = [], users = [] } = team;
 		let managerCount = members.filter(mem => mem.roles.includes('manager') && mem.memberid.toString() !== req.user._id.toString()).length;
 		if (managerCount === 0) {
@@ -496,7 +511,7 @@ const deleteTeamMember = async (req, res) => {
 				message: 'You cannot delete the last manager in the team',
 			});
 		}
-		// 7. Filter out removed member
+		// 8. Filter out removed member
 		let updatedMembers = [...members].filter(mem => mem.memberid.toString() !== memberid.toString());
 		if (members.length === updatedMembers.length) {
 			return res.status(400).json({
@@ -504,7 +519,7 @@ const deleteTeamMember = async (req, res) => {
 				message: 'The user requested for deletion is not a member of this team',
 			});
 		}
-		// 8. Update team model
+		// 9. Update team model
 		team.members = updatedMembers;
 		team.save(function (err) {
 			if (err) {
@@ -536,37 +551,37 @@ const deleteTeamMember = async (req, res) => {
  *
  */
 const getTeamsList = async (req, res) => {
-    try { 
-        // 1. Check the current user is a member of the HDR admin team
-        const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+	try {
+		// 1. Check the current user is a member of the HDR admin team
+		const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
 
-		const hdrAdminTeamMember = hdrAdminTeam.members.filter( member => member.memberid.toString() === req.user._id.toString() )
-		
-        // 2. If not return unauthorised 
-		if(_.isEmpty(hdrAdminTeamMember)){
+		const hdrAdminTeamMember = hdrAdminTeam.members.filter(member => member.memberid.toString() === req.user._id.toString());
+
+		// 2. If not return unauthorised
+		if (_.isEmpty(hdrAdminTeamMember)) {
 			return res.status(401).json({ success: false, message: 'Unauthorised' });
 		}
 
-		// 3. Get the publisher teams from the database 
+		// 3. Get the publisher teams from the database
 		const teams = await TeamModel.find(
 			{ type: 'publisher', active: true },
 			{
 				_id: 1,
-				updatedAt: 1, 
+				updatedAt: 1,
 				members: 1,
-				membersCount: {$size: '$members'} 
+				membersCount: { $size: '$members' },
 			}
 		)
 			.populate('publisher', { name: 1 })
 			.populate('users', { firstname: 1, lastname: 1 })
 			.lean();
-	
-        // 4. Return team
-        return res.status(200).json({ success: true, teams });
-    } catch (err) {
-        console.error(err.message);
-        return res.status(500).json(err.message);
-    }
+
+		// 4. Return team
+		return res.status(200).json({ success: true, teams });
+	} catch (err) {
+		console.error(err.message);
+		return res.status(500).json(err.message);
+	}
 };
 
 /**
@@ -578,7 +593,7 @@ const getTeamsList = async (req, res) => {
  */
 const checkTeamPermissions = (role, team, userId) => {
 	// 1. Ensure the team has associated members defined
-	if (_.has(team, 'members')) {
+	if (has(team, 'members')) {
 		// 2. Extract team members
 		let { members } = team;
 		// 3. Find the current user
@@ -591,6 +606,28 @@ const checkTeamPermissions = (role, team, userId) => {
 			}
 		}
 	}
+	return false;
+};
+
+const checkIfAdmin = (user, adminRoles) => {
+	let { teams } = user.toObject();
+	if (teams) {
+		teams = teams.map(team => {
+			let { publisher, type, members } = team;
+			let member = members.find(member => {
+				return member.memberid.toString() === user._id.toString();
+			});
+			let { roles } = member;
+			return { ...publisher, type, roles };
+		});
+	}
+	const isAdmin = teams.filter(team => team.type === constants.teamTypes.ADMIN);
+	if (!isEmpty(isAdmin)) {
+		if (isAdmin[0].roles.some(role => adminRoles.includes(role))) {
+			return true;
+		}
+	}
+
 	return false;
 };
 
@@ -610,7 +647,7 @@ const getTeamMembersByRole = (team, role) => {
  */
 const getTeamName = team => {
 	let teamObj = team.toObject();
-	if (_.has(teamObj, 'publisher') && !_.isNull(teamObj.publisher)) {
+	if (has(teamObj, 'publisher') && !isNull(teamObj.publisher)) {
 		let {
 			publisher: { name },
 		} = teamObj;
@@ -629,7 +666,7 @@ const getTeamName = team => {
  */
 const getTeamNotificationByType = (team = {}, notificationType = '') => {
 	let teamObj = team.toObject();
-	if (_.has(teamObj, 'notifications') && !_.isNull(teamObj.notifications) && !_.isEmpty(notificationType)) {
+	if (has(teamObj, 'notifications') && !isNull(teamObj.notifications) && !isEmpty(notificationType)) {
 		let { notifications } = teamObj;
 		let notification = [...notifications].find(n => n.notificationType.toUpperCase() === notificationType.toUpperCase());
 		if (typeof notification !== 'undefined') return notification;
@@ -640,14 +677,14 @@ const getTeamNotificationByType = (team = {}, notificationType = '') => {
 };
 
 const findTeamMemberById = (members = [], custodianManager = {}) => {
-	if (!_.isEmpty(members) && !_.isEmpty(custodianManager))
+	if (!isEmpty(members) && !isEmpty(custodianManager))
 		return [...members].find(member => member.memberid.toString() === custodianManager._id.toString()) || {};
 
 	return {};
 };
 
 const findByNotificationType = (notificaitons = [], notificationType = '') => {
-	if (!_.isEmpty(notificaitons) && !_.isEmpty(notificationType)) {
+	if (!isEmpty(notificaitons) && !isEmpty(notificationType)) {
 		return [...notificaitons].find(notification => notification.notificationType === notificationType) || {};
 	}
 	return {};
@@ -661,9 +698,9 @@ const findByNotificationType = (notificaitons = [], notificationType = '') => {
  * @return  {Array}                     [return all members with notification types]
  */
 const filterMembersByNoticationTypes = (members, notificationTypes) => {
-	return _.filter(members, member => {
-		return _.some(member.notifications, notification => {
-			return _.includes(notificationTypes, notification.notificationType);
+	return filter(members, member => {
+		return some(member.notifications, notification => {
+			return includes(notificationTypes, notification.notificationType);
 		});
 	});
 };
@@ -676,9 +713,9 @@ const filterMembersByNoticationTypes = (members, notificationTypes) => {
  * @return  {Array}                     [return all members with notification types]
  */
 const filterMembersByNoticationTypesOptIn = (members, notificationTypes) => {
-	return _.filter(members, member => {
-		return _.some(member.notifications, notification => {
-			return _.includes(notificationTypes, notification.notificationType) && notification.optIn;
+	return filter(members, member => {
+		return some(member.notifications, notification => {
+			return includes(notificationTypes, notification.notificationType) && notification.optIn;
 		});
 	});
 };
@@ -691,7 +728,7 @@ const filterMembersByNoticationTypesOptIn = (members, notificationTypes) => {
  * @return  {Array}                     [return all emails for memberIds from user aray]
  */
 const getMemberDetails = (memberIds = [], users = []) => {
-	if (!_.isEmpty(memberIds) && !_.isEmpty(users)) {
+	if (!isEmpty(memberIds) && !isEmpty(users)) {
 		return [...users].reduce(
 			(arr, user) => {
 				let { email, id } = user;
@@ -708,22 +745,22 @@ const getMemberDetails = (memberIds = [], users = []) => {
 
 const buildOptedInEmailList = (custodianManagers = [], team = {}, notificationType = '') => {
 	let { members = [] } = team;
-	if (!_.isEmpty(custodianManagers)) {
+	if (!isEmpty(custodianManagers)) {
 		// loop over custodianManagers
 		return [...custodianManagers].reduce((acc, custodianManager) => {
 			let custodianNotificationObj, member, notifications, optIn;
 			// if memebers exist only do the following
-			if (!_.isEmpty(members)) {
+			if (!isEmpty(members)) {
 				// find member in team.members array
 				member = findTeamMemberById(members, custodianManager);
-				if (!_.isEmpty(member)) {
+				if (!isEmpty(member)) {
 					// deconstruct members
 					({ notifications = [] } = member);
 					// if the custodian has notifications
-					if (!_.isEmpty(notifications)) {
+					if (!isEmpty(notifications)) {
 						// find the notification type in the notifications array
 						custodianNotificationObj = findByNotificationType(notifications, notificationType);
-						if (!_.isEmpty(custodianNotificationObj)) {
+						if (!isEmpty(custodianNotificationObj)) {
 							({ optIn } = custodianNotificationObj);
 							if (optIn) return [...acc, { email: custodianManager.email }];
 							else return acc;
@@ -748,7 +785,7 @@ const buildOptedInEmailList = (custodianManagers = [], team = {}, notificationTy
  * @return  {Array}                    		[formatted array of [{email: email}]]
  */
 const getTeamNotificationEmails = (optIn = false, subscribedEmails) => {
-	if (optIn && !_.isEmpty(subscribedEmails)) {
+	if (optIn && !isEmpty(subscribedEmails)) {
 		return [...subscribedEmails].map(email => ({ email }));
 	}
 
@@ -823,13 +860,13 @@ const createNotifications = async (type, context, team, user) => {
 
 const formatTeamNotifications = team => {
 	let { notifications = [] } = team;
-	if (!_.isEmpty(notifications)) {
+	if (!isEmpty(notifications)) {
 		// 1. reduce for mapping over team notifications
 		return [...notifications].reduce((arr, notification) => {
 			let teamNotificationEmails = [];
 			let { notificationType = '', optIn = false, subscribedEmails = [] } = notification;
 			// 2. check subscribedEmails has length
-			if (!_.isEmpty(subscribedEmails)) teamNotificationEmails = [...subscribedEmails].map(email => ({ value: email, error: '' }));
+			if (!isEmpty(subscribedEmails)) teamNotificationEmails = [...subscribedEmails].map(email => ({ value: email, error: '' }));
 			else teamNotificationEmails = [{ value: '', error: '' }];
 
 			// 3. return optimal payload for formated notification
@@ -855,7 +892,7 @@ const findMissingOptIns = (memberNotifications, teamNotifications) => {
 		let teamNotification =
 			[...teamNotifications].find(teamNotification => teamNotification.notificationType === memberNotificationType) || {};
 		// if the team has the same notification type test
-		if (!_.isEmpty(teamNotification)) {
+		if (!isEmpty(teamNotification)) {
 			let { notificationType, optIn: teamOptIn, subscribedEmails } = teamNotification;
 			// if both are turned off build and return new error
 			if ((!teamOptIn && !memberOptIn) || (!memberOptIn && subscribedEmails.length <= 0)) {
