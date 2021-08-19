@@ -187,6 +187,12 @@ export default class activityLogService {
 			case constants.activityLogEvents.PRESUBMISSION_MESSAGE:
 				this.logPresubmissionMessages(context);
 				break;
+			case constants.activityLogEvents.CONTEXTUAL_MESSAGE:
+				this.logContextualMessage(context);
+				break;
+			case constants.activityLogEvents.NOTE:
+				this.logNote(context);
+				break;
 			case constants.activityLogEvents.UPDATE_REQUESTED:
 				this.logUpdateRequestedEvent(context);
 				break;
@@ -725,42 +731,6 @@ export default class activityLogService {
 		await this.activityLogRepository.createActivityLogs(logs);
 	}
 
-	buildMessage(createdBy, userType, publisher, createdDate, messageBody, onClickScript) {
-		const sentTime = moment(createdDate).format('HH:mm');
-		const { firstname, lastname } = createdBy;
-		let plainText, detailedText, html, detailedHtml;
-
-		switch (userType) {
-			case constants.userTypes.APPLICANT:
-				plainText = `Message sent from applicant ${firstname} ${lastname}`;
-				detailedText = `${firstname} ${lastname}\n${messageBody}`;
-				html = `<a class='activity-log-detail-link' href='javascript:;' onClick='${onClickScript}'>Message</a> sent from applicant <b>${firstname} ${lastname}</b>`;
-				detailedHtml =
-					`<div class='activity-log-detail'>` +
-					`<div class='activity-log-detail-header'>${firstname} ${lastname}</div>` +
-					`<div class='activity-log-detail-row'>${messageBody}</div>` +
-					`</div>`;
-				break;
-			case constants.userTypes.CUSTODIAN:
-				plainText = `Message sent from ${firstname} ${lastname}`;
-				detailedText = `${firstname} ${lastname}\n${messageBody}`;
-				html = `<a class='activity-log-detail-link' href='javascript:;' onClick='${onClickScript}'>Message</a> sent from <b>${firstname} ${lastname} (${publisher})</b>`;
-				detailedHtml =
-					`<div class='activity-log-detail'>` +
-					`<div class='activity-log-detail-header'>${firstname} ${lastname} (${publisher})</div>` +
-					`<div class='activity-log-detail-row'>${messageBody}</div>` +
-					`</div>`;
-				break;
-		}
-
-		return {
-			html,
-			detailedHtml,
-			plainText,
-			detailedText,
-		};
-	}
-
 	async logDeadlinePassedEvent(context) {
 		const { accessRequest } = context;
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
@@ -835,5 +805,153 @@ export default class activityLogService {
 
 		// Save all logs relating to presubmissions messages
 		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logContextualMessage(context) {
+		const { accessRequest, user, userType, questionId, messageBody } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const questionInfo = this.getQuestionInfo(accessRequest, questionId);
+
+		const detailedHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}</div>` +
+			`<div class='activity-log-detail-row'>` +
+			`<div class='activity-log-detail-row-question'>Question</div>` +
+			`<div class='activity-log-detail-row-answer'>${questionInfo.question.question}</div>` +
+			`</div>` +
+			`<div class='activity-log-detail-row'>` +
+			`<div class='activity-log-detail-row-question'>Message</div>` +
+			`<div class='activity-log-detail-row-answer'>${messageBody}</div>` +
+			`</div>` +
+			`</div>`;
+
+		const detailedText = `${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}\nQuestion: ${
+			questionInfo.question.question
+		}\nMessage: ${messageBody}`;
+
+		const plainText =
+			userType === constants.userTypes.CUSTODIAN
+				? `Message sent from ${user.firstname} ${user.lastname}`
+				: `Message sent from applicant ${user.firstname} ${user.lastname}`;
+
+		const html =
+			userType === constants.userTypes.CUSTODIAN
+				? `<a class='activity-log-detail-link' href="${version.link}">Message</a> sent from <b>${user.firstname} ${user.lastname} (${accessRequest.publisher})</b>`
+				: `<a class='activity-log-detail-link' href="${version.link}">Message</a> sent from applicant <b>${user.firstname} ${user.lastname}</b>`;
+
+		const log = {
+			eventType: constants.activityLogEvents.CONTEXTUAL_MESSAGE,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			user: user._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN, constants.userTypes.APPLICANT],
+			detailedText,
+			detailedHtml,
+			plainText,
+			html,
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logNote(context) {
+		const { accessRequest, user, userType, questionId, messageBody } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const questionInfo = this.getQuestionInfo(accessRequest, questionId);
+
+		const detailedHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}</div>` +
+			`<div class='activity-log-detail-row'>` +
+			`<div class='activity-log-detail-row-question'>Question</div>` +
+			`<div class='activity-log-detail-row-answer'>${questionInfo.question.question}</div>` +
+			`</div>` +
+			`<div class='activity-log-detail-row'>` +
+			`<div class='activity-log-detail-row-question'>Note</div>` +
+			`<div class='activity-log-detail-row-answer'>${messageBody}</div>` +
+			`</div>` +
+			`</div>`;
+
+		const detailedText = `${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}\nQuestion: ${
+			questionInfo.question.question
+		}\n$Note: ${messageBody}`;
+
+		const plainText =
+			userType === constants.userTypes.CUSTODIAN
+				? `Note added by ${user.firstname} ${user.lastname}`
+				: `Note added by applicant ${user.firstname} ${user.lastname}`;
+
+		const html =
+			userType === constants.userTypes.CUSTODIAN
+				? `<a class='activity-log-detail-link' href="${version.link}">Note</a> added by <b>${user.firstname} ${user.lastname} (${accessRequest.publisher})</b>`
+				: `<a class='activity-log-detail-link' href="${version.link}">Note</a> added by applicant <b>${user.firstname} ${user.lastname}</b>`;
+
+		const log = {
+			eventType: constants.activityLogEvents.NOTE,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			user: user._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: userType,
+			detailedText,
+			plainText,
+			html,
+			detailedHtml,
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	getQuestionInfo(accessRequest, questionId) {
+		const questionSet = accessRequest.jsonSchema.questionSets.find(qs => qs.questions.find(question => question.questionId === questionId));
+
+		const questionPanel = accessRequest.jsonSchema.questionPanels.find(qp => qp.panelId === questionSet.questionSetId);
+
+		const page = accessRequest.jsonSchema.pages.find(p => p.pageId === questionPanel.pageId);
+
+		const question = this.getActiveQuestion(questionSet.questions, questionId);
+
+		return { questionSet, questionPanel, page, question };
+	}
+
+	buildMessage(createdBy, userType, publisher, createdDate, messageBody, onClickScript) {
+		const sentTime = moment(createdDate).format('HH:mm');
+		const { firstname, lastname } = createdBy;
+		let plainText, detailedText, html, detailedHtml;
+
+		switch (userType) {
+			case constants.userTypes.APPLICANT:
+				plainText = `Message sent from applicant ${firstname} ${lastname}`;
+				detailedText = `${firstname} ${lastname}\n${messageBody}`;
+				html = `<a class='activity-log-detail-link' href='javascript:;' onClick='${onClickScript}'>Message</a> sent from applicant <b>${firstname} ${lastname}</b>`;
+				detailedHtml =
+					`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${firstname} ${lastname}</div>` +
+					`<div class='activity-log-detail-row'>${messageBody}</div>` +
+					`</div>`;
+				break;
+			case constants.userTypes.CUSTODIAN:
+				plainText = `Message sent from ${firstname} ${lastname}`;
+				detailedText = `${firstname} ${lastname}\n${messageBody}`;
+				html = `<a class='activity-log-detail-link' href='javascript:;' onClick='${onClickScript}'>Message</a> sent from <b>${firstname} ${lastname} (${publisher})</b>`;
+				detailedHtml =
+					`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${firstname} ${lastname} (${publisher})</div>` +
+					`<div class='activity-log-detail-row'>${messageBody}</div>` +
+					`</div>`;
+				break;
+		}
+
+		return {
+			html,
+			detailedHtml,
+			plainText,
+			detailedText,
+		};
 	}
 }

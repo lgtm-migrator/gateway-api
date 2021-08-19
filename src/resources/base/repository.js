@@ -1,3 +1,5 @@
+import { isNaN } from 'lodash';
+
 export default class Repository {
 	constructor(Model) {
 		this.collection = Model;
@@ -8,9 +10,14 @@ export default class Repository {
 		//Build query
 		let queryObj = { ...query };
 
+		// Check if each param should be a Number.  Allows searching for a value in a Numbers array
+		Object.keys(queryObj).forEach(key => {
+			queryObj[key] = isNaN(queryObj[key] * 1) ? queryObj[key] : queryObj[key] * 1;
+		});
+
 		// Population from query
-		if(query.populate) {
-			populate = query.populate.split(',').join(' '); 
+		if (query.populate) {
+			populate = query.populate.split(',').join(' ');
 		}
 
 		// Filtering
@@ -123,9 +130,9 @@ export default class Repository {
 	}
 }
 
-export const processQueryParamOperators = (queryStr) => {
+export const processQueryParamOperators = queryStr => {
 	return queryStr.replace(/\"\b(gte|gt|lte|lt|eq)\b\":\"\b(\-?\d*\.?\d+)\b\"/g, (match, operator, value) => {
 		const parsedValue = parseFloat(value);
 		return `"$${operator}":${parsedValue}`;
 	});
-}
+};

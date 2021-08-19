@@ -12,6 +12,10 @@ const TopicSchema = new Schema(
 			default: '',
 			trim: true,
 		},
+		messageType: {
+			type: String,
+			enum: ['DAR_Message', 'DAR_Notes_Applicant', 'DAR_Notes_Custodian'],
+		},
 		recipients: [
 			{
 				type: Schema.Types.ObjectId,

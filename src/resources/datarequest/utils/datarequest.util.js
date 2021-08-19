@@ -17,12 +17,17 @@ const injectQuestionActions = (jsonSchema, userType, applicationStatus, role = '
 	)
 		return {
 			...jsonSchema,
-			questionActions: [constants.questionActions.guidance, constants.questionActions.updates],
+			questionActions: [
+				constants.questionActions.guidance,
+				constants.questionActions.messages,
+				constants.questionActions.notes,
+				constants.questionActions.updates,
+			],
 		};
 	else {
 		return {
 			...jsonSchema,
-			questionActions: [constants.questionActions.guidance],
+			questionActions: [constants.questionActions.guidance, constants.questionActions.messages, constants.questionActions.notes],
 		};
 	}
 };
@@ -42,7 +47,7 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 		} else if (has(application, 'publisherObj.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.publisherObj.team, _id);
 		}
-		if (isTeamMember) {
+		if (isTeamMember && (application.applicationStatus !== constants.applicationStatuses.INPROGRESS || application.isShared)) {
 			userType = constants.userTypes.CUSTODIAN;
 			authorised = true;
 		}
@@ -356,6 +361,38 @@ const extractRepeatedQuestionIds = questionAnswers => {
 	}, []);
 };
 
+const injectMessagesAndNotesCount = (jsonSchema, messages, notes) => {
+	let messageNotesArray = [];
+
+	messages.forEach(topic => {
+		messageNotesArray.push({ question: topic.subTitle, messageCount: topic.topicMessages.length, notesCount: 0 });
+	});
+
+	notes.forEach(topic => {
+		if (messageNotesArray.find(x => x.question === topic.subTitle)) {
+			let existingTopic = messageNotesArray.find(x => x.question === topic.subTitle);
+			existingTopic.notesCount = topic.topicMessages.length;
+		} else {
+			messageNotesArray.push({ question: topic.subTitle, messageCount: 0, notesCount: topic.topicMessages.length });
+		}
+	});
+
+	messageNotesArray.forEach(messageNoteQuestion => {
+		for (let questionPanel of jsonSchema.questionSets) {
+			let question = findQuestion(questionPanel.questions, messageNoteQuestion.question);
+			if (question) {
+				question.counts = {
+					messagesCount: messageNoteQuestion.messageCount,
+					notesCount: messageNoteQuestion.notesCount,
+				};
+				break;
+			}
+		}
+	});
+
+	return jsonSchema;
+};
+
 export default {
 	injectQuestionActions: injectQuestionActions,
 	getUserPermissionsForApplication: getUserPermissionsForApplication,
@@ -366,6 +403,7 @@ export default {
 	setQuestionState: setQuestionState,
 	cloneIntoExistingApplication: cloneIntoExistingApplication,
 	cloneIntoNewApplication: cloneIntoNewApplication,
+	injectMessagesAndNotesCount,
 	getLatestPublisherSchema: getLatestPublisherSchema,
 	containsUserRepeatedSections: containsUserRepeatedSections,
 	copyUserRepeatedSections: copyUserRepeatedSections,

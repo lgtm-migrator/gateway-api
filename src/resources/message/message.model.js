@@ -30,6 +30,7 @@ const MessageSchema = new Schema(
 				'team unlinked',
 				'edit',
 				'workflow',
+				'data access message sent',
 				'dataset submitted',
 				'dataset approved',
 				'dataset rejected',
@@ -48,6 +49,10 @@ const MessageSchema = new Schema(
 		createdBy: {
 			type: Schema.Types.ObjectId,
 			ref: 'User',
+		},
+		userType: {
+			type: String,
+			enum: ['applicant', 'custodian'],
 		},
 		createdDate: {
 			type: Date,

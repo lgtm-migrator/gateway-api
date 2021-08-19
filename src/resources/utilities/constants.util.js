@@ -49,267 +49,26 @@ const _questionActions = {
 		toolTip: 'Guidance',
 		order: 1,
 	},
+	messages: {
+		key: 'messages',
+		icon: 'far fa-comment-alt',
+		color: '#475da7',
+		toolTip: 'Messages',
+		order: 2,
+	},
+	notes: {
+		key: 'notes',
+		icon: 'far fa-edit',
+		color: '#475da7',
+		toolTip: 'Notes',
+		order: 3,
+	},
 	updates: {
 		key: 'requestAmendment',
 		icon: 'fas fa-exclamation-circle',
 		color: '#F0BB24',
 		toolTip: 'Request applicant updates answer',
-		order: 2,
-	},
-};
-
-const _userQuestionActions = {
-	custodian: {
-		reviewer: {
-			submitted: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			inReview: {
-				custodian: {
-					latestVersion: [
-						{
-							key: 'guidance',
-							icon: 'far fa-question-circle',
-							color: '#475da7',
-							toolTip: 'Guidance',
-							order: 1,
-						},
-					],
-					previousVersion: [
-						{
-							key: 'guidance',
-							icon: 'far fa-question-circle',
-							color: '#475da7',
-							toolTip: 'Guidance',
-							order: 1,
-						},
-					],
-				},
-				applicant: {
-					latestVersion: [
-						{
-							key: 'guidance',
-							icon: 'far fa-question-circle',
-							color: '#475da7',
-							toolTip: 'Guidance',
-							order: 1,
-						},
-					],
-					previousVersion: [
-						{
-							key: 'guidance',
-							icon: 'far fa-question-circle',
-							color: '#475da7',
-							toolTip: 'Guidance',
-							order: 1,
-						},
-					],
-				},
-			},
-			approved: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			['approved with conditions']: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			rejected: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			withdrawn: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-		},
-		manager: {
-			submitted: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			inReview: {
-				custodian: {
-					latestVersion: [
-						{
-							key: 'guidance',
-							icon: 'far fa-question-circle',
-							color: '#475da7',
-							toolTip: 'Guidance',
-							order: 1,
-						},
-						{
-							key: 'requestAmendment',
-							icon: 'fas fa-exclamation-circle',
-							color: '#F0BB24',
-							toolTip: 'Request applicant updates answer',
-							order: 2,
-						},
-					],
-					previousVersion: [
-						{
-							key: 'guidance',
-							icon: 'far fa-question-circle',
-							color: '#475da7',
-							toolTip: 'Guidance',
-							order: 1,
-						},
-					],
-				},
-				applicant: {
-					latestVersion: [
-						{
-							key: 'guidance',
-							icon: 'far fa-question-circle',
-							color: '#475da7',
-							toolTip: 'Guidance',
-							order: 1,
-						},
-					],
-					previousVersion: [
-						{
-							key: 'guidance',
-							icon: 'far fa-question-circle',
-							color: '#475da7',
-							toolTip: 'Guidance',
-							order: 1,
-						},
-					],
-				},
-			},
-			approved: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			['approved with conditions']: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			rejected: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			withdrawn: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-		},
-	},
-	applicant: {
-		inProgress: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		submitted: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		inReview: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		approved: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		['approved with conditions']: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		rejected: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		withdrawn: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
+		order: 4,
 	},
 };
 
@@ -392,6 +151,7 @@ const _notificationTypes = {
 	DATASETSUBMITTED: 'DatasetSubmitted',
 	DATASETAPPROVED: 'DatasetApproved',
 	DATASETREJECTED: 'DatasetRejected',
+	MESSAGESENT: 'MessageSent',
 };
 
 const _applicationStatuses = {
@@ -432,6 +192,12 @@ const _darPanelMapper = {
 	safepeople: 'Safe people',
 	safedata: 'Safe data',
 	safeoutputs: 'Safe outputs',
+};
+
+const _DARMessageTypes = {
+	DARMESSAGE: 'DAR_Message',
+	DARNOTESAPPLICANT: 'DAR_Notes_Applicant',
+	DARNOTESCUSTODIAN: 'DAR_Notes_Custodian',
 };
 
 // </DAR related enums>
@@ -496,6 +262,8 @@ const _activityLogEvents = {
 	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
 	DEADLINE_PASSED: 'deadlinePassed',
 	MANUAL_EVENT: 'manualEvent',
+	CONTEXTUAL_MESSAGE: 'contextualMessage',
+	NOTE: 'note',
 };
 
 const _activityLogTypes = {
@@ -515,7 +283,6 @@ export default {
 	teamNotificationMessages: _teamNotificationMessages,
 	teamNotificationTypesHuman: _teamNotificationTypesHuman,
 	teamNotificationEmailContentTypes: _teamNotificationEmailContentTypes,
-	userQuestionActions: _userQuestionActions,
 	questionActions: _questionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
@@ -534,5 +301,6 @@ export default {
 	activityLogEvents: _activityLogEvents,
 	activityLogTypes: _activityLogTypes,
 	systemGeneratedUser: _systemGeneratedUser,
-	activityLogNotifications: _activityLogNotifications
+	activityLogNotifications: _activityLogNotifications,
+	DARMessageTypes: _DARMessageTypes,
 };

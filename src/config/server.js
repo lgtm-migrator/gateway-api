@@ -52,7 +52,7 @@ configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
 
-var domains = [process.env.homeURL];
+var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
 
 var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
@@ -228,6 +228,8 @@ app.use('/api/v2/projects', require('../resources/project/v2/project.route'));
 app.use('/api/v1/papers', require('../resources/paper/v1/paper.route'));
 app.use('/api/v2/papers', require('../resources/paper/v2/paper.route'));
 
+app.use('/api/v1/cohorts', require('../resources/cohort/cohort.route'));
+
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
 app.use('/api/v1/collectioncounter', require('../resources/collections/collectioncounter.route'));
@@ -251,6 +253,8 @@ app.use('/api/v2/filters', require('../resources/filters/filters.route'));
 app.use('/api/v2/activitylog', require('../resources/activitylog/activitylog.route'));
 
 app.use('/api/v1/mailchimp', require('../services/mailchimp/mailchimp.route'));
+
+app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
 
 initialiseAuthentication(app);
 
