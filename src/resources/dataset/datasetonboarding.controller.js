@@ -114,10 +114,10 @@ module.exports = {
 			const currentVersionId = req.body.currentVersionId || null;
 
 			//Check user type and authentication to submit application
-			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(currentVersionId, req.user);
+			/* let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(currentVersionId, req.user);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			}
+			} */
 
 			//If no publisher then return error
 			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Dataset publisher could not be found.' });
