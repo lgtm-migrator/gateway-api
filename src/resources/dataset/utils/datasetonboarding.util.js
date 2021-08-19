@@ -19,23 +19,15 @@ var fs = require('fs');
  *
  * @return  {Object} authorised, userType	[return object containing the authorised and userType fields]
  */
-const getUserPermissionsForDataset = async (id, user) => {
+const getUserPermissionsForDataset = async (id, user, publisherId) => {
 	try {
 		let authorised = false,
 			userType = '';
 
 		// Return default unauthorised with no user type if incorrect params passed
-		if (!user || !id) {
+		if (!user || (!id && !publisherId)) {
 			return { authorised, userType };
 		}
-
-		let {
-			datasetv2: {
-				summary: {
-					publisher: { identifier: publisherId },
-				},
-			},
-		} = await Data.findOne({ _id: id }, { 'datasetv2.summary.publisher.identifier': 1 }).lean();
 
 		let { teams } = user.toObject();
 
@@ -59,6 +51,11 @@ const getUserPermissionsForDataset = async (id, user) => {
 
 		if (!isEmpty(isMetadataAdmin)) {
 			return { authorised: true, userType: constants.userTypes.ADMIN };
+		}
+
+		if (isEmpty(publisherId)) {
+			const publisher = await Data.findOne({ _id: id }, { 'datasetv2.summary.publisher.identifier': 1 }).lean();
+			publisherId = publisher.datasetv2.summary.publisher.identifier;
 		}
 
 		let publisherTeam = {};

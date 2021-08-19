@@ -114,7 +114,7 @@ module.exports = {
 			const currentVersionId = req.body.currentVersionId || null;
 
 			//Check user type and authentication to submit application
-			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(currentVersionId, req.user);
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(null, req.user, publisherID);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
