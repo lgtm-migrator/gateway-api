@@ -42,13 +42,7 @@ function createPublisher() {
 function createTeam(publisherId, timestamp) {
   let team = {
         active: true,
-        members: [
-          {
-            roles: [ 'manager' ],
-            memberid: '',
-            notifications: []
-          }
-        ],
+        members: [],
         type: 'publisher',
         notifications: []
   }
