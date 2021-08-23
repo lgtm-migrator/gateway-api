@@ -142,20 +142,18 @@ export default class DataRequestRepository extends Repository {
 	getFilesForApplicationById(id, options = {}) {
 		return DataRequestModel.findOne({
 			_id: id,
-		})
-			.populate([
-				{
-					path: 'publisherObj',
-					populate: {
-						path: 'team',
-					},
+		}).populate([
+			{
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
 				},
-				{
-					path: 'datasets dataset authors',
-					populate: { path: 'publisher', populate: { path: 'team' } },
-				},
-			])
-	}
+			},
+			{
+				path: 'datasets dataset authors',
+				populate: { path: 'publisher', populate: { path: 'team' } },
+			},
+		]);
 	}
 
 	getApplicationFormSchema(publisher) {
@@ -229,10 +227,9 @@ export default class DataRequestRepository extends Repository {
 	async syncRelatedVersions(versionIds, versionTree) {
 		const majorVersions = await DataRequestModel.find().where('_id').in(versionIds).select({ versionTree: 1 });
 
-		for(const version of majorVersions) {
-
+		for (const version of majorVersions) {
 			version.versionTree = versionTree;
-			
+
 			await version.save();
 		}
 	}
@@ -240,13 +237,13 @@ export default class DataRequestRepository extends Repository {
 	async updateFileStatus(versionIds, fileId, status) {
 		const majorVersions = await DataRequestModel.find({ _id: { $in: [versionIds] } }).select({ files: 1 });
 
-		for(const version of majorVersions) {
+		for (const version of majorVersions) {
 			const fileIndex = version.files.findIndex(file => file.fileId === fileId);
 
-			if(fileIndex === -1) continue;
+			if (fileIndex === -1) continue;
 
 			version.files[fileIndex].status = status;
-			
+
 			await version.save();
 		}
 	}
