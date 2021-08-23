@@ -17,11 +17,12 @@ export default class DataRequestClass extends Entity {
 		const versionIds = [];
 		// 1. Iterate through all versions in the tree
 		for (const versionKey in this.versionTree) {
-			const { applicationId, iterationId } = versions[versionKey];
+			const { applicationId, iterationId } = this.versionTree[versionKey];
 			// 2. If not unique or represents a minor version then ignore
-			if(versionIds.some(v => v === applicationId) || iterationId) continue;
-			// 3. If unique, push id to array for return
-			versionIds.push(applicationId);
+			if (!versionIds.some(v => v === applicationId) && !iterationId) {
+				// 3. If unique, push id to array for return
+				versionIds.push(applicationId);
+			}
 		}
 		// 4. Return unique array
 		return versionIds;
@@ -91,7 +92,7 @@ export const buildVersionTree = accessRecord => {
 		versionTree = {},
 		amendmentIterations = [],
 		applicationType = constants.submissionTypes.INITIAL,
-		applicationStatus = constants.applicationStatuses.INPROGRESS
+		applicationStatus = constants.applicationStatuses.INPROGRESS,
 	} = accessRecord;
 	const versionKey = majorVersion ? majorVersion.toString() : '1.0';
 
@@ -126,7 +127,7 @@ export const buildVersionTree = accessRecord => {
 			detailedTitle,
 			link: `/data-access-request/${applicationId}?version=${versionKey}.0`,
 			applicationType,
-			applicationStatus
+			applicationStatus,
 		},
 	};
 
