@@ -1180,9 +1180,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			//4. Update all versions of application using version tree
-			await this.dataRequestService.updateFileStatus(accessRecord, fileId).catch(err => {
-				logger.logError(err, logCategory);
-			});
+			await this.dataRequestService.updateFileStatus(accessRecord, fileId);
 
 			return res.status(200).json({
 				success: true,
