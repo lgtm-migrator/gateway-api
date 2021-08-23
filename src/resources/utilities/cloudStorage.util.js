@@ -41,7 +41,7 @@ export const getFile = (file, fileId, id) =>
 		//  2. set option for file dest
 		let options = {
 			// The path to which the file should be downloaded
-			destination: `${process.env.TMPDIR}${id}/${fileId}_${file}`,
+			destination: `${process.env.TMPDIR}${id.toString()}/${fileId}_${file}`,
 		};
 		// create tmp
 		const sanitisedId = id.toString().replace(/[^0-9a-z]/gi, '');
