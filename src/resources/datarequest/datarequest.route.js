@@ -29,7 +29,7 @@ const dataRequestController = new DataRequestController(
 	messageService,
 	activityLogService
 );
-const amendmentController = new AmendmentController(amendmentService, dataRequestService);
+const amendmentController = new AmendmentController(amendmentService, dataRequestService, activityLogService);
 const router = express.Router();
 
 // @route   GET api/v1/data-access-request

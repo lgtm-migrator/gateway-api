@@ -6,6 +6,8 @@ import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
 import { processFile, fileStatus } from '../utilities/cloudStorage.util';
 import { amendmentService } from '../datarequest/amendment/dependency';
+import { activityLogService } from '../activitylog/dependency';
+import mongoose from 'mongoose';
 
 export default class DataRequestService {
 	constructor(dataRequestRepository) {
@@ -60,6 +62,10 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getDatasetsForApplicationByIds(arrDatasetIds);
 	}
 
+	linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus) {
+		return this.dataRequestRepository.linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus);
+	}
+
 	async deleteApplication(accessRecord) {
 		await this.dataRequestRepository.deleteApplicationById(accessRecord._id);
 
@@ -76,19 +82,26 @@ export default class DataRequestService {
 		return this.dataRequestRepository.replaceApplicationById(id, newAcessRecord);
 	}
 
-	async buildApplicationForm(publisher, datasetIds, datasetTitles, requestingUserId) {
-		// 1. Get schema to base application form on
+	async buildApplicationForm(publisher, datasetIds, datasetTitles, userId, userObjectId) {
+		// 1. Create new identifier for application
+		const _id = mongoose.Types.ObjectId();
+
+		// 2. Get schema to base application form on
 		const dataRequestSchema = await this.dataRequestRepository.getApplicationFormSchema(publisher);
 
-		// 2. Build up the accessModel for the user
+		// 3. Build up the accessModel for the user
 		const { jsonSchema, _id: schemaId, isCloneable = false } = dataRequestSchema;
 
-		// 3. Set form type
+		// 4. Set form type
 		const formType = schemaId.toString === constants.enquiryFormId ? constants.formTypes.Enquiry : constants.formTypes.Extended5Safe;
 
-		// 4. Create new DataRequestModel
+		// 5. Link any matching presubmission message topics to this application
+		const presubmissionTopic = await this.linkRelatedPresubmissionTopic(_id, userObjectId, datasetIds, publisher);
+
+		// 6. Create new DataRequestModel
 		return {
-			userId: requestingUserId,
+			_id,
+			userId,
 			datasetIds,
 			datasetTitles,
 			isCloneable,
@@ -99,8 +112,35 @@ export default class DataRequestService {
 			aboutApplication: {},
 			applicationStatus: constants.applicationStatuses.INPROGRESS,
 			formType,
+			presubmissionTopic,
 		};
 	}
+
+	async linkRelatedPresubmissionTopic(applicationId, userObjectId, datasetIds, publisher) {
+		// Find a topic with matching datasets
+		let topicId;
+		const topic = await this.dataRequestRepository.getRelatedPresubmissionTopic(userObjectId, datasetIds);
+
+		if (topic) {
+			// If topic is found, create linkage from topic to application
+			topicId = topic._id;
+			topic.linkedDataAccessApplication = applicationId;
+			topic.save(err => {
+				if (!err) {
+					// Create activity log entries based on existing messages in topic
+					activityLogService.logActivity(constants.activityLogEvents.PRESUBMISSION_MESSAGE, {
+						messages: topic.topicMessages,
+						applicationId,
+						publisher
+					});
+				}
+			});
+		}
+
+		return topicId;
+	}
+
+	
 
 	async createApplication(data, applicationType = constants.submissionTypes.INITIAL, versionTree = {}) {
 		let application = await this.dataRequestRepository.createApplication(data);
@@ -499,7 +539,7 @@ export default class DataRequestService {
 
 		requestedVersions.forEach(accessRecord => {
 			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
-				accessRecord,
+				accessRecord.toObject(),
 				requestingUserId,
 				requestingUserObjectId
 			);

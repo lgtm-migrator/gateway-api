@@ -13,6 +13,7 @@ const ActivityLogSchema = new Schema({
 	detailedText: String,
 	html: { type: String, required: true },
 	detailedHtml: String,
+	isPresubmission: Boolean
 });
 
 export const ActivityLog = model('ActivityLog', ActivityLogSchema);

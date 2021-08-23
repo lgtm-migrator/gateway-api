@@ -12,6 +12,18 @@ export default class ActivityLogRepository extends Repository {
 	}
 
 	async createActivityLog(log) {
-		return this.create(log);
+		return await this.create(log);
+	}
+
+	async createActivityLogs(logs) {
+		return ActivityLog.insertMany(logs);
+	}
+
+	getLog(id, type) {
+		return ActivityLog.findOne({ _id: id, logType: type }, 'versionId eventType plainText timestamp').lean();
+	}
+
+	deleteLog(id) {
+		return ActivityLog.deleteOne({ _id: id });
 	}
 }

@@ -8,12 +8,49 @@ export default class activityLogService {
 		this.activityLogRepository = activityLogRepository;
 	}
 
-	async searchLogs(versionIds, type, userType, versions) {
+	async searchLogs(versionIds, type, userType, versions, includePresubmission) {
 		const logs = await this.activityLogRepository.searchLogs(versionIds, type, userType);
-		return this.formatLogs(logs, versions);
+		return this.formatLogs(logs, versions, includePresubmission);
 	}
 
-	formatLogs(logs, versions) {
+	getLog(id, type) {
+		return this.activityLogRepository.getLog(id, type);
+	}
+
+	deleteLog(id) {
+		return this.activityLogRepository.deleteLog(id);
+	}
+
+	getActiveQuestion(questionsArr, questionId) {
+		let child;
+
+		if (!questionsArr) return;
+
+		for (const questionObj of questionsArr) {
+			if (questionObj.questionId === questionId) return questionObj;
+
+			if (typeof questionObj.input === 'object' && typeof questionObj.input.options !== 'undefined') {
+				questionObj.input.options
+					.filter(option => {
+						return typeof option.conditionalQuestions !== 'undefined' && option.conditionalQuestions.length > 0;
+					})
+					.forEach(option => {
+						if (!child) {
+							child = this.getActiveQuestion(option.conditionalQuestions, questionId);
+						}
+					});
+			}
+
+			if (child) return child;
+		}
+	}
+
+	formatLogs(logs, versions, includePresubmission = true) {
+		let presubmissionEvents = [];
+		if (includePresubmission) {
+			presubmissionEvents = this.buildPresubmissionEvents(logs);
+		}
+
 		const formattedVersionEvents = versions.reduce((arr, version) => {
 			const {
 				majorVersion: majorVersionNumber,
@@ -63,13 +100,39 @@ export default class activityLogService {
 			return arr;
 		}, []);
 
+		if (!isEmpty(presubmissionEvents)) {
+			formattedVersionEvents.push(presubmissionEvents);
+		}
+
 		const orderedVersionEvents = orderBy(formattedVersionEvents, ['versionNumber'], ['desc']);
 
 		return orderedVersionEvents;
 	}
 
+	buildPresubmissionEvents(logs) {
+		const presubmissionEvents = this.getEventsForVersion(logs);
+
+		if (isEmpty(presubmissionEvents)) return {};
+
+		const firstMessageDate = moment(last(presubmissionEvents).timestamp).format('D MMMM YYYY');
+
+		return {
+			version: `Pre-submission`,
+			versionNumber: 0,
+			meta: {
+				dateSubmitted: firstMessageDate,
+			},
+			events: presubmissionEvents,
+		};
+	}
+
 	getEventsForVersion(logs, versionId) {
-		const versionEvents = logs.filter(log => log.versionId.toString() === versionId.toString());
+		let versionEvents = [];
+		if (versionId) {
+			versionEvents = logs.filter(log => log.versionId.toString() === versionId.toString() && !log.isPresubmission);
+		} else {
+			versionEvents = logs.filter(log => log.isPresubmission);
+		}
 		const orderedVersionEvents = orderBy(versionEvents, ['timestamp'], ['desc']);
 		return orderedVersionEvents;
 	}
@@ -244,6 +307,38 @@ export default class activityLogService {
 			case constants.activityLogEvents.COLLABORATOR_REMOVED:
 				this.logCollaboratorRemovedEvent(context);
 				break;
+			case constants.activityLogEvents.PRESUBMISSION_MESSAGE:
+				this.logPresubmissionMessages(context);
+				break;
+			case constants.activityLogEvents.CONTEXTUAL_MESSAGE:
+				this.logContextualMessage(context);
+				break;
+			case constants.activityLogEvents.NOTE:
+				this.logNote(context);
+				break;
+			case constants.activityLogEvents.UPDATE_REQUESTED:
+				this.logUpdateRequestedEvent(context);
+				break;
+			case constants.activityLogEvents.WORKFLOW_ASSIGNED:
+				this.logWorkflowAssignedEvent(context);
+				break;
+			case constants.activityLogEvents.REVIEW_PHASE_STARTED:
+				this.logReviewPhaseStartedEvent(context);
+				break;
+			case constants.activityLogEvents.RECOMMENDATION_WITH_ISSUE:
+				this.logReccomendationWithIssueEvent(context);
+				break;
+			case constants.activityLogEvents.RECOMMENDATION_WITH_NO_ISSUE:
+				this.logReccomendationWithNoIssueEvent(context);
+				break;
+			case constants.activityLogEvents.DEADLINE_PASSED:
+				this.logDeadlinePassedEvent(context);
+				break;
+			case constants.activityLogEvents.FINAL_DECISION_REQUIRED:
+				this.logFinalDecisionRequiredEvent(context);
+				break;
+			case constants.activityLogEvents.MANUAL_EVENT:
+				this.logManualEvent(context);
 		}
 	}
 
@@ -289,14 +384,20 @@ export default class activityLogService {
 		const { accessRequest, user } = context;
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
 
+		const detHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>Conditions:</div>` +
+			`<div class='activity-log-detail-row'>${accessRequest.applicationStatusDesc}</div>` +
+			`</div>`;
+
 		const log = {
 			eventType: constants.activityLogEvents.APPLICATION_APPROVED_WITH_CONDITIONS,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Application approved with conditions by custodian manager ${user.firstname} ${user.lastname}`,
-			detailedText: `Conditions: ${accessRequest.applicationStatusDesc}`,
+			detailedText: `Conditions:\n${accessRequest.applicationStatusDesc}`,
 			html: `<b>Application approved with conditions</b> by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
-			detailedHtml: `Conditions: ${accessRequest.applicationStatusDesc}`,
+			detailedHtml: detHtml,
 			user: user._id,
 			version: version.detailedTitle,
 			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
@@ -310,14 +411,20 @@ export default class activityLogService {
 		const { accessRequest, user } = context;
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
 
+		const detHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>Reason for rejection:</div>` +
+			`<div class='activity-log-detail-row'>${accessRequest.applicationStatusDesc}</div>` +
+			`</div>`;
+
 		const log = {
 			eventType: constants.activityLogEvents.APPLICATION_REJECTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Application rejected by custodian manager ${user.firstname} ${user.lastname}`,
-			detailedText: `Reason for rejection: ${accessRequest.applicationStatusDesc}`,
+			detailedText: `Reason for rejection:\n${accessRequest.applicationStatusDesc}`,
 			html: `<b>Application rejected</b> by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
-			detailedHtml: `Reason for rejection: ${accessRequest.applicationStatusDesc}`,
+			detailedHtml: detHtml,
 			user: user._id,
 			version: version.detailedTitle,
 			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
@@ -336,7 +443,7 @@ export default class activityLogService {
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Version 1 application has been submitted by applicant ${user.firstname} ${user.lastname}`,
-			html: `<a href="${version.link}">Version 1</a> application has been submitted by applicant <b>${user.firstname} ${user.lastname}</b>`,
+			html: `<a class='activity-log-detail-link' href="${version.link}">Version 1</a> application has been submitted by applicant <b>${user.firstname} ${user.lastname}</b>`,
 			user: user._id,
 			version: version.detailedTitle,
 			versionId: version.applicationId,
@@ -350,14 +457,20 @@ export default class activityLogService {
 		const { accessRequest, user } = context;
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.0`];
 
+		const detHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>Reason for amendment:</div>` +
+			`<div class='activity-log-detail-row'>${accessRequest.submissionDescription}</div>` +
+			`</div>`;
+
 		const log = {
 			eventType: constants.activityLogEvents.AMENDMENT_SUBMITTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
-			plainText: `Amendments submitted by applicant ${user.firstname} ${user.lastname}. ${version.displayTitle} of this application has been created.`,
-			detailedText: `Reason for amendment: ${accessRequest.submissionDescription}`,
-			html: `Amendments submitted by applicant <b>${user.firstname} ${user.lastname}</b>. <a href="${version.link}">${version.displayTitle}</a> of this application has been created.`,
-			detailedHtml: `Reason for amendment: ${accessRequest.submissionDescription}`,
+			plainText: `Amendment submitted by applicant ${user.firstname} ${user.lastname}. ${version.displayTitle} of this application has been created.`,
+			detailedText: `Reason for amendment:\n${accessRequest.submissionDescription}`,
+			html: `<a class='activity-log-detail-link' href="${version.link}">Amendment submitted</a> by applicant <b>${user.firstname} ${user.lastname}</b>. <a class='activity-log-detail-link' href="${version.link}">${version.displayTitle}</a> of this application has been created.`,
+			detailedHtml: detHtml,
 			user: user._id,
 			version: version.detailedTitle,
 			versionId: version.applicationId,
@@ -369,17 +482,143 @@ export default class activityLogService {
 
 	async logUpdatesSubmittedEvent(context) {
 		const { accessRequest, user } = context;
-		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
 
-		const log = {
+		const currentVersion = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+		const previousVersion = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length - 1}`];
+
+		const questionAnswers = accessRequest.amendmentIterations[accessRequest.amendmentIterations.length - 1].questionAnswers;
+		const numberOfUpdatesSubmitted = Object.keys(questionAnswers).length;
+
+		let detHtml = '';
+		let detText = '';
+
+		Object.keys(questionAnswers).forEach(questionId => {
+			const previousAnswer = accessRequest.questionAnswers[questionId];
+			const questionSet = accessRequest.jsonSchema.questionSets.find(qs => qs.questionSetId === questionAnswers[questionId].questionSetId);
+
+			const updatedAnswer = questionAnswers[questionId].answer;
+
+			const questionPanel = accessRequest.jsonSchema.questionPanels.find(qp => qp.panelId === questionSet.questionSetId);
+
+			const page = accessRequest.jsonSchema.pages.find(p => p.pageId === questionPanel.pageId);
+
+			const question = this.getActiveQuestion(questionSet.questions, questionId);
+
+			detHtml = detHtml.concat(
+				`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${page.title + ' | ' + questionSet.questionSetHeader}</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Question</div>` +
+					`<div class='activity-log-detail-row-answer'>${question.question}</div>` +
+					`</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'> Previous Answer</div>` +
+					`<div class='activity-log-detail-row-answer'>${previousAnswer}</div>` +
+					`</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'> Updated Answer</div>` +
+					`<div class='activity-log-detail-row-answer'>${updatedAnswer}</div>` +
+					`</div>` +
+					`</div>`
+			);
+
+			detText = detText.concat(
+				`${page.title + ' | ' + questionSet.questionSetHeader}\nQuestion: ${
+					question.question
+				}\nPrevious Answer: ${previousAnswer}\nUpdated Answer: ${updatedAnswer}\n\n`
+			);
+		});
+
+		const logUpdate = {
+			eventType: constants.activityLogEvents.UPDATE_SUBMITTED,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			detailedText: detText,
+			plainText: `${numberOfUpdatesSubmitted} ${numberOfUpdatesSubmitted > 1 ? 'updates' : 'update'} requested by custodian manager ${
+				user.firstname
+			} ${user.lastname}.`,
+			html: `<a class='activity-log-detail-link' href="${previousVersion.link}">${numberOfUpdatesSubmitted} ${
+				numberOfUpdatesSubmitted > 1 ? ' updates ' : ' update '
+			} submitted</a> by applicant <b>${user.firstname} ${user.lastname}</b>.`,
+			detailedHtml: detHtml,
+			user: user._id,
+			version: previousVersion.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 1 ? previousVersion.iterationId : previousVersion.applicationId,
+			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(logUpdate);
+
+		const logUpdates = {
 			eventType: constants.activityLogEvents.UPDATES_SUBMITTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
-			plainText: `Updates submitted by applicant ${user.firstname} ${user.lastname}. ${version.displayTitle} of this application has been created.`,
-			html: `Updates submitted by applicant <b>${user.firstname} ${user.lastname}</b>. <a href="${version.link}">${version.displayTitle}</a> of this application has been created.`,
+			plainText: `Updates submitted by applicant ${user.firstname} ${user.lastname}. ${currentVersion.displayTitle} of this application has been created.`,
+			html: `<a class='activity-log-detail-link' href="${currentVersion.link}">Updates submitted</a> by applicant <b>${user.firstname} ${user.lastname}</b>. <a class='activity-log-detail-link' href="${currentVersion.link}">${currentVersion.displayTitle}</a> of this application has been created.`,
+			user: user._id,
+			version: currentVersion.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? currentVersion.iterationId : currentVersion.applicationId,
+			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(logUpdates);
+	}
+
+	async logUpdateRequestedEvent(context) {
+		const { accessRequest, user } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length - 1}`];
+
+		const questionAnswers = accessRequest.amendmentIterations[accessRequest.amendmentIterations.length - 1].questionAnswers;
+		const numberOfUpdatesRequested = Object.keys(questionAnswers).length;
+
+		let detHtml = '';
+		let detText = '';
+
+		Object.keys(questionAnswers).forEach(questionId => {
+			const answer = accessRequest.questionAnswers[questionId];
+			const questionSet = accessRequest.jsonSchema.questionSets.find(qs => qs.questionSetId === questionAnswers[questionId].questionSetId);
+
+			const questionPanel = accessRequest.jsonSchema.questionPanels.find(qp => qp.panelId === questionSet.questionSetId);
+
+			const page = accessRequest.jsonSchema.pages.find(p => p.pageId === questionPanel.pageId);
+
+			const question = this.getActiveQuestion(questionSet.questions, questionId);
+
+			detHtml = detHtml.concat(
+				`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${page.title + ' | ' + questionSet.questionSetHeader}</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Question</div>` +
+					`<div class='activity-log-detail-row-answer'>${question.question}</div>` +
+					`</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Answer</div>` +
+					`<div class='activity-log-detail-row-answer'>${answer}</div>` +
+					`</div>` +
+					`</div>`
+			);
+
+			detText = detText.concat(
+				`${page.title + ' | ' + questionSet.questionSetHeader}\nQuestion: ${question.question}\nAnswer: ${answer}\n\n`
+			);
+		});
+
+		const log = {
+			eventType: constants.activityLogEvents.UPDATE_REQUESTED,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+
+			plainText: `${numberOfUpdatesRequested} ${numberOfUpdatesRequested > 1 ? 'updates' : 'update'} requested by custodian manager ${
+				user.firstname
+			} ${user.lastname}.`,
+			detailedText: detText,
+			html: `<a class='activity-log-detail-link' href="${version.link}">${numberOfUpdatesRequested} ${
+				numberOfUpdatesRequested > 1 ? ' updates ' : ' update '
+			} requested</a> by custodian manager <b>${user.firstname} ${user.lastname}</b>.`,
+			detailedHtml: detHtml,
 			user: user._id,
 			version: version.detailedTitle,
-			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			versionId: accessRequest.amendmentIterations.length > 1 ? version.iterationId : version.applicationId,
 			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
 		};
 
@@ -430,5 +669,422 @@ export default class activityLogService {
 		};
 
 		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logWorkflowAssignedEvent(context) {
+		const { accessRequest, user } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const { workflow } = accessRequest;
+
+		const detHtml =
+			`<div class='activity-log-detail'><div class='activity-log-detail-header'>${workflow.workflowName}</div>` +
+			workflow.steps
+				.map(step => {
+					return (
+						`<div class='activity-log-detail-row'>` +
+						`<div class='activity-log-detail-row-question'>${step.stepName}</div>` +
+						`<div class='activity-log-detail-row-answer'>${step.reviewers.map(
+							reviewer => reviewer.firstname + ' ' + reviewer.lastname
+						)}</div>` +
+						`</div>`
+					);
+				})
+				.join(' ') +
+			`</div>`;
+
+		const detText = `${workflow.workflowName}\n${workflow.steps
+			.map(step => {
+				return step.stepName + ' ' + step.reviewers.map(reviewer => reviewer.firstname + ' ' + reviewer.lastname).join() + '\n';
+			})
+			.join('')}`;
+
+		const log = {
+			eventType: constants.activityLogEvents.WORKFLOW_ASSIGNED,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			plainText: `${workflow.workflowName} has been assigned by custodian manager ${user.firstname} ${user.lastname}`,
+			detailedText: detText,
+			html: `<a class='activity-log-detail-link' href="${version.link}">${workflow.workflowName}</a> has been assigned by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
+			detailedHtml: detHtml,
+			user: user._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logReviewPhaseStartedEvent(context) {
+		const { accessRequest, user } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const { workflow } = accessRequest;
+
+		const step = workflow.steps.find(step => step.active);
+
+		const log = {
+			eventType: constants.activityLogEvents.REVIEW_PHASE_STARTED,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			plainText: `${step.stepName} has started. ${workflow.steps.findIndex(step => step.active) + 1} out of ${
+				workflow.steps.length
+			} phases`,
+			html: `<a class='activity-log-detail-link' href="${version.link}">${step.stepName}</a> has started. <b>${
+				workflow.steps.findIndex(step => step.active) + 1
+			} out of ${workflow.steps.length} phases</b>`,
+			user: user._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logReccomendationWithIssueEvent(context) {
+		const { comments, accessRequest, user } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const detHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>Recommendation: Issues found</div>` +
+			`<div class='activity-log-detail-row'>${comments}</div>` +
+			`</div>`;
+
+		const detText = `Recommendation: Issues found\n${comments}`;
+
+		const log = {
+			eventType: constants.activityLogEvents.RECOMMENDATION_WITH_ISSUE,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			plainText: `Recommendation with issues found sent by reviewer ${user.firstname} ${user.lastname}`,
+			detailedText: detText,
+			html: `<a class='activity-log-detail-link' href="${version.link}">Recommendation with issues found</a> sent by reviewer <b>${user.firstname} ${user.lastname}</b>`,
+			detailedHtml: detHtml,
+			user: user._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logReccomendationWithNoIssueEvent(context) {
+		const { comments, accessRequest, user } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const detHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>Recommendation: No issues found</div>` +
+			`<div class='activity-log-detail-row'>${comments}</div>` +
+			`</div>`;
+
+		const detText = `Recommendation: No issues found\n${comments}`;
+
+		const log = {
+			eventType: constants.activityLogEvents.RECOMMENDATION_WITH_NO_ISSUE,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			plainText: `Recommendation with no issues found sent by reviewer ${user.firstname} ${user.lastname}`,
+			detailedText: detText,
+			html: `<a class='activity-log-detail-link' href="${version.link}">Recommendation with no issues found</a> sent by reviewer <b>${user.firstname} ${user.lastname}</b>`,
+			detailedHtml: detHtml,
+			user: user._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logFinalDecisionRequiredEvent(context) {
+		const { accessRequest, user } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const log = {
+			eventType: constants.activityLogEvents.FINAL_DECISION_REQUIRED,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			plainText: `Final decision required by custodian by custodian manager ${user.firstname} ${user.lastname}. All review phases completed`,
+			html: `<a class='activity-log-detail-link' href="${version.link}">Final decision</a> required by custodian by custodian manager <b>${user.firstname} ${user.lastname}. All review phases completed<b>`,
+			user: user._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logPresubmissionMessages(context) {
+		const logs = [];
+		const { applicationId, messages, publisher } = context;
+
+		// Create log for each message submitted
+		messages.forEach(message => {
+			const { createdBy, userType, createdDate } = message;
+
+			if (!userType) return;
+
+			const log = {
+				eventType: constants.activityLogEvents.PRESUBMISSION_MESSAGE,
+				logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+				timestamp: createdDate,
+				user: createdBy._id,
+				version: 'Pre-submission',
+				versionId: applicationId,
+				userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+				isPresubmission: true,
+				...this.buildMessage(
+					createdBy,
+					userType,
+					publisher,
+					createdDate,
+					message.messageDescription,
+					`window.currentComponent.toggleDrawer(&quot;${message.topic}&quot;)`
+				),
+			};
+			logs.push(log);
+		});
+		// Save all logs relating to presubmissions messages
+		await this.activityLogRepository.createActivityLogs(logs);
+	}
+
+	async logDeadlinePassedEvent(context) {
+		const { accessRequest } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const systemGeneratedUser = await UserModel.findOne({
+			firstname: constants.systemGeneratedUser.FIRSTNAME,
+			lastname: constants.systemGeneratedUser.LASTNAME,
+		});
+
+		const { workflow } = accessRequest;
+
+		const step = workflow.steps.find(step => step.active);
+
+		const { startDateTime, deadline } = step;
+		const dateDeadline = moment(startDateTime).add(deadline, 'days');
+		const daysSinceDeadlinePassed = moment().diff(dateDeadline, 'days');
+
+		const detHtml =
+			`<div class='activity-log-detail'><div class='activity-log-detail-row-question'>Recommendations required from:</div>` +
+			step.reviewers
+				.map(reviewer => {
+					return `<div class='activity-log-detail-row-answer'>` + reviewer.firstname + ' ' + reviewer.lastname + `</div>`;
+				})
+				.join('');
+		+`</div>`;
+
+		const detText =
+			`Recommendations required from:` +
+			step.reviewers
+				.map(reviewer => {
+					return `${reviewer.firstname + ' ' + reviewer.lastname}\n`;
+				})
+				.join('');
+
+		const log = {
+			eventType: constants.activityLogEvents.DEADLINE_PASSED,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			plainText: `Deadline was ${daysSinceDeadlinePassed} ${daysSinceDeadlinePassed > 1 ? 'days' : 'day'} ago for ${step.stepName} ${
+				workflow.steps.findIndex(step => step.active) + 1
+			} out of ${workflow.steps.length} phases`,
+			html: `<b>Deadline was ${daysSinceDeadlinePassed} ${
+				daysSinceDeadlinePassed > 1 ? 'days' : 'day'
+			} ago</b> for <a class='activity-log-detail-link' href="${version.link}">${step.stepName}</a> (<b>${
+				workflow.steps.findIndex(step => step.active) + 1
+			} out of ${workflow.steps.length} phases</b>)`,
+			detailedHtml: detHtml,
+			detailedText: detText,
+			user: systemGeneratedUser._id,
+			version: version.detailedTitle,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logManualEvent(context) {
+		const { versionId, versionTitle, description, timestamp, user = {} } = context;
+
+		const log = {
+			eventType: constants.activityLogEvents.MANUAL_EVENT,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp,
+			user: user._id,
+			version: versionTitle,
+			versionId,
+			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+			html: `<b>New event "${description}"</b> added by custodian manager <b>${user.firstname} ${user.lastname}</b>`,
+			plainText: `New event "${description}" added by custodian manager ${user.firstname} ${user.lastname}`,
+		};
+
+		// Save all logs relating to presubmissions messages
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logContextualMessage(context) {
+		const { accessRequest, user, userType, questionId, messageBody } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const questionInfo = this.getQuestionInfo(accessRequest, questionId);
+
+		const isPresubmission =
+			accessRequest.applicationType === constants.submissionTypes.INITIAL &&
+			accessRequest.applicationStatus === constants.applicationStatuses.INPROGRESS;
+
+		const detailedHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}</div>` +
+			`<div class='activity-log-detail-row'>` +
+			`<div class='activity-log-detail-row-question'>Question</div>` +
+			`<div class='activity-log-detail-row-answer'>${questionInfo.question.question}</div>` +
+			`</div>` +
+			`<div class='activity-log-detail-row'>` +
+			`<div class='activity-log-detail-row-question'>Message</div>` +
+			`<div class='activity-log-detail-row-answer'>${messageBody}</div>` +
+			`</div>` +
+			`</div>`;
+
+		const detailedText = `${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}\nQuestion: ${
+			questionInfo.question.question
+		}\nMessage: ${messageBody}`;
+
+		const plainText =
+			userType === constants.userTypes.CUSTODIAN
+				? `Message sent from ${user.firstname} ${user.lastname}`
+				: `Message sent from applicant ${user.firstname} ${user.lastname}`;
+
+		const html =
+			userType === constants.userTypes.CUSTODIAN
+				? `<a class='activity-log-detail-link' href="${version.link}">Message</a> sent from <b>${user.firstname} ${user.lastname} (${accessRequest.publisher})</b>`
+				: `<a class='activity-log-detail-link' href="${version.link}">Message</a> sent from applicant <b>${user.firstname} ${user.lastname}</b>`;
+
+		const log = {
+			eventType: constants.activityLogEvents.CONTEXTUAL_MESSAGE,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			user: user._id,
+			version: isPresubmission ? 'Pre-submission' : version.detailedTitle,
+			isPresubmission: isPresubmission,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: [constants.userTypes.CUSTODIAN, constants.userTypes.APPLICANT],
+			detailedText,
+			detailedHtml,
+			plainText,
+			html,
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logNote(context) {
+		const { accessRequest, user, userType, questionId, messageBody } = context;
+		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
+
+		const questionInfo = this.getQuestionInfo(accessRequest, questionId);
+
+		const isPresubmission =
+			accessRequest.applicationType === constants.submissionTypes.INITIAL &&
+			accessRequest.applicationStatus === constants.applicationStatuses.INPROGRESS;
+
+		const detailedHtml =
+			`<div class='activity-log-detail'>` +
+			`<div class='activity-log-detail-header'>${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}</div>` +
+			`<div class='activity-log-detail-row'>` +
+			`<div class='activity-log-detail-row-question'>Question</div>` +
+			`<div class='activity-log-detail-row-answer'>${questionInfo.question.question}</div>` +
+			`</div>` +
+			`<div class='activity-log-detail-row'>` +
+			`<div class='activity-log-detail-row-question'>Note</div>` +
+			`<div class='activity-log-detail-row-answer'>${messageBody}</div>` +
+			`</div>` +
+			`</div>`;
+
+		const detailedText = `${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}\nQuestion: ${
+			questionInfo.question.question
+		}\n$Note: ${messageBody}`;
+
+		const plainText =
+			userType === constants.userTypes.CUSTODIAN
+				? `Note added by ${user.firstname} ${user.lastname}`
+				: `Note added by applicant ${user.firstname} ${user.lastname}`;
+
+		const html =
+			userType === constants.userTypes.CUSTODIAN
+				? `<a class='activity-log-detail-link' href="${version.link}">Note</a> added by <b>${user.firstname} ${user.lastname} (${accessRequest.publisher})</b>`
+				: `<a class='activity-log-detail-link' href="${version.link}">Note</a> added by applicant <b>${user.firstname} ${user.lastname}</b>`;
+
+		const log = {
+			eventType: constants.activityLogEvents.NOTE,
+			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
+			timestamp: Date.now(),
+			user: user._id,
+			version: isPresubmission ? 'Pre-submission' : version.detailedTitle,
+			isPresubmission: isPresubmission,
+			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
+			userTypes: userType,
+			detailedText,
+			plainText,
+			html,
+			detailedHtml,
+		};
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	getQuestionInfo(accessRequest, questionId) {
+		const questionSet = accessRequest.jsonSchema.questionSets.find(qs => qs.questions.find(question => question.questionId === questionId));
+
+		const questionPanel = accessRequest.jsonSchema.questionPanels.find(qp => qp.panelId === questionSet.questionSetId);
+
+		const page = accessRequest.jsonSchema.pages.find(p => p.pageId === questionPanel.pageId);
+
+		const question = this.getActiveQuestion(questionSet.questions, questionId);
+
+		return { questionSet, questionPanel, page, question };
+	}
+
+	buildMessage(createdBy, userType, publisher, createdDate, messageBody, onClickScript) {
+		const sentTime = moment(createdDate).format('HH:mm');
+		const { firstname, lastname } = createdBy;
+		let plainText, detailedText, html, detailedHtml;
+
+		switch (userType) {
+			case constants.userTypes.APPLICANT:
+				plainText = `Message sent from applicant ${firstname} ${lastname}`;
+				detailedText = `${firstname} ${lastname}\n${messageBody}`;
+				html = `<a class='activity-log-detail-link' href='javascript:;' onClick='${onClickScript}'>Message</a> sent from applicant <b>${firstname} ${lastname}</b>`;
+				detailedHtml =
+					`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${firstname} ${lastname}</div>` +
+					`<div class='activity-log-detail-row'>${messageBody}</div>` +
+					`</div>`;
+				break;
+			case constants.userTypes.CUSTODIAN:
+				plainText = `Message sent from ${firstname} ${lastname}`;
+				detailedText = `${firstname} ${lastname}\n${messageBody}`;
+				html = `<a class='activity-log-detail-link' href='javascript:;' onClick='${onClickScript}'>Message</a> sent from <b>${firstname} ${lastname} (${publisher})</b>`;
+				detailedHtml =
+					`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${firstname} ${lastname} (${publisher})</div>` +
+					`<div class='activity-log-detail-row'>${messageBody}</div>` +
+					`</div>`;
+				break;
+		}
+
+		return {
+			html,
+			detailedHtml,
+			plainText,
+			detailedText,
+		};
 	}
 }
