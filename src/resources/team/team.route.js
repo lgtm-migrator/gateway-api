@@ -15,6 +15,16 @@ router.get('/', passport.authenticate('jwt'), teamController.getTeamsList);
 // @access  Public
 router.get('/:id', passport.authenticate('jwt'), teamController.getTeamById);
 
+// @route   POST api/teams/add
+// @desc    Add a team
+// @access  Private
+router.post('/add', passport.authenticate('jwt'), teamController.addTeam);
+
+// @route   PUT api/v1/teams/:id
+// @desc    Edit a team
+// @access  Private
+router.put('/:id', passport.authenticate('jwt'), teamController.editTeam);
+
 // @route   GET api/teams/:id/members
 // @desc    GET all team members for team
 // @access  Private
@@ -49,10 +59,5 @@ router.put('/:id/notifications', passport.authenticate('jwt'), teamController.up
 // @desc    Update notifications
 // @access  Private
 router.put('/:id/notification-messages', passport.authenticate('jwt'), teamController.updateNotificationMessages);
-
-// @route   POST api/teams/add
-// @desc    Add a team
-// @access  Private
-router.post('/add', passport.authenticate('jwt'), teamController.addTeam);
 
 module.exports = router;
