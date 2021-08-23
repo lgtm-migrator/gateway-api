@@ -140,7 +140,7 @@ export default class DataRequestRepository extends Repository {
 	}
 
 	getFilesForApplicationById(id, options = {}) {
-		return DataRequestModel.findById(id, { files: 1, applicationStatus: 1, userId: 1, authorIds: 1 }, options);
+		return DataRequestModel.findById(id, { files: 1, applicationStatus: 1, userId: 1, authorIds: 1, versionTree: 1 }, options);
 	}
 
 	getApplicationFormSchema(publisher) {
