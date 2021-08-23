@@ -28,10 +28,9 @@ export default class CohortProfilingRepository extends Repository {
 			: { 'dataClasses.dataElements.frequencies.value': { $ne: '' } };
 	}
 
-	async getCohortProfilingByVariable(pid, tableName, variable, value, sort, limit) {
+	async getCohortProfilingByVariable(pid, tableName, variable, value, sort) {
 		const matchQuery = this.buildMatchQuery(value);
 		const sortQuery = this.buildSortQuery(sort);
-		const customLimit = !isEmpty(limit) ? parseInt(limit) : 10;
 
 		let cohortProfiling = await CohortProfiling.aggregate([
 			{
@@ -67,9 +66,6 @@ export default class CohortProfilingRepository extends Repository {
 				$sort: sortQuery,
 			},
 			{
-				$limit: customLimit,
-			},
-			{
 				$group: {
 					_id: '$_id',
 					name: { $first: '$dataClasses.dataElements.field' },
@@ -79,7 +75,7 @@ export default class CohortProfilingRepository extends Repository {
 					values: { $push: '$dataClasses.dataElements.frequencies' },
 				},
 			},
-		]);
+		]).allowDiskUse(true);
 
 		return cohortProfiling;
 	}
@@ -126,9 +122,24 @@ export default class CohortProfilingRepository extends Repository {
 			let dataClassesTransformed = profilingData.dataClasses;
 			dataClassesTransformed.dataElements = this.getTransformedDataElements(dataClassesTransformed);
 
+			// Remove data elements where an empty frequency array was supplied
+			const dataClassesWithEmptyFrequenciesRemoved = dataClassesTransformed.map(dataClass => {
+				return {
+					...dataClass,
+					dataElements: dataClass.dataElements.filter(dataElement => {
+						return !isEmpty(dataElement.frequencies);
+					}),
+				};
+			});
+
+			// Remove data classes that are now empty due to empty data elements being removed
+			const dataClassesComplete = dataClassesWithEmptyFrequenciesRemoved.filter(dataClass => {
+				return !isEmpty(dataClass.dataElements);
+			});
+
 			const newDataObj = await CohortProfiling.updateOne(
 				{ pid: profilingData.pid },
-				{ $set: { dataClasses: dataClassesTransformed } },
+				{ $set: { dataClasses: dataClassesComplete } },
 				{ upsert: true }
 			);
 			if (!newDataObj) reject(new Error(`Can't persist data object to DB.`));
