@@ -192,7 +192,7 @@ export default class DataRequestRepository extends Repository {
 	getPermittedUsersForVersions(versionIds) {
 		return DataRequestModel.find({ $or: [{ _id: { $in: versionIds } }, { 'amendmentIterations._id': { $in: versionIds } }] })
 			.select(
-				'userId authorIds publisher majorVersion applicationType applicationStatus dateSubmitted amendmentIterations._id amendmentIterations.dateSubmitted versionTree aboutApplication.projectName'
+				'userId authorIds publisher majorVersion applicationType applicationStatus dateSubmitted dateFinalStatus amendmentIterations._id amendmentIterations.dateSubmitted amendmentIterations.dateCreated amendmentIterations.dateReturned versionTree aboutApplication.projectName'
 			)
 			.populate([
 				{
