@@ -813,6 +813,10 @@ export default class activityLogService {
 
 		const questionInfo = this.getQuestionInfo(accessRequest, questionId);
 
+		const isPresubmission =
+			accessRequest.applicationType === constants.submissionTypes.INITIAL &&
+			accessRequest.applicationStatus === constants.applicationStatuses.INPROGRESS;
+
 		const detailedHtml =
 			`<div class='activity-log-detail'>` +
 			`<div class='activity-log-detail-header'>${questionInfo.page.title + ' | ' + questionInfo.questionSet.questionSetHeader}</div>` +
@@ -845,7 +849,8 @@ export default class activityLogService {
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			user: user._id,
-			version: version.detailedTitle,
+			version: isPresubmission ? 'Pre-submission' : version.detailedTitle,
+			isPresubmission: isPresubmission,
 			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
 			userTypes: [constants.userTypes.CUSTODIAN, constants.userTypes.APPLICANT],
 			detailedText,
@@ -862,6 +867,10 @@ export default class activityLogService {
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
 
 		const questionInfo = this.getQuestionInfo(accessRequest, questionId);
+
+		const isPresubmission =
+			accessRequest.applicationType === constants.submissionTypes.INITIAL &&
+			accessRequest.applicationStatus === constants.applicationStatuses.INPROGRESS;
 
 		const detailedHtml =
 			`<div class='activity-log-detail'>` +
@@ -895,7 +904,8 @@ export default class activityLogService {
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			user: user._id,
-			version: version.detailedTitle,
+			version: isPresubmission ? 'Pre-submission' : version.detailedTitle,
+			isPresubmission: isPresubmission,
 			versionId: accessRequest.amendmentIterations.length > 0 ? version.iterationId : version.applicationId,
 			userTypes: userType,
 			detailedText,
