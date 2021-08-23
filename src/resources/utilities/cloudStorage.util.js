@@ -18,7 +18,7 @@ export const processFile = (file, id, uniqueId) =>
 			path,
 			{
 				gzip: true,
-				destination: `dar-${id}-${uniqueId}_${originalname}`,
+				destination: `dar-${id.toString()}-${uniqueId}_${originalname}`,
 				metadata: { cacheControl: 'none-cache' },
 			},
 			(err, file) => {
@@ -44,7 +44,7 @@ export const getFile = (file, fileId, id) =>
 			destination: `${process.env.TMPDIR}${id}/${fileId}_${file}`,
 		};
 		// create tmp
-		const sanitisedId = id.replace(/[^0-9a-z]/gi, '');
+		const sanitisedId = id.toString().replace(/[^0-9a-z]/gi, '');
 
 		const filePath = `${process.env.TMPDIR}${sanitisedId}`;
 
