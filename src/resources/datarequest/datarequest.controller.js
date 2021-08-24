@@ -1163,7 +1163,7 @@ export default class DataRequestController extends Controller {
 			const { status } = req.body;
 
 			// 2. Find the relevant data request application
-			const accessRecord = this.dataRequestService.getFilesForApplicationById(id);
+			const accessRecord = await this.dataRequestService.getFilesForApplicationById(id);
 
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
@@ -1180,9 +1180,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			//4. Update all versions of application using version tree
-			await this.dataRequestService.updateFileStatus(accessRecord, fileId).catch(err => {
-				logger.logError(err, logCategory);
-			});
+			await this.dataRequestService.updateFileStatus(accessRecord, fileId, status);
 
 			return res.status(200).json({
 				success: true,
