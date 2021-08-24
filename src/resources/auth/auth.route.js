@@ -51,8 +51,8 @@ router.get('/status', function (req, res, next) {
 							const foundRole = foundTeam.roles.find(role => role === constants.roleTypes.METADATA_EDITOR);
 							if (isEmpty(foundRole)) {
 								foundTeam.roles.push(constants.roleTypes.METADATA_EDITOR);
-								foundTeam.isAdmin = true;
 							}
+							foundTeam.isAdmin = true;
 						} else {
 							teams.push({
 								_id: newTeam._id,
