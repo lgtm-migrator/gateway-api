@@ -33,6 +33,7 @@ const globalData = {
 				wizardStepTitle: 'Allowable uses',
 				wizardStepDescription: 'Please select the identifier that is most relevant to you (optional)',
 				wizardStepOrder: 1,
+				wizardStepType: 'radio',
 				entries: [
 					{
 						id: mongoose.Types.ObjectId(),
@@ -70,6 +71,7 @@ const globalData = {
 				wizardStepDescription:
 					'What is the maximum acceptable time delay from the data being generated to entering the dataset? (optional)',
 				wizardStepOrder: 2,
+				wizardStepType: 'radio',
 				entries: [
 					{
 						id: mongoose.Types.ObjectId(),
@@ -200,6 +202,7 @@ const globalData = {
 				wizardStepDescription: 'What is the minimum required time frame for patients appearing in dataset, on average? (optional)',
 				includeInWizard: true,
 				wizardStepOrder: 3,
+				wizardStepType: 'radio',
 				entries: [
 					{
 						id: mongoose.Types.ObjectId(),
@@ -273,6 +276,7 @@ const globalData = {
 				wizardStepTitle: 'Data model',
 				wizardStepDescription: 'What data model requirements do you have? (optional)',
 				wizardStepOrder: 4,
+				wizardStepType: 'radio',
 				entries: [
 					{
 						id: mongoose.Types.ObjectId(),
@@ -345,6 +349,7 @@ const globalData = {
 				wizardStepTitle: 'Provenance',
 				wizardStepDescription: 'To what level of detail do you require the origin of the dataset to be documented? (optional)',
 				wizardStepOrder: 5,
+				wizardStepType: 'radio',
 				entries: [
 					{
 						id: mongoose.Types.ObjectId(),
@@ -376,6 +381,14 @@ const globalData = {
 						impliedValues: ['platinum'],
 					},
 				],
+			},
+			{
+				includeInWizard: true,
+				wizardStepTitle: 'Search terms',
+				wizardStepDescription: 'Please type in any relevant search terms to refine your search (optional)',
+				wizardStepOrder: 6,
+				wizardStepType: 'search',
+				entries: [],
 			},
 			{
 				key: 'linkages',
