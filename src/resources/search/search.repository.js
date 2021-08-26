@@ -2,7 +2,7 @@ import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
 import { findNodeInTree } from '../filters/utils/filters.util';
-import { datasetFilters } from '../filters/filters.mapper';
+import { datasetFilters, toolFilters, projectFilters } from '../filters/filters.mapper';
 import _ from 'lodash';
 import moment from 'moment';
 import helperUtil from '../utilities/helper.util';
@@ -306,7 +306,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
 	}
 
-
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
 	// Return data
@@ -499,13 +498,22 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		collectionkeywords = '',
 	} = req.query;
 
-	if (type === 'dataset') {
+	if (type === 'dataset' || type === 'tool' || 'project') {
 		// iterate over query string keys
 		for (const key of Object.keys(req.query)) {
 			try {
 				const filterValues = req.query[key].split('::');
 				// check mapper for query type
-				const filterNode = findNodeInTree(datasetFilters, key);
+				let filterNode;
+
+				if (type === 'dataset') {
+					filterNode = findNodeInTree(datasetFilters, key);
+				} else if (type === 'tool') {
+					filterNode = findNodeInTree(toolFilters, key);
+				} else if (type === 'project') {
+					filterNode = findNodeInTree(projectFilters, key);
+				}
+
 				if (filterNode) {
 					// switch on query type	and build up query object
 					const { type = '', dataPath = '', matchField = '' } = filterNode;
@@ -543,63 +551,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 		}
 	}
 
-	if (type === 'tool') {
-		if (toolprogrammingLanguage.length > 0) {
-			let filterTermArray = [];
-			toolprogrammingLanguage.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'programmingLanguage.programmingLanguage': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (toolcategories.length > 0) {
-			let filterTermArray = [];
-			toolcategories.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'categories.category': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (toolfeatures.length > 0) {
-			let filterTermArray = [];
-			toolfeatures.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (tooltopics.length > 0) {
-			let filterTermArray = [];
-			tooltopics.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.topics': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'project') {
-		if (projectcategories.length > 0) {
-			let filterTermArray = [];
-			projectcategories.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'categories.category': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (projectfeatures.length > 0) {
-			let filterTermArray = [];
-			projectfeatures.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (projecttopics.length > 0) {
-			let filterTermArray = [];
-			projecttopics.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.topics': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'paper') {
+	if (type === 'paper') {
 		if (paperfeatures.length > 0) {
 			let filterTermArray = [];
 			paperfeatures.split('::').forEach(filterTerm => {
