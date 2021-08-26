@@ -15,18 +15,17 @@ const http = axios.create({
 
 
 
-function getAllDatasetCodesFromTheAPI() {
+function getAllDatasetsCodes() {
 	let res = getListOfAridhiaDatasets();
 	const codes = extractCodesFromAridhiaResponse(res);
 	return codes;
 }
 
-function getAridhiaDatasetsFromTheAPI(codes){}
-function mapAridhiaDatasetsToDatasetsModels(aridhiaDatasets){}
-function updateDB(datasets){}
+function getDataset(code){}
+function aridhiaDatasetToDatasetModel(aridhiaDatasets){}
+
 
 // Utilities
-
 function getListOfAridhiaDatasets() {
 	return mock.datasetsList;
 }
