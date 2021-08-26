@@ -475,13 +475,6 @@ export function getObjectFilters(searchQueryStart, req, type) {
 	let searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
 
 	let {
-		toolprogrammingLanguage = '',
-		toolcategories = '',
-		toolfeatures = '',
-		tooltopics = '',
-		projectcategories = '',
-		projectfeatures = '',
-		projecttopics = '',
 		paperfeatures = '',
 		papertopics = '',
 		coursestartdates = '',
