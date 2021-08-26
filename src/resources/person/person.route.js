@@ -4,10 +4,9 @@ import { utils } from '../auth';
 import passport from 'passport';
 import { getAllTools } from '../tool/data.repository';
 import { UserModel } from '../user/user.model';
-import mailchimpConnector from '../../services/mailchimp/mailchimp';
-import constants from '../utilities/constants.util';
+import hubspotConnector from '../../services/hubspot/hubspot';
 import helper from '../utilities/helper.util';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
 
@@ -45,11 +44,8 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, r
 	tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
 
 	const userId = parseInt(id);
-	const { news: newsOriginalValue, feedback: feedbackOriginalValue } = await UserModel.findOne({ id: userId }, 'news feedback').lean();
-	const newsDirty = newsOriginalValue !== news && !isNil(news);
-	const feedbackDirty = feedbackOriginalValue !== feedback && !isNil(feedback);
 
-	await Data.findOneAndUpdate(
+	const user = await Data.findOneAndUpdate(
 		{ id: userId },
 		{
 			firstname,
@@ -71,19 +67,9 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, r
 			profileComplete,
 		}
 	);
-
-	if (newsDirty) {
-		const newsSubscriptionId = process.env.MAILCHIMP_NEWS_AUDIENCE_ID;
-		const newsStatus = news ? constants.mailchimpSubscriptionStatuses.SUBSCRIBED : constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
-		await mailchimpConnector.updateSubscriptionUsers(newsSubscriptionId, [req.user], newsStatus);
-	}
-	if (feedbackDirty) {
-		const feedbackSubscriptionId = process.env.MAILCHIMP_FEEDBACK_AUDIENCE_ID;
-		const feedbackStatus = feedback
-			? constants.mailchimpSubscriptionStatuses.SUBSCRIBED
-			: constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
-		await mailchimpConnector.updateSubscriptionUsers(feedbackSubscriptionId, [req.user], feedbackStatus);
-	}
+	
+	// Sync contact in Hubspot
+	await hubspotConnector.syncContact(user);
 
 	await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } })
 		.then(person => {

@@ -5,7 +5,7 @@ import { updateUser } from '../user/user.service';
 import { createPerson } from '../person/person.service';
 import { getUserByUserId } from '../user/user.repository';
 import { registerDiscourseUser } from '../discourse/discourse.service';
-import mailchimpConnector from '../../services/mailchimp/mailchimp';
+import hubspotConnector from '../../services/hubspot/hubspot';
 const urlValidator = require('../utilities/urlValidator');
 const eventLogController = require('../eventlog/eventlog.controller');
 const router = express.Router();
@@ -99,16 +99,9 @@ router.post('/', async (req, res) => {
 		email,
 	});
 
-	// 4. Create subscriptions in MailChimp for news and feedback if opted in
-	if (news) {
-		const newsSubscriptionId = process.env.MAILCHIMP_NEWS_AUDIENCE_ID;
-		await mailchimpConnector.addSubscriptionMember(newsSubscriptionId, user);
-	}
-	if (feedback) {
-		const feedbackSubscriptionId = process.env.MAILCHIMP_FEEDBACK_AUDIENCE_ID;
-		await mailchimpConnector.addSubscriptionMember(feedbackSubscriptionId, user);
-	}
-
+	// 4. Sync contact in Hubspot
+	await hubspotConnector.syncContact(user);
+	
 	const [loginErr, token] = await to(login(req, user));
 
 	if (loginErr) {
@@ -116,7 +109,7 @@ router.post('/', async (req, res) => {
 		return res.status(500).json({ success: false, data: 'Authentication error!' });
 	}
 
-	//Build event object for user registered and log it to DB
+	// 5. Build event object for user registered and log it to DB
 	let eventObj = {
 		userId: req.user.id,
 		event: `user_registered_${req.user.provider}`,
