@@ -263,6 +263,9 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 						},
 					},
 					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+					journalYear: 1,
+					journal: 1,
+					authorsNew: 1,
 				},
 			},
 		];
@@ -272,6 +275,9 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		if (type === 'dataset') {
 			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+		} else if (type === 'paper') {
+			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
+			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
 		} else {
 			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
@@ -304,8 +310,12 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	} else if (sort === 'resources') {
 		if (searchAll) queryObject.push({ $sort: { relatedresources: -1 } });
 		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'sortbyyear') {
+		if (type === 'paper') {
+			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
+			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
+		}
 	}
-
 
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
