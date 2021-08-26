@@ -124,6 +124,32 @@ router.get('/', async (req, res) => {
 			success: true,
 			filters,
 		});
+		// let searchQuery = { $and: [{ activeflag: 'active' }] };
+		// if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
+		// var activeFiltersQuery = getObjectFilters(searchQuery, req, 'tool');
+
+		// await Promise.all([
+		// 	getFilter(searchString, 'tool', 'tags.topics', true, activeFiltersQuery),
+		// 	getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
+		// 	getFilter(searchString, 'tool', 'programmingLanguage.programmingLanguage', true, activeFiltersQuery),
+		// 	getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery),
+		// ]).then(values => {
+		// 	return res.json({
+		// 		success: true,
+		// 		allFilters: {
+		// 			toolTopicFilter: values[0][0],
+		// 			toolFeatureFilter: values[1][0],
+		// 			toolLanguageFilter: values[2][0],
+		// 			toolCategoryFilter: values[3][0],
+		// 		},
+		// 		filterOptions: {
+		// 			toolTopicsFilterOptions: values[0][1],
+		// 			featuresFilterOptions: values[1][1],
+		// 			programmingLanguageFilterOptions: values[2][1],
+		// 			toolCategoriesFilterOptions: values[3][1],
+		// 		},
+		// 	});
+		// });
 	} else if (tab === 'Projects') {
 		const type = 'project';
 
