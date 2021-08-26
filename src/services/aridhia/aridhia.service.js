@@ -13,16 +13,47 @@ const http = axios.create({
 			// timeout: 10000
 		});
 
-
-
-function getAllDatasetsCodes() {
-	let res = getListOfAridhiaDatasets();
-	const codes = extractCodesFromAridhiaResponse(res);
-	return codes;
+async function getDataset(code){
+	const res = await http.get(config.endpoint + datasetCode);
+	return res;
 }
 
-function getDataset(code){}
-function aridhiaDatasetToDatasetModel(aridhiaDatasets){}
+async function getDatasetLists() {
+	const res = await http.get(config.endpoint + datasetCode);
+	return res;
+}
+
+function datasetResponseToModel(res) {
+
+	let doc = {
+		    pid: `fair-${res.code}`,
+		    activeflag: "active",
+		    contactPoint: res.catalogue.contactPoint,
+		    created_at: res.created_at,
+		    creator: res.catalogue.creator,
+		    datasetfields: { publisher: 'ICODA', phenotypes: [] },
+		    datasetid: `datasetid-fair-${res.code}`,
+		    description: res.catalogue.description,
+		    datasetv2: {},
+		    doiName: "" || res.catalogue.identifier,
+		    license: res.catalogue.license,
+		    name: res.name,
+		    publisher: res.catalogue.publisher,
+		    rights: res.catalogue.rights,
+		    tags: { features: [...res.catalogue.keyword] },
+		    title: res.name,		    
+		    type: "dataset",
+		    created_at: res.catalogue.created_at || "",
+		    updated_at: res.catalogue.updated_at || "",
+		    id: res.id,
+		    version: '1', // our internal definition 
+		    counter: 3, // ??
+		};
+
+	doc.datasetfields.technicaldetails = resToTechMetaData(res);
+
+	return doc;
+}
 
 
 // Utilities
@@ -37,6 +68,30 @@ function extractCodesFromAridhiaResponse(res) {
 	});
 
 	return codes;
+}
+
+function resToTechMetaData(res) {
+
+    const fields = res.dictionaries[0].fields;
+    const elements = fields.map(field => fieldToElement(field));
+
+    const technicalMetadata = [
+        {
+            description: res.catalogue.description,
+            label: res.name,
+            elements: elements
+        }
+    ];
+
+    return technicalMetadata;
+}
+
+function fieldToElement(field) {
+    return {
+		    	label: field.label,
+	    	    description: field.description,
+	       		dataType: {domainType: "PrimitiveType", label: field.type}
+    		};
 }
 
 export default { 

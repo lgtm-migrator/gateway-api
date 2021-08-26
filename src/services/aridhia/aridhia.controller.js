@@ -12,9 +12,13 @@ fetchAndUpdateDatasets() {
 
 	let datasets = [];
 
-	const codes = aridhia.getAllDatasetsCodes();
-	const aridhiaDatasets = codes.map(aridhia.getDataset);
-	const datasets = mapAridhiaDatasetToDatasetModel(aridhiaDatasets);
-	// this is probably better to be perform by datasetService --> I will decide later on
-	datasets.forEach(ds => httpService.updateOrInsert(ds)); 
+	const res = aridhia.getDatasetLists();
+	const codes = aridhia.extractCodesFromAridhiaResponse(res);
+	
+	console.log(codes);
+	// const aridhiaDatasets = codes.map(code => aridhia.getDataset(code));
+	// const datasets = aridhiaDatasets.map(ds => aridhia.aridhiaDatasetToDatasetModel(ds));
+
+	// // this is probably better to be perform by datasetService --> I will decide later on
+	// datasets.forEach(ds => httpService.updateOrInsert(ds)); 
 }
