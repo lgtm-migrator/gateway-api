@@ -1,4 +1,4 @@
-export const datasetsList = {
+const datasetsList = {
     "items": [
         {
             "code": "dp1_inbound_data",
@@ -360,4 +360,4 @@ export const datasetsList = {
     "additional": {}
 }
 
-// export default { datasetsList };
+export default { datasetsList };

@@ -1,5 +1,5 @@
 import aridhiaService from '../aridhia.service.js';
-import { datasetsList } from '../aridhiaMocks.js';
+import mocks from '../__mocks__/aridhiaMocks.js';
 
 // describe('aridhiaService', function () { 
 	
@@ -16,7 +16,7 @@ import { datasetsList } from '../aridhiaMocks.js';
 			];
 
 			// act 
-			const codes = aridhiaService.extractCodesFromAridhiaResponse(datasetsList);
+			const codes = aridhiaService.extractCodesFromAridhiaResponse(mocks.datasetsList);
 
 			// assert, TODO: compare arrs
 			expect(codes[0] === expectedCodes[0]);
