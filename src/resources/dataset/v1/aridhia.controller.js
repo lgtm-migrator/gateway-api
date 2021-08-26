@@ -1,17 +1,18 @@
 import Controller from '../base/controller';
 
-export default class DatasetController extends Controller {
-	constructor(datasetService) {
-        super(datasetService);
-		this.datasetService = datasetService;
+export default class AridhiaController extends Controller {
+	constructor(aridhiaService) {
+        super(aridhiaService);
+		this.aridhiaService = aridhiaService;
 	}
 }
 
 fetchAndUpdateDatasets() {
 
-	// fetch the datasets codes from aridhhia
-	// fetch the datasets and map them into mongo docs
-	// for each code:
-		// if its in the db ---> update the db
-		// if its not in the db ----> insert the db 
+	let datasets = [];
+
+	const codes = getAllDatasetCodesFromTheAPI();
+	const aridhiaDatasets = getAridhiaDatasetsFromTheAPI(codes);
+	const datasets = mapAridhiaDatasetsToDatasetsModels(aridhiaDatasets);
+	const updateDB(datasets);
 }
