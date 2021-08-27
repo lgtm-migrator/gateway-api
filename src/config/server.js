@@ -253,7 +253,11 @@ app.use('/api/v2/filters', require('../resources/filters/filters.route'));
 
 app.use('/api/v1/mailchimp', require('../services/mailchimp/mailchimp.route'));
 
+
+app.use('/api/v1/cohortprofiling', require('../resources/cohortprofiling/cohortprofiling.route'));
+
 app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
+
 
 initialiseAuthentication(app);
 
