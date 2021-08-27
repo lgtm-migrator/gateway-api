@@ -75,7 +75,7 @@ function extractCodesFromAridhiaResponse(res) {
 function resToTechMetaData(res) {
 
 	let elements = [];
-	if (res.dictionaries) {
+	if (res.dictionaries.length > 0) {
     	const fields = res.dictionaries[0].fields;
     	elements = fields.map(field => fieldToElement(field));
 	}

@@ -20,12 +20,18 @@ async function main() {
 		for (const code of codes) {
 			datasets.push(await aridhia.getDataset(code));
 		}
-		const models = datasets.map(ds => aridhia.resToDataset(ds));
+
+		let models = [];
+		for (const ds of datasets) {
+			models.push(aridhia.resToDataset(ds));
+		}
+		// const models = datasets.map(ds => aridhia.resToDataset(ds));
 		// const aridhiaDatasetsPromises = codes.map(async (code) => await aridhia.getDataset(code));
 		// aridhiaDatasetsPromises.forEach(p => p.then(res => aridhiaService.resToDataset(res)));
 		// const datasets = aridhiaDatasetsPromises.map(async (p) => p.then(res => aridhia.resToDataset(res)));
 		
-		console.log(datasets);
+		console.log(models);
+		console.log("end of datasets");
 		// update/insert the db using axios 
 		
 	} catch (err) {
