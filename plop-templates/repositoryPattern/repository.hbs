@@ -1,0 +1,19 @@
+import Repository from '../base/repository';
+import { {{capitalise entityName}} } from './{{entityName}}.model';
+import constants from '../utilities/constants.util';
+
+export default class {{capitalise entityName}}Repository extends Repository {
+	constructor() {
+		super({{capitalise entityName}});
+		this.{{entityName}} = {{capitalise entityName}};
+	}
+
+	async get{{capitalise entityName}}(query, options) {
+		return this.findOne(query, options);
+	}
+
+	async get{{capitalise entityName}}s(query) {
+		const options = { lean: true };
+		return this.find(query, options);
+	}
+}

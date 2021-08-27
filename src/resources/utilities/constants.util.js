@@ -2,6 +2,7 @@
 const _userTypes = {
 	CUSTODIAN: 'custodian',
 	APPLICANT: 'applicant',
+	ADMIN: 'admin',
 };
 
 const _formTypes = Object.freeze({
@@ -36,214 +37,34 @@ const _teamNotificationTypesHuman = Object.freeze({
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
 
-const _userQuestionActions = {
-	custodian: {
-		reviewer: {
-			submitted: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			inReview: {
-				custodian: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
-				applicant: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
-			},
-			approved: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			['approved with conditions']: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			rejected: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			withdrawn: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-		},
-		manager: {
-			submitted: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			inReview: {
-				custodian: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-					{
-						key: 'requestAmendment',
-						icon: 'fas fa-exclamation-circle',
-						color: '#F0BB24',
-						toolTip: 'Request applicant updates answer',
-						order: 2,
-					},
-				],
-				applicant: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
-			},
-			approved: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			['approved with conditions']: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			rejected: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			withdrawn: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-		},
+const _questionActions = {
+	guidance: {
+		key: 'guidance',
+		icon: 'far fa-question-circle',
+		color: '#475da7',
+		toolTip: 'Guidance',
+		order: 1,
 	},
-	applicant: {
-		inProgress: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		submitted: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		inReview: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		approved: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		['approved with conditions']: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		rejected: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		withdrawn: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
+	messages: {
+		key: 'messages',
+		icon: 'far fa-comment-alt',
+		color: '#475da7',
+		toolTip: 'Messages',
+		order: 2,
+	},
+	notes: {
+		key: 'notes',
+		icon: 'far fa-edit',
+		color: '#475da7',
+		toolTip: 'Notes',
+		order: 3,
+	},
+	updates: {
+		key: 'requestAmendment',
+		icon: 'fas fa-exclamation-circle',
+		color: '#F0BB24',
+		toolTip: 'Request applicant updates answer',
+		order: 4,
 	},
 };
 
@@ -313,6 +134,7 @@ const _notificationTypes = {
 	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
 	DEADLINEWARNING: 'DeadlineWarning',
 	DEADLINEPASSED: 'DeadlinePassed',
+	APPLICATIONAMENDED: 'ApplicationAmended',
 	RETURNED: 'Returned',
 	MEMBERADDED: 'MemberAdded',
 	MEMBERREMOVED: 'MemberRemoved',
@@ -325,6 +147,7 @@ const _notificationTypes = {
 	DATASETSUBMITTED: 'DatasetSubmitted',
 	DATASETAPPROVED: 'DatasetApproved',
 	DATASETREJECTED: 'DatasetRejected',
+	MESSAGESENT: 'MessageSent',
 };
 
 const _applicationStatuses = {
@@ -347,6 +170,9 @@ const _submissionTypes = {
 	INPROGRESS: 'inProgress',
 	INITIAL: 'initial',
 	RESUBMISSION: 'resubmission',
+	AMENDED: 'amendment',
+	EXTENDED: 'extension',
+	RENEWAL: 'renewal',
 };
 
 const _formActions = {
@@ -364,9 +190,20 @@ const _darPanelMapper = {
 	safeoutputs: 'Safe outputs',
 };
 
+const _DARMessageTypes = {
+	DARMESSAGE: 'DAR_Message',
+	DARNOTESAPPLICANT: 'DAR_Notes_Applicant',
+	DARNOTESCUSTODIAN: 'DAR_Notes_Custodian',
+};
+
 // </DAR related enums>
 
 // <Team related enums>
+const _teamTypes = {
+	PUBLISHER: 'publisher',
+	ADMIN: 'admin',
+};
+
 const _roleTypes = {
 	MANAGER: 'manager',
 	REVIEWER: 'reviewer',
@@ -401,8 +238,8 @@ const _mailchimpSubscriptionStatuses = {
 
 const _logTypes = {
 	SYSTEM: 'System',
-	USER: 'User'
-}
+	USER: 'User',
+};
 
 export default {
 	userTypes: _userTypes,
@@ -412,7 +249,7 @@ export default {
 	teamNotificationMessages: _teamNotificationMessages,
 	teamNotificationTypesHuman: _teamNotificationTypesHuman,
 	teamNotificationEmailContentTypes: _teamNotificationEmailContentTypes,
-	userQuestionActions: _userQuestionActions,
+	questionActions: _questionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
 	notificationTypes: _notificationTypes,
@@ -420,11 +257,13 @@ export default {
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
 	formActions: _formActions,
+	teamTypes: _teamTypes,
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
-	logTypes: _logTypes
+	logTypes: _logTypes,
+	DARMessageTypes: _DARMessageTypes,
 };
