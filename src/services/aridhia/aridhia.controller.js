@@ -1,4 +1,5 @@
 import Controller from '../../resources/base/controller.js';
+import aridhiaService from './aridhia.service.js';
 import aridhia from './aridhia.service.js';
 
 export default class AridhiaController extends Controller {
@@ -15,12 +16,18 @@ async function main() {
 	try {
 		const res = await aridhia.getDatasetLists();
 		const codes = await aridhia.extractCodesFromAridhiaResponse(res.data);
-		const aridhiaDatasetsPromises = codes.map(async (code) => await aridhia.getDataset(code));
-
-		aridhiaDatasetsPromises.forEach(p => p.then(res => console.log(res.data)));
-		// const datasets = aridhiaDatasets.map(ds => aridhia.aridhiaDatasetToDatasetModel(ds));
+		let datasets = [];
+		for (const code of codes) {
+			datasets.push(await aridhia.getDataset(code));
+		}
+		const models = datasets.map(ds => aridhia.resToDataset(ds));
+		// const aridhiaDatasetsPromises = codes.map(async (code) => await aridhia.getDataset(code));
+		// aridhiaDatasetsPromises.forEach(p => p.then(res => aridhiaService.resToDataset(res)));
+		// const datasets = aridhiaDatasetsPromises.map(async (p) => p.then(res => aridhia.resToDataset(res)));
 		
+		console.log(datasets);
 		// update/insert the db using axios 
+		
 	} catch (err) {
 		console.log("Houston we have a problem: " + err)
 	}
