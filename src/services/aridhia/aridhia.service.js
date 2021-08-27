@@ -14,16 +14,18 @@ const http = axios.create({
 		});
 
 async function getDataset(code){
-	const res = await http.get(config.endpoint + datasetCode);
+	const res = await http.get(config.endpoint + code);
 	return res;
 }
 
 async function getDatasetLists() {
-	const res = await http.get(config.endpoint + datasetCode);
+	const res = await http.get(config.endpoint);
 	return res;
 }
 
-function datasetResponseToModel(res) {
+function resToDataset(res) {
+
+	res = res.data;
 
 	let doc = {
 		    pid: `fair-${res.code}`,
@@ -62,7 +64,7 @@ function getListOfAridhiaDatasets() {
 }
 
 function extractCodesFromAridhiaResponse(res) {
-	const codes = [];
+	let codes = [];
 	res.items.forEach(item => {
 		codes.push(item.code);
 	});
@@ -72,8 +74,11 @@ function extractCodesFromAridhiaResponse(res) {
 
 function resToTechMetaData(res) {
 
-    const fields = res.dictionaries[0].fields;
-    const elements = fields.map(field => fieldToElement(field));
+	let elements = [];
+	if (res.dictionaries) {
+    	const fields = res.dictionaries[0].fields;
+    	elements = fields.map(field => fieldToElement(field));
+	}
 
     const technicalMetadata = [
         {
@@ -95,5 +100,8 @@ function fieldToElement(field) {
 }
 
 export default { 
-	extractCodesFromAridhiaResponse
+	extractCodesFromAridhiaResponse,
+	getDatasetLists,
+	getDataset,
+	resToDataset,
 };
