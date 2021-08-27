@@ -1,5 +1,5 @@
 import Repository from '../base/repository';
-import { CohortProfiling } from './cohortProfiling.model';
+import { CohortProfiling } from './cohortprofiling.model';
 import { isEmpty, isNil } from 'lodash';
 
 export default class CohortProfilingRepository extends Repository {
