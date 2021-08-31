@@ -1,5 +1,4 @@
-import { isEmpty, difference, has, isNull, filter, some, includes } from 'lodash';
-
+import { isEmpty, has, difference, includes, isNull, filter, some } from 'lodash';
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
 import { PublisherModel } from '../publisher/publisher.model';
@@ -43,27 +42,29 @@ const getTeamById = async (req, res) => {
 const getTeamMembers = async (req, res) => {
 	try {
 		// 1. Get the team from the database
-		const team = await TeamModel.findOne({ _id: req.params.id })
-			.populate({
-				path: 'users',
-				populate: {
-					path: 'additionalInfo',
-					select: 'organisation bio showOrganisation showBio',
-				},
-			})
-			.lean();
+		const team = await TeamModel.findOne({ _id: req.params.id }).populate({
+			path: 'users',
+			populate: {
+				path: 'additionalInfo',
+				select: 'organisation bio showOrganisation showBio',
+			},
+		});
 		if (!team) {
 			return res.status(404).json({ success: false });
 		}
 		// 2. Check the current user is a member of the team
-		let authorised = checkTeamPermissions('', team, req.user._id);
-		// 3. If not return unauthorised
+		let authorised = checkTeamPermissions('', team.toObject(), req.user._id);
+		// 3. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 4. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 4. Format response to include user info
+		// 5. Format response to include user info
 		let users = formatTeamUsers(team);
-		// 5. Return team members
+		// 6. Return team members
 		return res.status(200).json({ success: true, members: users });
 	} catch (err) {
 		console.error(err.message);
@@ -74,28 +75,32 @@ const getTeamMembers = async (req, res) => {
 const formatTeamUsers = team => {
 	let { users = [] } = team;
 	users = users.map(user => {
-		let {
-			firstname,
-			lastname,
-			id,
-			_id,
-			email,
-			additionalInfo: { organisation, bio, showOrganisation, showBio },
-		} = user;
-		let userMember = team.members.find(el => el.memberid.toString() === user._id.toString());
-		let { roles = [] } = userMember;
-		return {
-			firstname,
-			lastname,
-			id,
-			_id,
-			email,
-			roles,
-			organisation: showOrganisation ? organisation : '',
-			bio: showBio ? bio : '',
-		};
+		if (user.id) {
+			let {
+				firstname,
+				lastname,
+				id,
+				_id,
+				email,
+				additionalInfo: { organisation, bio, showOrganisation, showBio },
+			} = user;
+			let userMember = team.members.find(el => el.memberid.toString() === user._id.toString());
+			let { roles = [] } = userMember;
+			return {
+				firstname,
+				lastname,
+				id,
+				_id,
+				email,
+				roles,
+				organisation: showOrganisation ? organisation : '',
+				bio: showBio ? bio : '',
+			};
+		}
 	});
-	return users;
+	return users.filter(user => {
+		return user;
+	});
 };
 
 /**
@@ -124,11 +129,15 @@ const addTeamMembers = async (req, res) => {
 		}
 		// 4. Ensure the user has permissions to perform this operation
 		let authorised = checkTeamPermissions('manager', team.toObject(), req.user._id);
-		// 5. If not return unauthorised
+		// 5. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 6. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 6. Filter out any existing members to avoid duplication
+		// 7. Filter out any existing members to avoid duplication
 		let teamObj = team.toObject();
 		newMembers = [...newMembers].filter(newMem => !teamObj.members.some(mem => newMem.memberid.toString() === mem.memberid.toString()));
 
@@ -491,11 +500,15 @@ const deleteTeamMember = async (req, res) => {
 		}
 		// 4. Ensure the user has permissions to perform this operation
 		let authorised = checkTeamPermissions('manager', team.toObject(), req.user._id);
-		// 5. If not return unauthorised
+		// 5. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 6. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 6. Ensure at least one manager will remain if this member is deleted
+		// 7. Ensure at least one manager will remain if this member is deleted
 		let { members = [], users = [] } = team;
 		let managerCount = members.filter(mem => mem.roles.includes('manager') && mem.memberid.toString() !== req.user._id.toString()).length;
 		if (managerCount === 0) {
@@ -504,7 +517,7 @@ const deleteTeamMember = async (req, res) => {
 				message: 'You cannot delete the last manager in the team',
 			});
 		}
-		// 7. Filter out removed member
+		// 8. Filter out removed member
 		let updatedMembers = [...members].filter(mem => mem.memberid.toString() !== memberid.toString());
 		if (members.length === updatedMembers.length) {
 			return res.status(400).json({
@@ -512,7 +525,7 @@ const deleteTeamMember = async (req, res) => {
 				message: 'The user requested for deletion is not a member of this team',
 			});
 		}
-		// 8. Update team model
+		// 9. Update team model
 		team.members = updatedMembers;
 		team.save(function (err) {
 			if (err) {
@@ -926,6 +939,28 @@ const checkTeamPermissions = (role, team, userId) => {
 			}
 		}
 	}
+	return false;
+};
+
+const checkIfAdmin = (user, adminRoles) => {
+	let { teams } = user.toObject();
+	if (teams) {
+		teams = teams.map(team => {
+			let { publisher, type, members } = team;
+			let member = members.find(member => {
+				return member.memberid.toString() === user._id.toString();
+			});
+			let { roles } = member;
+			return { ...publisher, type, roles };
+		});
+	}
+	const isAdmin = teams.filter(team => team.type === constants.teamTypes.ADMIN);
+	if (!isEmpty(isAdmin)) {
+		if (isAdmin[0].roles.some(role => adminRoles.includes(role))) {
+			return true;
+		}
+	}
+
 	return false;
 };
 
