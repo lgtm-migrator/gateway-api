@@ -10,18 +10,19 @@ const TeamSchema = new Schema(
 		},
 		members: [
 			{
+				_id: false,
 				memberid: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 				roles: { type: [String], enum: ['reviewer', 'manager', 'metadata_editor'], required: true },
 				dateCreated: Date,
 				dateUpdated: Date,
 				notifications: [
 					{
-						notificationType:{ 
+						notificationType: {
 							type: String,
-							enum: Object.values(constants.teamNotificationTypes)
-						} , // metadataonbarding || dataaccessrequest
+							enum: Object.values(constants.teamNotificationTypes),
+						}, // metadataonbarding || dataaccessrequest
 						optIn: { type: Boolean, default: true },
-						message: String
+						message: String,
 					},
 				],
 			},
@@ -37,7 +38,7 @@ const TeamSchema = new Schema(
 					type: String, // metadataonbarding || dataaccessrequest
 					default: constants.teamNotificationTypes.DATAACCESSREQUEST,
 					enum: Object.values(constants.teamNotificationTypes),
-				}, 
+				},
 				optIn: { type: Boolean, default: false },
 				subscribedEmails: [String],
 			},
@@ -61,7 +62,7 @@ TeamSchema.virtual('users', {
 	ref: 'User',
 	foreignField: '_id',
 	localField: 'members.memberid',
-	match: { isServiceAccount: { $ne: true } }
+	match: { isServiceAccount: { $ne: true } },
 });
 
 export const TeamModel = model('Team', TeamSchema);

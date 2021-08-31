@@ -1,0 +1,5 @@
+import {{capitalise entityName}}Repository from './{{entityName}}.repository';
+import {{capitalise entityName}}Service from './{{entityName}}.service';
+
+export const {{entityName}}Repository = new {{capitalise entityName}}Repository();
+export const {{entityName}}Service = new {{capitalise entityName}}Service({{entityName}}Repository);
