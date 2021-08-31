@@ -360,4 +360,28 @@ const datasetsList = {
     "additional": {}
 }
 
-export default { datasetsList };
+const datasetObject = {
+    pid: 'fair-sam_test-new',
+    activeflag: 'active',
+    contactPoint: '',
+    created_at: '',
+    creator: 'This is a REPLACED REPLACED REPLACED REPLACED by Sam 17:43',
+    datasetfields: { publisher: 'ICODA', phenotypes: [], technicaldetails: [] },
+    datasetid: 'datasetid-fair-cord_19',
+    description: "This is a test by Sam",
+    datasetv2: {},
+    doiName: null,
+    license: '',
+    name: 'This is a test by Sam',
+    publisher: { url: 'https://testbysam.org/', name: 'This is a test by Sam' },
+    rights: 'https://testbysam.pdf',
+    tags: { features: []},
+    title: 'This is a test by Sam',
+    type: 'dataset',
+    updated_at: '',
+    id: 51,
+    version: '1',
+    counter: 3
+  };
+
+export default { datasetsList, datasetObject };
