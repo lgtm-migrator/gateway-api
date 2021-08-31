@@ -2,6 +2,7 @@
 const _userTypes = {
 	CUSTODIAN: 'custodian',
 	APPLICANT: 'applicant',
+	ADMIN: 'admin',
 };
 
 const _formTypes = Object.freeze({
@@ -146,6 +147,7 @@ const _notificationTypes = {
 	DATASETSUBMITTED: 'DatasetSubmitted',
 	DATASETAPPROVED: 'DatasetApproved',
 	DATASETREJECTED: 'DatasetRejected',
+	TEAMADDED: 'TeamAdded',
 	MESSAGESENT: 'MessageSent',
 };
 
@@ -198,6 +200,11 @@ const _DARMessageTypes = {
 // </DAR related enums>
 
 // <Team related enums>
+const _teamTypes = {
+	PUBLISHER: 'publisher',
+	ADMIN: 'admin',
+};
+
 const _roleTypes = {
 	MANAGER: 'manager',
 	REVIEWER: 'reviewer',
@@ -251,6 +258,7 @@ export default {
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
 	formActions: _formActions,
+	teamTypes: _teamTypes,
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,

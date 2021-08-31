@@ -26,6 +26,7 @@ const MessageSchema = new Schema(
 				'data access request unlinked',
 				'team',
 				'team unlinked',
+				'team added',
 				'edit',
 				'workflow',
 				'data access message sent',
