@@ -514,7 +514,9 @@ module.exports = {
 
 								let previousDataset = await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
 								let previousCounter = 0;
+								let previousDiscourseTopicId = 0;
 								if (previousDataset) previousCounter = previousDataset.counter || 0;
+								if (previousDataset) previousDiscourseTopicId = previousDataset.discourseTopicId || 0;
 
 								//get technicaldetails and metadataQuality
 								let technicalDetails = await datasetonboardingUtil.buildTechnicalDetails(dataset.structuralMetadata);
@@ -565,6 +567,7 @@ module.exports = {
 										},
 										datasetv2: datasetv2Object,
 										applicationStatusDesc: applicationStatusDesc,
+										discourseTopicId: previousDiscourseTopicId,
 									},
 									{ new: true }
 								);
