@@ -429,7 +429,7 @@ const injectAmendments = (accessRecord, userType, user) => {
 	const { dateReturned } = latestIteration;
 	// 2. Applicants should see previous amendment iteration requests until current iteration has been returned with new requests
 	if (
-		lastIndex > 0 && (userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
+		(lastIndex > 0 && userType === constants.userTypes.APPLICANT && _.isNil(dateReturned)) ||
 		(userType === constants.userTypes.CUSTODIAN && _.isNil(latestIteration.questionAnswers))
 	) {
 		latestIteration = accessRecord.amendmentIterations[lastIndex - 1];
@@ -437,8 +437,8 @@ const injectAmendments = (accessRecord, userType, user) => {
 		return accessRecord;
 	}
 	// 3. Update schema if there is a new iteration
-	const { publisher = 'Custodian' } = accessRecord; 
-	if(!_.isNil(latestIteration)) {
+	const { publisher = 'Custodian' } = accessRecord;
+	if (!_.isNil(latestIteration)) {
 		accessRecord.jsonSchema = formatSchema(accessRecord.jsonSchema, latestIteration, userType, user, publisher);
 	}
 	// 4. Filter out amendments that have not yet been exposed to the opposite party
@@ -451,7 +451,7 @@ const injectAmendments = (accessRecord, userType, user) => {
 
 const formatSchema = (jsonSchema, latestAmendmentIteration, userType, user, publisher) => {
 	const { questionAnswers = {}, dateSubmitted, dateReturned } = latestAmendmentIteration;
-	if(_.isEmpty(questionAnswers)) {
+	if (_.isEmpty(questionAnswers)) {
 		return jsonSchema;
 	}
 	// Loop through each amendment
@@ -502,7 +502,13 @@ const injectQuestionAmendment = (jsonSchema, questionId, amendment, userType, co
 
 const injectNavigationAmendment = (jsonSchema, questionSetId, userType, completed, iterationStatus) => {
 	// 1. Find question in schema
-	const qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
+	let qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
+
+	// Questions generated dynamically have questionSetId with an arbitrary index ((i.e. applicant_eqhFL))
+	if (qpIndex === -1) {
+		qpIndex = jsonSchema.questionPanels.findIndex(panel => questionSetId.startsWith(panel.panelId));
+	}
+
 	if (qpIndex === -1) {
 		return jsonSchema;
 	}
