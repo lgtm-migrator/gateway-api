@@ -491,6 +491,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 				filterNode = findNodeInTree(paperFilters, key);
 			} else if (type === 'collection') {
 				filterNode = findNodeInTree(collectionFilters, key);
+				searchQuery.mode = 'Aggregate';
 			} else if (type === 'course') {
 				filterNode = findNodeInTree(courseFilters, key);
 			}
@@ -521,15 +522,6 @@ export function getObjectFilters(searchQueryStart, req, type) {
 						break;
 					case 'boolean':
 						searchQuery['$and'].push({ [`${dataPath}`]: true });
-						break;
-					case 'concatContains':
-						searchQuery.mode = 'Aggregate';
-						// use regex to match without case sensitivity
-						searchQuery['$and'].push({
-							$or: filterValues.map(value => {
-								return { [`${dataPath}`]: { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } };
-							}),
-						});
 						break;
 					default:
 						break;

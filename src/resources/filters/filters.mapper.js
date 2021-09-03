@@ -691,7 +691,7 @@ export const collectionFilters = [
 		key: 'publisher',
 		alias: 'collectionpublisher',
 		dataPath: 'persons.fullName',
-		type: 'concatContains',
+		type: 'contains',
 		tooltip: null,
 		closed: true,
 		isSearchable: false,
