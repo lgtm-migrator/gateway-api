@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import { Dataset } from './dataset.model';
 
 export default class DatasetService {
 	constructor(datasetRepository, paperRepository, projectRepository, toolRepository, courseRepository) {
@@ -110,4 +111,26 @@ export default class DatasetService {
 		});
 		return dataset;
 	};
+
+	// the function get as inputs a dataset instance and a query, and looking for the dataset on the db by the query.
+	// if the dataset is in the db, the function will update the db with the dataset that the function holds.
+	// if the dataset is not in the db, the function will insert it to the db.
+	async replaceOrUpdateOne(dataset, query) {
+		try {
+			let res = await Dataset.find(query); 
+			if (res.length > 1)
+				throw new Error(`ERROR: Many objects returned with pid "${dataset.pid}". It means that there are many datasets in the DB with pid "${model.pid}". findByPid respond should return array with one object.`);	
+			
+			if (res.length === 0) {
+				res = await dataset.save();			
+			} else if (res.length === 1 && res[0]._id) {
+				res = await Dataset.replaceOne(query);
+			} else {
+				throw new Error('Unexpected ERROR findByPid respond should return an array with one object.');
+			}		
+			return res;
+		} catch (err) {
+			console.error(err);
+		}
+	}
 }
