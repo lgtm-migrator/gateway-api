@@ -1,14 +1,17 @@
-import Hubspot from '@hubspot/api-client';
+import { Client, NumberOfRetries } from '@hubspot/api-client';
 import * as Sentry from '@sentry/node';
+
 import constants from '../../resources/utilities/constants.util';
 import { UserModel } from '../../resources/user/user.model';
+import { logger } from '../../resources/utilities/logger';
 
 // See Hubspot API documentation for supporting info https://developers.hubspot.com/docs/api/crm
 
 // Default service params
 const apiKey = process.env.HUBSPOT_API_KEY;
+const logCategory = 'Hubspot Integration';
 let hubspotClient;
-if (apiKey) hubspotClient = new Hubspot.Client({ apiKey });
+if (apiKey) hubspotClient = new Client({ apiKey, numberOfApiCallRetries: NumberOfRetries.Three });
 
 /**
  * Sync A Single Gateway User With Hubspot
@@ -18,9 +21,28 @@ if (apiKey) hubspotClient = new Hubspot.Client({ apiKey });
  */
 const syncContact = async gatewayUser => {
 	if (apiKey) {
-		// GET contact using email from Hubspot in case they already exist as we need to merge subscription preferences rather than replace
-		// If contact found, merge subscription preferences and perform PUT operation
-		// If contact not found, perform POST operation
+		try {
+			// GET contact using email from Hubspot in case they already exist as we need to merge subscription preferences rather than replace
+			const response = await hubspotClient.crm.contacts.basicApi.getById(
+				gatewayUser.email,
+				['email', 'communication_preference'],
+				[],
+				false,
+				'email'
+			);
+			if (response) {
+				const { body: hubspotContact } = response;
+				// When contact found, merge subscription preferences and perform PUT update operation
+				updateContact(hubspotContact, gatewayUser);
+			}
+		} catch (err) {
+			if (err.statusCode === 404) {
+				// When contact not found, perform POST create operation
+				createContact(gatewayUser);
+			} else {
+				logger.logError(err, logCategory);
+			}
+		}
 	}
 };
 
@@ -33,10 +55,19 @@ const syncContact = async gatewayUser => {
  */
 const updateContact = async (hubspotContact, gatewayUser) => {
 	if (apiKey) {
-		// Extract and split hubspotContact communication preference
-		// Modify comms preferences to match gatewayUser settings
-		// Ensure Gateway Registered User is true
-		// PUT operation to update contact in Hubspot
+		try {
+			const { properties: { communication_preference = '' } } = hubspotContact;
+			
+
+			communicationPreferencesArr = communication_preference.split(',');
+
+			// Extract and split hubspotContact communication preference
+			// Modify comms preferences to match gatewayUser settings
+			// Ensure Gateway Registered User is true
+			// PUT operation to update contact in Hubspot
+		} catch (err) {
+			logger.logError(err, logCategory);
+		}
 	}
 };
 
@@ -48,9 +79,14 @@ const updateContact = async (hubspotContact, gatewayUser) => {
  */
 const createContact = async gatewayUser => {
 	if (apiKey) {
-		// Build hubspotContact communication preferences
-		// Ensure Gateway Registered User is true
-		// POST operation to create contact in Hubspot
+		try {
+			console.log('creating');
+			// Build hubspotContact communication preferences
+			// Ensure Gateway Registered User is true
+			// POST operation to create contact in Hubspot
+		} catch (err) {
+			logger.logError(err, logCategory);
+		}
 	}
 };
 
@@ -59,23 +95,26 @@ const createContact = async gatewayUser => {
  *
  * @desc    Synchronises Gateway users with any changes reflected in Hubspot via external subscribe or unsubscribe methods e.g. mail link or sign up form sent via campaign
  */
- const syncAllContacts = async => {
+const syncAllContacts = async () => {
 	if (apiKey) {
-		// 1. Track attempted sync in Sentry using log
-		Sentry.addBreadcrumb({
-			category: 'Hubspot',
-			message: `Syncing Gateway users with Hubspot contacts`,
-			level: Sentry.Severity.Log,
-		});
+		try {
+			// 1. Track attempted sync in Sentry using log
+			Sentry.addBreadcrumb({
+				category: 'Hubspot',
+				message: `Syncing Gateway users with Hubspot contacts`,
+				level: Sentry.Severity.Log,
+			});
 
-		// Batch GET contacts from Hubspot
-		await batchImportFromHubspot();
+			// Batch GET contacts from Hubspot
+			await batchImportFromHubspot();
 
-		// Batch POST update contacts to Hubspot
-		await batchExportToHubspot();
+			// Batch POST update contacts to Hubspot
+			await batchExportToHubspot();
+		} catch (err) {
+			logger.logError(err, logCategory);
+		}
 	}
 };
-
 
 /**
  * Trigger Hubspot Import To Update Changes Made Externally From Gateway
@@ -118,7 +157,7 @@ const batchImportFromHubspot = async () => {
  *
  * @desc    Updates Contact Details In Hubspot
  */
-const batchExportToHubspot = async => {
+const batchExportToHubspot = async () => {
 	if (apiKey) {
 		const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
 		// 1. Get all users from db

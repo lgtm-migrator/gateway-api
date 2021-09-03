@@ -7,56 +7,26 @@ import { UserModel } from '../user/user.model';
 import hubspotConnector from '../../services/hubspot/hubspot';
 import helper from '../utilities/helper.util';
 import { isEmpty } from 'lodash';
+import { logger } from '../utilities/logger';
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
+const logCategory = 'Person API';
 
 const router = express.Router();
 
 router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
-	let {
-		id,
-		firstname,
-		lastname,
-		email,
-		bio,
-		showBio,
-		showLink,
-		showOrcid,
-		feedback,
-		news,
-		terms,
-		sector,
-		showSector,
-		organisation,
-		showOrganisation,
-		tags,
-		showDomain,
-		profileComplete,
-	} = req.body;
-	const type = 'person';
-	let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
-	let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
-	(firstname = inputSanitizer.removeNonBreakingSpaces(firstname)),
-		(lastname = inputSanitizer.removeNonBreakingSpaces(lastname)),
-		(bio = inputSanitizer.removeNonBreakingSpaces(bio));
-	sector = inputSanitizer.removeNonBreakingSpaces(sector);
-	organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
-	tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
-
-	const userId = parseInt(id);
-
-	const user = await Data.findOneAndUpdate(
-		{ id: userId },
-		{
+	try {
+		let {
+			id,
 			firstname,
 			lastname,
-			type,
+			email,
 			bio,
 			showBio,
-			link,
 			showLink,
-			orcid,
 			showOrcid,
+			feedback,
+			news,
 			terms,
 			sector,
 			showSector,
@@ -65,19 +35,59 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, r
 			tags,
 			showDomain,
 			profileComplete,
-		}
-	);
-	
-	// Sync contact in Hubspot
-	await hubspotConnector.syncContact(user);
+		} = req.body;
+		const type = 'person';
+		let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
+		let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
+		(firstname = inputSanitizer.removeNonBreakingSpaces(firstname)),
+			(lastname = inputSanitizer.removeNonBreakingSpaces(lastname)),
+			(bio = inputSanitizer.removeNonBreakingSpaces(bio));
+		sector = inputSanitizer.removeNonBreakingSpaces(sector);
+		organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
+		tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
 
-	await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } })
-		.then(person => {
-			return res.json({ success: true, data: person });
-		})
-		.catch(err => {
-			return res.json({ success: false, error: err });
+		const userId = parseInt(id);
+
+		await Data.findOneAndUpdate(
+			{ id: userId },
+			{
+				firstname,
+				lastname,
+				type,
+				bio,
+				showBio,
+				link,
+				showLink,
+				orcid,
+				showOrcid,
+				terms,
+				sector,
+				showSector,
+				organisation,
+				showOrganisation,
+				tags,
+				showDomain,
+				profileComplete,
+			}
+		);
+
+		const user = await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } });
+
+		// Sync contact in Hubspot
+		hubspotConnector.syncContact(user);
+
+		return res.status(200).json({
+			status: 'success',
+			data: user,
 		});
+	} catch (err) {
+		// Return error response if something goes wrong
+		logger.logError(err, logCategory);
+		return res.status(500).json({
+			success: false,
+			message: 'An error occurred attempting to update the user record',
+		});
+	}
 });
 
 // @router   GET /api/v1/person/unsubscribe/:userObjectId
