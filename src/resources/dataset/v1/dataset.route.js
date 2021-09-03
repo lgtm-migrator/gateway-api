@@ -7,6 +7,7 @@ import escape from 'escape-html';
 import { Course } from '../../course/course.model';
 import { filtersService } from '../../filters/dependency';
 import * as Sentry from '@sentry/node';
+import AridhiaController from '../../../services/aridhia/aridhia.controller';
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 
@@ -14,6 +15,12 @@ const datasetLimiter = rateLimit({
 	windowMs: 60 * 60 * 1000, // 1 hour window
 	max: 10, // start blocking after 10 requests
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
+});
+
+router.get('/aridhia', async (req, res) => {
+	const ac = new AridhiaController();
+	const result = await ac.main();
+    return res.send(result);
 });
 
 router.post('/', async (req, res) => {

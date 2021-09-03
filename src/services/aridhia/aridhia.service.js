@@ -28,7 +28,7 @@ function resToDataset(res) {
 	res = res.data;
 
 	let doc = {
-		    pid: `fair-${res.code}`,
+		    pid: `test-${res.code}`,
 		    activeflag: "active",
 		    contactPoint: res.catalogue.contactPoint,
 		    created_at: res.created_at,

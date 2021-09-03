@@ -82,6 +82,5 @@
 		"prettify-test": "prettier --write \"test/**/*.js\""
 	},
 	"proxy": "http://localhost:3001",
-	"snyk": true,
-	"type": "module"
+	"snyk": true
 }
