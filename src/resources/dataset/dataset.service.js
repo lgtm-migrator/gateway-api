@@ -134,3 +134,7 @@ export default class DatasetService {
 		}
 	}
 }
+
+export default {
+	replaceOrUpdateOne
+}
