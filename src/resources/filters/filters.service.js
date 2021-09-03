@@ -127,19 +127,19 @@ export default class FiltersService {
 				entities = await this.datasetRepository.getDatasets({ ...query, fields }, { lean: true });
 				break;
 			case 'tool':
-				fields = `categories.category, programmingLanguage.programmingLanguage, tags.features, tags.topics`;
+				fields = `categories.category,programmingLanguage.programmingLanguage,tags.features,tags.topics`;
 				entities = await this.toolRepository.getTools({ ...query, fields }, { lean: true });
 				break;
 			case 'project':
-				fields = `categories.category, tags.features, tags.topics`;
+				fields = `categories.category,tags.features,tags.topics`;
 				entities = await this.projectRepository.getProjects({ ...query, fields }, { lean: true });
 				break;
 			case 'paper':
-				fields = `tags.features, tags.topics`;
+				fields = `tags.features,tags.topics`;
 				entities = await this.paperRepository.getPapers({ ...query, fields }, { lean: true });
 				break;
 			case 'collection':
-				fields = `keywords, authors`;
+				fields = `persons.fullName,keywords`;
 				entities = await this.collectionRepository.getCollections({ ...query, fields }, { lean: true });
 				break;
 			case 'course':
@@ -260,12 +260,12 @@ export default class FiltersService {
 			}
 			case 'collection': {
 				// 2. Extract all properties used for filtering
-				let { authors = [], keywords = [] } = entity;
+				let { persons = [], keywords = [] } = entity;
 
 				// 3. Create flattened filter props object
 				filterValues = {
 					keywords,
-					publisher: authors,
+					publisher: persons.map(person => person.fullName),
 				};
 				break;
 			}

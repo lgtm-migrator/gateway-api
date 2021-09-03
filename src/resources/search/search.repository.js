@@ -523,20 +523,11 @@ export function getObjectFilters(searchQueryStart, req, type) {
 						searchQuery['$and'].push({ [`${dataPath}`]: true });
 						break;
 					case 'concatContains':
-						const keys = dataPath.split(',');
-
+						searchQuery.mode = 'Aggregate';
+						// use regex to match without case sensitivity
 						searchQuery['$and'].push({
 							$or: filterValues.map(value => {
-								return {
-									$expr: {
-										$eq: [
-											value,
-											{
-												$concat: keys.map(key => `$${key}`),
-											},
-										],
-									},
-								};
+								return { [`${dataPath}`]: { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } };
 							}),
 						});
 						break;
