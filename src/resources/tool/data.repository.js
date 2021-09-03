@@ -208,13 +208,7 @@ const editTool = async (req, res) => {
 			if (tool == null) {
 				reject(new Error(`No record found with id of ${id}.`));
 			} else {
-				// Will need parameterized once v2 filters are implemented for projects, papers etc
-				if (tool.type === 'tool') {
-					filtersService.optimiseFilters('tool');
-				}
-				if (tool.type === 'project') {
-					filtersService.optimiseFilters('project');
-				}
+				filtersService.optimiseFilters(tool.type);
 				// Send email notification of update to all authors who have opted in to updates
 				sendEmailNotificationToAuthors(data, toolCreator);
 				storeNotificationsForAuthors(data, toolCreator);
@@ -411,13 +405,7 @@ const setStatus = async (req, res) => {
 				await createDiscourseTopic(tool);
 			}
 
-			// Will need parameterized once v2 filters are implemented for projects, papers etc
-			if (tool.type === 'tool') {
-				filtersService.optimiseFilters('tool');
-			}
-			if (tool.type === 'project') {
-				filtersService.optimiseFilters('project');
-			}
+			filtersService.optimiseFilters(tool.type);
 			// Send email notification of status update to admins and authors who have opted in
 			await sendEmailNotifications(tool, activeflag, rejectionReason);
 

@@ -32,4 +32,11 @@ const CollectionSchema = new Schema(
 	}
 );
 
+CollectionSchema.virtual('persons', {
+	ref: 'Data',
+	foreignField: 'id',
+	localField: 'authors',
+	options: { select: 'firstname lastname' },
+});
+
 export const Collections = model('Collections', CollectionSchema);

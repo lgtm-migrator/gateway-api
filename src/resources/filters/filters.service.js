@@ -3,11 +3,22 @@ import helper from '../utilities/helper.util';
 import { commericalConstants, validCommericalUseOptions } from './utils/filters.util';
 
 export default class FiltersService {
-	constructor(filtersRepository, datasetRepository, toolRepository, projectRepository) {
+	constructor(
+		filtersRepository,
+		datasetRepository,
+		toolRepository,
+		projectRepository,
+		paperRepository,
+		collectionRepository,
+		courseRepository
+	) {
 		this.filtersRepository = filtersRepository;
 		this.datasetRepository = datasetRepository;
 		this.toolRepository = toolRepository;
 		this.projectRepository = projectRepository;
+		this.paperRepository = paperRepository;
+		this.collectionRepository = collectionRepository;
+		this.courseRepository = courseRepository;
 	}
 
 	async getFilters(id, query = {}) {
@@ -80,7 +91,13 @@ export default class FiltersService {
 
 	async optimiseFilters(type) {
 		// 1. Build filters from type using entire Db collection
-		const filters = await this.buildFilters(type, { activeflag: 'active' });
+		let query = { $and: [{ activeflag: 'active' }] };
+		if (type === 'collection') {
+			query['$and'].push({ publicflag: true });
+		} else if (type === 'course') {
+			query['$and'].push({ $or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }] });
+		}
+		const filters = await this.buildFilters(type, query);
 		// 2. Save updated filter values to filter cache
 		//await this.saveFilters(filters, type);
 		await this.filtersRepository.updateFilterSet(filters, type);
@@ -101,8 +118,8 @@ export default class FiltersService {
 
 		// 2. Query Db for required entity if array of entities has not been passed
 		switch (type) {
+			// Get minimal payload to build filters
 			case 'dataset':
-				// Get minimal payload to build filters
 				fields = `hasTechnicalDetails,
 							tags.features,
 							datasetfields.datautility,datasetfields.publisher,datasetfields.phenotypes,
@@ -110,14 +127,24 @@ export default class FiltersService {
 				entities = await this.datasetRepository.getDatasets({ ...query, fields }, { lean: true });
 				break;
 			case 'tool':
-				// Get minimal payload to build filters
 				fields = `categories.category, programmingLanguage.programmingLanguage, tags.features, tags.topics`;
 				entities = await this.toolRepository.getTools({ ...query, fields }, { lean: true });
 				break;
 			case 'project':
-				// Get minimal payload to build filters
 				fields = `categories.category, tags.features, tags.topics`;
 				entities = await this.projectRepository.getProjects({ ...query, fields }, { lean: true });
+				break;
+			case 'paper':
+				fields = `tags.features, tags.topics`;
+				entities = await this.paperRepository.getPapers({ ...query, fields }, { lean: true });
+				break;
+			case 'collection':
+				fields = `keywords, authors`;
+				entities = await this.collectionRepository.getCollections({ ...query, fields }, { lean: true });
+				break;
+			case 'course':
+				fields = `courseOptions.startDate, provider,location,courseOptions.studyMode,award,entries.level,domains,keywords,competencyFramework,nationalPriority`;
+				entities = await this.courseRepository.getCourses({ ...query, fields }, { lean: true });
 				break;
 		}
 		// 3. Loop over each entity
@@ -130,7 +157,7 @@ export default class FiltersService {
 				// 6. Normalise string and array data by maintaining only arrays in 'values'
 				if (isArray(filterValues[key])) {
 					if (!isEmpty(filterValues[key]) && !isNil(filterValues[key])) {
-						values = filterValues[key].filter(value => !isEmpty(value.toString().trim()));
+						values = filterValues[key].filter(value => !isNil(value) && !isEmpty(value.toString().trim()));
 					}
 				} else {
 					if (!isEmpty(filterValues[key]) && !isNil(filterValues[key])) {
@@ -217,6 +244,57 @@ export default class FiltersService {
 					type: category,
 					keywords: features,
 					domain: topics,
+				};
+				break;
+			}
+			case 'paper': {
+				// 2. Extract all properties used for filtering
+				let { tags: { features = [], topics = [] } = {} } = entity;
+
+				// 3. Create flattened filter props object
+				filterValues = {
+					keywords: features,
+					domain: topics,
+				};
+				break;
+			}
+			case 'collection': {
+				// 2. Extract all properties used for filtering
+				let { authors = [], keywords = [] } = entity;
+
+				// 3. Create flattened filter props object
+				filterValues = {
+					keywords,
+					publisher: authors,
+				};
+				break;
+			}
+			case 'course': {
+				// 2. Extract all properties used for filtering
+				let {
+					courseOptions: [...courseOptions] = [],
+					provider = '',
+					location = '',
+					award = '',
+					entries: [...entries] = [],
+					domains = [],
+					keywords = [],
+					competencyFramework = '',
+					nationalPriority = '',
+				} = entity;
+
+				// 3. Create flattened filter props object
+				filterValues = {
+					startDate: [...courseOptions.map(c => c.startDate)],
+					provider,
+					location,
+					studyMode: [...courseOptions.map(c => c.studyMode)],
+					award,
+					entryRequirements: [...entries.map(e => e.level)],
+					domain: domains,
+					keywords,
+					competencyFramework,
+					nationalPriorityAreas: nationalPriority,
 				};
 				break;
 			}

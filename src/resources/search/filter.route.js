@@ -1,7 +1,7 @@
 import express from 'express';
 import { getObjectFilters, getFilter } from './search.repository';
 import { filtersService } from '../filters/dependency';
-import { isEqual } from 'lodash';
+import { isEqual, lowerCase, isEmpty } from 'lodash';
 
 const router = express.Router();
 
@@ -58,10 +58,20 @@ router.get('/', async (req, res) => {
 				},
 			});
 		});
-	} else if (tab === 'Datasets') {
-		const type = 'dataset';
+	} else {
+		const type = !isEmpty(tab) ? lowerCase(tab.substring(0, tab.length - 1)) : '';
+		// const defaultQuery =
+		// 	tab === 'collection' ? { $and: [{ activeflag: 'active', publicflag: true }] } : { $and: [{ activeflag: 'active', type }] };
 
-		let defaultQuery = { $and: [{ activeflag: 'active', type }] };
+		let defaultQuery = { $and: [{ activeflag: 'active' }] };
+		if (tab === 'collection') {
+			defaultQuery['$and'].push({ publicflag: true });
+		} else if (tab === 'course') {
+			defaultQuery['$and'].push({
+				$or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }],
+			});
+		}
+
 		if (searchString.length > 0) defaultQuery['$and'].push({ $text: { $search: searchString } });
 		const filterQuery = getObjectFilters(defaultQuery, req, type);
 		const useCachedFilters = isEqual(defaultQuery, filterQuery) && searchString.length === 0;
@@ -70,184 +80,6 @@ router.get('/', async (req, res) => {
 		return res.json({
 			success: true,
 			filters,
-		});
-		//const matchQuery = queryObject[0][`$match`];
-		//const useCachedFilters = matchQuery[`$and`] && matchQuery[`$and`].length === 2;
-
-		// Get paged results based on query params
-		// const [searchResults, filters] = await Promise.all(
-		// 	collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)),
-		// 	filtersService.buildFilters(type, matchQuery, useCachedFilters)
-		// );
-
-		// await Promise.all([
-		// 	// getFilter(searchString, 'dataset', 'license', false, activeFiltersQuery),
-		// 	// getFilter(searchString, 'dataset', 'datasetfields.physicalSampleAvailability', true, activeFiltersQuery),
-		// 	// getFilter(searchString, 'dataset', 'tags.features', true, activeFiltersQuery),
-		// 	// getFilter(searchString, 'dataset', 'datasetfields.publisher', false, activeFiltersQuery),
-		// 	// getFilter(searchString, 'dataset', 'datasetfields.ageBand', true, activeFiltersQuery),
-		// 	// getFilter(searchString, 'dataset', 'datasetfields.geographicCoverage', true, activeFiltersQuery),
-		// 	// getFilter(searchString, 'dataset', 'datasetfields.phenotypes', true, activeFiltersQuery),
-		// ]).then(values => {
-		// 	return res.json({
-		// 		success: true,
-		// 		allFilters: {
-		// 			// licenseFilter: values[0][0],
-		// 			// sampleFilter: values[1][0],
-		// 			// datasetFeatureFilter: values[2][0],
-		// 			// publisherFilter: values[3][0],
-		// 			// ageBandFilter: values[4][0],
-		// 			// geographicCoverageFilter: values[5][0],
-		// 			// phenotypesFilter: values[6][0],
-		// 		},
-		// 		filterOptions: {
-		// 			// licenseFilterOptions: values[0][1],
-		// 			// sampleFilterOptions: values[1][1],
-		// 			// datasetFeaturesFilterOptions: values[2][1],
-		// 			// publisherFilterOptions: values[3][1],
-		// 			// ageBandFilterOptions: values[4][1],
-		// 			// geographicCoverageFilterOptions: values[5][1],
-		// 			// phenotypesOptions: values[6][1],
-		// 		},
-		// 	});
-		// });
-	} else if (tab === 'Tools') {
-		const type = 'tool';
-
-		let defaultQuery = { $and: [{ activeflag: 'active', type }] };
-		if (searchString.length > 0) defaultQuery['$and'].push({ $text: { $search: searchString } });
-		const filterQuery = getObjectFilters(defaultQuery, req, type);
-		const useCachedFilters = isEqual(defaultQuery, filterQuery) && searchString.length === 0;
-
-		const filters = await filtersService.buildFilters(type, filterQuery, useCachedFilters);
-		return res.json({
-			success: true,
-			filters,
-		});
-		// let searchQuery = { $and: [{ activeflag: 'active' }] };
-		// if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
-		// var activeFiltersQuery = getObjectFilters(searchQuery, req, 'tool');
-
-		// await Promise.all([
-		// 	getFilter(searchString, 'tool', 'tags.topics', true, activeFiltersQuery),
-		// 	getFilter(searchString, 'tool', 'tags.features', true, activeFiltersQuery),
-		// 	getFilter(searchString, 'tool', 'programmingLanguage.programmingLanguage', true, activeFiltersQuery),
-		// 	getFilter(searchString, 'tool', 'categories.category', false, activeFiltersQuery),
-		// ]).then(values => {
-		// 	return res.json({
-		// 		success: true,
-		// 		allFilters: {
-		// 			toolTopicFilter: values[0][0],
-		// 			toolFeatureFilter: values[1][0],
-		// 			toolLanguageFilter: values[2][0],
-		// 			toolCategoryFilter: values[3][0],
-		// 		},
-		// 		filterOptions: {
-		// 			toolTopicsFilterOptions: values[0][1],
-		// 			featuresFilterOptions: values[1][1],
-		// 			programmingLanguageFilterOptions: values[2][1],
-		// 			toolCategoriesFilterOptions: values[3][1],
-		// 		},
-		// 	});
-		// });
-	} else if (tab === 'Projects') {
-		const type = 'project';
-
-		let defaultQuery = { $and: [{ activeflag: 'active', type }] };
-		if (searchString.length > 0) defaultQuery['$and'].push({ $text: { $search: searchString } });
-		const filterQuery = getObjectFilters(defaultQuery, req, type);
-		const useCachedFilters = isEqual(defaultQuery, filterQuery) && searchString.length === 0;
-
-		const filters = await filtersService.buildFilters(type, filterQuery, useCachedFilters);
-		return res.json({
-			success: true,
-			filters,
-		});
-	} else if (tab === 'Papers') {
-		let searchQuery = { $and: [{ activeflag: 'active' }] };
-		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
-		var activeFiltersQuery = getObjectFilters(searchQuery, req, 'paper');
-		await Promise.all([
-			getFilter(searchString, 'paper', 'tags.topics', true, activeFiltersQuery),
-			getFilter(searchString, 'paper', 'tags.features', true, activeFiltersQuery),
-		]).then(values => {
-			return res.json({
-				success: true,
-				allFilters: {
-					paperTopicFilter: values[0][0],
-					paperFeatureFilter: values[1][0],
-				},
-				filterOptions: {
-					paperTopicsFilterOptions: values[0][1],
-					paperFeaturesFilterOptions: values[1][1],
-				},
-			});
-		});
-	} else if (tab === 'Courses') {
-		let searchQuery = { $and: [{ activeflag: 'active' }] };
-		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
-		var activeFiltersQuery = getObjectFilters(searchQuery, req, 'course');
-
-		await Promise.all([
-			getFilter(searchString, 'course', 'courseOptions.startDate', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'provider', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'location', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'courseOptions.studyMode', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'award', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'entries.level', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'domains', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'keywords', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'competencyFramework', true, activeFiltersQuery),
-			getFilter(searchString, 'course', 'nationalPriority', true, activeFiltersQuery),
-		]).then(values => {
-			return res.json({
-				success: true,
-				allFilters: {
-					courseStartDatesFilter: values[0][0],
-					courseProviderFilter: values[1][0],
-					courseLocationFilter: values[2][0],
-					courseStudyModeFilter: values[3][0],
-					courseAwardFilter: values[4][0],
-					courseEntryLevelFilter: values[5][0],
-					courseDomainsFilter: values[6][0],
-					courseKeywordsFilter: values[7][0],
-					courseFrameworkFilter: values[8][0],
-					coursePriorityFilter: values[9][0],
-				},
-				filterOptions: {
-					courseStartDatesFilterOptions: values[0][1],
-					courseProviderFilterOptions: values[1][1],
-					courseLocationFilterOptions: values[2][1],
-					courseStudyModeFilterOptions: values[3][1],
-					courseAwardFilterOptions: values[4][1],
-					courseEntryLevelFilterOptions: values[5][1],
-					courseDomainsFilterOptions: values[6][1],
-					courseKeywordsFilterOptions: values[7][1],
-					courseFrameworkFilterOptions: values[8][1],
-					coursePriorityFilterOptions: values[9][1],
-				},
-			});
-		});
-	} else if (tab === 'Collections') {
-		let searchQuery = { $and: [{ activeflag: 'active' }, { publicflag: true }] };
-		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
-		var activeFiltersQuery = getObjectFilters(searchQuery, req, 'collection');
-
-		await Promise.all([
-			getFilter(searchString, 'collection', 'keywords', true, activeFiltersQuery),
-			getFilter(searchString, 'collection', 'authors', true, activeFiltersQuery),
-		]).then(values => {
-			return res.json({
-				success: true,
-				allFilters: {
-					collectionKeywordFilter: values[0][0],
-					collectionPublisherFilter: values[1][0],
-				},
-				filterOptions: {
-					collectionKeywordsFilterOptions: values[0][1],
-					collectionPublisherFilterOptions: values[1][1],
-				},
-			});
 		});
 	}
 });
