@@ -13,9 +13,8 @@ export default class CollectionRepository extends Repository {
 		return this.findOne(query, options);
 	}
 
-	async getCollections(query) {
-		const options = { lean: true };
-		if (query.mode === 'Aggregate') {
+	async getCollections(query, options = {}) {
+		if (options.aggregate) {
 			const aggregateQuery = [
 				{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 				{

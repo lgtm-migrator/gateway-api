@@ -140,7 +140,7 @@ export default class FiltersService {
 				break;
 			case 'collection':
 				fields = `persons.fullName,keywords`;
-				entities = await this.collectionRepository.getCollections({ ...query, fields }, { lean: true });
+				entities = await this.collectionRepository.getCollections({ ...query, fields }, { aggregate: true });
 				break;
 			case 'course':
 				fields = `courseOptions.startDate, provider,location,courseOptions.studyMode,award,entries.level,domains,keywords,competencyFramework,nationalPriority`;

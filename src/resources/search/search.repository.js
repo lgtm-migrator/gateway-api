@@ -58,8 +58,24 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		];
 	} else if (type === 'collection') {
 		queryObject = [
-			{ $match: newSearchQuery },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			{
+				$addFields: {
+					persons: {
+						$map: {
+							input: '$persons',
+							as: 'row',
+							in: {
+								id: '$$row.id',
+								firstname: '$$row.firstname',
+								lastname: '$$row.lastname',
+								fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+							},
+						},
+					},
+				},
+			},
+			{ $match: newSearchQuery },
 			{
 				$project: {
 					_id: 0,
@@ -72,6 +88,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					'persons.id': 1,
 					'persons.firstname': 1,
 					'persons.lastname': 1,
+					'persons.fullName': 1,
 
 					activeflag: 1,
 					counter: 1,
@@ -384,6 +401,23 @@ export function getObjectCount(type, searchAll, searchQuery) {
 	} else if (type === 'collection') {
 		if (searchAll) {
 			q = collection.aggregate([
+				{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+				{
+					$addFields: {
+						persons: {
+							$map: {
+								input: '$persons',
+								as: 'row',
+								in: {
+									id: '$$row.id',
+									firstname: '$$row.firstname',
+									lastname: '$$row.lastname',
+									fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+								},
+							},
+						},
+					},
+				},
 				{ $match: newSearchQuery },
 				{
 					$group: {
@@ -403,6 +437,23 @@ export function getObjectCount(type, searchAll, searchQuery) {
 		} else {
 			q = collection
 				.aggregate([
+					{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+					{
+						$addFields: {
+							persons: {
+								$map: {
+									input: '$persons',
+									as: 'row',
+									in: {
+										id: '$$row.id',
+										firstname: '$$row.firstname',
+										lastname: '$$row.lastname',
+										fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+									},
+								},
+							},
+						},
+					},
 					{ $match: newSearchQuery },
 					{
 						$group: {
@@ -491,7 +542,6 @@ export function getObjectFilters(searchQueryStart, req, type) {
 				filterNode = findNodeInTree(paperFilters, key);
 			} else if (type === 'collection') {
 				filterNode = findNodeInTree(collectionFilters, key);
-				searchQuery.mode = 'Aggregate';
 			} else if (type === 'course') {
 				filterNode = findNodeInTree(courseFilters, key);
 			}
