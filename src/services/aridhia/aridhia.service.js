@@ -52,6 +52,7 @@ function resToDataset(res) {
 		    counter: 3, // ??
 		};
 
+	const v2 = buildV2(res.data);
 	doc.datasetfields.technicaldetails = resToTechMetaData(res);
 
 	return doc;
@@ -97,6 +98,57 @@ function fieldToElement(field) {
 	    	    description: field.description,
 	       		dataType: {domainType: "PrimitiveType", label: field.type}
     		};
+}
+
+function buildV2(res) {
+	const v2 = {
+		identifier: '',
+		version: res.cataloguecatalogue.versionInfo,
+		provenance : {
+			temporal : {
+				startDate : ''
+			},
+			origin : {
+				purpose: '',
+				source : ''				
+			}
+		},
+		observations: [],
+		coverage: { spatial: '' },  // TODO: double-check me
+		enrichmentAndLinkage: { 'qualifiedRelation': [] },
+		revisions: {
+			version: res.catalogue.versionInfo,
+			url : ''
+		},
+		summary: {
+			title: res.catalogue.title,
+			abstract: res.catalogue.description,
+			contactPoint : res.catalogue.contactPoint,
+			keywords :  res.catalogue.keyword,
+			doiName : thisIdentifier,
+			access: { rights: res.catalogue.rights },
+			publisher: {
+				name: res.catalogue.publisher.name,
+				identifier: res.catalogue.publisher.url,
+				accessService: ''                 
+			}
+		},
+	}
+
+	if (res.catalogue.creator && res.catalogue.contactPoint) {
+		v2.summary.publisher = { contactPoint: `${res.catalogue.creator} ; ${catalogue.contactPoint}`};
+	}
+
+	v2.accessability = {
+		usage: { resourceCreator: '' },
+		formatAndStandards: {
+			vocabularyEncodingScheme: '',
+			conformsTo: '',
+			language: ''
+		},
+		access: { accessRights: res.catalogue.rights }
+	};
+	
 }
 
 export default { 
