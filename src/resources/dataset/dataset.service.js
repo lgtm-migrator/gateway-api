@@ -122,9 +122,12 @@ export default class DatasetService {
 				throw new Error(`ERROR: Many objects returned with pid "${dataset.pid}". It means that there are many datasets in the DB with pid "${model.pid}". findByPid respond should return array with one object.`);	
 			
 			if (res.length === 0) {
+				console.log(`saving dataset with pid ${dataset.pid}...`);
 				res = await dataset.save();			
 			} else if (res.length === 1 && res[0]._id) {
-				res = await Dataset.replaceOne(query);
+				dataset._id = res[0]._id // TODO: check this line
+				console.log(`updating dataset with pid ${dataset.pid}...`);
+				res = await Dataset.replaceOne(query, dataset);
 			} else {
 				throw new Error('Unexpected ERROR findByPid respond should return an array with one object.');
 			}		
@@ -133,8 +136,4 @@ export default class DatasetService {
 			console.error(err);
 		}
 	}
-}
-
-export default {
-	replaceOrUpdateOne
 }
