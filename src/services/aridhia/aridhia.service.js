@@ -52,7 +52,7 @@ function resToDataset(res) {
 		    counter: 3, // ??
 		};
 
-	doc.datasetv2 = buildV2(res.data);
+	doc.datasetv2 = buildV2(res);
 	doc.datasetfields.technicaldetails = resToTechMetaData(res);
 
 	return doc;
