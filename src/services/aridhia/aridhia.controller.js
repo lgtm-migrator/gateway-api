@@ -4,6 +4,7 @@ import { Dataset } from '../../resources/dataset/dataset.model.js';
 import DatasetService from '../../resources/dataset/dataset.service';
 
 export default class AridhiaController extends Controller {
+	// send the service on the constructor
 	constructor(aridhiaService) {
         super(aridhiaService);
 		this.aridhiaService = aridhiaService;
@@ -36,7 +37,7 @@ export default class AridhiaController extends Controller {
 			// take each dataset model. if its already in the DB, update the DB. if its not --> insert to the DB
 			for (const model of models) {
 				let ds = new Dataset(model);
-				res = await this.datasetService.replaceOrInsert(ds);
+				res = await this.datasetService.replaceOrUpdateOne(ds, {"pid": ds.pid, "activeflag": "active"});
 			}
 	
 			return res;
