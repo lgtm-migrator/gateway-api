@@ -52,7 +52,7 @@ function resToDataset(res) {
 		    counter: 3, // ??
 		};
 
-	const v2 = buildV2(res.data);
+	doc.datasetv2 = buildV2(res.data);
 	doc.datasetfields.technicaldetails = resToTechMetaData(res);
 
 	return doc;
@@ -149,6 +149,7 @@ function buildV2(res) {
 		access: { accessRights: res.catalogue.rights }
 	};
 	
+	return v2;
 }
 
 export default { 
