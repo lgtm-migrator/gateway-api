@@ -125,7 +125,6 @@ function buildV2(res) {
 			abstract: res.catalogue.description,
 			contactPoint : res.catalogue.contactPoint,
 			keywords :  res.catalogue.keyword,
-			doiName : thisIdentifier,
 			access: { rights: res.catalogue.rights },
 			publisher: {
 				name: res.catalogue.publisher.name,
@@ -134,6 +133,9 @@ function buildV2(res) {
 			}
 		},
 	}
+
+	if (res.catalogue.identifier)
+		v2.doiName = res.catalogue.identifier;
 
 	if (res.catalogue.creator && res.catalogue.contactPoint) {
 		v2.summary.publisher = { contactPoint: `${res.catalogue.creator} ; ${catalogue.contactPoint}`};
