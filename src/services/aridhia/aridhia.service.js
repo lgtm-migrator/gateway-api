@@ -103,7 +103,7 @@ function fieldToElement(field) {
 function buildV2(res) {
 	const v2 = {
 		identifier: '',
-		version: res.cataloguecatalogue.versionInfo,
+		version: res.catalogue.versionInfo,
 		provenance : {
 			temporal : {
 				startDate : ''
