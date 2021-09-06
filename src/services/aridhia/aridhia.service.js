@@ -134,11 +134,13 @@ function buildV2(res) {
 		},
 	}
 
+	v2.doiName = null;
 	if (res.catalogue.identifier)
 		v2.doiName = res.catalogue.identifier;
 
+	v2.summary.contactPoint = null;
 	if (res.catalogue.creator && res.catalogue.contactPoint) {
-		v2.summary.publisher = { contactPoint: `${res.catalogue.creator} ; ${catalogue.contactPoint}`};
+		v2.summary.contactPoint = { contactPoint: `${res.catalogue.creator} ; ${res.catalogue.contactPoint}`};
 	}
 
 	v2.accessability = {
