@@ -59,10 +59,7 @@ router.get('/', async (req, res) => {
 			});
 		});
 	} else {
-		const type = !isEmpty(tab) ? lowerCase(tab.substring(0, tab.length - 1)) : '';
-		// const defaultQuery =
-		// 	tab === 'collection' ? { $and: [{ activeflag: 'active', publicflag: true }] } : { $and: [{ activeflag: 'active', type }] };
-
+		const type = !isEmpty(tab) && typeof tab === 'string' ? lowerCase(tab.substring(0, tab.length - 1)) : '';
 		let defaultQuery = { $and: [{ activeflag: 'active' }] };
 		if (tab === 'collection') {
 			defaultQuery['$and'].push({ publicflag: true });

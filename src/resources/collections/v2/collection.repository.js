@@ -38,7 +38,7 @@ export default class CollectionRepository extends Repository {
 			if (query.fields) {
 				aggregateQuery.push({
 					$project: query.fields.split(',').reduce((obj, key) => {
-						return (obj = { ...obj, [key]: 1 });
+						return { ...obj, [key]: 1 };
 					}, {}),
 				});
 			}
