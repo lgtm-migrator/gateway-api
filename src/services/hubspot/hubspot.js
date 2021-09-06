@@ -16,13 +16,13 @@ if (apiKey) hubspotClient = new Client({ apiKey, numberOfApiCallRetries: NumberO
 /**
  * Sync A Single Gateway User With Hubspot
  *
- * @desc    Adds a Gateway user to the Hubspot CMS
+ * @desc    Either creates a new or updates an existing contact in Hubspot using the gateway user email address for uniqueness
  * @param 	{Object} 	        gatewayUser 				User object containing bio details and contact subscription preferences
  */
 const syncContact = async gatewayUser => {
 	if (apiKey) {
 		try {
-			// GET contact using email from Hubspot in case they already exist as we need to merge subscription preferences rather than replace
+			// Search for contact in Hubspot using email address in case they already exist as we need to merge subscription preferences rather than replace
 			const response = await hubspotClient.crm.contacts.basicApi.getById(
 				gatewayUser.email,
 				['email', 'communication_preference'],
@@ -32,12 +32,12 @@ const syncContact = async gatewayUser => {
 			);
 			if (response) {
 				const { body: hubspotContact } = response;
-				// When contact found, merge subscription preferences and perform PUT update operation
+				// When contact found, merge subscription preferences and perform update operation
 				updateContact(hubspotContact, gatewayUser);
 			}
 		} catch (err) {
 			if (err.statusCode === 404) {
-				// When contact not found, perform POST create operation
+				// When contact not found, perform create operation
 				createContact(gatewayUser);
 			} else {
 				logger.logError(err, logCategory);
@@ -56,15 +56,29 @@ const syncContact = async gatewayUser => {
 const updateContact = async (hubspotContact, gatewayUser) => {
 	if (apiKey) {
 		try {
-			const { properties: { communication_preference = '' } } = hubspotContact;
-			
-
-			communicationPreferencesArr = communication_preference.split(',');
-
-			// Extract and split hubspotContact communication preference
-			// Modify comms preferences to match gatewayUser settings
-			// Ensure Gateway Registered User is true
-			// PUT operation to update contact in Hubspot
+			// Extract and split hubspotContact communication preferences
+			const {
+				id,
+				properties: { communication_preference = '' },
+			} = hubspotContact;
+			const communicationPreferencesArr = communication_preference.split(',');
+			// Extract gateway communication preferences
+			const { news = false, feedback = false } = gatewayUser;
+			// Merge communication preferences keeping non-gateway related preferences and include any updates
+			const updatedPreferencesArr = communicationPreferencesArr.filter(pref => {
+				return (pref === 'Gateway' && news) || (pref === 'Gateway Feedback' && feedback) || (pref !== 'Gateway' && pref !== 'Gateway Feedback');
+			});
+			if (news && !updatedPreferencesArr.includes('Gateway')) updatedPreferencesArr.push('Gateway');
+			if (feedback && !updatedPreferencesArr.includes('Gateway Feedback')) updatedPreferencesArr.push('Gateway Feedback');
+			// Create update object
+			const updatedContact = {
+				properties: {
+					communication_preference: updatedPreferencesArr.join(','),
+					gateway_registered_user: 'Yes',
+				},
+			};
+			// Use API PUT operation to update the contact in Hubspot
+			await hubspotClient.crm.contacts.basicApi.update(id, updatedContact);
 		} catch (err) {
 			logger.logError(err, logCategory);
 		}

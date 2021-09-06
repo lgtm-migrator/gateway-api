@@ -71,7 +71,7 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, r
 			}
 		);
 
-		const user = await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } });
+		const user = await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } }, { new: true });
 
 		// Sync contact in Hubspot
 		hubspotConnector.syncContact(user);
