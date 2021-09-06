@@ -129,7 +129,8 @@ function buildV2(res) {
 			publisher: {
 				name: res.catalogue.publisher.name,
 				identifier: res.catalogue.publisher.url,
-				accessService: ''                 
+				accessService: '',
+				accessRequestCost: '' // TODO: check me               
 			}
 		},
 	}
@@ -150,7 +151,7 @@ function buildV2(res) {
 			conformsTo: '',
 			language: ''
 		},
-		access: { accessRights: res.catalogue.rights }
+		access: { accessRights: res.catalogue.accessRights || res.catalogue.rights || '' }
 	};
 	
 	return v2;

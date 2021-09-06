@@ -119,7 +119,7 @@ export default class DatasetService {
 		try {
 			let res = await Dataset.find(query); 
 			if (res.length > 1)
-				throw new Error(`ERROR: Many objects returned with pid "${dataset.pid}". It means that there are many datasets in the DB with pid "${model.pid}". findByPid respond should return array with one object.`);	
+				throw new Error(`ERROR: Many objects returned with pid "${dataset.pid}". It means that there are many datasets in the DB with pid "${dataset.pid}". findByPid respond should return array with one object.`);	
 			
 			if (res.length === 0) {
 				console.log(`saving dataset with pid ${dataset.pid}...`);
