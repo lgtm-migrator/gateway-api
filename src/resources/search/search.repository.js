@@ -573,6 +573,13 @@ export function getObjectFilters(searchQueryStart, req, type) {
 					case 'boolean':
 						searchQuery['$and'].push({ [`${dataPath}`]: true });
 						break;
+					case 'dateEquals':
+						searchQuery['$and'].push({
+							$or: filterValues.map(value => {
+								return { [`${dataPath}`]: value };
+							}),
+						});
+						break;
 					default:
 						break;
 				}

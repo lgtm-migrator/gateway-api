@@ -144,7 +144,7 @@ export default class FiltersService {
 				break;
 			case 'course':
 				fields = `courseOptions.startDate, provider,location,courseOptions.studyMode,award,entries.level,domains,keywords,competencyFramework,nationalPriority`;
-				entities = await this.courseRepository.getCourses({ ...query, fields }, { lean: true });
+				entities = await this.courseRepository.getCourses({ ...query, fields }, { lean: true, dateFormat: 'DD MMM YYYY' });
 				break;
 		}
 		// 3. Loop over each entity

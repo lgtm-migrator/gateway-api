@@ -709,7 +709,7 @@ export const courseFilters = [
 		key: 'startDate',
 		alias: 'coursestartdates',
 		dataPath: 'courseOptions.startDate',
-		type: 'contains',
+		type: 'dateEquals',
 		tooltip: null,
 		closed: true,
 		isSearchable: false,
