@@ -143,7 +143,7 @@ function buildV2(res) {
 		v2.summary.contactPoint = { contactPoint: `${res.catalogue.creator} ; ${res.catalogue.contactPoint}`};
 	}
 
-	v2.accessability = {
+	v2.accessibility = {
 		usage: { resourceCreator: '' },
 		formatAndStandards: {
 			vocabularyEncodingScheme: '',
