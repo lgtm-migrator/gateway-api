@@ -71,7 +71,7 @@ const _questionActions = {
 const _navigationFlags = {
 	custodian: {
 		submitted: {
-			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# made this change on #DATE#' },
 		},
 		returned: {
 			completed: { status: 'WARNING', options: [], text: '#NAME# requested an update on #DATE#' },
@@ -94,7 +94,7 @@ const _navigationFlags = {
 	},
 	applicant: {
 		submitted: {
-			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# made this change on #DATE#' },
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
 		returned: {
@@ -108,7 +108,7 @@ const _navigationFlags = {
 						displayOrder: 1,
 					},
 				],
-				text: '#NAME# updated this answer on #DATE#',
+				text: '#NAME# made this change on #DATE#',
 			},
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},

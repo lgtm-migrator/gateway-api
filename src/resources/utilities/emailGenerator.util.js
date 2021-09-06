@@ -273,8 +273,8 @@ const _getSubmissionDetails = (
 			subject = `You have made updates to your Data Access Request for ${datasetTitles}. The custodian will be in contact about the application.`;
 			break;
 		case constants.submissionTypes.AMENDED:
-			heading = 'Data access request application amended';
-			subject = `${userName} has made amendments to an approved application`;
+			heading = 'New amendment request application';
+			subject = `Applicant has submitted an amendment to an approved application.  Please let the applicant know as soon as there is progress in the review of their submission.`;
 			body = amendBody;
 			break;
 	}
@@ -330,6 +330,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		applicationId,
 	} = options;
 	const dateSubmitted = moment().format('D MMM YYYY');
+  const year = moment().year();
 	const { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
 	const linkNationalCoreStudies =
 		nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
@@ -338,7 +339,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
-	let gatewayAttributionPolicy = `We ask that use of the Innovation Gateway be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage 2020.'`;
+	let gatewayAttributionPolicy = `We ask that use of the Health Data Research Innovation Gateway (the 'Gateway') be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage ${year}.'`;
 
 	let table = _getSubmissionDetails(
 		userType,
