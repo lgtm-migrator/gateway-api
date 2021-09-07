@@ -1,3 +1,5 @@
+import { isNaN } from 'lodash';
+
 export default class Repository {
 	constructor(Model) {
 		this.collection = Model;
@@ -7,6 +9,11 @@ export default class Repository {
 	async find(query = {}, { multiple = true, count, lean, populate } = {}) {
 		//Build query
 		let queryObj = { ...query };
+
+		// Check if each param should be a Number.  Allows searching for a value in a Numbers array
+		Object.keys(queryObj).forEach(key => {
+			queryObj[key] = isNaN(queryObj[key] * 1) ? queryObj[key] : queryObj[key] * 1;
+		});
 
 		// Population from query
 		if (query.populate) {

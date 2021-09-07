@@ -139,7 +139,7 @@ export default class DataRequestRepository extends Repository {
 		}).lean();
 	}
 
-	getFilesForApplicationById(id, options = {}) {
+	getFilesForApplicationById(id) {
 		return DataRequestModel.findOne({
 			_id: id,
 		}).populate([

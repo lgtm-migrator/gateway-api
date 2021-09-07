@@ -114,10 +114,10 @@ module.exports = {
 			const currentVersionId = req.body.currentVersionId || null;
 
 			//Check user type and authentication to submit application
-			/* let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(currentVersionId, req.user);
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(null, req.user, publisherID);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-			} */
+			}
 
 			//If no publisher then return error
 			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Dataset publisher could not be found.' });
@@ -344,12 +344,16 @@ module.exports = {
 			if (!id) return res.status(404).json({ status: 'error', message: 'Dataset _id could not be found.' });
 
 			// 3. Check user type and authentication to submit application
-			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			let { authorised, userType } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
 			if (applicationStatus === 'approved') {
+				if (userType !== constants.userTypes.ADMIN) {
+					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+				}
+
 				let dataset = await Data.findOne({ _id: id });
 				if (!dataset) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
 
@@ -510,7 +514,9 @@ module.exports = {
 
 								let previousDataset = await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
 								let previousCounter = 0;
+								let previousDiscourseTopicId = 0;
 								if (previousDataset) previousCounter = previousDataset.counter || 0;
+								if (previousDataset) previousDiscourseTopicId = previousDataset.discourseTopicId || 0;
 
 								//get technicaldetails and metadataQuality
 								let technicalDetails = await datasetonboardingUtil.buildTechnicalDetails(dataset.structuralMetadata);
@@ -561,6 +567,7 @@ module.exports = {
 										},
 										datasetv2: datasetv2Object,
 										applicationStatusDesc: applicationStatusDesc,
+										discourseTopicId: previousDiscourseTopicId,
 									},
 									{ new: true }
 								);
@@ -584,6 +591,10 @@ module.exports = {
 
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'rejected') {
+				if (userType !== constants.userTypes.ADMIN) {
+					return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+				}
+
 				let updatedDataset = await Data.findOneAndUpdate(
 					{ _id: id },
 					{
