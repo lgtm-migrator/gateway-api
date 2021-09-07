@@ -8,8 +8,11 @@ import { Course } from '../../course/course.model';
 import { filtersService } from '../../filters/dependency';
 import * as Sentry from '@sentry/node';
 import AridhiaController from '../../../services/aridhia/aridhia.controller';
+import aridhiaService from '../../../services/aridhia/aridhia.service';
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
+
+import axios from 'axios';
 
 const datasetLimiter = rateLimit({
 	windowMs: 60 * 60 * 1000, // 1 hour window
@@ -17,23 +20,18 @@ const datasetLimiter = rateLimit({
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
 });
 
-// let parsedBody = {};
-// 		if (req.header('content-type') === 'application/json') {
-// 			parsedBody = req.body;
-// 		} else {
-// 			parsedBody = JSON.parse(req.body);
-// 		}
-
-// 		// Check for key
-// 		if (parsedBody.key !== process.env.cachingkey) {
-// 			return res.status(400).json({ success: false, error: 'Caching could not be started' });
-
 // {
 //     'key': 'cshvGblmw1EdNOtweJ32LpzlGmtIPSU7'
 // }
 
 // change to post
 router.get('/aridhia', async (req, res) => {
+	
+	// check for a key. return 401 Not Unauthorised due a missing of the caching key
+	// req.header(('content-type') === 'application/json') ? parsedBody = req.body : parsedBody = JSON.parse(req.body);
+	// if (parsedBody.key !== process.env.cachingkey)
+	// 	return res.status(401).json({ success: false, error: 'Caching could not be started. You are missing a caching key.' });
+		
 	const ac = new AridhiaController();
 	const result = await ac.main();
     return res.send(result);

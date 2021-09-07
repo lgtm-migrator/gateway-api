@@ -1,17 +1,12 @@
-import Controller from '../../resources/base/controller.js';
-import aridhia from './aridhia.service.js';
+import Aridhia from './aridhia.service.js';
 import { Dataset } from '../../resources/dataset/dataset.model.js';
 import DatasetService from '../../resources/dataset/dataset.service';
+import { config, http } from './aridhia.config';
 
-export default class AridhiaController extends Controller {
-	// send the service on the constructor
-	constructor(aridhiaService) {
-        super(aridhiaService);
-		this.aridhiaService = aridhiaService;
+export default class AridhiaController {
+	constructor() {
 		this.datasetService = new DatasetService();
-		this.aridhia = aridhia;
-
-		// this.aridhia = aridhiaService;
+		this.aridhia = new Aridhia(http, config);
 	}
 
 	async main() {
