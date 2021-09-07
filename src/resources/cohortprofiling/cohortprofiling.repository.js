@@ -28,9 +28,9 @@ export default class CohortProfilingRepository extends Repository {
 			: { 'dataClasses.dataElements.frequencies.value': { $ne: '' } };
 	}
 
-	async getCohortProfilingByVariable(pid, tableName, variable, value, sort) {
-		const matchQuery = this.buildMatchQuery(value);
-		const sortQuery = this.buildSortQuery(sort);
+	static async getCohortProfilingByVariable(pid, tableName, variable, value, sort) {
+		const matchQuery = CohortProfilingRepository.buildMatchQuery(value);
+		const sortQuery = CohortProfilingRepository.buildSortQuery(sort);
 
 		let cohortProfiling = await CohortProfiling.aggregate([
 			{
