@@ -273,8 +273,8 @@ const _getSubmissionDetails = (
 			subject = `You have made updates to your Data Access Request for ${datasetTitles}. The custodian will be in contact about the application.`;
 			break;
 		case constants.submissionTypes.AMENDED:
-			heading = 'Data access request application amended';
-			subject = `${userName} has made amendments to an approved application`;
+			heading = 'New amendment request application';
+			subject = `Applicant has submitted an amendment to an approved application.  Please let the applicant know as soon as there is progress in the review of their submission.`;
 			body = amendBody;
 			break;
 	}
@@ -330,6 +330,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		applicationId,
 	} = options;
 	const dateSubmitted = moment().format('D MMM YYYY');
+  const year = moment().year();
 	const { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
 	const linkNationalCoreStudies =
 		nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
@@ -338,7 +339,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
-	let gatewayAttributionPolicy = `We ask that use of the Innovation Gateway be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage 2020.'`;
+  let gatewayAttributionPolicy = `We ask that use of the Health Data Research Innovation Gateway (the 'Gateway') be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage ${year}.'`;
 
 	let table = _getSubmissionDetails(
 		userType,
@@ -1834,6 +1835,48 @@ const _generateAddedToTeam = options => {
 	return body;
 };
 
+const _generateNewTeamManagers = options => {
+	let { team } = options;
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      <span>New team added</span>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+                  <tr>
+                    <td style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      <p>
+                        The team ${team} has been added to the Gateway. You were assigned as a team manager and can now:
+                        <br />
+                        <ul>
+                          <li>Manage members</li>
+                          <li>Create and assign workflows</li>
+                          <li>Review assigned data access request applications</li>
+                          <li>Make the final decision on data access request applications</li>
+                        </ul>
+                      </p>
+                    </td>
+                  </tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+  	return body;
+};
+
 const _generateNewDARMessage = options => {
 	let { id, projectName, datasetTitles, applicants, firstname, lastname, messageBody, questionWithAnswer } = options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -2357,6 +2400,7 @@ export default {
 	generateTeamNotificationEmail: _generateTeamNotificationEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
+	generateNewTeamManagers: _generateNewTeamManagers,
 	generateNewDARMessage: _generateNewDARMessage,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,

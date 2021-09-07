@@ -628,12 +628,12 @@ export default class AmendmentService {
 	}
 
 	highlightQuestionChange(accessRecord, questionId) {
-		const { dateSubmitted, mainApplicant } = accessRecord;
+		const { dateSubmitted } = accessRecord;
 
 		const questionAlert = {
 			status: 'WARNING',
 			options: [],
-			text: `${mainApplicant.firstname} ${mainApplicant.lastname} submitted an amendment on ${moment(dateSubmitted).format('Do MMM YYYY')}`,
+			text: `Applicant has requested this as an amendment to the approved application on ${moment(dateSubmitted).format('Do MMM YYYY')}`,
 		};
 
 		accessRecord.jsonSchema.questionSets.forEach(questionSet => {

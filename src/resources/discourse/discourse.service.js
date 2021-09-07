@@ -74,7 +74,7 @@ export async function createDiscourseTopic(tool) {
 		let {
 			datasetfields: { abstract },
 		} = tool;
-		rawIs = `${tool.description || abstract} <br><br> Original content: ${process.env.homeURL}/dataset/${tool.id}`;
+		rawIs = `${tool.description || abstract} <br><br> Original content: ${process.env.homeURL}/dataset/${tool.pid}`;
 		categoryIs = process.env.DISCOURSE_CATEGORY_DATASETS_ID;
 	} else if (tool.type === 'paper') {
 		rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/paper/${tool.id}`;
