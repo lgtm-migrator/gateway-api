@@ -387,7 +387,7 @@ export default class AmendmentService {
 
 	injectNavigationAmendment(jsonSchema, questionSetId, userType, completed, iterationStatus) {
 		// 1. Find question in schema
-		const qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
+		let qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
 
 		// Questions generated dynamically have questionSetId with an arbitrary index ((i.e. applicant_eqhFL))
 		if (qpIndex === -1) {
