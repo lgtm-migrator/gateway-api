@@ -27,6 +27,7 @@
 		"cors": "^2.8.5",
 		"crypto": "^1.0.1",
 		"crypto-js": "^4.0.0",
+		"csurf": "^1.11.0",
 		"discourse-sso": "^1.0.3",
 		"dotenv": "^8.2.0",
 		"escape-html": "^1.0.3",

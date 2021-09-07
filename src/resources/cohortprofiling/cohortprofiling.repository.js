@@ -1,6 +1,6 @@
 import Repository from '../base/repository';
 import { CohortProfiling } from './cohortprofiling.model';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, escapeRegExp } from 'lodash';
 
 export default class CohortProfilingRepository extends Repository {
 	constructor() {
@@ -12,7 +12,7 @@ export default class CohortProfilingRepository extends Repository {
 		return this.find(query, options);
 	}
 
-	buildSortQuery(sort) {
+	static buildSortQuery(sort) {
 		const customSort = !isEmpty(sort) ? sort : '-frequency';
 		const sortPathName =
 			customSort.charAt(0) === '-'
@@ -22,9 +22,9 @@ export default class CohortProfilingRepository extends Repository {
 		return { [sortPathName]: sortOrder };
 	}
 
-	buildMatchQuery(value) {
+	static buildMatchQuery(value) {
 		return !isEmpty(value)
-			? { 'dataClasses.dataElements.frequencies.value': new RegExp(`${value}`, 'i') }
+			? { 'dataClasses.dataElements.frequencies.value': new RegExp(`${escapeRegExp(value)}`, 'i') }
 			: { 'dataClasses.dataElements.frequencies.value': { $ne: '' } };
 	}
 
@@ -90,7 +90,7 @@ export default class CohortProfilingRepository extends Repository {
 	// 	});
 	// }
 
-	getTransformedDataElements(dataClasses) {
+	static getTransformedDataElements(dataClasses) {
 		return dataClasses.map(dataClass => {
 			return dataClass.dataElements.map(dataElement => {
 				// Calculate total frequency & completeness for the current Data Element
@@ -138,7 +138,7 @@ export default class CohortProfilingRepository extends Repository {
 			});
 
 			const newDataObj = await CohortProfiling.updateOne(
-				{ pid: profilingData.pid },
+				{ pid: { $eq: profilingData.pid } },
 				{ $set: { dataClasses: dataClassesComplete } },
 				{ upsert: true }
 			);

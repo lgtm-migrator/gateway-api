@@ -4,7 +4,7 @@ import { filtersService } from '../filters/dependency';
 import constants from '../utilities/constants.util';
 import datasetonboardingUtil from './utils/datasetonboarding.util';
 import { v4 as uuidv4 } from 'uuid';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, escapeRegExp } from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
 import moment from 'moment';
@@ -258,7 +258,11 @@ module.exports = {
 					} else {
 						Data.findByIdAndUpdate(
 							{ _id: id },
-							{ structuralMetadata, percentageCompleted: data.percentageCompleted, 'timestamps.updated': Date.now() },
+							{
+								structuralMetadata: { $eq: structuralMetadata },
+								percentageCompleted: { $eq: data.percentageCompleted },
+								'timestamps.updated': Date.now(),
+							},
 							{ new: true },
 							err => {
 								if (err) {
@@ -282,7 +286,7 @@ module.exports = {
 						let title = questionAnswers['properties/summary/title'];
 
 						if (title && title.length >= 2) {
-							Data.findByIdAndUpdate({ _id: id }, { name: title, 'timestamps.updated': Date.now() }, { new: true }, err => {
+							Data.findByIdAndUpdate({ _id: id }, { name: { $eq: title }, 'timestamps.updated': Date.now() }, { new: true }, err => {
 								if (err) {
 									console.error(err);
 									throw err;
@@ -712,7 +716,7 @@ module.exports = {
 	//GET api/v1/dataset-onboarding/checkUniqueTitle
 	checkUniqueTitle: async (req, res) => {
 		let { pid, title = '' } = req.query;
-		let regex = new RegExp(`^${title}$`, 'i');
+		let regex = new RegExp(`^${escapeRegExp(title)}$`, 'i');
 		let dataset = await Data.findOne({ name: regex, pid: { $ne: pid } });
 		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
 	},
@@ -725,8 +729,8 @@ module.exports = {
 			let dataset = {};
 
 			if (!isEmpty(pid)) {
-				dataset = await Data.findOne({ pid, activeflag: 'active' }).lean();
-				if (!isEmpty(datasetID)) dataset = await Data.findOne({ pid: datasetID, activeflag: 'archive' }).sort({ createdAt: -1 });
+				dataset = await Data.findOne({ pid: { $eq: pid }, activeflag: 'active' }).lean();
+				if (!isEmpty(datasetID)) dataset = await Data.findOne({ pid: { $eq: datasetID }, activeflag: 'archive' }).sort({ createdAt: -1 });
 			} else if (!isEmpty(datasetID)) dataset = await Data.findOne({ datasetid: { datasetID } }).lean();
 
 			if (isEmpty(dataset)) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
