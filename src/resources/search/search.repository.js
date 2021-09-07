@@ -57,7 +57,15 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			},
 		];
 	} else if (type === 'collection') {
+		
+		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+
+		if(searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+		
 		queryObject = [
+			{ $match: searchTerm },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 			{
 				$addFields: {
@@ -324,7 +332,9 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	}
 
 	// Get paged results based on query params
-	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)).catch(err => {
+		console.log(err);
+	});
 	// Return data
 	return { data: searchResults };
 }
@@ -399,8 +409,15 @@ export function getObjectCount(type, searchAll, searchQuery) {
 				.sort({ score: { $meta: 'textScore' } });
 		}
 	} else if (type === 'collection') {
+		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+
+		if(searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+		
 		if (searchAll) {
 			q = collection.aggregate([
+				{ $match: searchTerm },
 				{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 				{
 					$addFields: {
@@ -437,6 +454,7 @@ export function getObjectCount(type, searchAll, searchQuery) {
 		} else {
 			q = collection
 				.aggregate([
+					{ $match: searchTerm },
 					{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 					{
 						$addFields: {

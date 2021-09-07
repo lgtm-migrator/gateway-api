@@ -61,9 +61,9 @@ router.get('/', async (req, res) => {
 	} else {
 		const type = !isEmpty(tab) && typeof tab === 'string' ? lowerCase(tab.substring(0, tab.length - 1)) : '';
 		let defaultQuery = { $and: [{ activeflag: 'active' }] };
-		if (tab === 'collection') {
+		if (type === 'collection') {
 			defaultQuery['$and'].push({ publicflag: true });
-		} else if (tab === 'course') {
+		} else if (type === 'course') {
 			defaultQuery['$and'].push({
 				$or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }],
 			});

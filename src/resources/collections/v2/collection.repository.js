@@ -1,5 +1,6 @@
 import Repository from '../../base/repository';
 import { Collections } from '../collections.model';
+import { isNil } from 'lodash'
 
 export default class CollectionRepository extends Repository {
 	constructor() {
@@ -15,7 +16,14 @@ export default class CollectionRepository extends Repository {
 
 	async getCollections(query, options = {}) {
 		if (options.aggregate) {
+			const searchTerm = (query && query['$and'] && query['$and'].find(exp => !isNil(exp['$text']))) || {};
+
+			if (searchTerm) {
+				query['$and'] = query['$and'].filter(exp => !exp['$text']);
+			}
+
 			const aggregateQuery = [
+				{ $match: searchTerm },
 				{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 				{
 					$addFields: {
