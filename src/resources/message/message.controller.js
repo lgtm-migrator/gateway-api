@@ -31,7 +31,6 @@ module.exports = {
 
 				// 4. Get recipients for new message
 				let { publisher = '' } = tools[0];
-
 				if (_.isEmpty(publisher)) {
 					console.error(`No publisher associated to this dataset`);
 					return res.status(500).json({ success: false, message: 'No publisher associated to this dataset' });
@@ -131,7 +130,6 @@ module.exports = {
 			}
 			// 17. Return successful response with message data
 			message.createdByName = { firstname, lastname };
-
 			return res.status(201).json({ success: true, message });
 		} catch (err) {
 			console.error(err.message);

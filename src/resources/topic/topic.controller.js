@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import { TopicModel } from './topic.model';
 import { Data as ToolModel } from '../tool/data.model';
 import _ from 'lodash';
-
 module.exports = {
 	buildRecipients: async (team, createdBy) => {
 		// 1. Cause error if no members found
