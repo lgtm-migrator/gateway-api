@@ -100,7 +100,7 @@ router.post('/', async (req, res) => {
 	});
 
 	// 4. Sync contact in Hubspot
-	hubspotConnector.syncContact(user);
+	hubspotConnector.syncContact({ ...user.toObject(), orcid, sector, organisation });
 	
 	const [loginErr, token] = await to(login(req, user));
 

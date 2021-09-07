@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/node';
 import hubspotConnector from './hubspot';
 const router = express.Router();
 
-// @router   GET /api/v1/hubspot/sync
+// @router   POST /api/v1/hubspot/sync
 // @desc     Performs a two-way sync of contact details including communication opt in preferences between HubSpot and the Gateway database
 // @access   Public (key required)
 router.post('/sync', async (req, res) => {

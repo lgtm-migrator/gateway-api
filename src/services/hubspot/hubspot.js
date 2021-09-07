@@ -1,7 +1,7 @@
 import { Client, NumberOfRetries } from '@hubspot/api-client';
 import * as Sentry from '@sentry/node';
+import { isEmpty, get, isNil, isNull } from 'lodash';
 
-import constants from '../../resources/utilities/constants.util';
 import { UserModel } from '../../resources/user/user.model';
 import { logger } from '../../resources/utilities/logger';
 
@@ -33,7 +33,9 @@ const syncContact = async gatewayUser => {
 			if (response) {
 				const { body: hubspotContact } = response;
 				// When contact found, merge subscription preferences and perform update operation
-				updateContact(hubspotContact, gatewayUser);
+				if (hubspotContact.id) {
+					updateContact(hubspotContact, gatewayUser);
+				}
 			}
 		} catch (err) {
 			if (err.statusCode === 404) {
@@ -57,28 +59,36 @@ const updateContact = async (hubspotContact, gatewayUser) => {
 	if (apiKey) {
 		try {
 			// Extract and split hubspotContact communication preferences
-			const {
-				id,
-				properties: { communication_preference = '' },
-			} = hubspotContact;
-			const communicationPreferencesArr = communication_preference.split(',');
-			// Extract gateway communication preferences
-			const { news = false, feedback = false } = gatewayUser;
+			const { id, properties: { communication_preference = '' } = {} } = hubspotContact;
+			const communicationPreferencesArr =
+				isNull(communication_preference) || isEmpty(communication_preference.trim()) ? [] : communication_preference.trim().split(';');
+			// Extract gateway user params
+			const { news = false, feedback = false, orcid, sector, organisation, firstname, lastname } = gatewayUser;
 			// Merge communication preferences keeping non-gateway related preferences and include any updates
 			const updatedPreferencesArr = communicationPreferencesArr.filter(pref => {
-				return (pref === 'Gateway' && news) || (pref === 'Gateway Feedback' && feedback) || (pref !== 'Gateway' && pref !== 'Gateway Feedback');
+				return (
+					(pref === 'Gateway' && news) || (pref === 'Gateway Feedback' && feedback) || (pref !== 'Gateway' && pref !== 'Gateway Feedback')
+				);
 			});
 			if (news && !updatedPreferencesArr.includes('Gateway')) updatedPreferencesArr.push('Gateway');
 			if (feedback && !updatedPreferencesArr.includes('Gateway Feedback')) updatedPreferencesArr.push('Gateway Feedback');
+
 			// Create update object
 			const updatedContact = {
 				properties: {
-					communication_preference: updatedPreferencesArr.join(','),
+					firstname,
+					lastname,
+					orcid_number: orcid,
+					related_organisation_sector: sector,
+					company: organisation,
+					...(!isEmpty(communicationPreferencesArr) && { communication_preference: communicationPreferencesArr.join(';') }),
 					gateway_registered_user: 'Yes',
 				},
 			};
+
 			// Use API PUT operation to update the contact in Hubspot
 			await hubspotClient.crm.contacts.basicApi.update(id, updatedContact);
+			
 		} catch (err) {
 			logger.logError(err, logCategory);
 		}
@@ -94,10 +104,27 @@ const updateContact = async (hubspotContact, gatewayUser) => {
 const createContact = async gatewayUser => {
 	if (apiKey) {
 		try {
-			console.log('creating');
-			// Build hubspotContact communication preferences
-			// Ensure Gateway Registered User is true
-			// POST operation to create contact in Hubspot
+			// Extract gateway user params
+			const { news = false, feedback = false, orcid, sector, organisation, firstname, lastname, email } = gatewayUser;
+			const communicationPreferencesArr = [];
+			if (news) communicationPreferencesArr.push('Gateway');
+			if (feedback) communicationPreferencesArr.push('Gateway Feedback');
+
+			// Create update object
+			const newContact = {
+				properties: {
+					firstname,
+					lastname,
+					email,
+					orcid_number: orcid,
+					related_organisation_sector: sector,
+					company: organisation,
+					...(!isEmpty(communicationPreferencesArr) && { communication_preference: communicationPreferencesArr.join(';') }),
+					gateway_registered_user: 'Yes',
+				},
+			};
+			// Use API POST operation to create the contact in Hubspot
+			await hubspotClient.crm.contacts.basicApi.create(newContact);
 		} catch (err) {
 			logger.logError(err, logCategory);
 		}
@@ -112,17 +139,17 @@ const createContact = async gatewayUser => {
 const syncAllContacts = async () => {
 	if (apiKey) {
 		try {
-			// 1. Track attempted sync in Sentry using log
+			// Track attempted sync in Sentry using log
 			Sentry.addBreadcrumb({
 				category: 'Hubspot',
 				message: `Syncing Gateway users with Hubspot contacts`,
 				level: Sentry.Severity.Log,
 			});
 
-			// Batch GET contacts from Hubspot
+			// Batch import subscription changes from Hubspot
 			await batchImportFromHubspot();
 
-			// Batch POST update contacts to Hubspot
+			// Batch update Hubspot with changes from Gateway
 			await batchExportToHubspot();
 		} catch (err) {
 			logger.logError(err, logCategory);
@@ -137,32 +164,36 @@ const syncAllContacts = async () => {
  */
 const batchImportFromHubspot = async () => {
 	if (apiKey) {
-		// 1. Get corresponding Gateway subscription variable e.g. feedback, news
-		const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
-		let processedCount = 0;
-		// 2. Iterate bulk update process until all contacts have been processed from MailChimp
-		while (processedCount < memberCount) {
-			const { members = [] } = await mailchimp.get(`lists/${subscriptionId}/members?count=100&offset=${processedCount}`);
-			let ops = [];
-			// 3. For each member returned by MailChimp, create a bulk update operation to update the corresponding Gateway user if they exist
-			members.forEach(member => {
-				const subscribedBoolValue = member.status === 'subscribed' ? true : false;
-				const { email_address: email } = member;
+		let ops = [];
+		// Get all contacts from Hubspot
+		const contacts = await getAllContacts();
+		// Create MongoDb bulk update from contacts
+		contacts.forEach(contact => {
+			const {
+				properties: { communication_preference = '', email },
+			} = contact;
+			if (communication_preference && email) {
+				const communicationPreferencesArr = isEmpty(communication_preference.trim()) ? [] : communication_preference.trim().split(';');
+				const news = communicationPreferencesArr.includes('Gateway');
+				const feedback = communicationPreferencesArr.includes('Gateway Feedback');
 				ops.push({
 					updateMany: {
 						filter: { email },
 						update: {
-							[subscriptionBoolKey]: subscribedBoolValue,
+							news,
+							feedback,
 						},
 						upsert: false,
 					},
 				});
-			});
-			// 4. Run bulk update
-			await UserModel.bulkWrite(ops);
-			// 5. Increment counter to move onto next chunk of members
-			processedCount = processedCount + members.length;
-		}
+			}
+		});
+		// Save to database
+		await UserModel.bulkWrite(ops, err => {
+			if (err) {
+				logger.logError(err, logCategory);
+			}
+		});
 	}
 };
 
@@ -173,46 +204,39 @@ const batchImportFromHubspot = async () => {
  */
 const batchExportToHubspot = async () => {
 	if (apiKey) {
-		const subscriptionBoolKey = getSubscriptionBoolKey(subscriptionId);
-		// 1. Get all users from db
-		const users = await UserModel.find().select('id email firstname lastname news feedback').lean();
-		// 2. Build members array providing required metadata for MailChimp
-		const members = users.reduce((arr, user) => {
-			// Get subscription status from user profile
-			const status = user[subscriptionBoolKey]
-				? constants.mailchimpSubscriptionStatuses.SUBSCRIBED
-				: constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
-			// Check if the same email address has already been processed (email address can be attached to multiple user accounts)
-			const memberIdx = arr.findIndex(member => member.email_address === user.email);
-			if (status === constants.mailchimpSubscriptionStatuses.SUBSCRIBED) {
-				if (memberIdx === -1) {
-					// If email address has not be processed, return updated membership object
-					return [
-						...arr,
-						{
-							userId: user.id,
-							email_address: user.email,
-							status,
-							tags,
-							merge_fields: {
-								FNAME: user.firstname,
-								LNAME: user.lastname,
-							},
-						},
-					];
-				} else {
-					// If email address has been processed, and the current status is unsubscribed, override membership status
-					if (status === constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED) {
-						arr[memberIdx].status = constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
-					}
-					return arr;
-				}
-			}
-			return arr;
-		}, []);
-		// 3. Update subscription members in MailChimp
-		await updateSubscriptionMembers(subscriptionId, members);
+		// Get all users
+		const users = await UserModel.find()
+			.select('id email firstname lastname news feedback additionalInfo')
+			.populate('additionalInfo')
+			.lean();
+		// Sync each user
+		for (const user of users) {
+			await syncContact({ ...user, ...user.additionalInfo });
+		}
 	}
+};
+
+/**
+ * Gets All Hubspot Contacts
+ *
+ * @desc    Retrieves all contacts with associated communication preferences from Hubspot
+ */
+const getAllContacts = async () => {
+	let contacts = [];
+	let contactsResponse;
+	let after;
+	// Iterate through all pages of contacts using the 'after' functionality provided by Hubspot
+	do {
+		try {
+			contactsResponse = await hubspotClient.crm.contacts.basicApi.getPage(100, after, ['email', 'communication_preference']);
+			after = get(contactsResponse, 'body.paging.next.after');
+			contacts.push(...contactsResponse.body.results);
+		} catch (err) {
+			logger.logError(err, logCategory);
+		}
+	} while (!isNil(after));
+
+	return contacts;
 };
 
 const hubspotConnector = {
