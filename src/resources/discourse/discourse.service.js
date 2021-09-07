@@ -325,7 +325,7 @@ async function getCredentials(user, strict) {
 			// 5. Generate Discourse API key for user
 			discourseKey = await generateAPIKey(discourseUser.username);
 			// 6. Update MongoDb to contain users Discourse credentials
-			await UserModel.findOneAndUpdate({ id }, { $set: { discourseUsername, discourseKey } });
+			await UserModel.findOneAndUpdate({ id: { $eq: id } }, { $set: { discourseUsername, discourseKey } });
 		} catch (err) {
 			console.error(err.message);
 		}
@@ -335,7 +335,7 @@ async function getCredentials(user, strict) {
 			// 4. Generate Discourse API key for user
 			discourseKey = await generateAPIKey(discourseUsername);
 			// 5. Update MongoDb to contain users Discourse credentials
-			await UserModel.findOneAndUpdate({ id }, { $set: { discourseUsername, discourseKey } });
+			await UserModel.findOneAndUpdate({ id: { $eq: id } }, { $set: { discourseUsername, discourseKey } });
 		} catch (err) {
 			console.error(err.message);
 		}
