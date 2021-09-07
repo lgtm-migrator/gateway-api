@@ -10,6 +10,8 @@ export default class AridhiaController extends Controller {
 		this.aridhiaService = aridhiaService;
 		this.datasetService = new DatasetService();
 		this.aridhia = aridhia;
+
+		// this.aridhia = aridhiaService;
 	}
 
 	async main() {

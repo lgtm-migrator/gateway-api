@@ -17,6 +17,22 @@ const datasetLimiter = rateLimit({
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
 });
 
+// let parsedBody = {};
+// 		if (req.header('content-type') === 'application/json') {
+// 			parsedBody = req.body;
+// 		} else {
+// 			parsedBody = JSON.parse(req.body);
+// 		}
+
+// 		// Check for key
+// 		if (parsedBody.key !== process.env.cachingkey) {
+// 			return res.status(400).json({ success: false, error: 'Caching could not be started' });
+
+// {
+//     'key': 'cshvGblmw1EdNOtweJ32LpzlGmtIPSU7'
+// }
+
+// change to post
 router.get('/aridhia', async (req, res) => {
 	const ac = new AridhiaController();
 	const result = await ac.main();
@@ -32,6 +48,7 @@ router.post('/', async (req, res) => {
 		} else {
 			parsedBody = JSON.parse(req.body);
 		}
+
 		// Check for key
 		if (parsedBody.key !== process.env.cachingkey) {
 			return res.status(400).json({ success: false, error: 'Caching could not be started' });
