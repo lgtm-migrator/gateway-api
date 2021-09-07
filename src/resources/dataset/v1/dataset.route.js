@@ -20,21 +20,17 @@ const datasetLimiter = rateLimit({
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
 });
 
-// {
-//     'key': 'cshvGblmw1EdNOtweJ32LpzlGmtIPSU7'
-// }
 
-// change to post
-router.get('/aridhia', async (req, res) => {
+router.post('/aridhia', async (req, res) => {
 	
-	// check for a key. return 401 Not Unauthorised due a missing of the caching key
-	// req.header(('content-type') === 'application/json') ? parsedBody = req.body : parsedBody = JSON.parse(req.body);
-	// if (parsedBody.key !== process.env.cachingkey)
-	// 	return res.status(401).json({ success: false, error: 'Caching could not be started. You are missing a caching key.' });
+	// check for a key. return 401, since user unauthorised (caching key is missing or not matched)
+	let parsedBody = req.header('content-type') === 'application/json' ?  req.body : JSON.parse(req.body);
+	if (parsedBody.key !== process.env.cachingkey)
+		return res.status(401).json({ success: false, error: 'Caching could not be started.' });
 		
 	const ac = new AridhiaController();
 	const result = await ac.main();
-    return res.send(result);
+    return  res.status(200).json({ success: true, message: 'Caching started', result: result })
 });
 
 router.post('/', async (req, res) => {
