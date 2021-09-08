@@ -6,8 +6,8 @@ const cohortSchema = new Schema(
 	{
 		id: Number,
 		pid: String,
-		name: String,
-		status: String,
+		name: String, 
+		activeflag: String,
 		userId: Number,
 		uploaders: [],
 		isPublic: Boolean,
