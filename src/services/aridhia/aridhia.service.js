@@ -43,6 +43,9 @@ export default class aridhiaService {
 				version: '1', // our internal definition 
 			};
 	
+		if (doc.pid === 'fair-icoda-dummy-dataset')
+			doc.datasetfields.publisher = 'ICODA accreditation';
+
 		doc.datasetv2 = this.buildV2(res);
 		doc.datasetfields.technicaldetails = this.resToTechMetaData(res);
 	
