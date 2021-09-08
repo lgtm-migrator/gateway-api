@@ -20,7 +20,7 @@ export default class aridhiaService {
 		res = res.data;
 	
 		let doc = {
-				pid: `test-${res.code}`,
+				pid: `fair-${res.code}`,
 				activeflag: "active",
 				contactPoint: res.catalogue.contactPoint,
 				created_at: res.created_at,
