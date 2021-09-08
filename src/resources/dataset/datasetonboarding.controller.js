@@ -772,4 +772,37 @@ module.exports = {
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
+	//POST api/v1/dataset-onboarding/duplicate/:id
+	duplicateDataset: async (req, res) => {
+		try {
+			let id = req.params.id;
+
+			//Check user type and authentication to submit application
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			let dataset = await Data.findOne({ _id: id });
+			let datasetCopy = JSON.parse(JSON.stringify(dataset));
+
+			delete datasetCopy._id;
+			datasetCopy.pid = uuidv4();
+			datasetCopy.name += '-duplicate';
+			datasetCopy.activeflag = 'draft';
+			datasetCopy.datasetVersion = '1.0.0';
+			await Data.create(datasetCopy);
+
+			// await datasetonboardingUtil.createNotifications(constants.notificationTypes.DUPLICATEDATASET, dataset);
+
+			return res.status(200).json({
+				success: true,
+				datasetName: dataset.name,
+			});
+
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
+		}
+	},
 };
