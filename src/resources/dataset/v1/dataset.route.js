@@ -26,8 +26,8 @@ router.post('/aridhia', async (req, res) => {
 		return res.status(401).json({ success: false, error: 'Caching could not be started.' });
 		
 	const ac = new AridhiaController();
-	const result = await ac.main();
-    return  res.status(200).json({ success: true, message: 'Caching started', result: result })
+	const result = ac.main();
+    return  res.status(200).json({ success: true, message: 'Caching started' })
 });
 
 router.post('/', async (req, res) => {
