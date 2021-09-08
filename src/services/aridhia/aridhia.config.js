@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // config
 let config = {};
-config.endpoint = process.env.ARIDHIA_ENDPOINT;
+config.endpoint = "https://fair.covid-19.aridhia.io/api/datasets/";
 config.token = process.env.ARIDHIA_TOKEN;
 
 const http = axios.create({

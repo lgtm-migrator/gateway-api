@@ -65,19 +65,24 @@ export default class aridhiaService {
 	resToTechMetaData(res) {
 
 		let elements = [];
-		if (res.dictionaries.length > 0) {
-			const fields = res.dictionaries[0].fields;
-			elements = fields.map(field => this.fieldToElement(field));
-		}
+		if (res.dictionaries === 0)
+			return elements;
 
-		const technicalMetadata = [
-			{
-				description: res.catalogue.description,
+		// one bit
+		let technicalMetadata = [];
+		for (const dict of res.dictionaries) {
+			const fields = dict.fields;
+			elements = fields.map(field => this.fieldToElement(field));
+
+			const tableData = {
+				description: dict.description,
 				label: res.name,
 				elements: elements
 			}
-		];
-	
+
+			technicalMetadata.push(tableData);
+		}	
+
 		return technicalMetadata;
 	}
 
