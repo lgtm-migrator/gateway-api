@@ -2,6 +2,7 @@ import Aridhia from './aridhia.service.js';
 import { Dataset } from '../../resources/dataset/dataset.model.js';
 import DatasetService from '../../resources/dataset/dataset.service';
 import { config, http } from './aridhia.config';
+import { logger } from '../../resources/utilities/logger';
 
 export default class AridhiaController {
 	constructor() {
@@ -40,7 +41,8 @@ export default class AridhiaController {
 			return res;
 
 		} catch (err) {
-			console.log("Houston we have a problem: " + err)
+			logger.logError(err, config.logCategory);
+			console.log("Aridhia Script broke down. Error: " + err);
 		}
 	}
 }
