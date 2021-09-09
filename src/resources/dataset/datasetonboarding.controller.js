@@ -798,11 +798,13 @@ module.exports = {
 			datasetCopy.activeflag = 'draft';
 			datasetCopy.datasetVersion = '1.0.0';
 			datasetCopy.questionAnswers = JSON.stringify(parsedQuestionAnswers);
-			datasetCopy.datasetv2.summary.title += duplicateText;
+			if (datasetCopy.datasetv2.summary.title) { 
+				datasetCopy.datasetv2.summary.title += duplicateText;
+			}
 
 			await Data.create(datasetCopy);
 
-			// await datasetonboardingUtil.createNotifications(constants.notificationTypes.DUPLICATEDATASET, dataset);
+			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
 
 			return res.status(200).json({
 				success: true,

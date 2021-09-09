@@ -149,6 +149,7 @@ const _notificationTypes = {
 	DATASETREJECTED: 'DatasetRejected',
 	TEAMADDED: 'TeamAdded',
 	MESSAGESENT: 'MessageSent',
+	DATASETDUPLICATED: 'DatasetDuplicated',
 };
 
 const _applicationStatuses = {
