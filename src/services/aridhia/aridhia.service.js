@@ -68,7 +68,7 @@ export default class aridhiaService {
 		if (res.dictionaries === 0)
 			return elements;
 
-		// one bit
+		// Create list of technical metadatas out of the dictonaries in Aridhia API response
 		let technicalMetadata = [];
 		for (const dict of res.dictionaries) {
 			const fields = dict.fields;
@@ -76,7 +76,7 @@ export default class aridhiaService {
 
 			const tableData = {
 				description: dict.description,
-				label: res.name,
+				label: dict.name,
 				elements: elements
 			}
 
