@@ -8,6 +8,7 @@ import { isEmpty, isNil } from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
 import moment from 'moment';
+import _ from 'lodash';
 var fs = require('fs');
 
 module.exports = {
@@ -785,12 +786,20 @@ module.exports = {
 
 			let dataset = await Data.findOne({ _id: id });
 			let datasetCopy = JSON.parse(JSON.stringify(dataset));
+			let duplicateText = '-duplicate';
 
 			delete datasetCopy._id;
 			datasetCopy.pid = uuidv4();
-			datasetCopy.name += '-duplicate';
+
+			let parsedQuestionAnswers = JSON.parse(datasetCopy.questionAnswers);
+			parsedQuestionAnswers['properties/summary/title'] += duplicateText;
+
+			datasetCopy.name += duplicateText;
 			datasetCopy.activeflag = 'draft';
 			datasetCopy.datasetVersion = '1.0.0';
+			datasetCopy.questionAnswers = JSON.stringify(parsedQuestionAnswers);
+			datasetCopy.datasetv2.summary.title += duplicateText;
+
 			await Data.create(datasetCopy);
 
 			// await datasetonboardingUtil.createNotifications(constants.notificationTypes.DUPLICATEDATASET, dataset);
