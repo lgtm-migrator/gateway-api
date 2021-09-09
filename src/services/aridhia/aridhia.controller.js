@@ -3,6 +3,7 @@ import { Dataset } from '../../resources/dataset/dataset.model.js';
 import DatasetService from '../../resources/dataset/dataset.service';
 import { config, http } from './aridhia.config';
 import { logger } from '../../resources/utilities/logger';
+import * as Sentry from '@sentry/node';
 
 export default class AridhiaController {
 	constructor() {
@@ -17,7 +18,7 @@ export default class AridhiaController {
 		let models = [];
 	
 		try {
-	
+
 			// get the dataset codes from aridhia api. we need these codes for the next step
 			res = await this.aridhia.getDatasetLists();
 			const codes = await this.aridhia.extractCodesFromAridhiaResponse(res.data);
@@ -41,6 +42,12 @@ export default class AridhiaController {
 			return res;
 
 		} catch (err) {
+			Sentry.addBreadcrumb({
+				category: 'Caching',
+				message: `Unable to complete the metadata import from Aridhia`,
+				level: Sentry.Severity.Error,
+			});
+
 			logger.logError(err, config.logCategory);
 			console.log("Aridhia Script broke down. Error: " + err);
 		}
