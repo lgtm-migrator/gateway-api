@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // config
 let config = {};
-config.endpoint = process.env.ARIDHIA_ENDPOINT;
+// config.endpoint = process.env.ARIDHIA_ENDPOINT;
 config.token = process.env.ARIDHIA_TOKEN;
 config.logCategory = "Aridhia Script";
 

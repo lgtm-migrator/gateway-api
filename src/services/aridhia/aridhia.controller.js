@@ -34,10 +34,8 @@ export default class AridhiaController {
 	
 			// take each dataset model. if its already in the DB, update the DB. if its not --> insert to the DB
 			for (const model of models) {
-				let ds = new Dataset(model);
-				res = await this.datasetService.replaceOrUpdateOne(ds, {"pid": ds.pid, "activeflag": "active"});
-				// console.log(`updating dataset with pid ${model.pid}...`);
-				// Dataset.findOneAndUpdate({"pid": model.pid, "activeflag": "active"}, model , { upsert: true });
+				console.log(`updating dataset with pid ${model.pid}...`);
+				await Dataset.findOneAndUpdate({"pid": model.pid, "activeflag": "active"}, model , { upsert: true });
 			}
 	
 			return res;
