@@ -19,7 +19,7 @@ const validateRequest = (req, res, next) => {
 	if (!id) {
 		return res.status(400).json({
 			success: false,
-			message: 'You must provide a log event identifier',
+			message: 'You must provide a data user register identifier',
 		});
 	}
 	next();
