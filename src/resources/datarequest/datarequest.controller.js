@@ -1212,7 +1212,7 @@ export default class DataRequestController extends Controller {
 			const { status } = req.body;
 
 			// 2. Find the relevant data request application
-			const accessRecord = this.dataRequestService.getFilesForApplicationById(id);
+			const accessRecord = await this.dataRequestService.getFilesForApplicationById(id);
 
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'Application not found.' });
@@ -1229,9 +1229,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			//4. Update all versions of application using version tree
-			await this.dataRequestService.updateFileStatus(accessRecord, fileId).catch(err => {
-				logger.logError(err, logCategory);
-			});
+			await this.dataRequestService.updateFileStatus(accessRecord, fileId, status);
 
 			return res.status(200).json({
 				success: true,
@@ -2579,7 +2577,7 @@ export default class DataRequestController extends Controller {
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
-						`A Data Access Request has been resubmitted with updates to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
+						`An amendment request has been submitted to ${projectId} by ${appFirstName} ${appLastName}`,
 						'data access request',
 						accessRecord._id
 					);
@@ -2590,7 +2588,7 @@ export default class DataRequestController extends Controller {
 				// Applicant notification
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully submitted with amendments to ${publisher}`,
+					`Your amendment request to ${projectId} was successfully submitted to ${publisher}`,
 					'data access request',
 					accessRecord._id
 				);
@@ -2598,7 +2596,7 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						accessRecord.authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${datasetTitles} was successfully submitted with amendments to ${publisher} by ${firstname} ${lastname}`,
+						`An amendment request to ${projectId} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
 					);

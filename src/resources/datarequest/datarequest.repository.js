@@ -141,8 +141,21 @@ export default class DataRequestRepository extends Repository {
 		}).lean();
 	}
 
-	getFilesForApplicationById(id, options = {}) {
-		return DataRequestModel.findById(id, { files: 1, applicationStatus: 1, userId: 1, authorIds: 1 }, options);
+	getFilesForApplicationById(id) {
+		return DataRequestModel.findOne({
+			_id: id,
+		}).populate([
+			{
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
+				},
+			},
+			{
+				path: 'datasets dataset authors',
+				populate: { path: 'publisher', populate: { path: 'team' } },
+			},
+		]);
 	}
 
 	getApplicationFormSchema(publisher) {

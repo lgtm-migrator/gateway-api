@@ -17,11 +17,14 @@ export default class DataRequestClass extends Entity {
 		const versionIds = [];
 		// 1. Iterate through all versions in the tree
 		for (const versionKey in this.versionTree) {
-			const { applicationId, iterationId } = versions[versionKey];
+			const { applicationId, iterationId } = this.versionTree[versionKey];
 			// 2. If not unique or represents a minor version then ignore
-			if (versionIds.some(v => v === applicationId) || iterationId) continue;
-			// 3. If unique, push id to array for return
-			versionIds.push(applicationId);
+
+			if (!versionIds.some(v => v === applicationId) && !iterationId) {
+				// 3. If unique, push id to array for return
+				versionIds.push(applicationId);
+			}
+
 		}
 		// 4. Return unique array
 		return versionIds;

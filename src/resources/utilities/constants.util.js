@@ -2,6 +2,7 @@
 const _userTypes = {
 	CUSTODIAN: 'custodian',
 	APPLICANT: 'applicant',
+	ADMIN: 'admin',
 };
 
 const _formTypes = Object.freeze({
@@ -75,7 +76,7 @@ const _questionActions = {
 const _navigationFlags = {
 	custodian: {
 		submitted: {
-			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# made this change on #DATE#' },
 		},
 		returned: {
 			completed: { status: 'WARNING', options: [], text: '#NAME# requested an update on #DATE#' },
@@ -98,7 +99,7 @@ const _navigationFlags = {
 	},
 	applicant: {
 		submitted: {
-			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# made this change on #DATE#' },
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
 		returned: {
@@ -112,7 +113,7 @@ const _navigationFlags = {
 						displayOrder: 1,
 					},
 				],
-				text: '#NAME# updated this answer on #DATE#',
+				text: '#NAME# made this change on on #DATE#',
 			},
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
@@ -151,6 +152,7 @@ const _notificationTypes = {
 	DATASETSUBMITTED: 'DatasetSubmitted',
 	DATASETAPPROVED: 'DatasetApproved',
 	DATASETREJECTED: 'DatasetRejected',
+	TEAMADDED: 'TeamAdded',
 	MESSAGESENT: 'MessageSent',
 };
 
@@ -203,6 +205,11 @@ const _DARMessageTypes = {
 // </DAR related enums>
 
 // <Team related enums>
+const _teamTypes = {
+	PUBLISHER: 'publisher',
+	ADMIN: 'admin',
+};
+
 const _roleTypes = {
 	MANAGER: 'manager',
 	REVIEWER: 'reviewer',
@@ -291,6 +298,7 @@ export default {
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
 	formActions: _formActions,
+	teamTypes: _teamTypes,
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,

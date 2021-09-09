@@ -28,6 +28,7 @@ const MessageSchema = new Schema(
 				'data access request log updated',
 				'team',
 				'team unlinked',
+				'team added',
 				'edit',
 				'workflow',
 				'data access message sent',
