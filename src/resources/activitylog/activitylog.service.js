@@ -80,7 +80,12 @@ export default class activityLogService {
 			}
 
 			amendmentIterations.forEach((iterationMinorVersion, index) => {
-				const { dateSubmitted: minorVersionDateSubmitted, dateCreated: minorVersionDateCreated, dateReturned: minorVersionDateReturned, _id: minorVersionId } = iterationMinorVersion;
+				const {
+					dateSubmitted: minorVersionDateSubmitted,
+					dateCreated: minorVersionDateCreated,
+					dateReturned: minorVersionDateReturned,
+					_id: minorVersionId,
+				} = iterationMinorVersion;
 				const partyDurations = this.getPartyTimeDistribution(iterationMinorVersion);
 				const minorVersion = this.buildVersionEvents(
 					`${majorVersionNumber}.${index + 1}`,
@@ -137,7 +142,16 @@ export default class activityLogService {
 		return orderedVersionEvents;
 	}
 
-	buildVersionEvents(versionNumber, dateSubmitted, dateCreated, dateReturned, applicationType, applicationStatus, getEventsFn, calculateTimeWithPartyfn) {
+	buildVersionEvents(
+		versionNumber,
+		dateSubmitted,
+		dateCreated,
+		dateReturned,
+		applicationType,
+		applicationStatus,
+		getEventsFn,
+		calculateTimeWithPartyfn
+	) {
 		let daysSinceSubmission;
 
 		if (dateSubmitted) {
@@ -148,12 +162,12 @@ export default class activityLogService {
 			dateSubmitted = dateSubmitted.format('D MMMM YYYY');
 		}
 
-		if(dateCreated) {
+		if (dateCreated) {
 			dateCreated = moment(dateCreated);
 			dateCreated = dateCreated.format('D MMMM YYYY');
 		}
 
-		if(dateReturned) {
+		if (dateReturned) {
 			dateReturned = moment(dateReturned);
 			dateReturned = dateReturned.format('D MMMM YYYY');
 		}
@@ -872,13 +886,14 @@ export default class activityLogService {
 		const daysSinceDeadlinePassed = moment().diff(dateDeadline, 'days');
 
 		const detHtml =
-			`<div class='activity-log-detail'><div class='activity-log-detail-row-question'>Recommendations required from:</div>` +
+			`<div class='activity-log-detail'>
+			<div class='activity-log-detail-row-question'>Recommendations required from:</div>` +
 			step.reviewers
 				.map(reviewer => {
 					return `<div class='activity-log-detail-row-answer'>` + reviewer.firstname + ' ' + reviewer.lastname + `</div>`;
 				})
-				.join('');
-		+`</div>`;
+				.join('') +
+			`</div>`;
 
 		const detText =
 			`Recommendations required from:` +
@@ -1053,7 +1068,6 @@ export default class activityLogService {
 	}
 
 	buildMessage(createdBy, userType, publisher, createdDate, messageBody, onClickScript) {
-		const sentTime = moment(createdDate).format('HH:mm');
 		const { firstname, lastname } = createdBy;
 		let plainText, detailedText, html, detailedHtml;
 

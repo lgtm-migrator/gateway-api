@@ -8,7 +8,7 @@ export default class ActivityLogRepository extends Repository {
 	}
 
 	async searchLogs(versionIds, logType, userType) {
-		return ActivityLog.find({ versionId: { $in: versionIds }, logType, userTypes: userType }).lean();
+		return ActivityLog.find({ versionId: { $in: { $eq: versionIds } }, logType: { $eq: logType }, userTypes: { $eq: userType } }).lean();
 	}
 
 	async createActivityLog(log) {
@@ -20,7 +20,7 @@ export default class ActivityLogRepository extends Repository {
 	}
 
 	getLog(id, type) {
-		return ActivityLog.findOne({ _id: id, logType: type }, 'versionId eventType plainText timestamp').lean();
+		return ActivityLog.findOne({ _id: { $eq: id }, logType: { $eq: type } }, 'versionId eventType plainText timestamp').lean();
 	}
 
 	deleteLog(id) {
