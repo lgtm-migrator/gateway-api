@@ -13,9 +13,10 @@ import cookieParser from 'cookie-parser';
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
 import * as Sentry from '@sentry/node';
+import * as Tracing from '@sentry/tracing';
 import helper from '../resources/utilities/helper.util';
 
-require('dotenv').config();
+var app = express();
 
 Sentry.init({
 	dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
@@ -31,13 +32,18 @@ Sentry.init({
 	],
 	tracesSampleRate: 1.0,
 });
+// RequestHandler creates a separate execution context using domains, so that every
+// transaction/span/breadcrumb is attached to its own Hub instance
+app.use(Sentry.Handlers.requestHandler());
+// TracingHandler creates a trace for every incoming request
+app.use(Sentry.Handlers.tracingHandler());
+app.use(Sentry.Handlers.errorHandler());
 
 const Account = require('./account');
 const configuration = require('./configuration');
 
 const API_PORT = process.env.PORT || 3001;
 const session = require('express-session');
-var app = express();
 app.disable('x-powered-by');
 
 configuration.findAccount = Account.findAccount;
