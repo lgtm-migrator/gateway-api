@@ -242,6 +242,13 @@ const _logTypes = {
 	USER: 'User',
 };
 
+const _dataUseRegisterStatus = {
+	ACTIVE: 'active',
+	PENDING_APPROVAL: 'pendingApproval',
+	REJECTED: 'rejected',
+	ARCHIVED: 'archived',
+};
+
 export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
@@ -267,4 +274,5 @@ export default {
 	datatsetStatuses: _datatsetStatuses,
 	logTypes: _logTypes,
 	DARMessageTypes: _DARMessageTypes,
+	dataUseRegisterStatus: _dataUseRegisterStatus,
 };

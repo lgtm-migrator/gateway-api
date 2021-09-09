@@ -258,6 +258,7 @@ app.use('/api/v1/cohortprofiling', require('../resources/cohortprofiling/cohortp
 
 app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
 
+app.use('/api/v2/data-use-registers', require('../resources/datauseregister/datauseregister.route'));
 
 initialiseAuthentication(app);
 
