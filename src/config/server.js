@@ -16,6 +16,8 @@ import * as Sentry from '@sentry/node';
 import * as Tracing from '@sentry/tracing';
 import helper from '../resources/utilities/helper.util';
 
+require('dotenv').config();
+
 var app = express();
 
 Sentry.init({
