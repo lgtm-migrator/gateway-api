@@ -1,5 +1,6 @@
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
+import _ from 'lodash';
 
 const logCategory = 'dataUseRegister';
 
@@ -48,7 +49,8 @@ export default class DataUseRegisterController extends Controller {
 	async getDataUseRegisters(req, res) {
 		try {
 			// Find the relevant dataUseRegisters
-			const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters(req.query).catch(err => {
+			const query = _.isEmpty(req.query) ? { user: req.user._id } : req.query;
+			const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters(query).catch(err => {
 				logger.logError(err, logCategory);
 			});
 			// Return the dataUseRegisters
@@ -68,11 +70,13 @@ export default class DataUseRegisterController extends Controller {
 
 	async updateDataUseRegister(req, res) {
 		try {
-			// Find the relevant dataUseRegisters
-			const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters(req.query).catch(err => {
+			const id = req.params.id;
+			const body = req.body;
+
+			this.dataUseRegisterService.updateDataUseRegister(id, body).catch(err => {
 				logger.logError(err, logCategory);
 			});
-			// Return the dataUseRegisters
+			// Return success
 			return res.status(200).json({
 				success: true,
 			});

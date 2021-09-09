@@ -7,7 +7,7 @@ export default class DataUseRegisterService {
 		// Protect for no id passed
 		if (!id) return;
 
-		query = { ...query, id };
+		query = { ...query, _id: id };
 		return this.dataUseRegisterRepository.getDataUseRegister(query, options);
 	}
 
@@ -15,11 +15,10 @@ export default class DataUseRegisterService {
 		return this.dataUseRegisterRepository.getDataUseRegisters(query);
 	}
 
-	updateDataUseRegister(id, query = {}, options = {}) {
+	updateDataUseRegister(id, body = {}) {
 		// Protect for no id passed
 		if (!id) return;
 
-		query = { ...query, id };
-		return this.dataUseRegisterRepository.update(query, options);
+		return this.dataUseRegisterRepository.updateDataUseRegister({ _id: id }, body);
 	}
 }

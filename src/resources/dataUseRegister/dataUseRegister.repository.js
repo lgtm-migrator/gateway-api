@@ -1,6 +1,5 @@
 import Repository from '../base/repository';
 import { DataUseRegister } from './dataUseRegister.model';
-import constants from '../utilities/constants.util';
 
 export default class DataUseRegisterRepository extends Repository {
 	constructor() {
@@ -15,5 +14,9 @@ export default class DataUseRegisterRepository extends Repository {
 	async getDataUseRegisters(query) {
 		const options = { lean: true };
 		return this.find(query, options);
+	}
+
+	async updateDataUseRegister(id, body) {
+		return this.update(id, body);
 	}
 }
