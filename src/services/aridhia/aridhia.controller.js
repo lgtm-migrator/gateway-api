@@ -36,6 +36,8 @@ export default class AridhiaController {
 			for (const model of models) {
 				let ds = new Dataset(model);
 				res = await this.datasetService.replaceOrUpdateOne(ds, {"pid": ds.pid, "activeflag": "active"});
+				// console.log(`updating dataset with pid ${model.pid}...`);
+				// Dataset.findOneAndUpdate({"pid": model.pid, "activeflag": "active"}, model , { upsert: true });
 			}
 	
 			return res;
