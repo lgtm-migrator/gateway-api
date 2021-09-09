@@ -17,7 +17,7 @@ const datasetLimiter = rateLimit({
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
 });
 
-
+// This api triggers Aridhia Script (collect datasets from Aridhi API and updates the DB accordingly)
 router.post('/aridhia', async (req, res) => {
 	
 	// check for a key. return 401, since user unauthorised (caching key is missing or not matched)
@@ -26,7 +26,8 @@ router.post('/aridhia', async (req, res) => {
 		return res.status(401).json({ success: false, error: 'Caching could not be started.' });
 		
 	const ac = new AridhiaController();
-	const result = ac.main();
+	ac.main();
+
     return  res.status(200).json({ success: true, message: 'Caching started' })
 });
 

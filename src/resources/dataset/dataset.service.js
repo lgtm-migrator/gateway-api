@@ -1,5 +1,4 @@
 import _ from 'lodash';
-import { Dataset } from './dataset.model';
 
 export default class DatasetService {
 	constructor(datasetRepository, paperRepository, projectRepository, toolRepository, courseRepository) {

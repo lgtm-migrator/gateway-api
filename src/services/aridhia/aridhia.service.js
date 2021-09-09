@@ -23,7 +23,6 @@ export default class aridhiaService {
 				pid: `fair-${res.code}`,
 				activeflag: "active",
 				contactPoint: res.catalogue.contactPoint,
-				created_at: res.created_at,
 				creator: res.catalogue.creator,
 				datasetfields: { publisher: 'ICODA', phenotypes: [] },
 				datasetid: `datasetid-fair-${res.code}`,
