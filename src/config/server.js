@@ -17,22 +17,20 @@ import helper from '../resources/utilities/helper.util';
 
 require('dotenv').config();
 
-if (helper.getEnvironment() !== 'local') {	
-	Sentry.init({
-		dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
-		environment: helper.getEnvironment(),
-		integrations: [
-			// enable HTTP calls tracing
-			new Sentry.Integrations.Http({ tracing: true }),
-			// enable Express.js middleware tracing
-			new Tracing.Integrations.Express({
-				// trace all requests to the default router
-				app,
-			}),
-		],
-		tracesSampleRate: 1.0,
-	});
-}
+Sentry.init({
+	dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
+	environment: helper.getEnvironment(),
+	integrations: [
+		// enable HTTP calls tracing
+		new Sentry.Integrations.Http({ tracing: true }),
+		// enable Express.js middleware tracing
+		new Tracing.Integrations.Express({
+			// trace all requests to the default router
+			app,
+		}),
+	],
+	tracesSampleRate: 1.0,
+});
 
 const Account = require('./account');
 const configuration = require('./configuration');
