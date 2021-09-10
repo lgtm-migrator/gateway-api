@@ -58,7 +58,7 @@ export default class DataUseRegisterController extends Controller {
 					query = { user: requestingUser._id };
 					break;
 				case 'admin':
-					query = { status: constants.dataUseRegisterStatus.PENDING_APPROVAL };
+					query = { status: constants.dataUseRegisterStatus.INREVIEW };
 					break;
 				default:
 					query = { publisher: team };

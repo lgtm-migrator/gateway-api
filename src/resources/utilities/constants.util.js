@@ -245,7 +245,7 @@ const _logTypes = {
 
 const _dataUseRegisterStatus = {
 	ACTIVE: 'active',
-	PENDING_APPROVAL: 'pendingApproval',
+	INREVIEW: 'inReview',
 	REJECTED: 'rejected',
 	ARCHIVED: 'archived',
 };
