@@ -24,7 +24,6 @@ export default class DataRequestClass extends Entity {
 				// 3. If unique, push id to array for return
 				versionIds.push(applicationId);
 			}
-
 		}
 		// 4. Return unique array
 		return versionIds;
@@ -107,6 +106,7 @@ export const buildVersionTree = accessRecord => {
 		amendmentIterations = [],
 		applicationType = constants.submissionTypes.INITIAL,
 		applicationStatus = constants.applicationStatuses.INPROGRESS,
+		isShared = false,
 	} = accessRecord;
 	const versionKey = majorVersion ? majorVersion.toString() : '1.0';
 
@@ -142,6 +142,7 @@ export const buildVersionTree = accessRecord => {
 			link: `/data-access-request/${applicationId}?version=${versionKey}.0`,
 			applicationType,
 			applicationStatus,
+			isShared,
 		},
 	};
 

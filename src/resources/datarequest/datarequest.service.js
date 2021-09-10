@@ -78,6 +78,19 @@ export default class DataRequestService {
 		return await this.syncRelatedVersions(accessRecord.versionTree);
 	}
 
+	async shareApplication(accessRecord) {
+		const { versionTree, _id: applicationId } = accessRecord;
+		Object.keys(versionTree).forEach(key => {
+			if (versionTree[key].applicationId.toString() === applicationId.toString()) {
+				versionTree[key].isShared = true;
+			}
+		});
+
+		await this.updateApplicationById(applicationId, { isShared: true });
+
+		return await this.syncRelatedVersions(versionTree);
+	}
+
 	replaceApplicationById(id, newAcessRecord) {
 		return this.dataRequestRepository.replaceApplicationById(id, newAcessRecord);
 	}
@@ -131,7 +144,7 @@ export default class DataRequestService {
 					activityLogService.logActivity(constants.activityLogEvents.PRESUBMISSION_MESSAGE, {
 						messages: topic.topicMessages,
 						applicationId,
-						publisher
+						publisher,
 					});
 				}
 			});
@@ -139,8 +152,6 @@ export default class DataRequestService {
 
 		return topicId;
 	}
-
-	
 
 	async createApplication(data, applicationType = constants.submissionTypes.INITIAL, versionTree = {}) {
 		let application = await this.dataRequestRepository.createApplication(data);
@@ -199,9 +210,10 @@ export default class DataRequestService {
 
 	buildVersionHistory = (versionTree, applicationId, requestedVersion, userType) => {
 		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
-			const { applicationId: _id, link, displayTitle, detailedTitle, applicationStatus } = versionTree[versionKey];
+			const { applicationId: _id, link, displayTitle, detailedTitle, applicationStatus, isShared = false } = versionTree[versionKey];
 
-			if (userType === constants.userTypes.CUSTODIAN && applicationStatus === constants.applicationStatuses.INPROGRESS) return arr;
+			if (userType === constants.userTypes.CUSTODIAN && applicationStatus === constants.applicationStatuses.INPROGRESS && !isShared)
+				return arr;
 
 			const isCurrent = applicationId.toString() === _id.toString() && (requestedVersion === versionKey || !requestedVersion);
 
@@ -340,7 +352,6 @@ export default class DataRequestService {
 	}
 
 	async createAmendment(accessRecord) {
-		// TODO persist messages + private notes between applications (copy)
 		const applicationType = constants.submissionTypes.AMENDED;
 		const applicationStatus = constants.applicationStatuses.INPROGRESS;
 
@@ -355,6 +366,7 @@ export default class DataRequestService {
 			publisher,
 			files,
 			versionTree,
+			isShared = false,
 		} = accessRecord;
 
 		const { jsonSchema, _id: schemaId, isCloneable = false, formType } = await datarequestUtil.getLatestPublisherSchema(publisher);
@@ -377,6 +389,7 @@ export default class DataRequestService {
 			publisher,
 			formType,
 			files,
+			isShared,
 		};
 
 		if (questionAnswers && Object.keys(questionAnswers).length > 0 && datarequestUtil.containsUserRepeatedSections(questionAnswers)) {

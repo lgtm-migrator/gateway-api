@@ -98,7 +98,7 @@ const DataRequestSchema = new Schema(
 		],
 		originId: { type: Schema.Types.ObjectId, ref: 'data_request' },
 		versionTree: { type: Object, default: {} },
-		isShared: { Boolean, default: false },
+		isShared: { type: Boolean, default: false },
 	},
 	{
 		timestamps: true,
