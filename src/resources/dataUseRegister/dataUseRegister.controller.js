@@ -1,6 +1,7 @@
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import _ from 'lodash';
+import constants from './../utilities/constants.util';
 
 const logCategory = 'dataUseRegister';
 
@@ -48,8 +49,21 @@ export default class DataUseRegisterController extends Controller {
 
 	async getDataUseRegisters(req, res) {
 		try {
-			// Find the relevant dataUseRegisters
-			const query = _.isEmpty(req.query) ? { user: req.user._id } : req.query;
+			const { team } = req.query;
+			const requestingUser = req.user;
+
+			let query = '';
+			switch (team) {
+				case 'user':
+					query = { user: requestingUser._id };
+					break;
+				case 'admin':
+					query = { status: constants.dataUseRegisterStatus.PENDING_APPROVAL };
+					break;
+				default:
+					query = { publisher: team };
+			}
+
 			const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters(query).catch(err => {
 				logger.logError(err, logCategory);
 			});

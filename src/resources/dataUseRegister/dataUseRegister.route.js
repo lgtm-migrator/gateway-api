@@ -3,6 +3,7 @@ import DataUseRegisterController from './dataUseRegister.controller';
 import { dataUseRegisterService } from './dependency';
 import { logger } from '../utilities/logger';
 import passport from 'passport';
+import constants from './../utilities/constants.util';
 import _ from 'lodash';
 
 const router = express.Router();
@@ -10,26 +11,62 @@ const dataUseRegisterController = new DataUseRegisterController(dataUseRegisterS
 const logCategory = 'dataUseRegister';
 
 function isUserMemberOfTeam(user, publisherId) {
-	const { teams } = user;
-	return teams.some(team => team.publisher._id.equals(publisherId));
+	let { teams } = user;
+	return teams.filter(team => !_.isNull(team.publisher)).some(team => team.publisher._id.equals(publisherId));
 }
 
-const validateRequest = (req, res, next) => {
+function isUserDataUseAdmin(user) {
+	let { teams } = user;
+
+	if (teams) {
+		teams = teams.map(team => {
+			let { publisher, type, members } = team;
+			let member = members.find(member => {
+				return member.memberid.toString() === user._id.toString();
+			});
+			let { roles } = member;
+			return { ...publisher, type, roles };
+		});
+	}
+
+	return teams
+		.filter(team => team.type === constants.teamTypes.ADMIN)
+		.some(team => team.roles.includes(constants.roleTypes.ADMIN_DATA_USE));
+}
+
+const validateUpdateRequest = (req, res, next) => {
 	const { id } = req.params;
+
 	if (!id) {
 		return res.status(400).json({
 			success: false,
 			message: 'You must provide a data user register identifier',
 		});
 	}
+
+	next();
+};
+
+const validateViewRequest = (req, res, next) => {
+	const { team } = req.query;
+
+	if (!team) {
+		return res.status(400).json({
+			success: false,
+			message: 'You must provide a team parameter',
+		});
+	}
+
 	next();
 };
 
 const authorizeView = async (req, res, next) => {
 	const requestingUser = req.user;
-	const { publisher } = req.query;
+	const { team } = req.query;
 
-	const authorised = _.isUndefined(publisher) || isUserMemberOfTeam(requestingUser, publisher);
+	const authorised =
+		team === 'user' || (team === 'admin' && isUserDataUseAdmin(requestingUser)) || isUserMemberOfTeam(requestingUser, team);
+
 	if (!authorised) {
 		return res.status(401).json({
 			success: false,
@@ -54,7 +91,7 @@ const authorizeUpdate = async (req, res, next) => {
 	}
 
 	const { publisher } = dataUseRegister;
-	const authorised = isUserMemberOfTeam(requestingUser, publisher._id);
+	const authorised = isUserMemberOfTeam(requestingUser, publisher._id) || isUserDataUseAdmin(requestingUser);
 	if (!authorised) {
 		return res.status(401).json({
 			success: false,
@@ -81,6 +118,7 @@ router.get(
 router.get(
 	'/',
 	passport.authenticate('jwt'),
+	validateViewRequest,
 	authorizeView,
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed dataUseRegisters data' }),
 	(req, res) => dataUseRegisterController.getDataUseRegisters(req, res)
@@ -92,7 +130,7 @@ router.get(
 router.patch(
 	'/:id',
 	passport.authenticate('jwt'),
-	validateRequest,
+	validateUpdateRequest,
 	authorizeUpdate,
 	logger.logRequestMiddleware({ logCategory, action: 'Updated dataUseRegister data' }),
 	(req, res) => dataUseRegisterController.updateDataUseRegister(req, res)
