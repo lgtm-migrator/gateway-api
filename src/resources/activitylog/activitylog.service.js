@@ -210,7 +210,8 @@ export default class activityLogService {
 	}
 
 	getPartyTimeDistribution(version) {
-		const isMajorVersion = has(version, 'applicationStatus');
+		const versionObj = version.toObject();
+		const isMajorVersion = has(versionObj, 'applicationStatus');
 		let partyTimes = [];
 
 		if (isMajorVersion) {
