@@ -130,8 +130,13 @@ export default class DataRequestController extends Controller {
 			const countAmendments = this.amendmentService.countAmendments(accessRecord, userType, isLatestMinorVersion);
 
 			// 8. Get the workflow status for the requested application version for the requesting user
-			const { inReviewMode, reviewSections, hasRecommended, isManager, workflow } =
-				this.workflowService.getApplicationWorkflowStatusForUser(accessRecord, requestingUserObjectId);
+			const {
+				inReviewMode,
+				reviewSections,
+				hasRecommended,
+				isManager,
+				workflow,
+			} = this.workflowService.getApplicationWorkflowStatusForUser(accessRecord, requestingUserObjectId);
 
 			// 9. Get role type for requesting user, applicable for only Custodian users i.e. Manager/Reviewer role
 			const userRole =
@@ -2743,7 +2748,7 @@ export default class DataRequestController extends Controller {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			await this.dataRequestService.updateApplicationById(id, { isShared: true }).catch(err => {
+			await this.dataRequestService.shareApplication(accessRecord).catch(err => {
 				logger.logError(err, logCategory);
 			});
 
