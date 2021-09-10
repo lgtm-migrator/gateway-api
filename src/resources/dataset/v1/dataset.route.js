@@ -7,6 +7,7 @@ import escape from 'escape-html';
 import { Course } from '../../course/course.model';
 import { filtersService } from '../../filters/dependency';
 import * as Sentry from '@sentry/node';
+import AridhiaController from '../../../services/aridhia/aridhia.controller';
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 
@@ -14,6 +15,20 @@ const datasetLimiter = rateLimit({
 	windowMs: 60 * 60 * 1000, // 1 hour window
 	max: 10, // start blocking after 10 requests
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
+});
+
+// This api triggers Aridhia Script (collect datasets from Aridhi API and updates the DB accordingly)
+router.post('/aridhia', async (req, res) => {
+	
+	// check for a key. return 401, since user unauthorised (caching key is missing or not matched)
+	let parsedBody = req.header('content-type') === 'application/json' ?  req.body : JSON.parse(req.body);
+	if (parsedBody.key !== process.env.cachingkey)
+		return res.status(401).json({ success: false, error: 'Caching could not be started.' });
+		
+	const ac = new AridhiaController();
+	ac.main();
+
+    return  res.status(200).json({ success: true, message: 'Caching started' })
 });
 
 router.post('/', async (req, res) => {
@@ -25,6 +40,7 @@ router.post('/', async (req, res) => {
 		} else {
 			parsedBody = JSON.parse(req.body);
 		}
+
 		// Check for key
 		if (parsedBody.key !== process.env.cachingkey) {
 			return res.status(400).json({ success: false, error: 'Caching could not be started' });
