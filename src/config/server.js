@@ -55,7 +55,7 @@ oidc.proxy = true;
 
 var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
 
-var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
+var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
 
 if (Array.isArray(arr) && arr.length > 0) {
@@ -114,7 +114,6 @@ app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
 		if (err || !user) {
 			return res.status(200).redirect(process.env.homeURL + '/search?search=');
 		}
-		oidc.Session.destory;
 		req.logout();
 		res.clearCookie('jwt');
 

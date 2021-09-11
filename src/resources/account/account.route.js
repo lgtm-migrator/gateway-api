@@ -35,16 +35,16 @@ router.delete('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
  */
 router.get('/admin', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
 	var result;
-	var startIndex = 0;
-	var maxResults = 25;
+	//var startIndex = 0;
+	//var maxResults = 25;
 	var typeString = '';
 
-	if (req.query.startIndex) {
+	/* if (req.query.startIndex) {
 		startIndex = req.query.startIndex;
 	}
 	if (req.query.maxResults) {
 		maxResults = req.query.maxResults;
-	}
+	} */
 	if (req.query.type) {
 		typeString = req.query.type;
 	}

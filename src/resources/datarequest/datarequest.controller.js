@@ -1862,14 +1862,7 @@ export default class DataRequestController extends Controller {
 				};
 
 				// Build email template
-				({ html, jsonContent } = await emailGenerator.generateEmail(
-					aboutApplication,
-					questions,
-					pages,
-					questionPanels,
-					questionAnswers,
-					options
-				));
+				({ html } = await emailGenerator.generateEmail(aboutApplication, questions, pages, questionPanels, questionAnswers, options));
 				await emailGenerator.sendEmail(
 					[user],
 					constants.hdrukEmail,

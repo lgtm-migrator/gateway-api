@@ -485,7 +485,15 @@ export default class WorkflowService {
 			// Calculate total duration for workflow
 			if (steps[relatedStepIndex].completed && !isEmpty(dateReviewStart.toString())) {
 				totalDuration = moment().diff(moment(dateReviewStart), 'days');
-				totalDuration = totalDuration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
+				if (totalDuration === 0) {
+					totalDuration = `Same day`;
+				} else {
+					if (duration === 1) {
+						totalDuration = `1 day`;
+					} else {
+						totalDuration = `${duration} days`;
+					}
+				}
 			}
 		} else {
 			// Get details of next step if this is not the final step

@@ -50,7 +50,7 @@ const addTool = async (req, res) => {
 		data.description = inputSanitizer.removeNonBreakingSpaces(description);
 		data.resultsInsights = inputSanitizer.removeNonBreakingSpaces(resultsInsights);
 		console.log(req.body);
-		if (categories && typeof categories !== undefined)
+		if (categories && typeof categories !== 'undefined')
 			data.categories.category = inputSanitizer.removeNonBreakingSpaces(categories.category);
 		data.license = inputSanitizer.removeNonBreakingSpaces(license);
 		data.authors = authors;
@@ -150,7 +150,7 @@ const editTool = async (req, res) => {
 		let programmingLanguage = req.body.programmingLanguage;
 		let updatedon = Date.now();
 
-		if (!categories || typeof categories === undefined)
+		if (!categories || typeof categories === 'undefined')
 			categories = { category: '', programmingLanguage: [], programmingLanguageVersion: '' };
 
 		if (programmingLanguage) {
