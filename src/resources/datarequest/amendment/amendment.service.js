@@ -387,7 +387,13 @@ export default class AmendmentService {
 
 	injectNavigationAmendment(jsonSchema, questionSetId, userType, completed, iterationStatus) {
 		// 1. Find question in schema
-		const qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
+		let qpIndex = jsonSchema.questionPanels.findIndex(qp => qp.panelId === questionSetId);
+
+		// Questions generated dynamically have questionSetId with an arbitrary index ((i.e. applicant_eqhFL))
+		if (qpIndex === -1) {
+			qpIndex = jsonSchema.questionPanels.findIndex(panel => questionSetId.startsWith(panel.panelId));
+		}
+
 		if (qpIndex === -1) {
 			return jsonSchema;
 		}
@@ -641,7 +647,13 @@ export default class AmendmentService {
 			if (question) {
 				question = datarequestUtil.setQuestionState(question, questionAlert, true);
 				questionSet.questions = datarequestUtil.updateQuestion(questionSet.questions, question);
-				accessRecord.jsonSchema = this.injectNavigationAmendment(accessRecord.jsonSchema, questionSet.questionSetId, constants.userTypes.CUSTODIAN, 'completed', 'returned'); 
+				accessRecord.jsonSchema = this.injectNavigationAmendment(
+					accessRecord.jsonSchema,
+					questionSet.questionSetId,
+					constants.userTypes.CUSTODIAN,
+					'completed',
+					'returned'
+				);
 				return;
 			}
 		});

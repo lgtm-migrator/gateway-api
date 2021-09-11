@@ -11,14 +11,14 @@ export default class StatsService {
 		const date = new Date(new Date().setHours(0, 0, 0, 0));
 		const timezoneOffset = date.getTimezoneOffset() * 60000;
 		const utcDate = new Date(date.getTime() - timezoneOffset);
-		
+
 		const [searchCounts, accessRequestCount, entityTotalCounts, coursesActiveCount, technicalStats] = await Promise.all([
 			this.getTotalSearchesByUsers(),
 			this.getDataAccessRequestStats(),
 			this.getTotalEntityCounts(),
 			this.getActiveCourseCount(),
-			this.getTechnicalMetadataStats()
-		])
+			this.getTechnicalMetadataStats(),
+		]);
 
 		const data = {
 			date: utcDate,
@@ -26,7 +26,7 @@ export default class StatsService {
 				...entityTotalCounts,
 				accessRequest: accessRequestCount,
 				course: coursesActiveCount,
-				datasetWithMetadata: technicalStats.datasetsMetadata
+				datasetWithMetadata: technicalStats.datasetsMetadata,
 			},
 			searchCounts,
 		};
@@ -146,9 +146,9 @@ export default class StatsService {
 		const data = await this.statsRepository.getTotalEntityCounts();
 		const counts = data.reduce((obj, entityType) => {
 			const { _id: type, count } = entityType;
-			obj = { 
-				...obj, 
-				[type]: count 
+			obj = {
+				...obj,
+				[type]: count,
 			};
 			return obj;
 		}, {});
