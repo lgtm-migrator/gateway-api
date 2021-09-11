@@ -50,7 +50,7 @@ const TopicSchema = new Schema(
 		},
 		is5Safes: {
 			type: Boolean,
-			default: false
+			default: false,
 		},
 		unreadMessages: {
 			type: Number,
@@ -85,10 +85,6 @@ const TopicSchema = new Schema(
 				},
 			},
 		],
-		is5Safes: {
-			type: Boolean,
-			default: false,
-		},
 	},
 	{
 		toJSON: { virtuals: true },
