@@ -41,7 +41,8 @@ export async function updateUser({ id, firstname, lastname, email, discourseKey,
 					discourseUsername,
 					feedback,
 					news,
-				}
+				},
+				{ new: true }
 			)
 		);
 	});
