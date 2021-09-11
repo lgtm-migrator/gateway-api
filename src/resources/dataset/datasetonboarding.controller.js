@@ -260,20 +260,17 @@ module.exports = {
 						Data.findByIdAndUpdate(
 							{ _id: id },
 							{ structuralMetadata, percentageCompleted: data.percentageCompleted, 'timestamps.updated': Date.now() },
-							{ new: true },
-							err => {
-								if (err) {
-									console.error(err);
-									throw err;
-								}
-							}
-						);
+							{ new: true }
+						).catch(err => {
+							console.error(err);
+							throw err;
+						});
 
 						return res.status(200).json();
 					}
 				}
 			} else {
-				datasetonboardingUtil.updateDataset(dataset, updateObj).then(() => {
+				await datasetonboardingUtil.updateDataset(dataset, updateObj).then(() => {
 					let data = {
 						status: 'success',
 					};
@@ -283,11 +280,9 @@ module.exports = {
 						let title = questionAnswers['properties/summary/title'];
 
 						if (title && title.length >= 2) {
-							Data.findByIdAndUpdate({ _id: id }, { name: title, 'timestamps.updated': Date.now() }, { new: true }, err => {
-								if (err) {
-									console.error(err);
-									throw err;
-								}
+							Data.findByIdAndUpdate({ _id: id }, { name: title, 'timestamps.updated': Date.now() }, { new: true }).catch(err => {
+								console.error(err);
+								throw err;
 							});
 							data.name = title;
 						}
@@ -775,14 +770,16 @@ module.exports = {
 	bulkUpload: async (req, res) => {
 		try {
 			let key = req.body.key;
+			// Check for key
 			if (!key) {
 				return res.status(400).json({ success: false, error: 'Bulk upload of metadata could not be started' });
 			}
-			// Check for key
+			// Check that key matches
 			if (key !== process.env.METADATA_BULKUPLOAD_KEY) {
 				return res.status(400).json({ success: false, error: 'Bulk upload of metadata could not be started' });
 			}
 
+			//Check for file
 			if (isEmpty(req.file)) {
 				return res.status(404).json({ success: false, message: 'For bulk upload of metadata you must supply a JSON file' });
 			}
@@ -795,15 +792,66 @@ module.exports = {
 			}
 
 			if (!isEmpty(arrayOfDraftDatasets)) {
-				const result = await datasetonboardingUtil.startBulkUpload(arrayOfDraftDatasets);
-				return res.status(200).json({ success: true, message: 'Bulk upload of metadata completed' });
+				//Build bulk upload object
+				const resultObject = datasetonboardingUtil.buildBulkUploadObject(arrayOfDraftDatasets);
+
+				if (resultObject.result === true) {
+					for (let dataset of resultObject.datasets) {
+						//Build publisher object
+						let publisherObject = {
+							summary: {
+								publisher: {
+									identifier: dataset.publisher._id.toString(),
+									name: dataset.publisher.publisherDetails.name,
+									memberOf: dataset.publisher.publisherDetails.memberOf,
+								},
+							},
+						};
+
+						//Create new pid if needed
+						if (isEmpty(dataset.pid)) {
+							while (dataset.pid === '') {
+								dataset.pid = uuidv4();
+								if ((await Data.find({ pid: dataset.pid }).length) === 0) dataset.pid = '';
+							}
+						}
+
+						//Create new uniqueID
+						let uniqueID = '';
+						while (uniqueID === '') {
+							uniqueID = parseInt(Math.random().toString().replace('0.', ''));
+							if ((await Data.find({ id: uniqueID }).length) === 0) uniqueID = '';
+						}
+
+						//Create DB entry
+						let data = new Data();
+						data.pid = dataset.pid;
+						data.datasetVersion = dataset.version || '1.0.0';
+						data.id = uniqueID;
+						data.datasetid = 'New dataset';
+						data.name = dataset.title;
+						data.datasetv2 = publisherObject;
+						data.type = 'dataset';
+						data.activeflag = 'draft';
+						data.source = 'HDRUK MDC';
+						data.is5Safes = dataset.publisher.allowAccessRequestManagement;
+						data.timestamps.created = Date.now();
+						data.timestamps.updated = Date.now();
+						data.questionAnswers = JSON.stringify(dataset.questionAnswers);
+						data.structuralMetadata = [...dataset.structuralMetadata];
+						await data.save();
+					}
+					return res.status(200).json({ success: true, message: 'Bulk upload of metadata completed' });
+				} else {
+					return res.status(400).json({ success: false, message: 'Bulk upload of metadata failed', error: resultObject.error });
+				}
 			} else {
 				return res.status(400).json({ success: false, message: 'No metadata found' });
 			}
 		} catch (err) {
 			Sentry.captureException(err);
 			console.error(err.message);
-			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed' });
+			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
 		}
 	},
 };
