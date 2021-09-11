@@ -9,10 +9,11 @@ import { logger } from '../../utilities/logger';
 const logCategory = 'Data Access Request';
 
 export default class AmendmentController extends Controller {
-	constructor(amendmentService, dataRequestService) {
+	constructor(amendmentService, dataRequestService, activityLogService) {
 		super(amendmentService);
 		this.amendmentService = amendmentService;
 		this.dataRequestService = dataRequestService;
+		this.activityLogService = activityLogService;
 	}
 
 	async setAmendment(req, res) {
@@ -113,7 +114,6 @@ export default class AmendmentController extends Controller {
 
 					// 11. Support for versioning
 					if (accessRecordObj.amendmentIterations.length > 0) {
-
 						// Detemine which versions to return
 						let currentVersionIndex;
 						let previousVersionIndex;
@@ -251,6 +251,11 @@ export default class AmendmentController extends Controller {
 					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 10. Send update request notifications
+					let fullAccessRecord = await this.dataRequestService.getApplicationById(id);
+					await this.activityLogService.logActivity(constants.activityLogEvents.UPDATE_REQUESTED, {
+						accessRequest: fullAccessRecord,
+						user: req.user,
+					});
 					this.amendmentService.createNotifications(constants.notificationTypes.RETURNED, accessRecord);
 					return res.status(200).json({
 						success: true,

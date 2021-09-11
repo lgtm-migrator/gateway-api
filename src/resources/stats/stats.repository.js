@@ -4,6 +4,7 @@ import { Data } from '../tool/data.model';
 import { RecordSearchData } from '../search/record.search.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { Course } from '../course/course.model';
+import { MessagesModel } from '../message/message.model';
 import constants from '../utilities/constants.util';
 
 export default class StatsRepository extends Repository {
@@ -178,6 +179,7 @@ export default class StatsRepository extends Repository {
 
 	async getDataAccessRequestStats(startMonth, endMonth) {
 		const dateQuery = startMonth && endMonth ? { dateSubmitted: { $gte: startMonth, $lt: endMonth } } : {};
+		const firstMessageDateQuery = startMonth && endMonth ? { createdDate: { $gte: startMonth, $lt: endMonth } } : {};
 		const excludedDatasets = await this.getExcludedDatasetIds();
 		const accessRequests = await DataRequestModel.find(
 			{
@@ -202,7 +204,11 @@ export default class StatsRepository extends Repository {
 			return acc;
 		}, 0);
 
-		return accessRequestsCount;
+		const firstMessagesCount = await MessagesModel.countDocuments({ ...firstMessageDateQuery, firstMessage: { $exists: true, $ne: {} } });
+
+		const accessRequestAndFirstMessageCount = accessRequestsCount + firstMessagesCount;
+
+		return accessRequestAndFirstMessageCount;
 	}
 
 	async getTopDatasetsByMonth(startMonth, endMonth) {
