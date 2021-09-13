@@ -38,7 +38,7 @@ const _unNestQuestionPanels = panels => {
 			if (questionSets.length > 1) {
 				// filters excluded questionSetIds
 				let filtered = [...questionSets].filter(item => {
-					let [questionId, uniqueId] = item.questionSetId.split('_');
+					let [questionId] = item.questionSetId.split('_');
 					return !excludedQuestionSetIds.includes(questionId);
 				});
 				// builds new array of [{panelId, pageId, etc}]
@@ -97,7 +97,7 @@ const _initalQuestionSpread = (questions, pages, questionPanels) => {
 				let { questionId } = question;
 
 				// split questionId
-				let [qId, uniqueQId] = questionId.split('_');
+				let [qId] = questionId.split('_');
 
 				// pass in questionPanels
 				let questionPanel = [...questionPanels].find(i => i.panelId === qSId);
@@ -330,7 +330,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		applicationId,
 	} = options;
 	const dateSubmitted = moment().format('D MMM YYYY');
-  const year = moment().year();
+	const year = moment().year();
 	const { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
 	const linkNationalCoreStudies =
 		nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
@@ -339,7 +339,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
-  let gatewayAttributionPolicy = `We ask that use of the Health Data Research Innovation Gateway (the 'Gateway') be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage ${year}.'`;
+	let gatewayAttributionPolicy = `We ask that use of the Health Data Research Innovation Gateway (the 'Gateway') be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage ${year}.'`;
 
 	let table = _getSubmissionDetails(
 		userType,
@@ -626,7 +626,7 @@ const _displayDARLink = accessId => {
 };
 
 const _displayActivityLogLink = (accessId, publisher) => {
-  if (!accessId) return '';
+	if (!accessId) return '';
 
 	const activityLogLink = `${process.env.homeURL}/account?tab=dataaccessrequests&team=${publisher}&id=${accessId}`;
 	return `<a style="color: #475da7;" href="${activityLogLink}">View activity log</a>`;
@@ -1559,7 +1559,6 @@ const _generateFinalDecisionRequiredEmail = options => {
 		projectName,
 		projectId,
 		datasetTitles,
-		actioner,
 		applicants,
 		workflowName,
 		stepName,
@@ -1881,7 +1880,7 @@ const _generateNewTeamManagers = options => {
 							</table>
 						</div>
 					</div>`;
-  	return body;
+	return body;
 };
 
 const _generateNewDARMessage = options => {
@@ -2123,7 +2122,7 @@ const _generateMetadataOnboardingRejected = options => {
 };
 
 const _generateMetadataOnboardingDraftDeleted = options => {
-	let { publisherName, draftDatasetName } = options;
+	let { draftDatasetName } = options;
 
 	let body = `<div>
 						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -2269,7 +2268,7 @@ const _generateEntityNotification = options => {
 
 const _generateActivityLogManualEventCreated = options => {
 	const { id, userName, description, publisher, timestamp, projectName } = options;
-  const dateTime = moment(timestamp).format('DD/MM/YYYY, HH:mmA');
+	const dateTime = moment(timestamp).format('DD/MM/YYYY, HH:mmA');
 	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -2286,7 +2285,9 @@ const _generateActivityLogManualEventCreated = options => {
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     ${userName} (${publisher}) has added a new event to the activity log of '${projectName || `No project name set`}' data access request application.
+                     ${userName} (${publisher}) has added a new event to the activity log of '${
+		projectName || `No project name set`
+	}' data access request application.
                     </th>
                   </tr>
                 </thead>
@@ -2296,15 +2297,11 @@ const _generateActivityLogManualEventCreated = options => {
                     <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Event</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
-													description
-												}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${description}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date and time</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
-													dateTime
-												}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateTime}</td>
                       </tr>
                     </table>
                   </td>
@@ -2320,7 +2317,7 @@ const _generateActivityLogManualEventCreated = options => {
 
 const _generateActivityLogManualEventDeleted = options => {
 	const { id, userName, description, publisher, timestamp, projectName } = options;
-  const dateTime = moment(timestamp).format('DD/MM/YYYY, HH:mmA');
+	const dateTime = moment(timestamp).format('DD/MM/YYYY, HH:mmA');
 	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -2337,7 +2334,9 @@ const _generateActivityLogManualEventDeleted = options => {
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     ${userName} (${publisher}) has deleted the following event from the activity log of '${projectName || `No project name set`}' data access request application.
+                     ${userName} (${publisher}) has deleted the following event from the activity log of '${
+		projectName || `No project name set`
+	}' data access request application.
                     </th>
                   </tr>
                 </thead>
@@ -2347,15 +2346,11 @@ const _generateActivityLogManualEventDeleted = options => {
                     <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Event</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
-													description
-												}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${description}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date and time</td>
-                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
-													dateTime
-												}</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateTime}</td>
                       </tr>
                     </table>
                   </td>
@@ -2526,5 +2521,5 @@ export default {
 	generateEntityNotification: _generateEntityNotification,
 	//ActivityLog
 	generateActivityLogManualEventCreated: _generateActivityLogManualEventCreated,
-  generateActivityLogManualEventDeleted: _generateActivityLogManualEventDeleted
+	generateActivityLogManualEventDeleted: _generateActivityLogManualEventDeleted,
 };
