@@ -250,6 +250,7 @@ app.use('/api/v1/analyticsdashboard', require('../services/googleAnalytics/googl
 app.use('/api/v1/help', require('../resources/help/help.router'));
 
 app.use('/api/v2/filters', require('../resources/filters/filters.route'));
+app.use('/api/v2/activitylog', require('../resources/activitylog/activitylog.route'));
 
 app.use('/api/v1/hubspot', require('../services/hubspot/hubspot.route'));
 

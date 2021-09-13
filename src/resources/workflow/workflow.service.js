@@ -427,9 +427,14 @@ export default class WorkflowService {
 		// Extract workflow email variables
 		const { dateReviewStart = '', workflow = {} } = accessRecord;
 		const { workflowName, steps } = workflow;
-		const { stepName, startDateTime = '', endDateTime = '', completed = false, deadline: stepDeadline = 0, reminderOffset = 0 } = steps[
-			relatedStepIndex
-		];
+		const {
+			stepName,
+			startDateTime = '',
+			endDateTime = '',
+			completed = false,
+			deadline: stepDeadline = 0,
+			reminderOffset = 0,
+		} = steps[relatedStepIndex];
 		const stepReviewers = this.getStepReviewers(steps[relatedStepIndex]);
 		const reviewerNames = [...stepReviewers].map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
 		const reviewSections = [...steps[relatedStepIndex].sections].map(section => constants.darPanelMapper[section]).join(', ');

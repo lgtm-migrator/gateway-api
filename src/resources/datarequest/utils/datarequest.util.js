@@ -42,7 +42,7 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 			return { authorised, userType };
 		}
 		// Check if the user is a custodian team member and assign permissions if so
-		if (has(application.datasets[0], 'publisher.team')) {
+		if (has(application, 'datasets') && has(application.datasets[0], 'publisher.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.datasets[0].publisher.team, _id);
 		} else if (has(application, 'publisherObj.team')) {
 			isTeamMember = teamController.checkTeamPermissions('', application.publisherObj.team, _id);
