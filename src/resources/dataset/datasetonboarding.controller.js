@@ -8,6 +8,7 @@ import { isEmpty, isNil } from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
 import moment from 'moment';
+import _ from 'lodash';
 var fs = require('fs');
 
 module.exports = {
@@ -767,6 +768,49 @@ module.exports = {
 				success: true,
 				data: draftDatasetName,
 			});
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
+		}
+	},
+	//POST api/v1/dataset-onboarding/duplicate/:id
+	duplicateDataset: async (req, res) => {
+		try {
+			let id = req.params.id;
+
+			//Check user type and authentication to submit application
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			let dataset = await Data.findOne({ _id: id });
+			let datasetCopy = JSON.parse(JSON.stringify(dataset));
+			let duplicateText = '-duplicate';
+
+			delete datasetCopy._id;
+			datasetCopy.pid = uuidv4();
+
+			let parsedQuestionAnswers = JSON.parse(datasetCopy.questionAnswers);
+			parsedQuestionAnswers['properties/summary/title'] += duplicateText;
+
+			datasetCopy.name += duplicateText;
+			datasetCopy.activeflag = 'draft';
+			datasetCopy.datasetVersion = '1.0.0';
+			datasetCopy.questionAnswers = JSON.stringify(parsedQuestionAnswers);
+			if (datasetCopy.datasetv2.summary.title) { 
+				datasetCopy.datasetv2.summary.title += duplicateText;
+			}
+
+			await Data.create(datasetCopy);
+
+			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
+
+			return res.status(200).json({
+				success: true,
+				datasetName: dataset.name,
+			});
+
 		} catch (err) {
 			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
