@@ -2171,7 +2171,7 @@ const _generateMetadataOnboardingDuplicated = options => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;"> 
-                      Dataset duplication
+                      Dataset duplicated
                     </th>
                   </tr>
                   <tr>
