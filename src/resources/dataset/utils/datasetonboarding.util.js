@@ -984,7 +984,7 @@ const buildBulkUploadObject = async arrayOfDraftDatasets => {
 				let publisher = {};
 				if (!isEmpty(dataset.summary.publisher)) {
 					//Check to see that publisher exists
-					publisher = await PublisherModel.findOne({ _id: dataset.summary.publisher }).lean();
+					publisher = await PublisherModel.findOne({ _id: { $eq: dataset.summary.publisher } }).lean();
 					if (isEmpty(publisher)) {
 						resultObject.error = `${dataset.summary.title} failed because publisher was no found`;
 						resultObject.result = false;
