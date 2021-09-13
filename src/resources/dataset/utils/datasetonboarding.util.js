@@ -1016,20 +1016,20 @@ const createNotifications = async (type, context) => {
 			// 2. Create user notifications
 			notificationBuilder.triggerNotificationMessage(
 				teamMembersIds,
-				`${context.name} has duplicated ${context.version} of ${context.name} dataset.`,
+				`${context.datasetv2.summary.publisher.name} has duplicated ${context.version} of ${context.name} dataset.`,
 				context.datasetv2.summary.publisher.identifier
 			);
 			// 3. Create email
 			options = {
 				name: context.name,
-				publisherId: context.datasetv2.summary.publisher.identifier,
-				comment: context.applicationStatusDesc,
+				publisher: context.datasetv2.summary.publisher,
+				version: context.datasetVersion,
 			};
-			html = emailGenerator.generateMetadataOnboardingRejected(options);
+			html = emailGenerator.generateMetadataOnboardingDuplicated(options);
 			emailGenerator.sendEmail(
 				teamMembersDetails,
 				constants.hdrukEmail,
-				`{{Custodian name}} has duplicated ${context.datasetVersion} of ${context.name} dataset.`,
+				`${context.datasetv2.summary.publisher.name} has duplicated ${context.datasetVersion} of ${context.name} dataset.`,
 				html,
 				false
 			);
