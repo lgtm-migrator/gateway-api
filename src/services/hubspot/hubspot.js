@@ -81,7 +81,7 @@ const updateContact = async (hubspotContact, gatewayUser) => {
 					orcid_number: orcid,
 					related_organisation_sector: sector,
 					company: organisation,
-					...(!isEmpty(communicationPreferencesArr) && { communication_preference: communicationPreferencesArr.join(';') }),
+					communication_preference: updatedPreferencesArr.join(';'),
 					gateway_registered_user: 'Yes',
 				},
 			};
@@ -119,7 +119,7 @@ const createContact = async gatewayUser => {
 					orcid_number: orcid,
 					related_organisation_sector: sector,
 					company: organisation,
-					...(!isEmpty(communicationPreferencesArr) && { communication_preference: communicationPreferencesArr.join(';') }),
+					communication_preference: communicationPreferencesArr.join(';'),
 					gateway_registered_user: 'Yes',
 				},
 			};
