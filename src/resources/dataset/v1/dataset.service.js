@@ -581,7 +581,7 @@ async function checkDifferentialValid(incomingMetadataCount, source, override) {
 }
 
 async function getDataAccessRequestCustodians() {
-	const publishers = await PublisherModel.find({ allowAccessRequestManagement: true }).select('name').lean();
+	const publishers = await PublisherModel.find({ allowAccessRequestManagement: true, uses5Safes: true }).select('name').lean();
 	return publishers.map(publisher => publisher.name);
 }
 
