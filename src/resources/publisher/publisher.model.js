@@ -42,6 +42,7 @@ const PublisherSchema = new Schema(
 		rorOrgId: String,
 		gridAcId: String,
 		allowAccessRequestManagement: { type: Boolean, default: false },
+		uses5Safes: { type: Boolean, default: false },
 	},
 	{
 		toJSON: { virtuals: true },
