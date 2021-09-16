@@ -6,6 +6,8 @@ import { UserModel } from '../user/user.model';
 import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
 import { Data } from '../tool/data.model';
+import { TeamModel } from '../team/team.model';
+import constants from '../utilities/constants.util';
 import { isEmpty } from 'lodash';
 
 const setup = () => {
@@ -92,7 +94,7 @@ const checkAllowedToAccess = type => async (req, res, next) => {
 				if (!isEmpty(data) && data.authors.includes(user.id)) return next();
 			} else {
 				data = await Data.findOne({ id: params.id }, { authors: 1, uploader: 1 }).lean();
-				if (!isEmpty(data) && [data.authors, data.uploader].includes(user.id)) return next();
+				if (!isEmpty(data) && [...data.authors, data.uploader].includes(user.id)) return next();
 			}
 		}
 	}
@@ -103,4 +105,15 @@ const checkAllowedToAccess = type => async (req, res, next) => {
 	});
 };
 
-export { setup, signToken, camundaToken, checkIsInRole, whatIsRole, checkIsUser, checkAllowedToAccess };
+const getTeams = async () => {
+	const teams = await TeamModel.find({ type: { $ne: constants.teamTypes.ADMIN } }, { _id: 1, type: 1 })
+		.populate({
+			path: 'publisher',
+			select: 'name',
+		})
+		.lean();
+
+	return teams;
+};
+
+export { setup, signToken, camundaToken, checkIsInRole, whatIsRole, checkIsUser, checkAllowedToAccess, getTeams };

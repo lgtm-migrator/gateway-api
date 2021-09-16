@@ -1,7 +1,9 @@
 import Repository from '../base/repository';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './schema/datarequest.schemas.model';
+import { TopicModel } from '../topic/topic.model';
 import { Data as ToolModel } from '../tool/data.model';
+import constants from '../utilities/constants.util';
 
 export default class DataRequestRepository extends Repository {
 	constructor() {
@@ -139,8 +141,21 @@ export default class DataRequestRepository extends Repository {
 		}).lean();
 	}
 
-	getFilesForApplicationById(id, options = {}) {
-		return DataRequestModel.findById(id, { files: 1, applicationStatus: 1, userId: 1, authorIds: 1 }, options);
+	getFilesForApplicationById(id) {
+		return DataRequestModel.findOne({
+			_id: id,
+		}).populate([
+			{
+				path: 'publisherObj',
+				populate: {
+					path: 'team',
+				},
+			},
+			{
+				path: 'datasets dataset authors',
+				populate: { path: 'publisher', populate: { path: 'team' } },
+			},
+		]);
 	}
 
 	getApplicationFormSchema(publisher) {
@@ -187,6 +202,50 @@ export default class DataRequestRepository extends Repository {
 			]);
 	}
 
+	getPermittedUsersForVersions(versionIds) {
+		return DataRequestModel.find({ $or: [{ _id: { $in: versionIds } }, { 'amendmentIterations._id': { $in: versionIds } }] })
+			.select(
+				'userId authorIds publisher majorVersion applicationType applicationStatus dateSubmitted dateFinalStatus amendmentIterations._id amendmentIterations.dateSubmitted amendmentIterations.dateCreated amendmentIterations.dateReturned versionTree aboutApplication.projectName isShared'
+			)
+			.populate([
+				{
+					path: 'publisherObj',
+					select: '_id',
+					populate: {
+						path: 'team',
+						select: 'members',
+						populate: {
+							path: 'users',
+						},
+					},
+				},
+			]);
+	}
+
+	getRelatedPresubmissionTopic(userObjectId, datasetIds) {
+		return TopicModel.findOne({
+			recipients: userObjectId,
+			'datasets.datasetId': { $all: datasetIds },
+			linkedDataAccessApplication: { $exists: false },
+		})
+			.select('_id')
+			.populate({ path: 'topicMessages', populate: { path: 'createdBy' } });
+	}
+
+	linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus) {
+		return DataRequestModel.findOneAndUpdate(
+			{
+				userId,
+				datasetIds: { $all: datasetIds },
+				presubmissionTopic: { $exists: false },
+				applicationType: constants.submissionTypes.INITIAL,
+				...(applicationStatus && { applicationStatus }),
+			},
+			{ $set: { presubmissionTopic: topicId } },
+			{ upsert: false, new: true }
+		).select('_id');
+	}
+
 	updateApplicationById(id, data, options = {}) {
 		return DataRequestModel.findByIdAndUpdate(id, data, { ...options }); //lgtm [js/sql-injection]
 	}
@@ -214,10 +273,9 @@ export default class DataRequestRepository extends Repository {
 	async syncRelatedVersions(versionIds, versionTree) {
 		const majorVersions = await DataRequestModel.find().where('_id').in(versionIds).select({ versionTree: 1 });
 
-		for(const version of majorVersions) {
-
+		for (const version of majorVersions) {
 			version.versionTree = versionTree;
-			
+
 			await version.save();
 		}
 	}
@@ -225,13 +283,13 @@ export default class DataRequestRepository extends Repository {
 	async updateFileStatus(versionIds, fileId, status) {
 		const majorVersions = await DataRequestModel.find({ _id: { $in: [versionIds] } }).select({ files: 1 });
 
-		for(const version of majorVersions) {
+		for (const version of majorVersions) {
 			const fileIndex = version.files.findIndex(file => file.fileId === fileId);
 
-			if(fileIndex === -1) continue;
+			if (fileIndex === -1) continue;
 
 			version.files[fileIndex].status = status;
-			
+
 			await version.save();
 		}
 	}

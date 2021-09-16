@@ -48,4 +48,9 @@ router.put('/:id', passport.authenticate('jwt'), datasetOnboardingController.cha
 // @access   Private - Custodian Manager ?
 router.delete('/delete/:id', passport.authenticate('jwt'), datasetOnboardingController.deleteDraftDataset);
 
+// @route   POST api/v1/dataset-onboarding/duplicate/:id
+// @desc    POST Duplicate a dataset
+// @access  Private - Custodian Manager/Reviewer ?
+router.post('/duplicate/:id', passport.authenticate('jwt'), datasetOnboardingController.duplicateDataset);
+
 module.exports = router;

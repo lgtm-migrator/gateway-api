@@ -5,7 +5,7 @@ import teamController from './team.controller';
 
 const router = express.Router();
 
-// @route   GET api/v1/teams/getList
+// @route   GET api/v1/teams
 // @desc     Returns List of all Teams
 // @access   Private
 router.get('/', passport.authenticate('jwt'), teamController.getTeamsList);
@@ -13,10 +13,20 @@ router.get('/', passport.authenticate('jwt'), teamController.getTeamsList);
 // @route   GET api/teams/:id
 // @desc    GET A team by :id
 // @access  Public
-router.get('/:id', passport.authenticate('jwt'), teamController.getTeamById); 
+router.get('/:id', passport.authenticate('jwt'), teamController.getTeamById);
+
+// @route   POST api/teams/add
+// @desc    Add a team
+// @access  Private
+router.post('/add', passport.authenticate('jwt'), teamController.addTeam);
+
+// @route   PUT api/v1/teams/:id
+// @desc    Edit a team
+// @access  Private
+router.put('/:id', passport.authenticate('jwt'), teamController.editTeam);
 
 // @route   GET api/teams/:id/members
-// @desc    GET all team members for team 
+// @desc    GET all team members for team
 // @access  Private
 router.get('/:id/members', passport.authenticate('jwt'), teamController.getTeamMembers);
 
@@ -29,7 +39,6 @@ router.post('/:id/members', passport.authenticate('jwt'), teamController.addTeam
 // @desc    Edit a team member
 // @access  Private
 router.put('/:id/members/:memberid', passport.authenticate('jwt'), teamController.updateTeamMember);
-
 
 // @route   DELETE api/teams/:id/members
 // @desc    Delete a team member
@@ -51,4 +60,4 @@ router.put('/:id/notifications', passport.authenticate('jwt'), teamController.up
 // @access  Private
 router.put('/:id/notification-messages', passport.authenticate('jwt'), teamController.updateNotificationMessages);
 
-module.exports = router; 
+module.exports = router;

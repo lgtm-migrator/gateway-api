@@ -1,11 +1,16 @@
-import _ from 'lodash';
-
+import { isEmpty, has, difference, includes, isNull, filter, some } from 'lodash';
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
+import { PublisherModel } from '../publisher/publisher.model';
+import { Data } from '../tool/data.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import notificationBuilder from '../utilities/notificationBuilder';
 import constants from '../utilities/constants.util';
- 
+import { filtersService } from '../filters/dependency';
+import axios from 'axios';
+const inputSanitizer = require('../utilities/inputSanitizer');
+const { ObjectId } = require('mongodb');
+
 // GET api/v1/teams/:id
 const getTeamById = async (req, res) => {
 	try {
@@ -43,19 +48,23 @@ const getTeamMembers = async (req, res) => {
 				path: 'additionalInfo',
 				select: 'organisation bio showOrganisation showBio',
 			},
-		}).lean();
+		});
 		if (!team) {
 			return res.status(404).json({ success: false });
 		}
 		// 2. Check the current user is a member of the team
-		let authorised = checkTeamPermissions('', team, req.user._id);
-		// 3. If not return unauthorised
+		let authorised = checkTeamPermissions('', team.toObject(), req.user._id);
+		// 3. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 4. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 4. Format response to include user info
+		// 5. Format response to include user info
 		let users = formatTeamUsers(team);
-		// 5. Return team members
+		// 6. Return team members
 		return res.status(200).json({ success: true, members: users });
 	} catch (err) {
 		console.error(err.message);
@@ -66,28 +75,32 @@ const getTeamMembers = async (req, res) => {
 const formatTeamUsers = team => {
 	let { users = [] } = team;
 	users = users.map(user => {
-		let {
-			firstname,
-			lastname,
-			id,
-			_id,
-			email,
-			additionalInfo: { organisation, bio, showOrganisation, showBio },
-		} = user;
-		let userMember = team.members.find(el => el.memberid.toString() === user._id.toString());
-		let { roles = [] } = userMember;
-		return {
-			firstname,
-			lastname,
-			id,
-			_id,
-			email,
-			roles,
-			organisation: showOrganisation ? organisation : '',
-			bio: showBio ? bio : '',
-		};
+		if (user.id) {
+			let {
+				firstname,
+				lastname,
+				id,
+				_id,
+				email,
+				additionalInfo: { organisation, bio, showOrganisation, showBio },
+			} = user;
+			let userMember = team.members.find(el => el.memberid.toString() === user._id.toString());
+			let { roles = [] } = userMember;
+			return {
+				firstname,
+				lastname,
+				id,
+				_id,
+				email,
+				roles,
+				organisation: showOrganisation ? organisation : '',
+				bio: showBio ? bio : '',
+			};
+		}
 	});
-	return users;
+	return users.filter(user => {
+		return user;
+	});
 };
 
 /**
@@ -116,11 +129,15 @@ const addTeamMembers = async (req, res) => {
 		}
 		// 4. Ensure the user has permissions to perform this operation
 		let authorised = checkTeamPermissions('manager', team.toObject(), req.user._id);
-		// 5. If not return unauthorised
+		// 5. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 6. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 6. Filter out any existing members to avoid duplication
+		// 7. Filter out any existing members to avoid duplication
 		let teamObj = team.toObject();
 		newMembers = [...newMembers].filter(newMem => !teamObj.members.some(mem => newMem.memberid.toString() === mem.memberid.toString()));
 
@@ -260,19 +277,19 @@ const updateNotifications = async (req, res) => {
 		let missingOptIns = {};
 
 		// 9. if member has notifications - backend check to ensure optIn is true if team notifications opted out for member
-		if (!_.isEmpty(memberNotifications) && !_.isEmpty(teamNotifications)) {
+		if (!isEmpty(memberNotifications) && !isEmpty(teamNotifications)) {
 			missingOptIns = findMissingOptIns(memberNotifications, teamNotifications);
 		}
 
 		// 10. return missingOptIns to FE and do not update
-		if (!_.isEmpty(missingOptIns)) return res.status(400).json({ success: false, message: missingOptIns });
+		if (!isEmpty(missingOptIns)) return res.status(400).json({ success: false, message: missingOptIns });
 
 		// 11. if manager updates team notifications, check if we have any team notifications optedOut
 		if (isManager) {
 			// 1. filter team.notification types that are opted out ie { optIn: false, ... }
 			const optedOutTeamNotifications = [...teamNotifications].filter(notification => !notification.optIn) || [];
 			// 2. if there are opted out team notifications find members who have these notifications turned off and turn on if any
-			if (!_.isEmpty(optedOutTeamNotifications)) {
+			if (!isEmpty(optedOutTeamNotifications)) {
 				// loop over each notification type that has optOut
 				optedOutTeamNotifications.forEach(teamNotification => {
 					// get notification type
@@ -282,7 +299,7 @@ const updateNotifications = async (req, res) => {
 						// get member notifications
 						let { notifications = [] } = member;
 						// if notifications exist
-						if (!_.isEmpty(notifications)) {
+						if (!isEmpty(notifications)) {
 							// find the notification by notificationType
 							let notificationIndex = notifications.findIndex(n => n.notificationType.toUpperCase() === notificationType.toUpperCase());
 							// if notificationType exists update optIn and notificationMessage
@@ -299,7 +316,7 @@ const updateNotifications = async (req, res) => {
 
 			// compare db / payload notifications for each type and send email ** when more types update email logic only to capture multiple types as it only outs one currently as per design ***
 			// check if team has team.notificaitons loop over db notifications array - process emails missing / added for the type if manager has saved
-			if (!_.isEmpty(notifications)) {
+			if (!isEmpty(notifications)) {
 				// get manager who has submitted the request
 				let manager = [...users].find(user => user._id.toString() === member.memberid.toString());
 
@@ -310,18 +327,18 @@ const updateNotifications = async (req, res) => {
 					const notificationPayload =
 						[...teamNotifications].find(n => n.notificationType.toUpperCase() === notificationType.toUpperCase()) || {};
 					// if found process next phase
-					if (!_.isEmpty(notificationPayload)) {
+					if (!isEmpty(notificationPayload)) {
 						//  get db subscribedEmails and rename to dbSubscribedEmails
 						let { subscribedEmails: dbSubscribedEmails, optIn: dbOptIn } = dbNotification;
 						//  get incoming subscribedEmails and rename to payLoadSubscribedEmails
 						let { subscribedEmails: payLoadSubscribedEmails, optIn: payLoadOptIn } = notificationPayload;
 						// compare team.notifications by notificationType subscribed emails against the incoming payload to get emails that have been removed
-						const removedEmails = _.difference([...dbSubscribedEmails], [...payLoadSubscribedEmails]) || [];
+						const removedEmails = difference([...dbSubscribedEmails], [...payLoadSubscribedEmails]) || [];
 						// compare incoming payload notificationTypes subscribed emails to get emails that have been added against db
-						const addedEmails = _.difference([...payLoadSubscribedEmails], [...dbSubscribedEmails]) || [];
+						const addedEmails = difference([...payLoadSubscribedEmails], [...dbSubscribedEmails]) || [];
 						// get all members who have notifications by the type
 						const subscribedMembersByType = filterMembersByNoticationTypes([...members], [notificationType]);
-						if (!_.isEmpty(subscribedMembersByType)) {
+						if (!isEmpty(subscribedMembersByType)) {
 							// build cleaner array of memberIds from subscribedMembersByType
 							const memberIds = [...subscribedMembersByType].map(m => m.memberid);
 							// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object in team
@@ -336,7 +353,7 @@ const updateNotifications = async (req, res) => {
 								emailAddresses: [],
 							};
 							// check if removed emails and send email subscribedEmails or if the emails are turned off
-							if (!_.isEmpty(removedEmails) || (dbOptIn && !payLoadOptIn)) {
+							if (!isEmpty(removedEmails) || (dbOptIn && !payLoadOptIn)) {
 								// update the options
 								options = {
 									...options,
@@ -371,7 +388,7 @@ const updateNotifications = async (req, res) => {
 								);
 							}
 							// check if added emails and send email to subscribedEmails or if the dbOpt is false but the manager is turning back on team notifications
-							if (!_.isEmpty(addedEmails) || (!dbOptIn && payLoadOptIn)) {
+							if (!isEmpty(addedEmails) || (!dbOptIn && payLoadOptIn)) {
 								// update options
 								options = {
 									...options,
@@ -483,11 +500,15 @@ const deleteTeamMember = async (req, res) => {
 		}
 		// 4. Ensure the user has permissions to perform this operation
 		let authorised = checkTeamPermissions('manager', team.toObject(), req.user._id);
-		// 5. If not return unauthorised
+		// 5. If not check if the current user is an admin
+		if (!authorised) {
+			authorised = checkIfAdmin(req.user, [constants.roleTypes.ADMIN_DATASET]);
+		}
+		// 6. If not return unauthorised
 		if (!authorised) {
 			return res.status(401).json({ success: false });
 		}
-		// 6. Ensure at least one manager will remain if this member is deleted
+		// 7. Ensure at least one manager will remain if this member is deleted
 		let { members = [], users = [] } = team;
 		let managerCount = members.filter(mem => mem.roles.includes('manager') && mem.memberid.toString() !== req.user._id.toString()).length;
 		if (managerCount === 0) {
@@ -496,7 +517,7 @@ const deleteTeamMember = async (req, res) => {
 				message: 'You cannot delete the last manager in the team',
 			});
 		}
-		// 7. Filter out removed member
+		// 8. Filter out removed member
 		let updatedMembers = [...members].filter(mem => mem.memberid.toString() !== memberid.toString());
 		if (members.length === updatedMembers.length) {
 			return res.status(400).json({
@@ -504,7 +525,7 @@ const deleteTeamMember = async (req, res) => {
 				message: 'The user requested for deletion is not a member of this team',
 			});
 		}
-		// 8. Update team model
+		// 9. Update team model
 		team.members = updatedMembers;
 		team.save(function (err) {
 			if (err) {
@@ -536,37 +557,364 @@ const deleteTeamMember = async (req, res) => {
  *
  */
 const getTeamsList = async (req, res) => {
-    try { 
-        // 1. Check the current user is a member of the HDR admin team
-        const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+	try {
+		// 1. Check the current user is a member of the HDR admin team
+		const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
 
-		const hdrAdminTeamMember = hdrAdminTeam.members.filter( member => member.memberid.toString() === req.user._id.toString() )
-		
-        // 2. If not return unauthorised 
-		if(_.isEmpty(hdrAdminTeamMember)){
+		const hdrAdminTeamMember = hdrAdminTeam.members.filter(member => member.memberid.toString() === req.user._id.toString());
+
+		// 2. If not return unauthorised
+		if (isEmpty(hdrAdminTeamMember)) {
 			return res.status(401).json({ success: false, message: 'Unauthorised' });
 		}
 
-		// 3. Get the publisher teams from the database 
+		// 3. Get the publisher teams from the database
 		const teams = await TeamModel.find(
 			{ type: 'publisher', active: true },
 			{
 				_id: 1,
-				updatedAt: 1, 
+				updatedAt: 1,
 				members: 1,
-				membersCount: {$size: '$members'} 
+				membersCount: { $size: '$members' },
 			}
 		)
-			.populate('publisher', { name: 1 })
+			.populate('publisher', { name: 1, 'publisherDetails.name': 1, 'publisherDetails.memberOf': 1 })
 			.populate('users', { firstname: 1, lastname: 1 })
+			.sort({ updatedAt: -1 })
 			.lean();
-	
-        // 4. Return team
-        return res.status(200).json({ success: true, teams });
-    } catch (err) {
-        console.error(err.message);
-        return res.status(500).json(err.message);
-    }
+
+		// 4. Return team
+		return res.status(200).json({ success: true, teams });
+	} catch (err) {
+		console.error(err.message);
+		return res.status(500).json(err.message);
+	}
+};
+
+/**
+ * Adds a publisher team
+ *
+ *
+ */
+const addTeam = async (req, res) => {
+	let mdcFolderId;
+	let teamManagerIds = [];
+	let recipients = [];
+	let folders = [];
+	const { name, memberOf, contactPoint, teamManagers } = req.body;
+
+	// 1. Check the current user is a member of the HDR admin team
+	const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+
+	const hdrAdminTeamMember = hdrAdminTeam.members.filter(member => member.memberid.toString() === req.user._id.toString());
+
+	// 2. If not return unauthorised
+	if (isEmpty(hdrAdminTeamMember)) {
+		return res.status(401).json({ success: false, message: 'Unauthorised' });
+	}
+
+	try {
+		// 3. log into MDC
+		let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
+		const loginDetails = {
+			username: process.env.MDC_Config_HDRUK_username || '',
+			password: process.env.MDC_Config_HDRUK_password || '',
+		};
+
+		await axios
+			.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
+				withCredentials: true,
+				timeout: 5000,
+			})
+			.then(async session => {
+				axios.defaults.headers.Cookie = session.headers['set-cookie'][0]; // get cookie from request
+
+				const folderLabel = {
+					label: name,
+				};
+
+				// 4. Get all MDC folders
+				await axios
+					.get(metadataCatalogueLink + '/api/folders?all=true', {
+						withCredentials: true,
+						timeout: 60000,
+					})
+					.then(async res => {
+						folders = res.data.items.filter(item => item.label === name);
+					});
+
+				// 5. Create new folder on MDC
+				await axios
+					.post(metadataCatalogueLink + '/api/folders', folderLabel, {
+						withCredentials: true,
+						timeout: 60000,
+					})
+					.then(async newFolder => {
+						mdcFolderId = newFolder.data.id;
+
+						// 6. Update the newly created folder to be public
+						await axios
+							.put(`${metadataCatalogueLink}/api/folders/${mdcFolderId}/readByEveryone`, {
+								withCredentials: true,
+								timeout: 60000,
+							})
+							.then(async res => {
+								console.log(`public flag res: ${res}`);
+							})
+							.catch(err => {
+								console.error('Error when making folder public on the MDC - ' + err.message);
+							});
+					})
+					.catch(err => {
+						console.error('Error when trying to create new folder on the MDC - ' + err.message);
+					});
+			})
+			.catch(err => {
+				console.error('Error when trying to login to MDC - ' + err.message);
+			});
+
+		// 7. Log out of MDC
+		await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
+			console.error('Error when trying to logout of the MDC - ' + err.message);
+		});
+
+		// 8. If a MDC folder with the name already exists return unsuccessful
+		if (!isEmpty(folders)) {
+			return res.status(422).json({ success: false, message: 'Duplicate MDC folder name' });
+		}
+
+		// 9. Create the publisher
+		let publisher = new PublisherModel();
+
+		publisher.name = `${inputSanitizer.removeNonBreakingSpaces(memberOf)} > ${inputSanitizer.removeNonBreakingSpaces(name)}`;
+		publisher.publisherDetails = {
+			name: inputSanitizer.removeNonBreakingSpaces(name),
+			memberOf: inputSanitizer.removeNonBreakingSpaces(memberOf),
+			contactPoint: inputSanitizer.removeNonBreakingSpaces(contactPoint),
+		};
+		publisher.mdcFolderId = mdcFolderId;
+
+		let newPublisher = await publisher.save();
+		if (!newPublisher) reject(new Error(`Can't persist publisher object to DB.`));
+
+		let publisherId = newPublisher._id.toString();
+
+		// 10. Create the team
+		let team = new TeamModel();
+
+		team._id = ObjectId(publisherId);
+		team.type = 'publisher';
+
+		for (let manager of teamManagers) {
+			await getManagerInfo(manager.id, teamManagerIds, recipients);
+		}
+
+		team.members = teamManagerIds;
+
+		let newTeam = await team.save();
+		if (!newTeam) reject(new Error(`Can't persist team object to DB.`));
+
+		// 11. Send email and notification to managers
+		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user, publisherId);
+
+		return res.status(200).json({ success: true });
+	} catch (err) {
+		console.error(err.message);
+		return res.status(500).json({
+			success: false,
+			message: 'Error',
+		});
+	}
+};
+
+async function getManagerInfo(managerId, teamManagerIds, recipients) {
+	let managerInfo = await UserModel.findOne(
+		{ id: managerId },
+		{
+			_id: 1,
+			id: 1,
+			email: 1,
+		}
+	).exec();
+
+	teamManagerIds.push({
+		roles: ['manager'],
+		memberid: ObjectId(managerInfo._id.toString()),
+	});
+
+	recipients.push({
+		id: managerInfo.id,
+		email: managerInfo.email,
+	});
+
+	return teamManagerIds;
+}
+
+/**
+ * PUT api/v1/teams
+ *
+ * @desc Edit the team
+ *
+ */
+const editTeam = async (req, res) => {
+	try {
+		// 1. Check the current user is a member of the HDR admin team
+		const hdrAdminTeam = await TeamModel.findOne({ type: 'admin' }).lean();
+		const hdrAdminTeamMember = hdrAdminTeam.members.filter(member => member.memberid.toString() === req.user._id.toString());
+
+		// 2. If not return unauthorised
+		if (isEmpty(hdrAdminTeamMember)) {
+			return res.status(401).json({ success: false, message: 'Unauthorised' });
+		}
+
+		const id = req.params.id;
+		const { name, memberOf, contactPoint } = req.body;
+		const existingTeamDetails = await PublisherModel.findOne({ _id: ObjectId(id) }).lean();
+
+		//3. Update Team
+		await PublisherModel.findOneAndUpdate(
+			{ _id: ObjectId(id) },
+			{
+				name: `${memberOf} > ${name}`,
+				publisherDetails: {
+					name,
+					memberOf,
+					contactPoint,
+				},
+			},
+			err => {
+				if (err) {
+					return res.status(401).json({ success: false, error: err });
+				}
+			}
+		);
+
+		//4. Did name or member change
+		if (existingTeamDetails.publisherDetails.memberOf !== memberOf || existingTeamDetails.publisherDetails.name !== name) {
+			//5. Get list of active datasets for that publisher
+			const listOfDatasets = await Data.find(
+				{ 'datasetv2.summary.publisher.identifier': id, activeflag: 'active' },
+				{ datasetid: 1 }
+			).lean();
+
+			// 6. log into MDC
+			let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
+			const loginDetails = {
+				username: process.env.MDC_Config_HDRUK_username || '',
+				password: process.env.MDC_Config_HDRUK_password || '',
+			};
+
+			await axios
+				.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
+					withCredentials: true,
+					timeout: 5000,
+				})
+				.then(async session => {
+					axios.defaults.headers.Cookie = session.headers['set-cookie'][0]; // get cookie from request
+
+					for (let dataset of listOfDatasets) {
+						// 7. Get the metadata for the dataset
+						await axios
+							.get(metadataCatalogueLink + `/api/facets/${dataset.datasetid}/metadata?all=true`, {
+								withCredentials: true,
+								timeout: 60000,
+							})
+							.then(async res => {
+								const foundDataset = res.data;
+								// 8. Get the metadata for the dataset
+
+								const memberOfId = foundDataset.items.find(metadata => metadata.key === 'properties/summary/publisher/memberOf');
+								const nameId = foundDataset.items.find(metadata => metadata.key === 'properties/summary/publisher/name');
+								const v1NameId = foundDataset.items.find(metadata => metadata.key === 'publisher');
+
+								//9. Update memberOf on MDC
+								if (!isEmpty(memberOfId)) {
+									await axios
+										.put(
+											metadataCatalogueLink + `/api/facets/${dataset.datasetid}/metadata/${memberOfId.id}`,
+											{ value: memberOf },
+											{
+												withCredentials: true,
+												timeout: 60000,
+											}
+										)
+										.catch(err => {
+											console.error('Error when trying to update metdata on the MDC - ' + err.message);
+										});
+								}
+
+								//10. Update name on MDC
+								if (!isEmpty(nameId)) {
+									await axios
+										.put(
+											metadataCatalogueLink + `/api/facets/${dataset.datasetid}/metadata/${nameId.id}`,
+											{ value: name },
+											{
+												withCredentials: true,
+												timeout: 60000,
+											}
+										)
+										.catch(err => {
+											console.error('Error when trying to update metdata on the MDC - ' + err.message);
+										});
+								}
+
+								//11. Update v1 publisher name on MDC
+								if (!isEmpty(v1NameId)) {
+									await axios
+										.put(
+											metadataCatalogueLink + `/api/facets/${dataset.datasetid}/metadata/${v1NameId.id}`,
+											{ value: `${memberOf} > ${name}` },
+											{
+												withCredentials: true,
+												timeout: 60000,
+											}
+										)
+										.catch(err => {
+											console.error('Error when trying to update metdata on the MDC - ' + err.message);
+										});
+								}
+							})
+							.catch(err => {
+								console.error('Error when trying to get the metdata from the MDC - ' + err.message);
+							});
+					}
+				})
+				.catch(err => {
+					console.error('Error when trying to login to MDC - ' + err.message);
+				});
+
+			// 12. Log out of MDC
+			await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
+				console.error('Error when trying to logout of the MDC - ' + err.message);
+			});
+
+			//13. Update datasets if name or member change
+			for (let dataset of listOfDatasets) {
+				await Data.findOneAndUpdate(
+					{ datasetid: dataset.datasetid },
+					{
+						'datasetfields.publisher': `${memberOf} > ${name}`,
+						'datasetv2.summary.publisher.name': name,
+						'datasetv2.summary.publisher.memberOf': memberOf,
+					},
+					err => {
+						if (err) {
+							return res.status(401).json({ success: false, error: err });
+						}
+					}
+				);
+			}
+
+			//14. Update filters
+			filtersService.optimiseFilters('dataset');
+		}
+
+		return res.status(200).json({ success: true });
+	} catch (err) {
+		console.error(err.message);
+		return res.status(500).json(err.message);
+	}
 };
 
 /**
@@ -578,7 +926,7 @@ const getTeamsList = async (req, res) => {
  */
 const checkTeamPermissions = (role, team, userId) => {
 	// 1. Ensure the team has associated members defined
-	if (_.has(team, 'members')) {
+	if (has(team, 'members')) {
 		// 2. Extract team members
 		let { members } = team;
 		// 3. Find the current user
@@ -594,11 +942,33 @@ const checkTeamPermissions = (role, team, userId) => {
 	return false;
 };
 
+const checkIfAdmin = (user, adminRoles) => {
+	let { teams } = user.toObject();
+	if (teams) {
+		teams = teams.map(team => {
+			let { publisher, type, members } = team;
+			let member = members.find(member => {
+				return member.memberid.toString() === user._id.toString();
+			});
+			let { roles } = member;
+			return { ...publisher, type, roles };
+		});
+	}
+	const isAdmin = teams.filter(team => team.type === constants.teamTypes.ADMIN);
+	if (!isEmpty(isAdmin)) {
+		if (isAdmin[0].roles.some(role => adminRoles.includes(role))) {
+			return true;
+		}
+	}
+
+	return false;
+};
+
 const getTeamMembersByRole = (team, role) => {
 	// Destructure members array and populated users array (populate 'users' must be included in the original Mongo query)
 	let { members = [], users = [] } = team;
 	// Get all userIds for role within team
-	let userIds = members.filter(mem => mem.roles.includes(role)).map(mem => mem.memberid.toString());
+	let userIds = members.filter(mem => mem.roles.includes(role) || role === 'All').map(mem => mem.memberid.toString());
 	// return all user records for role
 	return users.filter(user => userIds.includes(user._id.toString()));
 };
@@ -610,7 +980,7 @@ const getTeamMembersByRole = (team, role) => {
  */
 const getTeamName = team => {
 	let teamObj = team.toObject();
-	if (_.has(teamObj, 'publisher') && !_.isNull(teamObj.publisher)) {
+	if (has(teamObj, 'publisher') && !isNull(teamObj.publisher)) {
 		let {
 			publisher: { name },
 		} = teamObj;
@@ -629,7 +999,7 @@ const getTeamName = team => {
  */
 const getTeamNotificationByType = (team = {}, notificationType = '') => {
 	let teamObj = team.toObject();
-	if (_.has(teamObj, 'notifications') && !_.isNull(teamObj.notifications) && !_.isEmpty(notificationType)) {
+	if (has(teamObj, 'notifications') && !isNull(teamObj.notifications) && !isEmpty(notificationType)) {
 		let { notifications } = teamObj;
 		let notification = [...notifications].find(n => n.notificationType.toUpperCase() === notificationType.toUpperCase());
 		if (typeof notification !== 'undefined') return notification;
@@ -640,14 +1010,14 @@ const getTeamNotificationByType = (team = {}, notificationType = '') => {
 };
 
 const findTeamMemberById = (members = [], custodianManager = {}) => {
-	if (!_.isEmpty(members) && !_.isEmpty(custodianManager))
+	if (!isEmpty(members) && !isEmpty(custodianManager))
 		return [...members].find(member => member.memberid.toString() === custodianManager._id.toString()) || {};
 
 	return {};
 };
 
 const findByNotificationType = (notificaitons = [], notificationType = '') => {
-	if (!_.isEmpty(notificaitons) && !_.isEmpty(notificationType)) {
+	if (!isEmpty(notificaitons) && !isEmpty(notificationType)) {
 		return [...notificaitons].find(notification => notification.notificationType === notificationType) || {};
 	}
 	return {};
@@ -661,9 +1031,9 @@ const findByNotificationType = (notificaitons = [], notificationType = '') => {
  * @return  {Array}                     [return all members with notification types]
  */
 const filterMembersByNoticationTypes = (members, notificationTypes) => {
-	return _.filter(members, member => {
-		return _.some(member.notifications, notification => {
-			return _.includes(notificationTypes, notification.notificationType);
+	return filter(members, member => {
+		return some(member.notifications, notification => {
+			return includes(notificationTypes, notification.notificationType);
 		});
 	});
 };
@@ -676,9 +1046,9 @@ const filterMembersByNoticationTypes = (members, notificationTypes) => {
  * @return  {Array}                     [return all members with notification types]
  */
 const filterMembersByNoticationTypesOptIn = (members, notificationTypes) => {
-	return _.filter(members, member => {
-		return _.some(member.notifications, notification => {
-			return _.includes(notificationTypes, notification.notificationType) && notification.optIn;
+	return filter(members, member => {
+		return some(member.notifications, notification => {
+			return includes(notificationTypes, notification.notificationType) && notification.optIn;
 		});
 	});
 };
@@ -691,7 +1061,7 @@ const filterMembersByNoticationTypesOptIn = (members, notificationTypes) => {
  * @return  {Array}                     [return all emails for memberIds from user aray]
  */
 const getMemberDetails = (memberIds = [], users = []) => {
-	if (!_.isEmpty(memberIds) && !_.isEmpty(users)) {
+	if (!isEmpty(memberIds) && !isEmpty(users)) {
 		return [...users].reduce(
 			(arr, user) => {
 				let { email, id } = user;
@@ -708,22 +1078,22 @@ const getMemberDetails = (memberIds = [], users = []) => {
 
 const buildOptedInEmailList = (custodianManagers = [], team = {}, notificationType = '') => {
 	let { members = [] } = team;
-	if (!_.isEmpty(custodianManagers)) {
+	if (!isEmpty(custodianManagers)) {
 		// loop over custodianManagers
 		return [...custodianManagers].reduce((acc, custodianManager) => {
 			let custodianNotificationObj, member, notifications, optIn;
 			// if memebers exist only do the following
-			if (!_.isEmpty(members)) {
+			if (!isEmpty(members)) {
 				// find member in team.members array
 				member = findTeamMemberById(members, custodianManager);
-				if (!_.isEmpty(member)) {
+				if (!isEmpty(member)) {
 					// deconstruct members
 					({ notifications = [] } = member);
 					// if the custodian has notifications
-					if (!_.isEmpty(notifications)) {
+					if (!isEmpty(notifications)) {
 						// find the notification type in the notifications array
 						custodianNotificationObj = findByNotificationType(notifications, notificationType);
-						if (!_.isEmpty(custodianNotificationObj)) {
+						if (!isEmpty(custodianNotificationObj)) {
 							({ optIn } = custodianNotificationObj);
 							if (optIn) return [...acc, { email: custodianManager.email }];
 							else return acc;
@@ -748,15 +1118,18 @@ const buildOptedInEmailList = (custodianManagers = [], team = {}, notificationTy
  * @return  {Array}                    		[formatted array of [{email: email}]]
  */
 const getTeamNotificationEmails = (optIn = false, subscribedEmails) => {
-	if (optIn && !_.isEmpty(subscribedEmails)) {
+	if (optIn && !isEmpty(subscribedEmails)) {
 		return [...subscribedEmails].map(email => ({ email }));
 	}
 
 	return [];
 };
 
-const createNotifications = async (type, context, team, user) => {
-	const teamName = getTeamName(team);
+const createNotifications = async (type, context, team, user, publisherId) => {
+	let teamName;
+	if (type !== 'TeamAdded') {
+		teamName = getTeamName(team);
+	}
 	let options = {};
 	let html = '';
 
@@ -816,6 +1189,30 @@ const createNotifications = async (type, context, team, user) => {
 				false
 			);
 			break;
+		case constants.notificationTypes.TEAMADDED:
+			const { recipients } = context;
+			const recipientIds = recipients.map(recipient => recipient.id);
+			//1. Create notifications
+			notificationBuilder.triggerNotificationMessage(
+				recipientIds,
+				`You have been assigned as a team manger to the team ${team}`,
+				'team added',
+				team,
+				publisherId
+			);
+			//2. Create email
+			options = {
+				team,
+			};
+			html = emailGenerator.generateNewTeamManagers(options);
+			emailGenerator.sendEmail(
+				recipients,
+				constants.hdrukEmail,
+				`You have been assigned as a team manger to the team ${team}`,
+				html,
+				false
+			);
+			break;
 		case constants.notificationTypes.MEMBERROLECHANGED:
 			break;
 	}
@@ -823,13 +1220,13 @@ const createNotifications = async (type, context, team, user) => {
 
 const formatTeamNotifications = team => {
 	let { notifications = [] } = team;
-	if (!_.isEmpty(notifications)) {
+	if (!isEmpty(notifications)) {
 		// 1. reduce for mapping over team notifications
 		return [...notifications].reduce((arr, notification) => {
 			let teamNotificationEmails = [];
 			let { notificationType = '', optIn = false, subscribedEmails = [] } = notification;
 			// 2. check subscribedEmails has length
-			if (!_.isEmpty(subscribedEmails)) teamNotificationEmails = [...subscribedEmails].map(email => ({ value: email, error: '' }));
+			if (!isEmpty(subscribedEmails)) teamNotificationEmails = [...subscribedEmails].map(email => ({ value: email, error: '' }));
 			else teamNotificationEmails = [{ value: '', error: '' }];
 
 			// 3. return optimal payload for formated notification
@@ -855,7 +1252,7 @@ const findMissingOptIns = (memberNotifications, teamNotifications) => {
 		let teamNotification =
 			[...teamNotifications].find(teamNotification => teamNotification.notificationType === memberNotificationType) || {};
 		// if the team has the same notification type test
-		if (!_.isEmpty(teamNotification)) {
+		if (!isEmpty(teamNotification)) {
 			let { notificationType, optIn: teamOptIn, subscribedEmails } = teamNotification;
 			// if both are turned off build and return new error
 			if ((!teamOptIn && !memberOptIn) || (!memberOptIn && subscribedEmails.length <= 0)) {
@@ -890,4 +1287,6 @@ export default {
 	getTeamMembersByRole: getTeamMembersByRole,
 	createNotifications: createNotifications,
 	getTeamsList: getTeamsList,
+	addTeam: addTeam,
+	editTeam: editTeam,
 };
