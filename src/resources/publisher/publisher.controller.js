@@ -41,6 +41,11 @@ export default class PublisherController extends Controller {
 		}
 	}
 
+	async getAllPublishersAndIds(res) {
+		let publishers = await this.publisherService.getPublishersAndIds();
+		return res.status(200).json({ publishers });
+	}
+
 	async getPublisherDatasets(req, res) {
 		try {
 			// 1. Get the datasets for the publisher from the database
@@ -93,7 +98,12 @@ export default class PublisherController extends Controller {
 					accessRecord.projectName = this.dataRequestService.getProjectName(accessRecord);
 					accessRecord.applicants = this.dataRequestService.getApplicantNames(accessRecord);
 					accessRecord.decisionDuration = this.dataRequestService.getDecisionDuration(accessRecord);
-					accessRecord.versions = this.dataRequestService.buildVersionHistory(accessRecord.versionTree, accessRecord._id, null, constants.userTypes.CUSTODIAN);
+					accessRecord.versions = this.dataRequestService.buildVersionHistory(
+						accessRecord.versionTree,
+						accessRecord._id,
+						null,
+						constants.userTypes.CUSTODIAN
+					);
 					accessRecord.amendmentStatus = this.amendmentService.calculateAmendmentStatus(accessRecord, constants.userTypes.CUSTODIAN);
 					return accessRecord;
 				})
@@ -127,7 +137,7 @@ export default class PublisherController extends Controller {
 				let { applications = [] } = workflow;
 				return {
 					...workflow,
-					applications: this.dataRequestService.getProjectNames(applications)
+					applications: this.dataRequestService.getProjectNames(applications),
 				};
 			});
 			// 3. Check the requesting user is a member of the team

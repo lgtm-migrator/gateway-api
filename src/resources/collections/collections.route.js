@@ -136,15 +136,14 @@ router.put('/edit/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess
 	await Collections.findOneAndUpdate(
 		{ id: collectionId },
 		{
-			//lgtm [js/sql-injection]
-			name: inputSanitizer.removeNonBreakingSpaces(name),
-			description: inputSanitizer.removeNonBreakingSpaces(description),
-			imageLink: imageLink,
-			authors: authors,
-			relatedObjects: relatedObjects,
-			publicflag: publicflag,
-			keywords: keywords,
-			updatedon: updatedon,
+			name: { $eq: inputSanitizer.removeNonBreakingSpaces(name) },
+			description: { $eq: inputSanitizer.removeNonBreakingSpaces(description) },
+			imageLink: { $eq: imageLink },
+			authors: { $eq: authors },
+			relatedObjects: { $eq: relatedObjects },
+			publicflag: { $eq: publicflag },
+			keywords: { $eq: keywords },
+			updatedon: { $eq: updatedon },
 		},
 		err => {
 			if (err) {

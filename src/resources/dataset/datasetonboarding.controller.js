@@ -4,10 +4,11 @@ import { filtersService } from '../filters/dependency';
 import constants from '../utilities/constants.util';
 import datasetonboardingUtil from './utils/datasetonboarding.util';
 import { v4 as uuidv4 } from 'uuid';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, escapeRegExp } from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
 import moment from 'moment';
+import * as Sentry from '@sentry/node';
 var fs = require('fs');
 
 module.exports = {
@@ -81,13 +82,13 @@ module.exports = {
 				dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
 			} else {
 				//if no questionAnswers then populate from MDC
-				dataset.questionAnswers = datasetonboardingUtil.populateQuestionAnswers(dataset);
+				dataset.questionAnswers = datasetonboardingUtil.populateQuestionAnswers(dataset.datasetv2);
 				await Data.findOneAndUpdate({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
 			}
 
 			if (isEmpty(dataset.structuralMetadata)) {
 				//if no structuralMetadata then populate from MDC
-				dataset.structuralMetadata = datasetonboardingUtil.populateStructuralMetadata(dataset);
+				dataset.structuralMetadata = datasetonboardingUtil.populateStructuralMetadata(dataset.datasetfields.technicaldetails);
 				await Data.findOneAndUpdate({ _id: id }, { structuralMetadata: dataset.structuralMetadata });
 			}
 
@@ -157,7 +158,7 @@ module.exports = {
 				data.type = 'dataset';
 				data.activeflag = 'draft';
 				data.source = 'HDRUK MDC';
-				data.is5Safes = publisherData[0].allowAccessRequestManagement;
+				data.is5Safes = publisherData[0].uses5Safes;
 				data.timestamps.created = Date.now();
 				data.timestamps.updated = Date.now();
 				data.questionAnswers = JSON.stringify({
@@ -206,7 +207,7 @@ module.exports = {
 				data.type = 'dataset';
 				data.activeflag = 'draft';
 				data.source = 'HDRUK MDC';
-				data.is5Safes = publisherData[0].allowAccessRequestManagement;
+				data.is5Safes = publisherData[0].uses5Safes;
 				data.questionAnswers = JSON.stringify(datasetToCopy.questionAnswers);
 				data.structuralMetadata = datasetToCopy.structuralMetadata;
 				data.percentageCompleted = datasetToCopy.percentageCompleted;
@@ -258,21 +259,22 @@ module.exports = {
 					} else {
 						Data.findByIdAndUpdate(
 							{ _id: id },
-							{ structuralMetadata, percentageCompleted: data.percentageCompleted, 'timestamps.updated': Date.now() },
-							{ new: true },
-							err => {
-								if (err) {
-									console.error(err);
-									throw err;
-								}
-							}
-						);
+							{
+								structuralMetadata: { $eq: structuralMetadata },
+								percentageCompleted: { $eq: data.percentageCompleted },
+								'timestamps.updated': Date.now(),
+							},
+							{ new: true }
+						).catch(err => {
+							console.error(err);
+							throw err;
+						});
 
 						return res.status(200).json();
 					}
 				}
 			} else {
-				datasetonboardingUtil.updateDataset(dataset, updateObj).then(() => {
+				await datasetonboardingUtil.updateDataset(dataset, updateObj).then(() => {
 					let data = {
 						status: 'success',
 					};
@@ -282,11 +284,9 @@ module.exports = {
 						let title = questionAnswers['properties/summary/title'];
 
 						if (title && title.length >= 2) {
-							Data.findByIdAndUpdate({ _id: id }, { name: title, 'timestamps.updated': Date.now() }, { new: true }, err => {
-								if (err) {
-									console.error(err);
-									throw err;
-								}
+							Data.findByIdAndUpdate({ _id: id }, { name: { $eq: title }, 'timestamps.updated': Date.now() }, { new: true }).catch(err => {
+								console.error(err);
+								throw err;
 							});
 							data.name = title;
 						}
@@ -514,7 +514,9 @@ module.exports = {
 
 								let previousDataset = await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
 								let previousCounter = 0;
+								let previousDiscourseTopicId = 0;
 								if (previousDataset) previousCounter = previousDataset.counter || 0;
+								if (previousDataset) previousDiscourseTopicId = previousDataset.discourseTopicId || 0;
 
 								//get technicaldetails and metadataQuality
 								let technicalDetails = await datasetonboardingUtil.buildTechnicalDetails(dataset.structuralMetadata);
@@ -565,6 +567,7 @@ module.exports = {
 										},
 										datasetv2: datasetv2Object,
 										applicationStatusDesc: applicationStatusDesc,
+										discourseTopicId: previousDiscourseTopicId,
 									},
 									{ new: true }
 								);
@@ -709,7 +712,7 @@ module.exports = {
 	//GET api/v1/dataset-onboarding/checkUniqueTitle
 	checkUniqueTitle: async (req, res) => {
 		let { pid, title = '' } = req.query;
-		let regex = new RegExp(`^${title}$`, 'i');
+		let regex = new RegExp(`^${escapeRegExp(title)}$`, 'i');
 		let dataset = await Data.findOne({ name: regex, pid: { $ne: pid } });
 		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
 	},
@@ -722,8 +725,8 @@ module.exports = {
 			let dataset = {};
 
 			if (!isEmpty(pid)) {
-				dataset = await Data.findOne({ pid, activeflag: 'active' }).lean();
-				if (!isEmpty(datasetID)) dataset = await Data.findOne({ pid: datasetID, activeflag: 'archive' }).sort({ createdAt: -1 });
+				dataset = await Data.findOne({ pid: { $eq: pid }, activeflag: 'active' }).lean();
+				if (!isEmpty(datasetID)) dataset = await Data.findOne({ pid: { $eq: datasetID }, activeflag: 'archive' }).sort({ createdAt: -1 });
 			} else if (!isEmpty(datasetID)) dataset = await Data.findOne({ datasetid: { datasetID } }).lean();
 
 			if (isEmpty(dataset)) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
@@ -763,6 +766,138 @@ module.exports = {
 			return res.status(200).json({
 				success: true,
 				data: draftDatasetName,
+			});
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
+		}
+	},
+
+	//POST /api/v1/dataset-onboarding/bulk-upload
+	bulkUpload: async (req, res) => {
+		try {
+			let key = req.body.key;
+			// Check for key
+			if (!key) {
+				return res.status(400).json({ success: false, error: 'Bulk upload of metadata could not be started' });
+			}
+			// Check that key matches
+			if (key !== process.env.METADATA_BULKUPLOAD_KEY) {
+				return res.status(400).json({ success: false, error: 'Bulk upload of metadata could not be started' });
+			}
+
+			//Check for file
+			if (isEmpty(req.file)) {
+				return res.status(404).json({ success: false, message: 'For bulk upload of metadata you must supply a JSON file' });
+			}
+
+			let arrayOfDraftDatasets = [];
+			try {
+				arrayOfDraftDatasets = JSON.parse(req.file.buffer);
+			} catch {
+				return res.status(400).json({ success: false, message: 'Unable to read JSON file' });
+			}
+
+			if (!isEmpty(arrayOfDraftDatasets)) {
+				//Build bulk upload object
+				const resultObject = await datasetonboardingUtil.buildBulkUploadObject(arrayOfDraftDatasets);
+
+				if (resultObject.result === true) {
+					for (let dataset of resultObject.datasets) {
+						//Build publisher object
+						let publisherObject = {
+							summary: {
+								publisher: {
+									identifier: dataset.publisher._id.toString(),
+									name: dataset.publisher.publisherDetails.name,
+									memberOf: dataset.publisher.publisherDetails.memberOf,
+								},
+							},
+						};
+
+						//Create new pid if needed
+						if (isEmpty(dataset.pid)) {
+							while (dataset.pid === '') {
+								dataset.pid = uuidv4();
+								if ((await Data.find({ pid: dataset.pid }).length) === 0) dataset.pid = '';
+							}
+						}
+
+						//Create new uniqueID
+						let uniqueID = '';
+						while (uniqueID === '') {
+							uniqueID = parseInt(Math.random().toString().replace('0.', ''));
+							if ((await Data.find({ id: uniqueID }).length) === 0) uniqueID = '';
+						}
+
+						//Create DB entry
+						let data = new Data();
+						data.pid = dataset.pid;
+						data.datasetVersion = dataset.version || '1.0.0';
+						data.id = uniqueID;
+						data.datasetid = 'New dataset';
+						data.name = dataset.title;
+						data.datasetv2 = publisherObject;
+						data.type = 'dataset';
+						data.activeflag = 'draft';
+						data.source = 'HDRUK MDC';
+						data.is5Safes = dataset.publisher.allowAccessRequestManagement;
+						data.timestamps.created = Date.now();
+						data.timestamps.updated = Date.now();
+						data.questionAnswers = JSON.stringify(dataset.questionAnswers);
+						data.structuralMetadata = [...dataset.structuralMetadata];
+						await data.save();
+					}
+					return res.status(200).json({ success: true, message: 'Bulk upload of metadata completed' });
+				} else {
+					return res.status(400).json({ success: false, message: 'Bulk upload of metadata failed', error: resultObject.error });
+				}
+			} else {
+				return res.status(400).json({ success: false, message: 'No metadata found' });
+			}
+		} catch (err) {
+			Sentry.captureException(err);
+			console.error(err.message);
+			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
+		}
+	},
+
+	//POST api/v1/dataset-onboarding/duplicate/:id
+	duplicateDataset: async (req, res) => {
+		try {
+			let id = req.params.id;
+
+			//Check user type and authentication to submit application
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			let dataset = await Data.findOne({ _id: id });
+			let datasetCopy = JSON.parse(JSON.stringify(dataset));
+			let duplicateText = '-duplicate';
+
+			delete datasetCopy._id;
+			datasetCopy.pid = uuidv4();
+
+			let parsedQuestionAnswers = JSON.parse(datasetCopy.questionAnswers);
+			parsedQuestionAnswers['properties/summary/title'] += duplicateText;
+
+			datasetCopy.name += duplicateText;
+			datasetCopy.activeflag = 'draft';
+			datasetCopy.datasetVersion = '1.0.0';
+			datasetCopy.questionAnswers = JSON.stringify(parsedQuestionAnswers);
+			if (datasetCopy.datasetv2.summary.title) {
+				datasetCopy.datasetv2.summary.title += duplicateText;
+			}
+
+			await Data.create(datasetCopy);
+
+			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
+
+			return res.status(200).json({
+				success: true,
+				datasetName: dataset.name,
 			});
 		} catch (err) {
 			console.error(err.message);

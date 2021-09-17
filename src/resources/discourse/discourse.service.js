@@ -74,7 +74,7 @@ export async function createDiscourseTopic(tool) {
 		let {
 			datasetfields: { abstract },
 		} = tool;
-		rawIs = `${tool.description || abstract} <br><br> Original content: ${process.env.homeURL}/dataset/${tool.id}`;
+		rawIs = `${tool.description || abstract} <br><br> Original content: ${process.env.homeURL}/dataset/${tool.pid}`;
 		categoryIs = process.env.DISCOURSE_CATEGORY_DATASETS_ID;
 	} else if (tool.type === 'paper') {
 		rawIs = `${tool.description} <br><br> Original content: ${process.env.homeURL}/paper/${tool.id}`;
@@ -87,7 +87,6 @@ export async function createDiscourseTopic(tool) {
 		categoryIs = process.env.DISCOURSE_CATEGORY_COLLECTIONS_ID;
 	}
 	// 3. Assemble payload for creating a topic in Discourse
-	let title = '';
 	if (tool.type === 'course') tool.title;
 	else tool.name;
 	const payload = {
@@ -139,7 +138,7 @@ export async function createDiscoursePost(topicId, comment, user) {
 	};
 	// 3. POST to Discourse to create new post in the context of the current user
 	try {
-		const response = await axios.post(`${process.env.DISCOURSE_URL}/posts.json`, payload, config);
+		await axios.post(`${process.env.DISCOURSE_URL}/posts.json`, payload, config);
 	} catch (err) {
 		console.error(err.message);
 	}
@@ -207,7 +206,7 @@ export async function deleteDiscoursePost(postId, user) {
 	const config = await getCredentials(user, true);
 	// 3. DELETE to Discourse to remove post in the context of the current user
 	try {
-		const response = await axios.delete(`${process.env.DISCOURSE_URL}/posts/${postId}`, config);
+		await axios.delete(`${process.env.DISCOURSE_URL}/posts/${postId}`, config);
 	} catch (err) {
 		console.error(err.message);
 	}
@@ -325,7 +324,7 @@ async function getCredentials(user, strict) {
 			// 5. Generate Discourse API key for user
 			discourseKey = await generateAPIKey(discourseUser.username);
 			// 6. Update MongoDb to contain users Discourse credentials
-			await UserModel.findOneAndUpdate({ id }, { $set: { discourseUsername, discourseKey } });
+			await UserModel.findOneAndUpdate({ id: { $eq: id } }, { $set: { discourseUsername, discourseKey } });
 		} catch (err) {
 			console.error(err.message);
 		}
@@ -335,7 +334,7 @@ async function getCredentials(user, strict) {
 			// 4. Generate Discourse API key for user
 			discourseKey = await generateAPIKey(discourseUsername);
 			// 5. Update MongoDb to contain users Discourse credentials
-			await UserModel.findOneAndUpdate({ id }, { $set: { discourseUsername, discourseKey } });
+			await UserModel.findOneAndUpdate({ id: { $eq: id } }, { $set: { discourseUsername, discourseKey } });
 		} catch (err) {
 			console.error(err.message);
 		}

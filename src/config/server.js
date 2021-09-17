@@ -10,6 +10,7 @@ import bodyParser from 'body-parser';
 import logger from 'morgan';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
+import csrf from 'csurf';
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
 import * as Sentry from '@sentry/node';
@@ -54,7 +55,7 @@ oidc.proxy = true;
 
 var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
 
-var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
+var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
 
 if (Array.isArray(arr) && arr.length > 0) {
@@ -85,6 +86,7 @@ app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }));
 
 app.use(logger('dev'));
 app.use(cookieParser());
+app.use(csrf({ cookie: true }));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -112,7 +114,6 @@ app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
 		if (err || !user) {
 			return res.status(200).redirect(process.env.homeURL + '/search?search=');
 		}
-		oidc.Session.destory;
 		req.logout();
 		res.clearCookie('jwt');
 
@@ -128,9 +129,7 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 			return res.status(200).redirect(process.env.homeURL + '/search?search=&showLogin=true&loginReferrer=' + apiURL + req.url);
 		} else {
 			try {
-				const { uid, prompt, params, session } = await oidc.interactionDetails(req, res);
-
-				const client = await oidc.Client.find(params.client_id);
+				const { prompt, session } = await oidc.interactionDetails(req, res);
 
 				switch (prompt.name) {
 					case 'select_account': {
@@ -150,12 +149,7 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 							return oidc.interactionFinished(req, res, { select_account: {} }, { mergeWithLastSubmission: false });
 						}
 
-						const account = await oidc.Account.findAccount(undefined, session.accountId);
-						const { email } = await account.claims('prompt', 'email', { email: null }, []);
-
-						const {
-							prompt: { name, details },
-						} = await oidc.interactionDetails(req, res);
+						await oidc.interactionDetails(req, res);
 						//assert.equal(name, 'consent');
 
 						const consent = {};
@@ -250,14 +244,13 @@ app.use('/api/v1/analyticsdashboard', require('../services/googleAnalytics/googl
 app.use('/api/v1/help', require('../resources/help/help.router'));
 
 app.use('/api/v2/filters', require('../resources/filters/filters.route'));
+app.use('/api/v2/activitylog', require('../resources/activitylog/activitylog.route'));
 
-app.use('/api/v1/mailchimp', require('../services/mailchimp/mailchimp.route'));
-
+app.use('/api/v1/hubspot', require('../services/hubspot/hubspot.route'));
 
 app.use('/api/v1/cohortprofiling', require('../resources/cohortprofiling/cohortprofiling.route'));
 
 app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
-
 
 initialiseAuthentication(app);
 
