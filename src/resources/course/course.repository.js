@@ -6,7 +6,6 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import { utils } from '../auth';
 import { ROLES } from '../user/user.roles';
-const asyncModule = require('async');
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
@@ -460,69 +459,6 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, adminCanUnsubscribe);
 		});
 	}
-}
-
-async function sendEmailNotificationToAuthors(tool, toolOwner) {
-	// 1. Generate tool URL for linking user from email
-	const toolLink = process.env.homeURL + '/course/' + tool.id;
-
-	// 2. Find all authors of the tool who have opted in to email updates
-	var q = UserModel.aggregate([
-		// Find all authors of this tool
-		{ $match: { id: tool.creator } },
-		// Perform lookup to check opt in/out flag in tools schema
-		{ $lookup: { from: 'tools', localField: 'id', foreignField: 'id', as: 'tool' } },
-		// Filter out any user who has opted out of email notifications
-		{ $match: { 'tool.emailNotifications': true } },
-		// Reduce response payload size to required fields
-		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
-	]);
-
-	// 3. Create object to pass through email data
-	let options = {
-		resourceType: tool.type,
-		resourceName: tool.name,
-		resourceLink: toolLink,
-		type: 'co-author',
-		resourceAuthor: toolOwner.name,
-	};
-	// 4. Create email body content
-	let html = emailGenerator.generateEntityNotification(options);
-
-	// 5. Use the returned array of email recipients to generate and send emails with SendGrid
-	q.exec((err, emailRecipients) => {
-		if (err) {
-			return new Error({ success: false, error: err });
-		}
-		emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, `${toolOwner.name} added you as an author of the course ${tool.name}`, html);
-	});
-}
-
-async function storeNotificationsForAuthors(tool, toolOwner) {
-	//store messages to alert a user has been added as an author
-
-	//normal user
-	var toolCopy = JSON.parse(JSON.stringify(tool));
-	var listToEmail = [toolCopy.creator];
-
-	asyncModule.eachSeries(listToEmail, async author => {
-		const user = await UserModel.findById(author);
-		let message = new MessagesModel();
-		message.messageType = 'author';
-		message.messageSent = Date.now();
-		message.messageDescription = `${toolOwner.name} added you as an author of the ${toolCopy.type} ${toolCopy.title}`;
-		message.isRead = false;
-		message.messageObjectID = toolCopy.id;
-		message.messageID = parseInt(Math.random().toString().replace('0.', ''));
-		message.messageTo = author;
-
-		await message.save(async err => {
-			if (err) {
-				return new Error({ success: false, error: err });
-			}
-			return { success: true, id: message.messageID };
-		});
-	});
 }
 
 function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {

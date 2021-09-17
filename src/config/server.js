@@ -128,9 +128,7 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 			return res.status(200).redirect(process.env.homeURL + '/search?search=&showLogin=true&loginReferrer=' + apiURL + req.url);
 		} else {
 			try {
-				const { uid, prompt, params, session } = await oidc.interactionDetails(req, res);
-
-				const client = await oidc.Client.find(params.client_id);
+				const { prompt, session } = await oidc.interactionDetails(req, res);
 
 				switch (prompt.name) {
 					case 'select_account': {
@@ -150,12 +148,7 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 							return oidc.interactionFinished(req, res, { select_account: {} }, { mergeWithLastSubmission: false });
 						}
 
-						const account = await oidc.Account.findAccount(undefined, session.accountId);
-						const { email } = await account.claims('prompt', 'email', { email: null }, []);
-
-						const {
-							prompt: { name, details },
-						} = await oidc.interactionDetails(req, res);
+						await oidc.interactionDetails(req, res);
 						//assert.equal(name, 'consent');
 
 						const consent = {};
@@ -254,11 +247,9 @@ app.use('/api/v2/activitylog', require('../resources/activitylog/activitylog.rou
 
 app.use('/api/v1/hubspot', require('../services/hubspot/hubspot.route'));
 
-
 app.use('/api/v1/cohortprofiling', require('../resources/cohortprofiling/cohortprofiling.route'));
 
 app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
-
 
 initialiseAuthentication(app);
 
