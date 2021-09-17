@@ -2156,6 +2156,39 @@ const _generateMetadataOnboardingDraftDeleted = options => {
 	return body;
 };
 
+const _generateMetadataOnboardingDuplicated = options => {
+	let { name, publisher, version } = options;
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;"> 
+                      Dataset duplicated
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      ${publisher.name} has duplicated ${version} of ${name}.
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisher.identifier}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
 const _generateMessageNotification = options => {
 	let { firstMessage, firstname, lastname, messageDescription, openMessagesLink } = options;
 
@@ -2514,6 +2547,7 @@ export default {
 	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
 	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
 	generateMetadataOnboardingDraftDeleted: _generateMetadataOnboardingDraftDeleted,
+  generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
 	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages
