@@ -55,7 +55,7 @@ router.post('/', async (req, res) => {
 	}
 
 	// 1. Update existing user record created during login
-	let [userErr, user] = await to(
+	let [, user] = await to(
 		updateUser({
 			id,
 			firstname,
@@ -101,7 +101,7 @@ router.post('/', async (req, res) => {
 
 	// 4. Sync contact in Hubspot
 	hubspotConnector.syncContact({ ...user.toObject(), orcid, sector, organisation });
-	
+
 	const [loginErr, token] = await to(login(req, user));
 
 	if (loginErr) {
