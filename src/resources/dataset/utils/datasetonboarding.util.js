@@ -955,6 +955,42 @@ const createNotifications = async (type, context) => {
 				false
 			);
 			break;
+		case constants.notificationTypes.DATASETDUPLICATED:
+			// 1. Get user removed
+			team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
+
+			for (let member of team.members) {
+				teamMembers.push(member.memberid);
+			}
+
+			teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
+				.populate('additionalInfo')
+				.lean();
+
+			for (let member of team.members) {
+				if (member.roles.some(role => ['manager', 'metadata_editor'].includes(role))) teamMembers.push(member.memberid);
+			}
+
+			// 2. Create user notifications
+			notificationBuilder.triggerNotificationMessage(
+				teamMembersIds,
+				`${context.datasetv2.summary.publisher.name} has duplicated ${context.version} of ${context.name} dataset.`,
+				context.datasetv2.summary.publisher.identifier
+			);
+			// 3. Create email
+			options = {
+				name: context.name,
+				publisher: context.datasetv2.summary.publisher,
+				version: context.datasetVersion,
+			};
+			html = emailGenerator.generateMetadataOnboardingDuplicated(options);
+			emailGenerator.sendEmail(
+				teamMembersDetails,
+				constants.hdrukEmail,
+				`${context.datasetv2.summary.publisher.name} has duplicated ${context.datasetVersion} of ${context.name} dataset.`,
+				html,
+				false
+			);
 	}
 };
 

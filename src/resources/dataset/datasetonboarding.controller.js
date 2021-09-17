@@ -158,7 +158,7 @@ module.exports = {
 				data.type = 'dataset';
 				data.activeflag = 'draft';
 				data.source = 'HDRUK MDC';
-				data.is5Safes = publisherData[0].allowAccessRequestManagement;
+				data.is5Safes = publisherData[0].uses5Safes;
 				data.timestamps.created = Date.now();
 				data.timestamps.updated = Date.now();
 				data.questionAnswers = JSON.stringify({
@@ -207,7 +207,7 @@ module.exports = {
 				data.type = 'dataset';
 				data.activeflag = 'draft';
 				data.source = 'HDRUK MDC';
-				data.is5Safes = publisherData[0].allowAccessRequestManagement;
+				data.is5Safes = publisherData[0].uses5Safes;
 				data.questionAnswers = JSON.stringify(datasetToCopy.questionAnswers);
 				data.structuralMetadata = datasetToCopy.structuralMetadata;
 				data.percentageCompleted = datasetToCopy.percentageCompleted;
@@ -857,11 +857,47 @@ module.exports = {
 			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
 		}
 	},
-};
 
-/* Sentry.addBreadcrumb({
-				category: 'Bulk Upload',
-				message: 'Unable to get metadata quality value ' + err.message,
-				level: Sentry.Severity.Error,
+	//POST api/v1/dataset-onboarding/duplicate/:id
+	duplicateDataset: async (req, res) => {
+		try {
+			let id = req.params.id;
+
+			//Check user type and authentication to submit application
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			let dataset = await Data.findOne({ _id: id });
+			let datasetCopy = JSON.parse(JSON.stringify(dataset));
+			let duplicateText = '-duplicate';
+
+			delete datasetCopy._id;
+			datasetCopy.pid = uuidv4();
+
+			let parsedQuestionAnswers = JSON.parse(datasetCopy.questionAnswers);
+			parsedQuestionAnswers['properties/summary/title'] += duplicateText;
+
+			datasetCopy.name += duplicateText;
+			datasetCopy.activeflag = 'draft';
+			datasetCopy.datasetVersion = '1.0.0';
+			datasetCopy.questionAnswers = JSON.stringify(parsedQuestionAnswers);
+			if (datasetCopy.datasetv2.summary.title) {
+				datasetCopy.datasetv2.summary.title += duplicateText;
+			}
+
+			await Data.create(datasetCopy);
+
+			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
+
+			return res.status(200).json({
+				success: true,
+				datasetName: dataset.name,
 			});
-			Sentry.captureException(err); */
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
+		}
+	},
+};
