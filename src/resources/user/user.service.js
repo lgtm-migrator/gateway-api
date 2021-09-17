@@ -41,7 +41,8 @@ export async function updateUser({ id, firstname, lastname, email, discourseKey,
 					discourseUsername: { $eq: discourseUsername },
 					feedback: { $eq: feedback },
 					news: { $eq: news },
-				}
+				},
+				{ new: true }
 			)
 		);
 	});

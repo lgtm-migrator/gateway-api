@@ -2200,7 +2200,7 @@ export default class DataRequestController extends Controller {
 						await emailGenerator.sendEmail(
 							emailRecipients,
 							constants.hdrukEmail,
-							`Data Access Request to ${publisher} for ${datasetTitles} has been updated with updates`,
+							`Data Access Request to ${publisher} for ${datasetTitles} has been updated`,
 							html,
 							false,
 							attachments
