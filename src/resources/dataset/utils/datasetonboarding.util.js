@@ -1,5 +1,6 @@
 import { Data } from '../../tool/data.model';
 import { TeamModel } from '../../team/team.model';
+import { PublisherModel } from '../../publisher/publisher.model';
 import { UserModel } from '../../user/user.model';
 import notificationBuilder from '../../utilities/notificationBuilder';
 import emailGenerator from '../../utilities/emailGenerator.util';
@@ -89,151 +90,110 @@ const populateQuestionAnswers = dataset => {
 	let questionAnswers = {};
 
 	//Summary
-	if (!isNil(dataset.datasetv2.summary.title) && !isEmpty(dataset.datasetv2.summary.title))
-		questionAnswers['properties/summary/title'] = dataset.datasetv2.summary.title;
+	if (!isNil(dataset.summary.title) && !isEmpty(dataset.summary.title)) questionAnswers['properties/summary/title'] = dataset.summary.title;
 	if (isNil(questionAnswers['properties/summary/title'])) questionAnswers['properties/summary/title'] = dataset.name;
-	if (!isNil(dataset.datasetv2.summary.abstract) && !isEmpty(dataset.datasetv2.summary.abstract))
-		questionAnswers['properties/summary/abstract'] = dataset.datasetv2.summary.abstract;
-	if (!isNil(dataset.datasetv2.summary.contactPoint) && !isEmpty(dataset.datasetv2.summary.contactPoint))
-		questionAnswers['properties/summary/contactPoint'] = dataset.datasetv2.summary.contactPoint;
-	if (!isNil(dataset.datasetv2.summary.keywords) && !isEmpty(dataset.datasetv2.summary.keywords))
-		questionAnswers['properties/summary/keywords'] = returnAsArray(dataset.datasetv2.summary.keywords);
-	if (!isNil(dataset.datasetv2.summary.alternateIdentifiers) && !isEmpty(dataset.datasetv2.summary.alternateIdentifiers))
-		questionAnswers['properties/summary/alternateIdentifiers'] = dataset.datasetv2.summary.alternateIdentifiers;
-	if (!isNil(dataset.datasetv2.summary.doiName) && !isEmpty(dataset.datasetv2.summary.doiName))
-		questionAnswers['properties/summary/doiName'] = dataset.datasetv2.summary.doiName;
+	if (!isNil(dataset.summary.abstract) && !isEmpty(dataset.summary.abstract))
+		questionAnswers['properties/summary/abstract'] = dataset.summary.abstract;
+	if (!isNil(dataset.summary.contactPoint) && !isEmpty(dataset.summary.contactPoint))
+		questionAnswers['properties/summary/contactPoint'] = dataset.summary.contactPoint;
+	if (!isNil(dataset.summary.keywords) && !isEmpty(dataset.summary.keywords))
+		questionAnswers['properties/summary/keywords'] = returnAsArray(dataset.summary.keywords);
+	if (!isNil(dataset.summary.alternateIdentifiers) && !isEmpty(dataset.summary.alternateIdentifiers))
+		questionAnswers['properties/summary/alternateIdentifiers'] = dataset.summary.alternateIdentifiers;
+	if (!isNil(dataset.summary.doiName) && !isEmpty(dataset.summary.doiName))
+		questionAnswers['properties/summary/doiName'] = dataset.summary.doiName;
 	//Documentation
-	if (!isNil(dataset.datasetv2.documentation.description) && !isEmpty(dataset.datasetv2.documentation.description))
-		questionAnswers['properties/documentation/description'] = dataset.datasetv2.documentation.description;
-	if (!isNil(dataset.datasetv2.documentation.associatedMedia) && !isEmpty(dataset.datasetv2.documentation.associatedMedia))
-		questionAnswers['properties/documentation/associatedMedia'] = returnAsArray(dataset.datasetv2.documentation.associatedMedia);
-	if (!isNil(dataset.datasetv2.documentation.isPartOf) && !isEmpty(dataset.datasetv2.documentation.isPartOf))
-		questionAnswers['properties/documentation/isPartOf'] = dataset.datasetv2.documentation.isPartOf;
+	if (!isNil(dataset.documentation.description) && !isEmpty(dataset.documentation.description))
+		questionAnswers['properties/documentation/description'] = dataset.documentation.description;
+	if (!isNil(dataset.documentation.associatedMedia) && !isEmpty(dataset.documentation.associatedMedia))
+		questionAnswers['properties/documentation/associatedMedia'] = returnAsArray(dataset.documentation.associatedMedia);
+	if (!isNil(dataset.documentation.isPartOf) && !isEmpty(dataset.documentation.isPartOf))
+		questionAnswers['properties/documentation/isPartOf'] = dataset.documentation.isPartOf;
 	//Coverage
-	if (!isNil(dataset.datasetv2.coverage.spatial) && !isEmpty(dataset.datasetv2.coverage.spatial))
-		questionAnswers['properties/coverage/spatial'] = dataset.datasetv2.coverage.spatial;
-	if (!isNil(dataset.datasetv2.coverage.typicalAgeRange) && !isEmpty(dataset.datasetv2.coverage.typicalAgeRange))
-		questionAnswers['properties/coverage/typicalAgeRange'] = dataset.datasetv2.coverage.typicalAgeRange;
-	if (!isNil(dataset.datasetv2.coverage.physicalSampleAvailability) && !isEmpty(dataset.datasetv2.coverage.physicalSampleAvailability))
-		questionAnswers['properties/coverage/physicalSampleAvailability'] = returnAsArray(
-			dataset.datasetv2.coverage.physicalSampleAvailability
-		);
-	if (!isNil(dataset.datasetv2.coverage.followup) && !isEmpty(dataset.datasetv2.coverage.followup))
-		questionAnswers['properties/coverage/followup'] = dataset.datasetv2.coverage.followup;
-	if (!isNil(dataset.datasetv2.coverage.pathway) && !isEmpty(dataset.datasetv2.coverage.pathway))
-		questionAnswers['properties/coverage/pathway'] = dataset.datasetv2.coverage.pathway;
+	if (!isNil(dataset.coverage.spatial) && !isEmpty(dataset.coverage.spatial))
+		questionAnswers['properties/coverage/spatial'] = returnAsArray(dataset.coverage.spatial);
+	if (!isNil(dataset.coverage.typicalAgeRange) && !isEmpty(dataset.coverage.typicalAgeRange))
+		questionAnswers['properties/coverage/typicalAgeRange'] = dataset.coverage.typicalAgeRange;
+	if (!isNil(dataset.coverage.physicalSampleAvailability) && !isEmpty(dataset.coverage.physicalSampleAvailability))
+		questionAnswers['properties/coverage/physicalSampleAvailability'] = returnAsArray(dataset.coverage.physicalSampleAvailability);
+	if (!isNil(dataset.coverage.followup) && !isEmpty(dataset.coverage.followup))
+		questionAnswers['properties/coverage/followup'] = dataset.coverage.followup;
+	if (!isNil(dataset.coverage.pathway) && !isEmpty(dataset.coverage.pathway))
+		questionAnswers['properties/coverage/pathway'] = dataset.coverage.pathway;
 	//Provenance - Origin
-	if (!isNil(dataset.datasetv2.provenance.origin.purpose) && !isEmpty(dataset.datasetv2.provenance.origin.purpose))
-		questionAnswers['properties/provenance/origin/purpose'] = returnAsArray(dataset.datasetv2.provenance.origin.purpose);
-	if (!isNil(dataset.datasetv2.provenance.origin.source) && !isEmpty(dataset.datasetv2.provenance.origin.source))
-		questionAnswers['properties/provenance/origin/source'] = returnAsArray(dataset.datasetv2.provenance.origin.source);
-	if (!isNil(dataset.datasetv2.provenance.origin.collectionSituation) && !isEmpty(dataset.datasetv2.provenance.origin.collectionSituation))
-		questionAnswers['properties/provenance/origin/collectionSituation'] = returnAsArray(
-			dataset.datasetv2.provenance.origin.collectionSituation
-		);
+	if (!isNil(dataset.provenance.origin.purpose) && !isEmpty(dataset.provenance.origin.purpose))
+		questionAnswers['properties/provenance/origin/purpose'] = returnAsArray(dataset.provenance.origin.purpose);
+	if (!isNil(dataset.provenance.origin.source) && !isEmpty(dataset.provenance.origin.source))
+		questionAnswers['properties/provenance/origin/source'] = returnAsArray(dataset.provenance.origin.source);
+	if (!isNil(dataset.provenance.origin.collectionSituation) && !isEmpty(dataset.provenance.origin.collectionSituation))
+		questionAnswers['properties/provenance/origin/collectionSituation'] = returnAsArray(dataset.provenance.origin.collectionSituation);
 	//Provenance - Temporal
-	if (
-		!isNil(dataset.datasetv2.provenance.temporal.accrualPeriodicity) &&
-		!isEmpty(dataset.datasetv2.provenance.temporal.accrualPeriodicity)
-	)
-		questionAnswers['properties/provenance/temporal/accrualPeriodicity'] = dataset.datasetv2.provenance.temporal.accrualPeriodicity;
-	if (
-		!isNil(dataset.datasetv2.provenance.temporal.distributionReleaseDate) &&
-		!isEmpty(dataset.datasetv2.provenance.temporal.distributionReleaseDate)
-	)
+	if (!isNil(dataset.provenance.temporal.accrualPeriodicity) && !isEmpty(dataset.provenance.temporal.accrualPeriodicity))
+		questionAnswers['properties/provenance/temporal/accrualPeriodicity'] = dataset.provenance.temporal.accrualPeriodicity;
+	if (!isNil(dataset.provenance.temporal.distributionReleaseDate) && !isEmpty(dataset.provenance.temporal.distributionReleaseDate))
 		questionAnswers['properties/provenance/temporal/distributionReleaseDate'] = returnAsDate(
-			dataset.datasetv2.provenance.temporal.distributionReleaseDate
+			dataset.provenance.temporal.distributionReleaseDate
 		);
-	if (!isNil(dataset.datasetv2.provenance.temporal.startDate) && !isEmpty(dataset.datasetv2.provenance.temporal.startDate))
-		questionAnswers['properties/provenance/temporal/startDate'] = returnAsDate(dataset.datasetv2.provenance.temporal.startDate);
-	if (!isNil(dataset.datasetv2.provenance.temporal.endDate) && !isEmpty(dataset.datasetv2.provenance.temporal.endDate))
-		questionAnswers['properties/provenance/temporal/endDate'] = returnAsDate(dataset.datasetv2.provenance.temporal.endDate);
-	if (!isNil(dataset.datasetv2.provenance.temporal.timeLag) && !isEmpty(dataset.datasetv2.provenance.temporal.timeLag))
-		questionAnswers['properties/provenance/temporal/timeLag'] = dataset.datasetv2.provenance.temporal.timeLag;
+	if (!isNil(dataset.provenance.temporal.startDate) && !isEmpty(dataset.provenance.temporal.startDate))
+		questionAnswers['properties/provenance/temporal/startDate'] = returnAsDate(dataset.provenance.temporal.startDate);
+	if (!isNil(dataset.provenance.temporal.endDate) && !isEmpty(dataset.provenance.temporal.endDate))
+		questionAnswers['properties/provenance/temporal/endDate'] = returnAsDate(dataset.provenance.temporal.endDate);
+	if (!isNil(dataset.provenance.temporal.timeLag) && !isEmpty(dataset.provenance.temporal.timeLag))
+		questionAnswers['properties/provenance/temporal/timeLag'] = dataset.provenance.temporal.timeLag;
 	//Accessibility - Usage
-	if (!isNil(dataset.datasetv2.accessibility.usage.dataUseLimitation) && !isEmpty(dataset.datasetv2.accessibility.usage.dataUseLimitation))
-		questionAnswers['properties/accessibility/usage/dataUseLimitation'] = returnAsArray(
-			dataset.datasetv2.accessibility.usage.dataUseLimitation
-		);
-	if (
-		!isNil(dataset.datasetv2.accessibility.usage.dataUseRequirements) &&
-		!isEmpty(dataset.datasetv2.accessibility.usage.dataUseRequirements)
-	)
-		questionAnswers['properties/accessibility/usage/dataUseRequirements'] = returnAsArray(
-			dataset.datasetv2.accessibility.usage.dataUseRequirements
-		);
-	if (!isNil(dataset.datasetv2.accessibility.usage.resourceCreator) && !isEmpty(dataset.datasetv2.accessibility.usage.resourceCreator))
-		questionAnswers['properties/accessibility/usage/resourceCreator'] = returnAsArray(
-			dataset.datasetv2.accessibility.usage.resourceCreator
-		);
-	if (!isNil(dataset.datasetv2.accessibility.usage.investigations) && !isEmpty(dataset.datasetv2.accessibility.usage.investigations))
-		questionAnswers['properties/accessibility/usage/investigations'] = returnAsArray(dataset.datasetv2.accessibility.usage.investigations);
-	if (!isNil(dataset.datasetv2.accessibility.usage.isReferencedBy) && !isEmpty(dataset.datasetv2.accessibility.usage.isReferencedBy))
-		questionAnswers['properties/accessibility/usage/isReferencedBy'] = returnAsArray(dataset.datasetv2.accessibility.usage.isReferencedBy);
+	if (!isNil(dataset.accessibility.usage.dataUseLimitation) && !isEmpty(dataset.accessibility.usage.dataUseLimitation))
+		questionAnswers['properties/accessibility/usage/dataUseLimitation'] = returnAsArray(dataset.accessibility.usage.dataUseLimitation);
+	if (!isNil(dataset.accessibility.usage.dataUseRequirements) && !isEmpty(dataset.accessibility.usage.dataUseRequirements))
+		questionAnswers['properties/accessibility/usage/dataUseRequirements'] = returnAsArray(dataset.accessibility.usage.dataUseRequirements);
+	if (!isNil(dataset.accessibility.usage.resourceCreator) && !isEmpty(dataset.accessibility.usage.resourceCreator))
+		questionAnswers['properties/accessibility/usage/resourceCreator'] = returnAsArray(dataset.accessibility.usage.resourceCreator);
+	if (!isNil(dataset.accessibility.usage.investigations) && !isEmpty(dataset.accessibility.usage.investigations))
+		questionAnswers['properties/accessibility/usage/investigations'] = returnAsArray(dataset.accessibility.usage.investigations);
+	if (!isNil(dataset.accessibility.usage.isReferencedBy) && !isEmpty(dataset.accessibility.usage.isReferencedBy))
+		questionAnswers['properties/accessibility/usage/isReferencedBy'] = returnAsArray(dataset.accessibility.usage.isReferencedBy);
 	//Accessibility - Access
-	if (!isNil(dataset.datasetv2.accessibility.access.accessRights) && !isEmpty(dataset.datasetv2.accessibility.access.accessRights))
-		questionAnswers['properties/accessibility/access/accessRights'] = returnAsArray(dataset.datasetv2.accessibility.access.accessRights);
-	if (!isNil(dataset.datasetv2.accessibility.access.accessService) && !isEmpty(dataset.datasetv2.accessibility.access.accessService))
-		questionAnswers['properties/accessibility/access/accessService'] = dataset.datasetv2.accessibility.access.accessService;
-	if (
-		!isNil(dataset.datasetv2.accessibility.access.accessRequestCost) &&
-		!isEmpty(dataset.datasetv2.accessibility.access.accessRequestCost)
-	)
-		questionAnswers['properties/accessibility/access/accessRequestCost'] = returnAsArray(
-			dataset.datasetv2.accessibility.access.accessRequestCost
-		);
-	if (!isNil(dataset.datasetv2.accessibility.access.deliveryLeadTime) && !isEmpty(dataset.datasetv2.accessibility.access.deliveryLeadTime))
-		questionAnswers['properties/accessibility/access/deliveryLeadTime'] = dataset.datasetv2.accessibility.access.deliveryLeadTime;
-	if (!isNil(dataset.datasetv2.accessibility.access.jurisdiction) && !isEmpty(dataset.datasetv2.accessibility.access.jurisdiction))
-		questionAnswers['properties/accessibility/access/jurisdiction'] = returnAsArray(dataset.datasetv2.accessibility.access.jurisdiction);
-	if (!isNil(dataset.datasetv2.accessibility.access.dataProcessor) && !isEmpty(dataset.datasetv2.accessibility.access.dataProcessor))
-		questionAnswers['properties/accessibility/access/dataProcessor'] = dataset.datasetv2.accessibility.access.dataProcessor;
-	if (!isNil(dataset.datasetv2.accessibility.access.dataController) && !isEmpty(dataset.datasetv2.accessibility.access.dataController))
-		questionAnswers['properties/accessibility/access/dataController'] = dataset.datasetv2.accessibility.access.dataController;
+	if (!isNil(dataset.accessibility.access.accessRights) && !isEmpty(dataset.accessibility.access.accessRights))
+		questionAnswers['properties/accessibility/access/accessRights'] = returnAsArray(dataset.accessibility.access.accessRights);
+	if (!isNil(dataset.accessibility.access.accessService) && !isEmpty(dataset.accessibility.access.accessService))
+		questionAnswers['properties/accessibility/access/accessService'] = dataset.accessibility.access.accessService;
+	if (!isNil(dataset.accessibility.access.accessRequestCost) && !isEmpty(dataset.accessibility.access.accessRequestCost))
+		questionAnswers['properties/accessibility/access/accessRequestCost'] = returnAsArray(dataset.accessibility.access.accessRequestCost);
+	if (!isNil(dataset.accessibility.access.deliveryLeadTime) && !isEmpty(dataset.accessibility.access.deliveryLeadTime))
+		questionAnswers['properties/accessibility/access/deliveryLeadTime'] = dataset.accessibility.access.deliveryLeadTime;
+	if (!isNil(dataset.accessibility.access.jurisdiction) && !isEmpty(dataset.accessibility.access.jurisdiction))
+		questionAnswers['properties/accessibility/access/jurisdiction'] = returnAsArray(dataset.accessibility.access.jurisdiction);
+	if (!isNil(dataset.accessibility.access.dataProcessor) && !isEmpty(dataset.accessibility.access.dataProcessor))
+		questionAnswers['properties/accessibility/access/dataProcessor'] = dataset.accessibility.access.dataProcessor;
+	if (!isNil(dataset.accessibility.access.dataController) && !isEmpty(dataset.accessibility.access.dataController))
+		questionAnswers['properties/accessibility/access/dataController'] = dataset.accessibility.access.dataController;
 	//Accessibility - FormatAndStandards
 	if (
-		!isNil(dataset.datasetv2.accessibility.formatAndStandards.vocabularyEncodingScheme) &&
-		!isEmpty(dataset.datasetv2.accessibility.formatAndStandards.vocabularyEncodingScheme)
+		!isNil(dataset.accessibility.formatAndStandards.vocabularyEncodingScheme) &&
+		!isEmpty(dataset.accessibility.formatAndStandards.vocabularyEncodingScheme)
 	)
 		questionAnswers['properties/accessibility/formatAndStandards/vocabularyEncodingScheme'] = returnAsArray(
-			dataset.datasetv2.accessibility.formatAndStandards.vocabularyEncodingScheme
+			dataset.accessibility.formatAndStandards.vocabularyEncodingScheme
 		);
-	if (
-		!isNil(dataset.datasetv2.accessibility.formatAndStandards.conformsTo) &&
-		!isEmpty(dataset.datasetv2.accessibility.formatAndStandards.conformsTo)
-	)
+	if (!isNil(dataset.accessibility.formatAndStandards.conformsTo) && !isEmpty(dataset.accessibility.formatAndStandards.conformsTo))
 		questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] = returnAsArray(
-			dataset.datasetv2.accessibility.formatAndStandards.conformsTo
+			dataset.accessibility.formatAndStandards.conformsTo
 		);
-	if (
-		!isNil(dataset.datasetv2.accessibility.formatAndStandards.language) &&
-		!isEmpty(dataset.datasetv2.accessibility.formatAndStandards.language)
-	)
+	if (!isNil(dataset.accessibility.formatAndStandards.language) && !isEmpty(dataset.accessibility.formatAndStandards.language))
 		questionAnswers['properties/accessibility/formatAndStandards/language'] = returnAsArray(
-			dataset.datasetv2.accessibility.formatAndStandards.language
+			dataset.accessibility.formatAndStandards.language
 		);
-	if (
-		!isNil(dataset.datasetv2.accessibility.formatAndStandards.format) &&
-		!isEmpty(dataset.datasetv2.accessibility.formatAndStandards.format)
-	)
-		questionAnswers['properties/accessibility/formatAndStandards/format'] = returnAsArray(
-			dataset.datasetv2.accessibility.formatAndStandards.format
-		);
+	if (!isNil(dataset.accessibility.formatAndStandards.format) && !isEmpty(dataset.accessibility.formatAndStandards.format))
+		questionAnswers['properties/accessibility/formatAndStandards/format'] = returnAsArray(dataset.accessibility.formatAndStandards.format);
 	//EnrichmentAndLinkage
-	if (
-		!isNil(dataset.datasetv2.enrichmentAndLinkage.qualifiedRelation) &&
-		!isEmpty(dataset.datasetv2.enrichmentAndLinkage.qualifiedRelation)
-	)
-		questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] = returnAsArray(
-			dataset.datasetv2.enrichmentAndLinkage.qualifiedRelation
-		);
-	if (!isNil(dataset.datasetv2.enrichmentAndLinkage.derivation) && !isEmpty(dataset.datasetv2.enrichmentAndLinkage.derivation))
-		questionAnswers['properties/enrichmentAndLinkage/derivation'] = returnAsArray(dataset.datasetv2.enrichmentAndLinkage.derivation);
-	if (!isNil(dataset.datasetv2.enrichmentAndLinkage.tools) && !isEmpty(dataset.datasetv2.enrichmentAndLinkage.tools))
-		questionAnswers['properties/enrichmentAndLinkage/tools'] = returnAsArray(dataset.datasetv2.enrichmentAndLinkage.tools);
+	if (!isNil(dataset.enrichmentAndLinkage.qualifiedRelation) && !isEmpty(dataset.enrichmentAndLinkage.qualifiedRelation))
+		questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] = returnAsArray(dataset.enrichmentAndLinkage.qualifiedRelation);
+	if (!isNil(dataset.enrichmentAndLinkage.derivation) && !isEmpty(dataset.enrichmentAndLinkage.derivation))
+		questionAnswers['properties/enrichmentAndLinkage/derivation'] = returnAsArray(dataset.enrichmentAndLinkage.derivation);
+	if (!isNil(dataset.enrichmentAndLinkage.tools) && !isEmpty(dataset.enrichmentAndLinkage.tools))
+		questionAnswers['properties/enrichmentAndLinkage/tools'] = returnAsArray(dataset.enrichmentAndLinkage.tools);
 	//Observations
-	if (!isNil(dataset.datasetv2.observations) && !isEmpty(dataset.datasetv2.observations)) {
-		let observations = returnAsArray(dataset.datasetv2.observations);
+	if (!isNil(dataset.observations) && !isEmpty(dataset.observations)) {
+		let observations = returnAsArray(dataset.observations);
 		let uniqueId = '';
 		for (let observation of observations) {
 			questionAnswers[`properties/observation/observedNode${uniqueId}`] = observation.observedNode.toUpperCase();
@@ -279,10 +239,10 @@ const returnAsDate = value => {
  *
  * @returns {Object} [returns structuralMetadata object]
  */
-const populateStructuralMetadata = dataset => {
+const populateStructuralMetadata = technicaldetails => {
 	let structuralMetadata = [];
 
-	for (const dataClass of dataset.datasetfields.technicaldetails) {
+	for (const dataClass of technicaldetails) {
 		for (const dataElement of dataClass.elements) {
 			structuralMetadata.push({
 				tableName: dataClass.label,
@@ -372,11 +332,9 @@ const updateDataset = async (dataset, updateObj) => {
 	let { activeflag, _id } = dataset;
 	// 2. If application is in progress, update initial question answers
 	if (activeflag === constants.datatsetStatuses.DRAFT || activeflag === constants.applicationStatuses.INREVIEW) {
-		await Data.findByIdAndUpdate(_id, updateObj, { new: true }, err => {
-			if (err) {
-				console.error(err);
-				throw err;
-			}
+		await Data.findByIdAndUpdate(_id, updateObj, { new: true }).catch(err => {
+			console.error(err);
+			throw err;
 		});
 		return dataset;
 	}
@@ -1036,6 +994,106 @@ const createNotifications = async (type, context) => {
 	}
 };
 
+/**
+ * Take in a field and find its value in the dataset object
+ *
+ * @param   {Object}  dataset  [dataset object]
+ * @param   {String}  field    [field string]
+ *
+ * @return  {String}           [return field value that is found in the dataset]
+ */
+const buildBulkUploadObject = async arrayOfDraftDatasets => {
+	let resultObject = {
+		result: true,
+		error: [],
+		datasets: [],
+	};
+	try {
+		for (let dataset of arrayOfDraftDatasets) {
+			try {
+				//Go through each dataset and build the object to send to the DB
+				let questionAnswers = populateQuestionAnswers(dataset);
+				let structuralMetadata = [];
+				if (!isEmpty(dataset.structuralMetadata)) {
+					structuralMetadata = populateStructuralMetadata(dataset.structuralMetadata.classes);
+				}
+				let publisher = {};
+				if (!isEmpty(dataset.summary.publisher)) {
+					//Check to see that publisher exists
+					publisher = await PublisherModel.findOne({ _id: { $eq: dataset.summary.publisher } }).lean();
+					if (isEmpty(publisher)) {
+						resultObject.error = `${dataset.summary.title} failed because publisher was no found`;
+						resultObject.result = false;
+						break;
+					}
+
+					//Check to see if this is a new entry or a new version
+					let version = '',
+						pid = '';
+					if (!isEmpty(dataset.revisions)) {
+						for (const [, value] of Object.entries(dataset.revisions)) {
+							//Find a dataset that matches in the revision list
+							let datasetFound = await Data.findOne({ datasetid: value }, { pid: 1 }).lean();
+							if (!isEmpty(datasetFound)) {
+								let latestVersion = await Data.findOne(
+									{ pid: datasetFound.pid, activeflag: 'active' },
+									{ pid: 1, datasetVersion: 1 }
+								).lean();
+								if (isEmpty(latestVersion)) {
+									//If no active version found look for the next latest version using the pid and set the isDatasetArchived flag to true
+									latestVersion = await Data.findOne({ pid: datasetFound.pid, activeflag: 'archive' }, { pid: 1, datasetVersion: 1 })
+										.sort({ createdAt: -1 })
+										.lean();
+								}
+								if (!isEmpty(latestVersion)) {
+									pid = latestVersion.pid;
+									version = incrementVersion([1, 0, 0], latestVersion.datasetVersion);
+								}
+							}
+						}
+
+						//If no pid then all the datasets in the revision history do not exist on the Gateway
+						if (isEmpty(pid)) {
+							resultObject.error = `${dataset.summary.title} failed because there was revision history but did not match an existing dataset on the Gateway`;
+							resultObject.result = false;
+							break;
+						}
+
+						//Check there is not already a draft
+						let isDraft = await Data.findOne({ pid, activeflag: 'draft' }, { pid: 1 }).lean();
+						if (!isEmpty(isDraft)) {
+							resultObject.error = `${dataset.summary.title} failed because there was already a draft for this dataset`;
+							resultObject.result = false;
+							break;
+						}
+					}
+
+					resultObject.datasets.push({
+						publisher,
+						version,
+						pid,
+						questionAnswers,
+						structuralMetadata,
+						title: dataset.summary.title,
+					});
+				} else {
+					resultObject.error = `${dataset.summary.title} failed because there was no publisher`;
+					resultObject.result = false;
+					break;
+				}
+			} catch (err) {
+				resultObject.error = `${dataset.summary.title} failed because ${err}`;
+				resultObject.result = false;
+			}
+		}
+
+		return resultObject;
+	} catch (err) {
+		resultObject.error = `Failed because ${err}`;
+		resultObject.result = false;
+	}
+};
+
 export default {
 	getUserPermissionsForDataset,
 	populateQuestionAnswers,
@@ -1048,4 +1106,5 @@ export default {
 	buildJSONFile,
 	buildMetadataQuality,
 	createNotifications,
+	buildBulkUploadObject,
 };
