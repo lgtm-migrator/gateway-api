@@ -10,6 +10,7 @@ import bodyParser from 'body-parser';
 import logger from 'morgan';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
+import csrf from 'csurf';
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
 import * as Sentry from '@sentry/node';
@@ -54,7 +55,7 @@ oidc.proxy = true;
 
 var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
 
-var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
+var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
 
 if (Array.isArray(arr) && arr.length > 0) {
@@ -85,6 +86,7 @@ app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }));
 
 app.use(logger('dev'));
 app.use(cookieParser());
+app.use(csrf({ cookie: true }));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -112,7 +114,6 @@ app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
 		if (err || !user) {
 			return res.status(200).redirect(process.env.homeURL + '/search?search=');
 		}
-		oidc.Session.destory;
 		req.logout();
 		res.clearCookie('jwt');
 

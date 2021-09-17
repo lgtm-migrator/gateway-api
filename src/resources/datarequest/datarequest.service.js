@@ -434,8 +434,8 @@ export default class DataRequestService {
 		const initialApplicationId = accessRecord.getInitialApplicationId();
 
 		// Process the files for scanning
+		//lgtm [js/type-confusion-through-parameter-tampering]
 		for (let i = 0; i < files.length; i++) {
-			//lgtm [js/type-confusion-through-parameter-tampering]
 			// Get description information
 			let description = descriptionArray ? descriptions[i] : descriptions;
 			// Get uniqueId

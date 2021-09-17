@@ -2,7 +2,7 @@ import emailGeneratorUtil from '../utilities/emailGenerator.util';
 import { UserModel } from './user.model';
 
 export async function createUser({ firstname, lastname, email, providerId, provider, role }) {
-	return new Promise(async (resolve, reject) => {
+	return new Promise(async resolve => {
 		const id = parseInt(Math.random().toString().replace('0.', ''));
 		// create new user from details from provider
 		const user = await UserModel.create({
@@ -29,18 +29,18 @@ export async function createUser({ firstname, lastname, email, providerId, provi
 }
 
 export async function updateUser({ id, firstname, lastname, email, discourseKey, discourseUsername, feedback, news }) {
-	return new Promise(async (resolve, reject) => {
+	return new Promise(async resolve => {
 		return resolve(
 			await UserModel.findOneAndUpdate(
 				{ id: id },
 				{
-					firstname,
-					lastname,
-					email,
-					discourseKey,
-					discourseUsername,
-					feedback,
-					news,
+					firstname: { $eq: firstname },
+					lastname: { $eq: lastname },
+					email: { $eq: email },
+					discourseKey: { $eq: discourseKey },
+					discourseUsername: { $eq: discourseUsername },
+					feedback: { $eq: feedback },
+					news: { $eq: news },
 				},
 				{ new: true }
 			)
@@ -49,7 +49,7 @@ export async function updateUser({ id, firstname, lastname, email, discourseKey,
 }
 
 export async function updateRedirectURL({ id, redirectURL }) {
-	return new Promise(async (resolve, reject) => {
+	return new Promise(async resolve => {
 		return resolve(
 			await UserModel.findOneAndUpdate(
 				{ id: id },

@@ -41,7 +41,7 @@ module.exports = router;
 
 async function archiveOtherVersions(id, dataSetId, status) {
 	try {
-		if ((status = 'active')) {
+		if (status === 'active') {
 			await DataRequestSchemaModel.updateMany(
 				{ $and: [{ dataSetId: dataSetId }, { id: { $ne: id } }] },
 				{ $set: { status: 'archive' } },

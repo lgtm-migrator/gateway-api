@@ -7,7 +7,7 @@ export default class WorkflowRepository extends Repository {
 		this.workflowModel = WorkflowModel;
 	}
 
-	getWorkflowsByPublisher(id) {
+	static getWorkflowsByPublisher(id) {
 		return WorkflowModel.find({
 			publisher: id,
 		})
@@ -34,11 +34,11 @@ export default class WorkflowRepository extends Repository {
 			.lean();
 	}
 
-	getWorkflowById(id, options = {}) {
+	static getWorkflowById(id, options = {}) {
 		return WorkflowModel.findOne(
 			{
-				_id: id,
-			}, //lgtm [js/sql-injection]
+				_id: { $eq: id },
+			},
 			null,
 			options
 		)
@@ -52,9 +52,9 @@ export default class WorkflowRepository extends Repository {
 			.lean();
 	}
 
-	async assignWorkflowToApplication(accessRecord, workflowId) {
+	static async assignWorkflowToApplication(accessRecord, workflowId) {
 		// Retrieve workflow using ID from database
-		const workflow = await this.getWorkflowById(workflowId, { lean: false });
+		const workflow = await WorkflowRepository.getWorkflowById(workflowId, { lean: false });
 		if (!workflow) {
 			throw new Error('Workflow could not be found');
 		}
