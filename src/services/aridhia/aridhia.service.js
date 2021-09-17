@@ -36,8 +36,8 @@ export default class aridhiaService {
 				tags: { features: [...res.catalogue.keyword] },
 				title: res.name,		    
 				type: "dataset",
-				created_at: res.catalogue.created_at || "",
-				updated_at: res.catalogue.updated_at || "",
+				created_at: res.created_at || "",
+				updated_at: res.updated_at || "",
 				id: res.id,
 				version: '1', // our internal definition 
 			};
