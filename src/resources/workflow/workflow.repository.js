@@ -7,7 +7,7 @@ export default class WorkflowRepository extends Repository {
 		this.workflowModel = WorkflowModel;
 	}
 
-	static getWorkflowsByPublisher(id) {
+	getWorkflowsByPublisher(id) {
 		return WorkflowModel.find({
 			publisher: id,
 		})
@@ -34,7 +34,7 @@ export default class WorkflowRepository extends Repository {
 			.lean();
 	}
 
-	static getWorkflowById(id, options = {}) {
+	getWorkflowById(id, options = {}) {
 		return WorkflowModel.findOne(
 			{
 				_id: { $eq: id },
@@ -52,7 +52,7 @@ export default class WorkflowRepository extends Repository {
 			.lean();
 	}
 
-	static async assignWorkflowToApplication(accessRecord, workflowId) {
+	async assignWorkflowToApplication(accessRecord, workflowId) {
 		// Retrieve workflow using ID from database
 		const workflow = await WorkflowRepository.getWorkflowById(workflowId, { lean: false });
 		if (!workflow) {
