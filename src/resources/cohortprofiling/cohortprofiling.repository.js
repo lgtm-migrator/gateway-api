@@ -12,7 +12,7 @@ export default class CohortProfilingRepository extends Repository {
 		return this.find(query, options);
 	}
 
-	static buildSortQuery(sort) {
+	buildSortQuery(sort) {
 		const customSort = !isEmpty(sort) ? sort : '-frequency';
 		const sortPathName =
 			customSort.charAt(0) === '-'
@@ -22,13 +22,13 @@ export default class CohortProfilingRepository extends Repository {
 		return { [sortPathName]: sortOrder };
 	}
 
-	static buildMatchQuery(value) {
+	buildMatchQuery(value) {
 		return !isEmpty(value)
 			? { 'dataClasses.dataElements.frequencies.value': new RegExp(`${escapeRegExp(value)}`, 'i') }
 			: { 'dataClasses.dataElements.frequencies.value': { $ne: '' } };
 	}
 
-	static async getCohortProfilingByVariable(pid, tableName, variable, value, sort) {
+	async getCohortProfilingByVariable(pid, tableName, variable, value, sort) {
 		const matchQuery = CohortProfilingRepository.buildMatchQuery(value);
 		const sortQuery = CohortProfilingRepository.buildSortQuery(sort);
 
@@ -90,7 +90,7 @@ export default class CohortProfilingRepository extends Repository {
 	// 	});
 	// }
 
-	static getTransformedDataElements(dataClasses) {
+	getTransformedDataElements(dataClasses) {
 		return dataClasses.map(dataClass => {
 			return dataClass.dataElements.map(dataElement => {
 				// Calculate total frequency & completeness for the current Data Element
