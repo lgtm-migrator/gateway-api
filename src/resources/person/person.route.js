@@ -49,27 +49,27 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, r
 		const userId = parseInt(id);
 
 		await Data.findOneAndUpdate(
-			{ id: userId },
-			{
-				firstname,
-				lastname,
-				type,
-				bio,
-				showBio,
-				link,
-				showLink,
-				orcid,
-				showOrcid,
-				terms,
-				sector,
-				showSector,
-				organisation,
-				showOrganisation,
-				tags,
-				showDomain,
-				profileComplete,
-			}
-		);
+		{ id: userId },
+		{
+			firstname: { $eq: firstname },
+			lastname: { $eq: lastname },
+			type: { $eq: type },
+			bio: { $eq: bio },
+			showBio: { $eq: showBio },
+			link: { $eq: link },
+			showLink: { $eq: showLink },
+			orcid: { $eq: orcid },
+			showOrcid: { $eq: showOrcid },
+			terms: { $eq: terms },
+			sector: { $eq: sector },
+			showSector: { $eq: showSector },
+			organisation: { $eq: organisation },
+			showOrganisation: { $eq: showOrganisation },
+			tags: { $eq: tags },
+			showDomain: { $eq: showDomain },
+			profileComplete: { $eq: profileComplete },
+		}
+	);
 
 		const user = await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } }, { new: true });
 
