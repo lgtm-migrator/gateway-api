@@ -65,7 +65,7 @@ const strategy = app => {
 	);
 
 	app.get('/auth/google/callback', (req, res, next) => {
-		passport.authenticate('google', (err, user, info) => {
+		passport.authenticate('google', (err, user) => {
 			if (err || !user) {
 				//loginError
 				if (err === 'loginError') return res.status(200).redirect(process.env.homeURL + '/loginerror');
@@ -100,7 +100,7 @@ const strategy = app => {
 					queryStringParsed = queryString.parse(returnPage.query);
 				}
 
-				let [profileErr, profile] = await to(getObjectById(req.user.id));
+				let [, profile] = await to(getObjectById(req.user.id));
 
 				if (!profile) {
 					await to(updateRedirectURL({ id: req.user.id, redirectURL: redirect }));
