@@ -60,6 +60,19 @@ const validateViewRequest = (req, res, next) => {
 	next();
 };
 
+const validateUploadRequest = (req, res, next) => {
+	const { placeholder } = req.body;
+
+	if (!req) {
+		return res.status(400).json({
+			success: false,
+			message: 'You must provide...',
+		});
+	}
+
+	next();
+};
+
 const authorizeView = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { team } = req.query;
@@ -102,6 +115,11 @@ const authorizeUpdate = async (req, res, next) => {
 	next();
 };
 
+const authorizeUpload = async (req, res, next) => {
+	
+	next();
+}
+
 // @route   GET /api/v2/data-use-registers/id
 // @desc    Returns a dataUseRegister based on dataUseRegister ID provided
 // @access  Public
@@ -134,6 +152,18 @@ router.patch(
 	authorizeUpdate,
 	logger.logRequestMiddleware({ logCategory, action: 'Updated dataUseRegister data' }),
 	(req, res) => dataUseRegisterController.updateDataUseRegister(req, res)
+);
+
+// @route   POST /api/v2/data-use-registers/upload
+// @desc    Accepts a bulk upload of data uses with built-in duplicate checking and rejection
+// @access  Public
+router.post(
+	'/upload',
+	passport.authenticate('jwt'),
+	validateUploadRequest,
+	authorizeUpload,
+	logger.logRequestMiddleware({ logCategory, action: 'Bulk uploaded data uses' }),
+	(req, res) => dataUseRegisterController.uploadDataUseRegisters(req, res)
 );
 
 module.exports = router;

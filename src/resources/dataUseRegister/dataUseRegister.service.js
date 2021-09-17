@@ -21,4 +21,8 @@ export default class DataUseRegisterService {
 
 		return this.dataUseRegisterRepository.updateDataUseRegister({ _id: id }, body);
 	}
+
+	uploadDataUseRegister(placeholder) {
+		return;
+	}
 }
