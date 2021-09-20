@@ -86,7 +86,7 @@ app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }));
 
 app.use(logger('dev'));
 app.use(cookieParser());
-app.use(csrf({ cookie: true }));
+//app.use(csrf({ cookie: true }));
 app.use(passport.initialize());
 app.use(passport.session());
 
