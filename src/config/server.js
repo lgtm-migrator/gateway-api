@@ -9,7 +9,6 @@ import cors from 'cors';
 import logger from 'morgan';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
-import csrf from 'csurf';
 import bodyParser from 'body-parser';
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
@@ -86,7 +85,6 @@ app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }));
 
 app.use(logger('dev'));
 app.use(cookieParser());
-//app.use(csrf({ cookie: true }));
 app.use(passport.initialize());
 app.use(passport.session());
 
