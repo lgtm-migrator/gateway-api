@@ -340,7 +340,7 @@ const updateNotifications = async (req, res) => {
 						const subscribedMembersByType = filterMembersByNoticationTypes([...members], [notificationType]);
 						if (!isEmpty(subscribedMembersByType)) {
 							// build cleaner array of memberIds from subscribedMembersByType
-							const memberIds = [...subscribedMembersByType].map(m => m.memberid);
+							const memberIds = [...subscribedMembersByType].map(m => m.memberid.toString());
 							// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object in team
 							const { memberEmails, userIds } = getMemberDetails([...memberIds], [...users]);
 							// email options and html template
@@ -1064,10 +1064,14 @@ const getMemberDetails = (memberIds = [], users = []) => {
 	if (!isEmpty(memberIds) && !isEmpty(users)) {
 		return [...users].reduce(
 			(arr, user) => {
-				let { email, id } = user;
+				let { email, id, _id } = user;
+				if (memberIds.includes(_id.toString())) {
+					arr['memberEmails'].push({ email });
+					arr['userIds'].push({ id });
+				}
 				return {
-					memberEmails: [...arr['memberEmails'], { email }],
-					userIds: [...arr['userIds'], id],
+					memberEmails: arr['memberEmails'],
+					userIds: arr['userIds'],
 				};
 			},
 			{ memberEmails: [], userIds: [] }
