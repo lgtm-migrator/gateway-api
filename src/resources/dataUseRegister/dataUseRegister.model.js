@@ -12,6 +12,9 @@ const dataUseRegisterSchema = new Schema(
 		datasetIds: [{ type: String }],
 		publisher: { type: Schema.Types.ObjectId, ref: 'Publisher', required: true },
 		user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+		userID: Number,
+		keywords: [{ type: String }],
+		fiveSafeFormAnswers: [{ type: String }],
 		status: { type: String, required: true, enum: Object.values(constants.dataUseRegisterStatus) },
 	},
 
