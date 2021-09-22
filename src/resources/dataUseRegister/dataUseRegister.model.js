@@ -5,6 +5,24 @@ import constants from './../../resources/utilities/constants.util';
 
 const dataUseRegisterSchema = new Schema(
 	{
+		id: Number,
+		type: String,
+		activeflag: { type: String, required: true, enum: Object.values(constants.dataUseRegisterStatus) },
+		updatedon: Date,
+		counter: Number,
+		discourseTopicId: Number,
+		relatedObjects: [
+			{
+				objectId: String,
+				reason: String,
+				objectType: String,
+				pid: String,
+				user: String,
+				updated: String,
+			},
+		],
+		keywords: [String],
+
 		lastActivity: Date,
 		projectTitle: String,
 		projectId: { type: Schema.Types.ObjectId, ref: 'data_request' },
@@ -13,7 +31,6 @@ const dataUseRegisterSchema = new Schema(
 		datasetIds: [{ type: String }],
 		publisher: { type: Schema.Types.ObjectId, ref: 'Publisher', required: true },
 		user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-		status: { type: String, required: true, enum: Object.values(constants.dataUseRegisterStatus) },
 		organisationName: String, //Organisation Name
 		organisationSector: String, //Organisation Sector
 		gatewayApplicants: [
