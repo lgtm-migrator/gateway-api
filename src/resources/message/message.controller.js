@@ -97,7 +97,7 @@ module.exports = {
 						);
 						if (!_.isEmpty(subscribedMembersByType)) {
 							// build cleaner array of memberIds from subscribedMembersByType
-							const memberIds = [...subscribedMembersByType].map(m => m.memberid);
+							const memberIds = [...subscribedMembersByType.map(m => m.memberid.toString()), topicObj.createdBy.toString()];
 							// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object
 							const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
 							messageRecipients = [...teamNotificationEmails, ...memberEmails];
