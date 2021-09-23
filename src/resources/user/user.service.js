@@ -34,13 +34,13 @@ export async function updateUser({ id, firstname, lastname, email, discourseKey,
 			await UserModel.findOneAndUpdate(
 				{ id: id },
 				{
-					firstname: { $eq: firstname },
-					lastname: { $eq: lastname },
-					email: { $eq: email },
-					discourseKey: { $eq: discourseKey },
-					discourseUsername: { $eq: discourseUsername },
-					feedback: { $eq: feedback },
-					news: { $eq: news },
+					firstname: firstname,
+					lastname: lastname,
+					email: email,
+					discourseKey: discourseKey,
+					discourseUsername: discourseUsername,
+					feedback: feedback,
+					news: news,
 				},
 				{ new: true }
 			)
