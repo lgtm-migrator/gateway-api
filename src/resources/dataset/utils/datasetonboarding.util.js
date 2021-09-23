@@ -1,5 +1,6 @@
 import { Data } from '../../tool/data.model';
 import { TeamModel } from '../../team/team.model';
+import { PublisherModel } from '../../publisher/publisher.model';
 import { UserModel } from '../../user/user.model';
 import notificationBuilder from '../../utilities/notificationBuilder';
 import emailGenerator from '../../utilities/emailGenerator.util';
@@ -331,11 +332,9 @@ const updateDataset = async (dataset, updateObj) => {
 	let { activeflag, _id } = dataset;
 	// 2. If application is in progress, update initial question answers
 	if (activeflag === constants.datatsetStatuses.DRAFT || activeflag === constants.applicationStatuses.INREVIEW) {
-		await Data.findByIdAndUpdate(_id, updateObj, { new: true }, err => {
-			if (err) {
-				console.error(err);
-				throw err;
-			}
+		await Data.findByIdAndUpdate(_id, updateObj, { new: true }).catch(err => {
+			console.error(err);
+			throw err;
 		});
 		return dataset;
 	}
@@ -967,19 +966,96 @@ const createNotifications = async (type, context) => {
  *
  * @return  {String}           [return field value that is found in the dataset]
  */
-const startBulkUpload = arrayOfDraftDatasets => {
-	let result = {};
+const buildBulkUploadObject = async arrayOfDraftDatasets => {
+	let resultObject = {
+		result: true,
+		error: [],
+		datasets: [],
+	};
+	try {
+		for (let dataset of arrayOfDraftDatasets) {
+			try {
+				//Go through each dataset and build the object to send to the DB
+				let questionAnswers = populateQuestionAnswers(dataset);
+				let structuralMetadata = [];
+				if (!isEmpty(dataset.structuralMetadata)) {
+					structuralMetadata = populateStructuralMetadata(dataset.structuralMetadata.classes);
+				}
+				let publisher = {};
+				if (!isEmpty(dataset.summary.publisher)) {
+					//Check to see that publisher exists
+					publisher = await PublisherModel.findOne({ _id: dataset.summary.publisher }).lean();
+					if (isEmpty(publisher)) {
+						resultObject.error = `${dataset.summary.title} failed because publisher was no found`;
+						resultObject.result = false;
+						break;
+					}
 
-	for (let dataset of arrayOfDraftDatasets) {
-		let questionAnswers = populateQuestionAnswers(dataset);
-		let structuralMetadata = [];
-		if (isEmpty(dataset.structuralMetadata)) {
-			structuralMetadata = populateStructuralMetadata(dataset.structuralMetadata);
+					//Check to see if this is a new entry or a new version
+					let version = '',
+						pid = '';
+					if (!isEmpty(dataset.revisions)) {
+						for (const [, value] of Object.entries(dataset.revisions)) {
+							//Find a dataset that matches in the revision list
+							let datasetFound = await Data.findOne({ datasetid: value }, { pid: 1 }).lean();
+							if (!isEmpty(datasetFound)) {
+								let latestVersion = await Data.findOne(
+									{ pid: datasetFound.pid, activeflag: 'active' },
+									{ pid: 1, datasetVersion: 1 }
+								).lean();
+								if (isEmpty(latestVersion)) {
+									//If no active version found look for the next latest version using the pid and set the isDatasetArchived flag to true
+									latestVersion = await Data.findOne({ pid: datasetFound.pid, activeflag: 'archive' }, { pid: 1, datasetVersion: 1 })
+										.sort({ createdAt: -1 })
+										.lean();
+								}
+								if (!isEmpty(latestVersion)) {
+									pid = latestVersion.pid;
+									version = incrementVersion([1, 0, 0], latestVersion.datasetVersion);
+								}
+							}
+						}
+
+						//If no pid then all the datasets in the revision history do not exist on the Gateway
+						if (isEmpty(pid)) {
+							resultObject.error = `${dataset.summary.title} failed because there was revision history but did not match an existing dataset on the Gateway`;
+							resultObject.result = false;
+							break;
+						}
+
+						//Check there is not already a draft
+						let isDraft = await Data.findOne({ pid, activeflag: 'draft' }, { pid: 1 }).lean();
+						if (!isEmpty(isDraft)) {
+							resultObject.error = `${dataset.summary.title} failed because there was already a draft for this dataset`;
+							resultObject.result = false;
+							break;
+						}
+					}
+
+					resultObject.datasets.push({
+						publisher,
+						version,
+						pid,
+						questionAnswers,
+						structuralMetadata,
+						title: dataset.summary.title,
+					});
+				} else {
+					resultObject.error = `${dataset.summary.title} failed because there was no publisher`;
+					resultObject.result = false;
+					break;
+				}
+			} catch (err) {
+				resultObject.error = `${dataset.summary.title} failed because ${err}`;
+				resultObject.result = false;
+			}
 		}
-		console.log(questionAnswers);
-	}
 
-	return result;
+		return resultObject;
+	} catch (err) {
+		resultObject.error = `Failed because ${err}`;
+		resultObject.result = false;
+	}
 };
 
 export default {
@@ -994,5 +1070,5 @@ export default {
 	buildJSONFile,
 	buildMetadataQuality,
 	createNotifications,
-	startBulkUpload,
+	buildBulkUploadObject,
 };
