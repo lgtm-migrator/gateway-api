@@ -8,6 +8,7 @@ import { isEmpty, isNil } from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
 import moment from 'moment';
+import * as Sentry from '@sentry/node';
 var fs = require('fs');
 
 module.exports = {
@@ -81,13 +82,13 @@ module.exports = {
 				dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
 			} else {
 				//if no questionAnswers then populate from MDC
-				dataset.questionAnswers = datasetonboardingUtil.populateQuestionAnswers(dataset);
+				dataset.questionAnswers = datasetonboardingUtil.populateQuestionAnswers(dataset.datasetv2);
 				await Data.findOneAndUpdate({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
 			}
 
 			if (isEmpty(dataset.structuralMetadata)) {
 				//if no structuralMetadata then populate from MDC
-				dataset.structuralMetadata = datasetonboardingUtil.populateStructuralMetadata(dataset);
+				dataset.structuralMetadata = datasetonboardingUtil.populateStructuralMetadata(dataset.datasetfields.technicaldetails);
 				await Data.findOneAndUpdate({ _id: id }, { structuralMetadata: dataset.structuralMetadata });
 			}
 
@@ -772,4 +773,47 @@ module.exports = {
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
+
+	//POST /api/v1/dataset-onboarding/bulk-upload
+	bulkUpload: async (req, res) => {
+		try {
+			let key = req.body.key;
+			if (!key) {
+				return res.status(400).json({ success: false, error: 'Bulk upload of metadata could not be started' });
+			}
+			// Check for key
+			if (key !== process.env.METADATA_BULKUPLOAD_KEY) {
+				return res.status(400).json({ success: false, error: 'Bulk upload of metadata could not be started' });
+			}
+
+			if (isEmpty(req.file)) {
+				return res.status(404).json({ success: false, message: 'For bulk upload of metadata you must supply a JSON file' });
+			}
+
+			let arrayOfDraftDatasets = [];
+			try {
+				arrayOfDraftDatasets = JSON.parse(req.file.buffer);
+			} catch {
+				return res.status(400).json({ success: false, message: 'Unable to read JSON file' });
+			}
+
+			if (!isEmpty(arrayOfDraftDatasets)) {
+				const result = await datasetonboardingUtil.startBulkUpload(arrayOfDraftDatasets);
+				return res.status(200).json({ success: true, message: 'Bulk upload of metadata completed' });
+			} else {
+				return res.status(400).json({ success: false, message: 'No metadata found' });
+			}
+		} catch (err) {
+			Sentry.captureException(err);
+			console.error(err.message);
+			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed' });
+		}
+	},
 };
+
+/* Sentry.addBreadcrumb({
+				category: 'Bulk Upload',
+				message: 'Unable to get metadata quality value ' + err.message,
+				level: Sentry.Severity.Error,
+			});
+			Sentry.captureException(err); */
