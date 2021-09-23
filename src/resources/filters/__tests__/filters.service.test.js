@@ -1,6 +1,9 @@
 import FilterRepository from '../filters.repository';
+import DatasetRepository from '../../dataset/dataset.repository';
 import FiltersService from '../filters.service';
-import { datasets_commercial, datasets_commercial_expected } from '../__mocks__/filters.mocks';
+import { datasets_commercial, datasets_commercial_expected, mock_datasets } from '../__mocks__/filters.mocks';
+
+import sinon from 'sinon';
 
 describe('Filter service tests', () => {
 	test('Test Commerical usage filter for datasets, returns updated filter status for commerical usage for a dataset', () => {
@@ -16,5 +19,24 @@ describe('Filter service tests', () => {
 		}
 		// Assert
 		expect(commericalOutput).toEqual(datasets_commercial_expected);
+	});
+
+	test('Test filter optimisation, require that publisher name filters are CAPITALISED and contain no "ALLIANCE >" or "HUB >" in the string', async () => {
+		// Setup
+		const filterRepository = new FilterRepository();
+		const datasetRepository = new DatasetRepository();
+		const filterService = new FiltersService(filterRepository, datasetRepository);
+		const datasetStub = sinon.stub(datasetRepository, 'getDatasets').returns(mock_datasets);
+
+		// Call the build filters function, while mocking the datasetRepository.getDatasets(...) function
+		let sortedFilters = await filterService.buildFilters('dataset', { $and: [{ activeflag: 'active' }] }, false);
+
+		// Assert
+		expect(datasetStub.calledOnce).toBe(true);
+		expect(sortedFilters).toHaveProperty('publisher');
+		sortedFilters.publisher.forEach(name => {
+			expect(name).not.toContain("ALLIANCE >" || "HUB >");
+			expect(name === name.toUpperCase()).toBe(true);
+		});
 	});
 });
