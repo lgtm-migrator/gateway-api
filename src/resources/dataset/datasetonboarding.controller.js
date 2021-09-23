@@ -796,7 +796,7 @@ module.exports = {
 
 			if (!isEmpty(arrayOfDraftDatasets)) {
 				//Build bulk upload object
-				const resultObject = datasetonboardingUtil.buildBulkUploadObject(arrayOfDraftDatasets);
+				const resultObject = await datasetonboardingUtil.buildBulkUploadObject(arrayOfDraftDatasets);
 
 				if (resultObject.result === true) {
 					for (let dataset of resultObject.datasets) {
