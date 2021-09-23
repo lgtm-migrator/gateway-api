@@ -46,8 +46,8 @@ export default class aridhiaService {
 			doc.datasetfields.publisher = 'ICODA accreditation';
 
 		doc.datasetv2 = this.buildV2(res);
-		doc.datasetfields.technicaldetails = this.resToTechMetaData(res);
-	
+		doc.datasetfields.technicaldetails = this.resToTechMetaData(res);	
+		
 		return doc;
 	}
 
@@ -97,6 +97,8 @@ export default class aridhiaService {
 	// private
 	buildV2(res) {
 		const v2 = {
+			issued: res.created_at || "", 
+			modified: res.updated_at || "", 
 			identifier: '',
 			version: res.catalogue.versionInfo,
 			provenance : {
