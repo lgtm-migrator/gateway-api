@@ -20,7 +20,8 @@ const strategy = app => {
     const strategyOptions = {
         clientID: process.env.AZURE_SSO_CLIENT_ID,
         clientSecret: process.env.AZURE_SSO_CLIENT_SECRET,
-        callbackURL: `/auth/azure/callback`
+        callbackURL: `/auth/azure/callback`,
+        proxy: true
     };
 
     const verifyCallback = async (accessToken, refreshToken, params, profile, done) => {
