@@ -7,7 +7,7 @@ export default class DataUseRegisterService {
 		// Protect for no id passed
 		if (!id) return;
 
-		query = { ...query, _id: id };
+		query = { ...query, id: id };
 		return this.dataUseRegisterRepository.getDataUseRegister(query, options);
 	}
 

@@ -128,7 +128,7 @@ router.get(
 // {get} /api/v2/data-use-registers/{datauseregisterID} Data Use Register
 // Return the details on the Data Use Register based on the Course ID(?)
 //
-router.get('/:datauseid', async (req, res) => {
+router.get('/:id', async (req, res) => {
 	let id = parseInt(req.params.id);
 	var query = Data.aggregate([
 		{ $match: { id: parseInt(req.params.id) } },
