@@ -1,4 +1,5 @@
 import { Data } from './data.model';
+import { cloneDeep } from 'lodash';
 import { MessagesModel } from '../message/message.model';
 import { UserModel } from '../user/user.model';
 import { createDiscourseTopic } from '../discourse/discourse.service';
@@ -27,6 +28,8 @@ const addTool = async (req, res) => {
 			categories,
 			license,
 			authors,
+			authorsNew,
+			leadResearcher,
 			tags,
 			journal,
 			journalYear,
@@ -39,12 +42,14 @@ const addTool = async (req, res) => {
 		data.type = inputSanitizer.removeNonBreakingSpaces(type);
 		data.name = inputSanitizer.removeNonBreakingSpaces(name);
 		data.link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link));
+		data.authorsNew = inputSanitizer.removeNonBreakingSpaces(authorsNew);
+		data.leadResearcher = inputSanitizer.removeNonBreakingSpaces(leadResearcher);
 		data.journal = inputSanitizer.removeNonBreakingSpaces(journal);
 		data.journalYear = inputSanitizer.removeNonBreakingSpaces(journalYear);
 		data.description = inputSanitizer.removeNonBreakingSpaces(description);
 		data.resultsInsights = inputSanitizer.removeNonBreakingSpaces(resultsInsights);
 		console.log(req.body);
-		if (categories && typeof categories !== undefined)
+		if (categories && typeof categories !== 'undefined')
 			data.categories.category = inputSanitizer.removeNonBreakingSpaces(categories.category);
 		data.license = inputSanitizer.removeNonBreakingSpaces(license);
 		data.authors = authors;
@@ -97,6 +102,16 @@ const addTool = async (req, res) => {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
+			// Create object to pass through email data
+            			let options = {
+            				resourceType: data.type,
+            				resourceName: data.name,
+            				resourceLink: toolLink,
+            				type: 'admin',
+            			};
+            			// Create email body content
+            			let html = emailGenerator.generateEntityNotification(options);
+
 			emailGenerator.sendEmail(
 				emailRecipients,
 				`${i18next.t('translation:email.sender')}`,
@@ -127,6 +142,8 @@ const editTool = async (req, res) => {
 			categories,
 			license,
 			authors,
+			authorsNew,
+			leadResearcher,
 			tags,
 			journal,
 			journalYear,
@@ -138,7 +155,7 @@ const editTool = async (req, res) => {
 		let programmingLanguage = req.body.programmingLanguage;
 		let updatedon = Date.now();
 
-		if (!categories || typeof categories === undefined)
+		if (!categories || typeof categories === 'undefined')
 			categories = { category: '', programmingLanguage: [], programmingLanguageVersion: '' };
 
 		if (programmingLanguage) {
@@ -154,6 +171,7 @@ const editTool = async (req, res) => {
 			id: id,
 			name: name,
 			authors: authors,
+			type: type,
 		};
 
 		Data.findOneAndUpdate(
@@ -429,6 +447,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 	let html;
 	// 1. Generate tool URL for linking user from email
 	const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id;
+	let resourceType = tool.type.charAt(0).toUpperCase() + tool.type.slice(1);
 
 	// 2. Build email body
 	if (activeflag === 'active') {
@@ -442,7 +461,20 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`;
 	}
 
-	// 3. Find all authors of the tool who have opted in to email updates
+	// 3. Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.name,
+		resourceLink: toolLink,
+		subject,
+		rejectionReason: rejectionReason,
+		activeflag,
+		type: 'author',
+	};
+	// 4. Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
+
+	// 5. Find all authors of the tool who have opted in to email updates
 	var q = UserModel.aggregate([
 		// Find all authors of this tool
 		{ $match: { $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] } },
@@ -454,7 +486,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
 	]);
 
-	// 4. Use the returned array of email recipients to generate and send emails with SendGrid
+	// 6. Use the returned array of email recipients to generate and send emails with SendGrid
 	q.exec((err, emailRecipients) => {
 		if (err) {
 			return new Error({ success: false, error: err });
@@ -479,7 +511,18 @@ async function sendEmailNotificationToAuthors(tool, toolOwner) {
 		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
 	]);
 
-	// 3. Use the returned array of email recipients to generate and send emails with SendGrid
+	// 3. Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.name,
+		resourceLink: toolLink,
+		type: 'co-author',
+		resourceAuthor: toolOwner.name,
+	};
+	// 4. Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
+
+	// 5. Use the returned array of email recipients to generate and send emails with SendGrid
 	q.exec((err, emailRecipients) => {
 		if (err) {
 			return new Error({ success: false, error: err });

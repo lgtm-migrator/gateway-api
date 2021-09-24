@@ -11,7 +11,7 @@ export default class DatasetService {
 
 	async getDataset(id, query = {}, options = {}) {
 		// Protect for no id passed
-		if(!id) return;
+		if (!id) return;
 
 		// Get dataset from Db by datasetid first
 		query = { ...query, datasetid: id };
@@ -87,7 +87,7 @@ export default class DatasetService {
 		return relatedObjects;
 	}
 
-	 reformatTechnicalDetails (dataset) {
+	reformatTechnicalDetails(dataset) {
 		// Return if no technical details found
 		if (_.isNil(dataset.structuralMetadata) || _.isNil(dataset.structuralMetadata.dataClasses)) {
 			return dataset;

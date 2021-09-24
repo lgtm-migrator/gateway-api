@@ -4,268 +4,275 @@ import constants from '../../utilities/constants.util';
 import helperUtil from '../../utilities/helper.util';
 import datarequestUtil from '../utils/datarequest.util';
 import teamController from '../../team/team.controller';
+import Controller from '../../base/controller';
+import { logger } from '../../utilities/logger';
 import notificationBuilder from '../../utilities/notificationBuilder';
 import emailGenerator from '../../utilities/emailGenerator.util';
-
+const logCategory = 'Data Access Request';
 import _ from 'lodash';
 
-//POST api/v1/data-access-request/:id/amendments
-const setAmendment = async (req, res) => {
-	try {
-		// 1. Get the required request params
-		const {
-			params: { id },
-		} = req;
-		let { questionId, questionSetId, mode, reason, answer } = req.body;
-		if (_.isEmpty(questionId) || _.isEmpty(questionSetId)) {
-			return res.status(400).json({
-				success: false,
-				message: 'You must supply the unique identifiers for the question requiring amendment',
-			});
-		}
-		// 2. Retrieve DAR from database
-		let accessRecord = await DataRequestModel.findOne({ _id: id }).populate([
-			{
-				path: 'datasets dataset',
-			},
-			{
-				path: 'publisherObj',
-				populate: {
-					path: 'team',
-					populate: {
-						path: 'users',
-					},
-				},
-			},
-		]);
-		if (!accessRecord) {
-			return res.status(404).json({ status: 'error', message: 'Application not found.' });
-		}
-		// 3. If application is not in review or submitted, amendments cannot be made
-		if (
-			accessRecord.applicationStatus !== constants.applicationStatuses.SUBMITTED &&
-			accessRecord.applicationStatus !== constants.applicationStatuses.INREVIEW
-		) {
-			return res.status(400).json({
-				success: false,
-				message: 'This application is not within a reviewable state and amendments cannot be made or requested at this time.',
-			});
-		}
-		// 4. Get the requesting users permission levels
-		let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(accessRecord.toObject(), req.user.id, req.user._id);
-		// 5. Get the current iteration amendment party
-		let validParty = false;
-		let activeParty = getAmendmentIterationParty(accessRecord);
-		// 6. Add/remove/revert amendment depending on mode
-		if (authorised) {
-			switch (mode) {
-				case constants.amendmentModes.ADDED:
-					authorised = userType === constants.userTypes.CUSTODIAN;
-					validParty = activeParty === constants.userTypes.CUSTODIAN;
-					if (!authorised || !validParty) {
-						break;
-					}
-					addAmendment(accessRecord, questionId, questionSetId, answer, reason, req.user, true);
-					break;
-				case constants.amendmentModes.REMOVED:
-					authorised = userType === constants.userTypes.CUSTODIAN;
-					validParty = activeParty === constants.userTypes.CUSTODIAN;
-					if (!authorised || !validParty) {
-						break;
-					}
-					removeAmendment(accessRecord, questionId);
-					break;
-				case constants.amendmentModes.REVERTED:
-					authorised = userType === constants.userTypes.APPLICANT;
-					validParty = activeParty === constants.userTypes.APPLICANT;
-					if (!authorised || !validParty) {
-						break;
-					}
-					revertAmendmentAnswer(accessRecord, questionId, req.user);
-					break;
-			}
-		}
-		// 7. Return unauthorised message if the user did not have sufficient access for action requested
-		if (!authorised) {
-			return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-		}
-		// 8. Return bad request if the opposite party is editing the application
-		if (!validParty) {
-			return res.status(400).json({
-				status: 'failure',
-				message: 'You cannot make or request amendments to this application as the opposite party are currently responsible for it.',
-			});
-		}
-		// 9. Save changes to database
-		await accessRecord.save(async err => {
-			if (err) {
-				console.error(err.message);
-				return res.status(500).json({ status: 'error', message: err.message });
-			} else {
-				// 10. Update json schema and question answers with modifications since original submission
-				let accessRecordObj = accessRecord.toObject();
-				accessRecordObj = injectAmendments(accessRecordObj, userType, req.user);
-				// 11. Append question actions depending on user type and application status
-				let userRole = activeParty === constants.userTypes.CUSTODIAN ? constants.roleTypes.MANAGER : '';
-				accessRecordObj.jsonSchema = datarequestUtil.injectQuestionActions(
-					accessRecordObj.jsonSchema,
-					userType,
-					accessRecordObj.applicationStatus,
-					userRole,
-					activeParty
-				);
-				// 12. Count the number of answered/unanswered amendments
-				const { answeredAmendments = 0, unansweredAmendments = 0 } = countUnsubmittedAmendments(accessRecord, userType);
-				return res.status(200).json({
-					success: true,
-					accessRecord: {
-						amendmentIterations: accessRecordObj.amendmentIterations,
-						questionAnswers: accessRecordObj.questionAnswers,
-						jsonSchema: accessRecordObj.jsonSchema,
-						answeredAmendments,
-						unansweredAmendments,
-					},
+export default class AmendmentController extends Controller {
+	constructor(amendmentService, dataRequestService, activityLogService) {
+		super(amendmentService);
+		this.amendmentService = amendmentService;
+		this.dataRequestService = dataRequestService;
+		this.activityLogService = activityLogService;
+	}
+
+	async setAmendment(req, res) {
+		try {
+			// 1. Get the required request params
+			const {
+				params: { id },
+			} = req;
+			const requestingUserId = parseInt(req.user.id);
+			const requestingUserObjectId = req.user._id;
+			let { questionId, questionSetId, mode, reason, answer } = req.body;
+			if (_.isEmpty(questionId) || _.isEmpty(questionSetId)) {
+				return res.status(400).json({
+					success: false,
+					message: 'You must supply the unique identifiers for the question requiring amendment',
 				});
 			}
-		});
-	} catch (err) {
-		console.error(err.message);
-		return res.status(500).json({
-			success: false,
-			message: 'An error occurred updating the application amendment',
-		});
-	}
-};
 
-//POST api/v1/data-access-request/:id/requestAmendments
-const requestAmendments = async (req, res) => {
-	try {
-		// 1. Get the required request params
-		const {
-			params: { id },
-		} = req;
-		// 2. Retrieve DAR from database
-		let accessRecord = await DataRequestModel.findOne({ _id: id })
-			.select({
-				_id: 1,
-				publisher: 1,
-				amendmentIterations: 1,
-				datasetIds: 1,
-				dataSetId: 1,
-				userId: 1,
-				authorIds: 1,
-				applicationStatus: 1,
-				aboutApplication: 1,
-				dateSubmitted: 1,
-			})
-			.populate([
-				{
-					path: 'datasets dataset mainApplicant authors',
-				},
-				{
-					path: 'publisherObj',
-					select: '_id',
-					populate: {
-						path: 'team',
-						populate: {
-							path: 'users',
+			// 2. Retrieve DAR from database
+			const accessRecord = await this.dataRequestService.getApplicationWithTeamById(id);
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. If application is not in review or submitted, amendments cannot be made
+			if (
+				accessRecord.applicationStatus !== constants.applicationStatuses.SUBMITTED &&
+				accessRecord.applicationStatus !== constants.applicationStatuses.INREVIEW
+			) {
+				return res.status(400).json({
+					success: false,
+					message: 'This application is not within a reviewable state and amendments cannot be made or requested at this time.',
+				});
+			}
+
+			// 4. Get the requesting users permission levels
+			let { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord.toObject(),
+				requestingUserId,
+				requestingUserObjectId
+			);
+
+			// 5. Get the current iteration amendment party
+			let validParty = false;
+			const activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord);
+
+			// 6. Add/remove/revert amendment depending on mode
+			if (authorised) {
+				switch (mode) {
+					case constants.amendmentModes.ADDED:
+						authorised = userType === constants.userTypes.CUSTODIAN;
+						validParty = activeParty === constants.userTypes.CUSTODIAN;
+						if (!authorised || !validParty) {
+							break;
+						}
+						this.amendmentService.addAmendment(accessRecord, questionId, questionSetId, answer, reason, req.user, true);
+						break;
+					case constants.amendmentModes.REMOVED:
+						authorised = userType === constants.userTypes.CUSTODIAN;
+						validParty = activeParty === constants.userTypes.CUSTODIAN;
+						if (!authorised || !validParty) {
+							break;
+						}
+						this.amendmentService.removeAmendment(accessRecord, questionId);
+						break;
+					case constants.amendmentModes.REVERTED:
+						authorised = userType === constants.userTypes.APPLICANT;
+						validParty = activeParty === constants.userTypes.APPLICANT;
+						if (!authorised || !validParty) {
+							break;
+						}
+						this.amendmentService.revertAmendmentAnswer(accessRecord, questionId, req.user);
+						break;
+				}
+			}
+
+			// 7. Return unauthorised message if the user did not have sufficient access for action requested
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 8. Return bad request if the opposite party is editing the application
+			if (!validParty) {
+				return res.status(400).json({
+					status: 'failure',
+					message: 'You cannot make or request amendments to this application as the opposite party are currently responsible for it.',
+				});
+			}
+
+			// 9. Save changes to database
+			await accessRecord.save(async err => {
+				if (err) {
+					console.error(err.message);
+					return res.status(500).json({ status: 'error', message: err.message });
+				} else {
+					// 10. Update json schema and question answers with modifications since original submission and retain previous version requested updates
+					let accessRecordObj = accessRecord.toObject();
+
+					// 11. Support for versioning
+					if (accessRecordObj.amendmentIterations.length > 0) {
+						// Detemine which versions to return
+						let currentVersionIndex;
+						let previousVersionIndex;
+						const unreleasedVersionIndex = accessRecordObj.amendmentIterations.findIndex(iteration => _.isNil(iteration.dateReturned));
+
+						if (unreleasedVersionIndex === -1) {
+							currentVersionIndex = accessRecordObj.amendmentIterations.length - 1;
+						} else {
+							currentVersionIndex = accessRecordObj.amendmentIterations.length - 2;
+						}
+						previousVersionIndex = currentVersionIndex - 1;
+
+						// Handle amendment type application loading for Custodian showing any changes in the major version
+						if (
+							accessRecordObj.applicationType === constants.submissionTypes.AMENDED &&
+							userType === constants.userTypes.CUSTODIAN &&
+							currentVersionIndex === -1
+						) {
+							accessRecordObj = this.amendmentService.highlightChanges(accessRecordObj);
+						}
+
+						// Inject updates from previous version
+						accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user, previousVersionIndex, true);
+
+						// Inject updates from current version
+						accessRecordObj = this.amendmentService.injectAmendments(accessRecordObj, userType, req.user, currentVersionIndex, true);
+
+						// Inject updates from possible unreleased version
+						if (unreleasedVersionIndex !== -1) {
+							accessRecordObj = this.amendmentService.injectAmendments(
+								accessRecordObj,
+								userType,
+								req.user,
+								unreleasedVersionIndex,
+								true,
+								false
+							);
+						}
+					} else if (accessRecordObj.applicationType === constants.submissionTypes.AMENDED && userType === constants.userTypes.CUSTODIAN) {
+						accessRecordObj = this.amendmentService.highlightChanges(accessRecordObj);
+					}
+
+					// 12. Append question actions depending on user type and application status
+					let userRole = activeParty === constants.userTypes.CUSTODIAN ? constants.roleTypes.MANAGER : '';
+					accessRecordObj.jsonSchema = datarequestUtil.injectQuestionActions(
+						accessRecordObj.jsonSchema,
+						userType,
+						accessRecordObj.applicationStatus,
+						userRole,
+						activeParty
+					);
+
+					// 13. Count the number of answered/unanswered amendments
+					const { answeredAmendments = 0, unansweredAmendments = 0 } = this.amendmentService.countAmendments(accessRecord, userType);
+					return res.status(200).json({
+						success: true,
+						accessRecord: {
+							amendmentIterations: accessRecordObj.amendmentIterations,
+							questionAnswers: accessRecordObj.questionAnswers,
+							jsonSchema: accessRecordObj.jsonSchema,
+							answeredAmendments,
+							unansweredAmendments,
 						},
-					},
-				},
-			]);
-		if (!accessRecord) {
-			return res.status(404).json({ status: 'error', message: 'Application not found.' });
-		}
-		// 3. Check permissions of user is manager of associated team
-		let authorised = false;
-		if (_.has(accessRecord.toObject(), 'publisherObj.team')) {
-			const { team } = accessRecord.publisherObj;
-			authorised = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team.toObject(), req.user._id);
-		}
-		if (!authorised) {
-			return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
-		}
-		// 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
-		if (_.isEmpty(accessRecord.datasets)) {
-			accessRecord.datasets = [accessRecord.dataset];
-		}
-		// 5. Get the current iteration amendment party and return bad request if the opposite party is editing the application
-		const activeParty = getAmendmentIterationParty(accessRecord);
-		if (activeParty !== constants.userTypes.CUSTODIAN) {
-			return res.status(400).json({
-				status: 'failure',
-				message: 'You cannot make or request amendments to this application as the applicant(s) are amending the current version.',
+					});
+				}
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the application amendment',
 			});
 		}
-		// 6. Check some amendments exist to be submitted to the applicant(s)
-		const { unansweredAmendments } = countUnsubmittedAmendments(accessRecord, constants.userTypes.CUSTODIAN);
-		if (unansweredAmendments === 0) {
-			return res.status(400).json({
-				status: 'failure',
-				message: 'You cannot submit requested amendments as none have been requested in the current version',
-			});
-		}
-		// 7. Find current amendment iteration index
-		const index = getLatestAmendmentIterationIndex(accessRecord);
-		// 8. Update amendment iteration status to returned, handing responsibility over to the applicant(s)
-		accessRecord.amendmentIterations[index].dateReturned = new Date();
-		accessRecord.amendmentIterations[index].returnedBy = req.user._id;
-		// 9. Save changes to database
-		await accessRecord.save(async err => {
-			if (err) {
-				console.error(err.message);
-				return res.status(500).json({ status: 'error', message: err.message });
-			} else {
-				// 10. Send update request notifications
-				createNotifications(constants.notificationTypes.RETURNED, accessRecord);
-				return res.status(200).json({
-					success: true,
+	}
+
+	async requestAmendments(req, res) {
+		try {
+			// 1. Get the required request params
+			const {
+				params: { id },
+			} = req;
+			const requestingUserObjectId = req.user._id;
+
+			// 2. Retrieve DAR from database
+			let accessRecord = await this.dataRequestService.getApplicationForUpdateRequest(id);
+
+			if (!accessRecord) {
+				return res.status(404).json({ status: 'error', message: 'Application not found.' });
+			}
+
+			// 3. Check permissions of user is manager of associated team
+			let authorised = false;
+			if (_.has(accessRecord.toObject(), 'publisherObj.team')) {
+				const { team } = accessRecord.publisherObj;
+				authorised = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team.toObject(), requestingUserObjectId);
+			}
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			// 4. Ensure single datasets are mapped correctly into array (backward compatibility for single dataset applications)
+			if (_.isEmpty(accessRecord.datasets)) {
+				accessRecord.datasets = [accessRecord.dataset];
+			}
+
+			// 5. Get the current iteration amendment party and return bad request if the opposite party is editing the application
+			const activeParty = this.amendmentService.getAmendmentIterationParty(accessRecord);
+			if (activeParty !== constants.userTypes.CUSTODIAN) {
+				return res.status(400).json({
+					status: 'failure',
+					message: 'You cannot make or request amendments to this application as the applicant(s) are amending the current version.',
 				});
 			}
-		});
-	} catch (err) {
-		console.error(err.message);
-		return res.status(500).json({
-			success: false,
-			message: 'An error occurred attempting to submit the requested updates',
-		});
-	}
-};
 
-const addAmendment = (accessRecord, questionId, questionSetId, answer, reason, user, requested) => {
-	// 1. Create new amendment object with key representing the questionId
-	let amendment = {
-		[`${questionId}`]: new AmendmentModel({
-			questionSetId,
-			requested,
-			reason,
-			answer,
-			requestedBy: requested ? `${user.firstname} ${user.lastname}` : undefined,
-			requestedByUser: requested ? user._id : undefined,
-			dateRequested: requested ? Date.now() : undefined,
-			updatedBy: requested ? undefined : `${user.firstname} ${user.lastname}`,
-			updatedByUser: requested ? undefined : user._id,
-			dateUpdated: requested ? undefined : Date.now(),
-		}),
-	};
-	// 2. Find the index of the latest amendment iteration of the DAR
-	let index = getLatestAmendmentIterationIndex(accessRecord);
-	// 3. If index is not -1, we need to append the new amendment to existing iteration object otherwise create a new one
-	if (index !== -1) {
-		accessRecord.amendmentIterations[index].questionAnswers = {
-			...accessRecord.amendmentIterations[index].questionAnswers,
-			...amendment,
-		};
-	} else {
-		// 4. If new iteration has been trigger by applicant given requested is false, then we automatically return the iteration
-		let amendmentIteration = {
-			dateReturned: requested ? undefined : Date.now(),
-			returnedBy: requested ? undefined : user._id,
-			dateCreated: Date.now(),
-			createdBy: user._id,
-			questionAnswers: { ...amendment },
-		};
-		accessRecord.amendmentIterations = [...accessRecord.amendmentIterations, amendmentIteration];
+			// 6. Check some amendments exist to be submitted to the applicant(s)
+			const { unansweredAmendments } = this.amendmentService.countAmendments(accessRecord, constants.userTypes.CUSTODIAN);
+			if (unansweredAmendments === 0) {
+				return res.status(400).json({
+					status: 'failure',
+					message: 'You cannot submit requested amendments as none have been requested in the current version',
+				});
+			}
+
+			// 7. Find current amendment iteration index
+			const index = this.amendmentService.getLatestAmendmentIterationIndex(accessRecord);
+			// 8. Update amendment iteration status to returned, handing responsibility over to the applicant(s)
+			accessRecord.amendmentIterations[index].dateReturned = new Date();
+			accessRecord.amendmentIterations[index].returnedBy = requestingUserObjectId;
+
+			// 9. Save changes to database
+			await accessRecord.save(async err => {
+				if (err) {
+					console.error(err.message);
+					return res.status(500).json({ status: 'error', message: err.message });
+				} else {
+					// 10. Send update request notifications
+					let fullAccessRecord = await this.dataRequestService.getApplicationById(id);
+					await this.activityLogService.logActivity(constants.activityLogEvents.UPDATE_REQUESTED, {
+						accessRequest: fullAccessRecord,
+						user: req.user,
+					});
+					this.amendmentService.createNotifications(constants.notificationTypes.RETURNED, accessRecord);
+					return res.status(200).json({
+						success: true,
+					});
+				}
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred attempting to submit the requested updates',
+			});
+		}
 	}
 };
 

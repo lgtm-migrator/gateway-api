@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+import constants from '../utilities/constants.util';
 
 const MessageSchema = new Schema(
 	{
@@ -24,16 +25,27 @@ const MessageSchema = new Schema(
 				'data access request',
 				'data access request received',
 				'data access request unlinked',
+				'data access request log updated',
 				'team',
 				'team unlinked',
+				'team added',
 				'edit',
-				'workflow'
+				'workflow',
+				'data access message sent',
+				'dataset submitted',
+				'dataset approved',
+				'dataset rejected',
+				'draft dataset deleted',
 			],
 		},
 		publisherName: {
 			type: String,
 			default: '',
-			trim: true
+			trim: true,
+		},
+		datasetID: {
+			type: String,
+			default: '',
 		},
 		createdBy: {
 			type: Schema.Types.ObjectId,
@@ -59,6 +71,13 @@ const MessageSchema = new Schema(
 			},
 		],
 		createdByName: {
+			type: Object,
+		},
+		userType: {
+			type: String,
+			enum: constants.userTypes,
+		},
+		firstMessage: {
 			type: Object,
 		},
 	},

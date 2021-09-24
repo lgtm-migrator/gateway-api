@@ -12,12 +12,20 @@ const TopicSchema = new Schema(
 			default: '',
 			trim: true,
 		},
+		messageType: {
+			type: String,
+			enum: ['DAR_Message', 'DAR_Notes_Applicant', 'DAR_Notes_Custodian'],
+		},
 		recipients: [
 			{
 				type: Schema.Types.ObjectId,
 				ref: 'User',
 			},
 		],
+		linkedDataAccessApplication: {
+			type: Schema.Types.ObjectId,
+			ref: 'data_request',
+		},
 		status: {
 			type: String,
 			enum: ['active', 'closed'],
@@ -44,6 +52,10 @@ const TopicSchema = new Schema(
 			type: Boolean,
 			default: false,
 		},
+		is5Safes: {
+			type: Boolean,
+			default: false,
+		},
 		unreadMessages: {
 			type: Number,
 			default: 0,
@@ -63,7 +75,18 @@ const TopicSchema = new Schema(
 		],
 		tags: [
 			{
-				type: String,
+				id: {
+					type: String,
+				},
+				datasetId: {
+					type: String,
+				},
+				name: {
+					type: String,
+				},
+				publisher: {
+					type: String,
+				},
 			},
 		],
 	},
@@ -81,18 +104,22 @@ TopicSchema.virtual('topicMessages', {
 });
 
 TopicSchema.pre(/^find/, function (next) {
-	this.populate({
-		path: 'createdBy',
-		select: 'firstname lastname',
-		path: 'topicMessages',
-		select: 'messageDescription createdDate isRead _id readBy',
-		options: { sort: '-createdDate' },
-		populate: {
+	this.populate([
+		{
 			path: 'createdBy',
-			model: 'User',
-			select: '-_id firstname lastname',
+			select: 'firstname lastname',
 		},
-	});
+		{
+			path: 'topicMessages',
+			select: 'messageDescription firstMessage createdDate isRead _id readBy userType',
+			options: { sort: '-createdDate' },
+			populate: {
+				path: 'createdBy',
+				model: 'User',
+				select: 'firstname lastname',
+			},
+		},
+	]);
 
 	next();
 });

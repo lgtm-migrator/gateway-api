@@ -8,7 +8,6 @@ import moment from 'moment';
 import helperUtil from '../utilities/helper.util';
 
 export async function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort) {
-
 	let collection = Data;
 	if (type === 'course') {
 		collection = Course;
@@ -58,7 +57,159 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			},
 		];
 	} else if (type === 'collection') {
-		queryObject = [{ $match: newSearchQuery }, { $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } }];
+		queryObject = [
+			{ $match: newSearchQuery },
+			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			{
+				$project: {
+					_id: 0,
+					id: 1,
+					name: 1,
+					description: 1,
+					imageLink: 1,
+					relatedObjects: 1,
+
+					'persons.id': 1,
+					'persons.firstname': 1,
+					'persons.lastname': 1,
+
+					activeflag: 1,
+					counter: 1,
+					latestUpdate: {
+						$cond: {
+							if: { $gte: ['$createdAt', '$updatedon'] },
+							then: '$createdAt',
+							else: '$updatedon',
+						},
+					},
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+				},
+			},
+		];
+	} else if (type === 'dataset') {
+		queryObject = [
+			{ $match: newSearchQuery },
+			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			{
+				$lookup: {
+					from: 'tools',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [
+						{ $unwind: '$relatedObjects' },
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$eq: ['$relatedObjects.pid', '$$pid'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $group: { _id: null, count: { $sum: 1 } } },
+					],
+					as: 'relatedResourcesTools',
+				},
+			},
+			{
+				$lookup: {
+					from: 'course',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [
+						{ $unwind: '$relatedObjects' },
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$eq: ['$relatedObjects.pid', '$$pid'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $group: { _id: null, count: { $sum: 1 } } },
+					],
+					as: 'relatedResourcesCourses',
+				},
+			},
+			{
+				$project: {
+					_id: 0,
+					id: 1,
+					name: 1,
+					type: 1,
+					description: 1,
+					bio: {
+						$cond: {
+							if: { $eq: [false, '$showBio'] },
+							then: '$$REMOVE',
+							else: '$bio',
+						},
+					},
+					'categories.category': 1,
+					'categories.programmingLanguage': 1,
+					'programmingLanguage.programmingLanguage': 1,
+					'programmingLanguage.version': 1,
+					license: 1,
+					'tags.features': 1,
+					'tags.topics': 1,
+					firstname: 1,
+					lastname: 1,
+					datasetid: 1,
+					pid: 1,
+					isCohortDiscovery: 1,
+					'datasetfields.publisher': 1,
+					'datasetfields.geographicCoverage': 1,
+					'datasetfields.physicalSampleAvailability': 1,
+					'datasetfields.abstract': 1,
+					'datasetfields.ageBand': 1,
+					'datasetfields.phenotypes': 1,
+					'datasetv2.summary.publisher.name': 1,
+					'datasetv2.summary.publisher.logo': 1,
+					'datasetv2.summary.publisher.memberOf': 1,
+
+					'persons.id': 1,
+					'persons.firstname': 1,
+					'persons.lastname': 1,
+
+					activeflag: 1,
+					counter: 1,
+					'datasetfields.metadataquality.quality_score': 1,
+
+					latestUpdate: '$timestamps.updated',
+					relatedresources: {
+						$add: [
+							{
+								$cond: {
+									if: { $eq: [{ $size: '$relatedResourcesTools' }, 0] },
+									then: 0,
+									else: { $first: '$relatedResourcesTools.count' },
+								},
+							},
+							{
+								$cond: {
+									if: { $eq: [{ $size: '$relatedResourcesCourses' }, 0] },
+									then: 0,
+									else: { $first: '$relatedResourcesCourses.count' },
+								},
+							},
+						],
+					},
+				},
+			},
+		];
 	} else {
 		queryObject = [
 			{ $match: newSearchQuery },
@@ -112,12 +263,27 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 							else: '$updatedon',
 						},
 					},
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+					journalYear: 1,
+					journal: 1,
+					authorsNew: 1,
 				},
 			},
 		];
 	}
 
-	if (sort === '' || sort === 'relevance') {
+	if (sort === '') {
+		if (type === 'dataset') {
+			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
+			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+		} else if (type === 'paper') {
+			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
+			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
+		} else {
+			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+		}
+	} else if (sort === 'relevance') {
 		if (type === 'person') {
 			if (searchAll) queryObject.push({ $sort: { lastname: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
@@ -140,11 +306,18 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		if (searchAll) queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
 		else queryObject.push({ $sort: { 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
 	} else if (sort === 'latest') {
-		if (type === 'person') {
-			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
-			else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+		if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+		else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'resources') {
+		if (searchAll) queryObject.push({ $sort: { relatedresources: -1 } });
+		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'sortbyyear') {
+		if (type === 'paper') {
+			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
+			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
 		}
 	}
+
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
 	// Return data

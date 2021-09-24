@@ -1,4 +1,4 @@
-import { isNil, isEmpty, capitalize, groupBy, forEach } from 'lodash';
+import _, { isNil, isEmpty, capitalize, groupBy, forEach, isEqual } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
@@ -276,11 +276,137 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		userEmail,
 		userType
 	)}</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-               `;
+    </tr>
+  </table>`;
+
+	const amendBody = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+  <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of amendment submission</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateSubmitted}</td>
+  </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicant</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${userName}, ${_displayCorrectEmailAddress(
+		userEmail,
+		userType
+	)}</td>
+    </tr>
+  </table>
+  <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+    <tr>
+      <td>
+        <h2 style="font-size: 18px; color: #29235c !important; margin: 30px 0 15px 0;">Datasets requested</h2>
+      </td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Previous datasets</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${initialDatasetTitles}</td>
+    </tr>
+    <tr>
+      <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">New datasets</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+  </tr>
+  </table>`;
+
+	let heading, subject;
+	switch (submissionType) {
+		case constants.submissionTypes.INPROGRESS:
+			heading = 'Data access request application in progress';
+			subject = `You are in progress with a request access to ${datasetTitles}. The custodian will be in contact after you submit the application.`;
+			break;
+		case constants.submissionTypes.INITIAL:
+			heading = 'New data access request application';
+			subject = `You have requested access to ${datasetTitles}. The custodian will be in contact about the application.`;
+			break;
+		case constants.submissionTypes.RESUBMISSION:
+			heading = 'Existing data access request application with new updates';
+			subject = `You have made updates to your Data Access Request for ${datasetTitles}. The custodian will be in contact about the application.`;
+			break;
+		case constants.submissionTypes.AMENDED:
+			heading = 'New amendment request application';
+			subject = `Applicant has submitted an amendment to an approved application.  Please let the applicant know as soon as there is progress in the review of their submission.`;
+			body = amendBody;
+			break;
+	}
+
+	return `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+  <table
+  align="center"
+  border="0"
+  cellpadding="0"
+  cellspacing="40"
+  width="700"
+  word-break="break-all"
+  style="font-family: Arial, sans-serif">
+  <thead>
+    <tr>
+      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+       ${heading}
+      </th>
+    </tr>
+    <tr>
+      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+       ${subject}
+      </th>
+    </tr>
+  </thead>
+  <tbody style="overflow-y: auto; overflow-x: hidden;">
+  <tr style="width: 100%; text-align: left;">
+    <td bgcolor="#fff" style="padding: 0; border: 0;">
+      ${body}
+    </td>
+  </tr>
+ `;
+};
+
+/**
+ * [_buildEmail]
+ *
+ * @desc    Build email template for Data access request
+ * @param   {Object}  questions
+ * @param   {Object}  answers
+ * @param   {Object}  options
+ * @return  {String} Questions Answered
+ */
+const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) => {
+	const {
+		userType,
+		userName,
+		userEmail,
+		datasetTitles,
+		initialDatasetTitles,
+		submissionType,
+		submissionDescription,
+		applicationId,
+	} = options;
+	const dateSubmitted = moment().format('D MMM YYYY');
+	const year = moment().year();
+	const { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
+	const linkNationalCoreStudies =
+		nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
+
+	let parent;
+	let questionTree = { ...fullQuestions };
+	let answers = { ...questionAnswers };
+	let pages = Object.keys(questionTree);
+	let gatewayAttributionPolicy = `We ask that use of the Health Data Research Innovation Gateway (the 'Gateway') be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage ${year}.'`;
+
+	let table = _getSubmissionDetails(
+		userType,
+		userName,
+		userEmail,
+		datasetTitles,
+		initialDatasetTitles,
+		submissionType,
+		projectName,
+		isNationalCoreStudies,
+		dateSubmitted,
+		linkNationalCoreStudies
+	);
 
 	// Create json content payload for attaching to email
 	const jsonContent = {
@@ -340,9 +466,32 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		}
 		table += `</table></td></tr>`;
 	}
-	table += ` </tbody></table><div style="padding: 0 40px 40px 40px;">
-  ${_displayDARLink(id)}
-  </div></div>`;
+
+	if (submissionDescription) {
+		table += `
+    <tr>
+      <td align='left'>
+        <h2 style="font-size: 18px; color: #29235c !important; margin: 0 0 5px -5px;">Message to data custodian:</h2>
+        <p style="font-size: 14px; color: #3c3c3b; width: 100%; margin-left: -5px;">${submissionDescription}</p>
+      </td>
+    </tr>`;
+	}
+
+	table += `<tr>
+  <td align='left'>
+    <div style="margin-left: -5px;">
+      ${_displayDARLink(applicationId)}
+    </div>
+  </td>
+</tr>`;
+
+	table += `<tr>
+			<td align='left'>
+				<p style="font-size: 14px; margin-left: -5px;">${gatewayAttributionPolicy}</p>
+			</td>
+		</tr>`;
+
+	table += ` </tbody></table></div>`;
 
 	return { html: table, jsonContent };
 };
@@ -468,6 +617,42 @@ const _generateEmail = async (aboutApplication, questions, pages, questionPanels
 	return { html, jsonContent };
 };
 
+const _generateAmendEmail = async (
+	aboutApplication,
+	questions,
+	pages,
+	questionPanels,
+	questionAnswers,
+	initialQuestionAnswers,
+	options
+) => {
+	// filter out unchanged answers
+	const changedAnswers = Object.keys(questionAnswers).reduce((obj, key) => {
+		if (isEqual(questionAnswers[key], initialQuestionAnswers[key])) {
+			return obj;
+		}
+		return { ...obj, [key]: questionAnswers[key] };
+	}, {});
+
+	// reset questionList arr
+	questionList = [];
+	// set questionAnswers
+	let flatQuestionAnswers = await _actualQuestionAnswers(changedAnswers, options);
+	// unnest each questionPanel if questionSets
+	let flatQuestionPanels = _unNestQuestionPanels(questionPanels);
+	// unnest question flat
+	let unNestedQuestions = _initalQuestionSpread(questions, pages, flatQuestionPanels);
+	// assigns to questionList
+	_getAllQuestionsFlattened(unNestedQuestions);
+	// filter to only changed questions
+	let changedQuestions = questionList.filter(q => Object.keys(changedAnswers).some(key => key === q.questionId));
+	let fullQuestions = _groupByPageSection([...changedQuestions]);
+	// build up  email with  values
+	let { html, jsonContent } = _buildEmail(aboutApplication, fullQuestions, flatQuestionAnswers, options);
+	// return email
+	return { html, jsonContent };
+};
+
 const _displayConditionalStatusDesc = (applicationStatus, applicationStatusDesc) => {
 	if ((applicationStatusDesc && applicationStatus === 'approved with conditions') || applicationStatus === 'rejected') {
 		let conditionalTitle = '';
@@ -492,6 +677,13 @@ const _displayDARLink = accessId => {
 
 	let darLink = `${process.env.homeURL}/data-access-request/${accessId}`;
 	return `<a style="color: #475da7; font-size: 18px;" href="${darLink}">View application</a>`;
+};
+
+const _displayActivityLogLink = (accessId, publisher) => {
+	if (!accessId) return '';
+
+	const activityLogLink = `${process.env.homeURL}/account?tab=dataaccessrequests&team=${publisher}&id=${accessId}`;
+	return `<a style="color: #475da7;" href="${activityLogLink}">View activity log</a>`;
 };
 
 const _generateDARStatusChangedEmail = options => {
@@ -1582,6 +1774,80 @@ const _generateRemovedFromTeam = options => {
 	return body;
 };
 
+const _displayViewEmailNotifications = publisherId => {
+	let link = `${process.env.homeURL}/account?tab=teamManagement&innertab=notifications&team=${publisherId}`;
+	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
+                <a style="color: #475da7;" href="${link}">View email notifications</a>
+              </td>
+            </tr>
+          </table>`;
+};
+
+const _formatEmails = emails => {
+	return [...emails].map((email, i) => ` ${email}`);
+};
+
+const _generateTeamNotificationEmail = options => {
+	let { managerName, notificationRemoved, emailAddresses, header, disabled, publisherId } = options;
+	let formattedEmails = _formatEmails(emailAddresses);
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; max-width:700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${header}
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${
+												notificationRemoved
+													? `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADEREMOVE}`
+													: `${managerName} ${constants.teamNotificationEmailContentTypes.TEAMEMAILSUBHEADERADD}`
+											}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 140px; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Team email address</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 450px; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">
+													${formattedEmails}
+												</td>
+                      </tr>
+                    </table>
+                    ${disabled ? _generateTeamEmailRevert(notificationRemoved) : ''}
+                    ${_displayViewEmailNotifications(publisherId)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+	return body;
+};
+
+const _generateTeamEmailRevert = notificationRemoved => {
+	return `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td style=" font-size: 14px; color: #3c3c3b; padding: 45px 5px 10px 5px; text-align: left; vertical-align: top;">
+                If you had stopped emails being sent to your gateway log in email address and no team email address is now active, your emails will have reverted back to your gateway log in email.
+              </td>
+            </tr>
+          </table>`;
+};
+
 const _generateAddedToTeam = options => {
 	let { teamName, role } = options;
 	let header = `You've been added to the ${teamName} team as a ${role} on the HDR Innovation Gateway`;
@@ -1630,6 +1896,562 @@ const _generateAddedToTeam = options => {
 	return body;
 };
 
+const _generateNewTeamManagers = options => {
+	let { team } = options;
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      <span>New team added</span>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+                  <tr>
+                    <td style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      <p>
+                        The team ${team} has been added to the Gateway. You were assigned as a team manager and can now:
+                        <br />
+                        <ul>
+                          <li>Manage members</li>
+                          <li>Create and assign workflows</li>
+                          <li>Review assigned data access request applications</li>
+                          <li>Make the final decision on data access request applications</li>
+                        </ul>
+                      </p>
+                    </td>
+                  </tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
+const _generateNewDARMessage = options => {
+	let { id, projectName, datasetTitles, applicants, firstname, lastname, messageBody, questionWithAnswer } = options;
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      New message about an application
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      ${firstname} ${lastname} sent a message regarding their application form
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Application name</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													projectName || 'No project name set'
+												}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Dataset(s)</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${datasetTitles}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Applicants</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${applicants}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+
+              <thead>
+              <tr>
+                <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                  Message from ${firstname} ${lastname}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+            <tr>
+              <td bgcolor="#fff" style="padding: 0; border: 0;">
+                <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top;">${messageBody}</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top;">
+                        ${_displayDARLink(id)}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+
+
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${questionWithAnswer.page}
+                    </th>
+                  </tr>
+                  <tr>
+                  <th style="border: 0; color: #29235c; font-size: 18px; text-align: left;">
+                    ${questionWithAnswer.questionPanel}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Question</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													questionWithAnswer.question
+												}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Answer</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+													questionWithAnswer.answer
+												}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingSumbitted = options => {
+	let { name, publisher } = options;
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Dataset version available for review
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    The dataset, ${name}, has been submitted to the Gateway by ${publisher}. You can review and approve or reject this dataset version from application view.
+                  </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=admin">View datasets pending approval</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingApproved = options => {
+	let { name, publisherId, comment } = options;
+
+	let commentHTML = '';
+
+	if (!_.isEmpty(comment)) {
+		commentHTML = `<tr>
+      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+        Approval comment
+      </th>
+    </tr>
+    <tr>
+      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+        ${comment}
+      </th>
+    </tr>`;
+	}
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Your dataset version has been approved and is now active
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    The submitted version of ${name} has been reviewed and approved by the HDRUK admins. It is now active, searchable and available to request access to on the Innovation Gateway. You may view and create a new version of the dataset in your dataset dashboard.
+                  </th>
+                  </tr>
+                  ${commentHTML}
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisherId}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingRejected = options => {
+	let { name, publisherId, comment } = options;
+
+	let commentHTML = '';
+
+	if (!_.isEmpty(comment)) {
+		commentHTML = `<tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Comment from reviewer:
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      "${comment}"
+                    </th>
+                  </tr>`;
+	}
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Your dataset version requires revision before it can be accepted on the Gateway
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      Thank you for submitting ${name}, which has been reviewed by the team at HDR UK. The dataset version cannot be approved for release on the Gateway at this time. Please look at the comment from the reviewer below and make any necessary changes on a new version of the dataset before resubmitting.
+                    </th>
+                  </tr>
+                  ${commentHTML}
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisherId}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingDraftDeleted = options => {
+	let { draftDatasetName } = options;
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      <span>Draft dataset deleted</span>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+                  <tr>
+                    <td style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      <p>
+                        The draft version of ${draftDatasetName} has been deleted.
+                      </p>
+                    </td>
+                  </tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingDuplicated = options => {
+	let { name, publisher, version } = options;
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      Dataset duplicated
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      ${publisher.name} has duplicated ${version} of ${name}.
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisher.identifier}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
+	return body;
+};
+
+const _generateMessageNotification = options => {
+	let { firstMessage, firstname, lastname, messageDescription, openMessagesLink } = options;
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+										${_.isEmpty(firstMessage) ? `New message from ${firstname} ${lastname}` : `Data access request enquiry from ${firstname} ${lastname}`}
+										</th>
+										</tr>
+										<tr>
+										<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+											<p>${messageDescription.replace(/\n/g, '<br />')}</p>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+									<tr style="width: 100%; text-align: left;">
+										<td style=" font-size: 14px; color: #3c3c3b; padding: 5px 5px; width: 50%; text-align: left; vertical-align: top;">
+											<a href=${openMessagesLink}>View Messages</a>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
+const _generateEntityNotification = options => {
+	let { resourceType, resourceName, resourceLink, subject, rejectionReason, activeflag, type, resourceAuthor } = options;
+	let authorBody;
+	if (activeflag === 'active') {
+		authorBody = `${resourceName} ${resourceType} has been approved by the HDR UK admin team and can be publicly viewed on the gateway, including in search results.`;
+	} else if (activeflag === 'archive') {
+		authorBody = `${resourceName} ${resourceType} has been archived by the HDR UK admin team.`;
+	} else if (activeflag === 'rejected') {
+		authorBody = `${resourceName} ${resourceType} has been rejected by the HDR UK admin team. <br /><br />  Reason for rejection: ${rejectionReason}`;
+	} else if (activeflag === 'add') {
+		authorBody = `${resourceName} ${resourceType} has been submitted to the HDR UK admin team for approval.`;
+	} else if (activeflag === 'edit') {
+		authorBody = `${resourceName} ${resourceType} has been edited, the updated version can now be viewed on the gateway.`;
+	}
+
+	let dashboardLink = process.env.homeURL + '/account?tab=' + resourceType + 's';
+
+	let body = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      ${!_.isEmpty(type) && type === 'admin' ? `A new ${resourceType} has been added and is ready for review` : ``}
+                      ${!_.isEmpty(type) && type === 'author' ? `${subject}` : ``}
+                      ${
+												!_.isEmpty(type) && type === 'co-author'
+													? `${resourceAuthor} added you as an author of the ${resourceType} ${resourceName}`
+													: ``
+											}
+										</th>
+										</tr>
+										<tr>
+										<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+											<p>
+                      ${
+												!_.isEmpty(type) && type === 'admin'
+													? `${resourceName} ${resourceType} has been added and is pending a review. View and then either approve or reject via the link below.`
+													: ``
+											}
+                      ${!_.isEmpty(type) && type === 'author' ? authorBody : ``}
+                      ${
+												!_.isEmpty(type) && type === 'co-author'
+													? `${resourceAuthor} added you as an author of the ${resourceType} ${resourceName}`
+													: ``
+											}
+                      </p>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+									<tr style="width: 100%; text-align: left;">
+										<td style=" font-size: 14px; color: #3c3c3b; padding: 5px 5px; width: 50%; text-align: left; vertical-align: top;">
+                    ${!_.isEmpty(type) && type === 'admin' ? `<a href=${dashboardLink}>View ${resourceType}s dashboard</a>` : ``}
+                    ${!_.isEmpty(type) && type === 'author' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
+                    ${!_.isEmpty(type) && type === 'co-author' ? `<a href=${resourceLink}>View ${resourceType}</a>` : ``}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+	return body;
+};
+
+const _generateActivityLogManualEventCreated = options => {
+	const { id, userName, description, publisher, timestamp, projectName } = options;
+	const dateTime = moment(timestamp).format('DD/MM/YYYY, HH:mmA');
+	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      A new event has been added to an activity log
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${userName} (${publisher}) has added a new event to the activity log of '${
+		projectName || `No project name set`
+	}' data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Event</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${description}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date and time</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateTime}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayActivityLogLink(id, publisher)}
+            </div>
+          </div>`;
+	return body;
+};
+
+const _generateActivityLogManualEventDeleted = options => {
+	const { id, userName, description, publisher, timestamp, projectName } = options;
+	const dateTime = moment(timestamp).format('DD/MM/YYYY, HH:mmA');
+	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      An event has been deleted from an activity log
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${userName} (${publisher}) has deleted the following event from the activity log of '${
+		projectName || `No project name set`
+	}' data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Event</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${description}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date and time</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateTime}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayActivityLogLink(id, publisher)}
+            </div>
+          </div>`;
+	return body;
+};
+
 /**
  * [_sendEmail]
  *
@@ -1667,6 +2489,32 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 		});
 	}
 };
+
+/**
+ * [_sendIntroEmail]
+ *
+ * @desc    Send an intro Email upon user registration
+ * @param   {Object}  message to from, templateId
+ */
+const _sendIntroEmail = msg => {
+	// 1. Apply SendGrid API key from environment variable
+	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+	// 2. Send email using SendGrid
+	sgMail.send(msg, false, err => {
+		if (err) {
+			Sentry.addBreadcrumb({
+				category: 'SendGrid',
+				message: 'Sending email failed - Intro',
+				level: Sentry.Severity.Warning,
+			});
+			Sentry.captureException(err);
+		}
+	});
+};
+
+const _generateEmailHeader = `
+    <img src="https://storage.googleapis.com/hdruk-gateway_prod-cms/web-assets/HDRUK_logo_colour.png" alt="HDR UK Logo" width="127" height="63" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 24px; margin-top: 24px;"></img>
+  `;
 
 const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 	// 1. Generate HTML for unsubscribe link if allowed depending on context
@@ -1725,7 +2573,14 @@ const _generateAttachment = (filename, content, type) => {
 };
 
 export default {
+	//General
+	sendEmail: _sendEmail,
+	sendIntroEmail: _sendIntroEmail,
+	generateEmailFooter: _generateEmailFooter,
+	generateAttachment: _generateAttachment,
+	//DAR
 	generateEmail: _generateEmail,
+	generateAmendEmail: _generateAmendEmail,
 	generateDARReturnedEmail: _generateDARReturnedEmail,
 	generateDARStatusChangedEmail: _generateDARStatusChangedEmail,
 	generateDARClonedEmail: _generateDARClonedEmail,
@@ -1736,11 +2591,26 @@ export default {
 	generateReviewDeadlineWarning: _generateReviewDeadlineWarning,
 	generateReviewDeadlinePassed: _generateReviewDeadlinePassed,
 	generateFinalDecisionRequiredEmail: _generateFinalDecisionRequiredEmail,
+	generateTeamNotificationEmail: _generateTeamNotificationEmail,
 	generateRemovedFromTeam: _generateRemovedFromTeam,
 	generateAddedToTeam: _generateAddedToTeam,
-	sendEmail: _sendEmail,
-	generateEmailFooter: _generateEmailFooter,
-	generateAttachment: _generateAttachment,
+	generateNewTeamManagers: _generateNewTeamManagers,
+	generateNewDARMessage: _generateNewDARMessage,
+	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
+	//Metadata Onboarding
+	generateMetadataOnboardingSumbitted: _generateMetadataOnboardingSumbitted,
+	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
+	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
+	generateMetadataOnboardingDraftDeleted: _generateMetadataOnboardingDraftDeleted,
+  generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
+	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
+	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
+	//Messages
+	generateMessageNotification: _generateMessageNotification,
+	generateEntityNotification: _generateEntityNotification,
+	//ActivityLog
+	generateActivityLogManualEventCreated: _generateActivityLogManualEventCreated,
+	generateActivityLogManualEventDeleted: _generateActivityLogManualEventDeleted,
 };

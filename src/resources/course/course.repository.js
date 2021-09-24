@@ -7,6 +7,7 @@ import helper from '../utilities/helper.util';
 import { utils } from '../auth';
 import { ROLES } from '../user/user.roles';
 const asyncModule = require('async');
+const hdrukEmail = `enquiry@healthdatagateway.org`;
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
 
@@ -157,8 +158,8 @@ const deleteCourse = async (req, res) => {
 	});
 };
 
-const getAllCourses = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getAllCourses = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 1000;
 		let typeString = '';
@@ -188,8 +189,8 @@ const getAllCourses = async (req, res) => {
 	});
 };
 
-const getCourseAdmin = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getCourseAdmin = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 40;
 		let typeString = '';
@@ -229,8 +230,8 @@ const getCourseAdmin = async (req, res) => {
 	});
 };
 
-const getCourse = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getCourse = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 40;
 		let idString = req.user.id;
@@ -282,7 +283,7 @@ const getCourse = async (req, res) => {
 	});
 };
 
-const setStatus = async (req, res) => {
+const setStatus = async req => {
 	return new Promise(async (resolve, reject) => {
 		try {
 			const { activeflag, rejectionReason } = req.body;
@@ -359,8 +360,9 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 	let adminCanUnsubscribe = true;
 	// 1. Generate tool URL for linking user from email
 	const toolLink = process.env.homeURL + '/' + tool.type + '/' + tool.id;
+	let resourceType = tool.type.charAt(0).toUpperCase() + tool.type.slice(1);
 
-	// 2. Build email body
+	// 2. Build email subject
 	if (activeflag === 'active') {
 		subject = `Your ${tool.type} ${tool.title} has been approved and is now live`;
 		html = `Your ${tool.type} ${tool.title} has been approved and is now live <br /><br />  ${toolLink}`;
@@ -378,6 +380,19 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		subject = `Your ${tool.type} ${tool.title} has been updated`;
 		html = `Your ${tool.type} ${tool.title} has been updated<br /><br /> ${toolLink}`;
 	}
+
+	// Create object to pass through email data
+	let options = {
+		resourceType: tool.type,
+		resourceName: tool.title,
+		resourceLink: toolLink,
+		subject,
+		rejectionReason: rejectionReason,
+		activeflag,
+		type: 'author',
+	};
+	// Create email body content
+	let html = emailGenerator.generateEntityNotification(options);
 
 	if (adminCanUnsubscribe) {
 		// 3. Find the creator of the course and admins if they have opted in to email updates
@@ -433,6 +448,19 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
+						// Create object to pass through email data
+            			options = {
+            				resourceType: tool.type,
+            				resourceName: tool.title,
+            				resourceLink: toolLink,
+            				subject,
+            				rejectionReason: rejectionReason,
+            				activeflag,
+            				type: 'admin',
+            			};
+
+            			html = emailGenerator.generateEntityNotification(options);
+
 			emailGenerator.sendEmail(emailRecipients, `${i18next.t('translation:email.sender')}`, subject, html, adminCanUnsubscribe);
 		});
 	}
@@ -537,7 +565,7 @@ function getObjectResult(type, searchAll, searchQuery, startIndex, limit) {
 function getCountsByStatus() {
 	let q = Course.find({}, { id: 1, title: 1, activeflag: 1 });
 
-	return new Promise((resolve, reject) => {
+	return new Promise(resolve => {
 		q.exec((err, data) => {
 			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
 			const reviewCount = data.filter(dat => dat.activeflag === 'review').length;
@@ -554,7 +582,7 @@ function getCountsByStatus() {
 function getCountsByStatusCreator(idString) {
 	let q = Course.find({ $and: [{ type: 'course' }, { creator: parseInt(idString) }] }, { id: 1, title: 1, activeflag: 1 });
 
-	return new Promise((resolve, reject) => {
+	return new Promise(resolve => {
 		q.exec((err, data) => {
 			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
 			const reviewCount = data.filter(dat => dat.activeflag === 'review').length;

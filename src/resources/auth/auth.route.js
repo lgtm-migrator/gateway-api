@@ -1,49 +1,10 @@
 import express from 'express';
-import _ from 'lodash';
-import { to } from 'await-to-js';
 import passport from 'passport';
-
-import { verifyPassword, getRedirectUrl } from '../auth/utils';
-import { login } from '../auth/strategies/jwt';
-import { getUserByEmail } from '../user/user.repository';
+import { isEmpty } from 'lodash';
+import constants from '../utilities/constants.util';
+import { getTeams } from './utils';
 
 const router = express.Router();
-
-// @router   POST /api/auth/login
-// @desc     login user
-// @access   Public
-router.post('/login', async (req, res) => {
-	const { email, password } = req.body;
-
-	const [err, user] = await to(getUserByEmail(email));
-
-	const authenticationError = () => {
-		return res.status(500).json({ success: false, data: 'Authentication error!' });
-	};
-
-	if (!(await verifyPassword(password, user.password))) {
-		console.error('Passwords do not match');
-		return authenticationError();
-	}
-
-	const [loginErr, token] = await to(login(req, user));
-
-	if (loginErr) {
-		console.error('Log in error', loginErr);
-		return authenticationError();
-	}
-
-	return res
-		.status(200)
-		.cookie('jwt', token, {
-			httpOnly: true,
-			secure: process.env.api_url ? true : false,
-		})
-		.json({
-			success: true,
-			data: getRedirectUrl(req.user.role),
-		});
-});
 
 // @router   POST /api/auth/logout
 // @desc     logout user
@@ -60,7 +21,7 @@ router.get('/logout', function (req, res) {
 // @desc     Return the logged in status of the user and their role.
 // @access   Private
 router.get('/status', function (req, res, next) {
-	passport.authenticate('jwt', function (err, user, info) {
+	passport.authenticate('jwt', async function (err, user) {
 		if (err || !user) {
 			return res.json({
 				success: true,
@@ -79,6 +40,39 @@ router.get('/status', function (req, res, next) {
 					return { ...publisher, type, roles };
 				});
 			}
+
+			const adminArray = teams.filter(team => team.type === constants.teamTypes.ADMIN);
+			if (!isEmpty(adminArray)) {
+				if (adminArray[0].roles.includes(constants.roleTypes.ADMIN_DATASET)) {
+					const allTeams = await getTeams();
+					allTeams.forEach(newTeam => {
+						const foundTeam = teams.find(team => team._id && team._id.toString() === newTeam._id.toString());
+						if (!isEmpty(foundTeam)) {
+							const foundRole = foundTeam.roles.find(role => role === constants.roleTypes.METADATA_EDITOR);
+							if (isEmpty(foundRole)) {
+								foundTeam.roles.push(constants.roleTypes.METADATA_EDITOR);
+							}
+							foundTeam.isAdmin = true;
+						} else {
+							teams.push({
+								_id: newTeam._id,
+								name: newTeam.publisher.name,
+								roles: [constants.roleTypes.METADATA_EDITOR],
+								type: newTeam.type,
+								isAdmin: true,
+							});
+						}
+					});
+				}
+			}
+
+			//Remove admin team and then sort teams alphabetically
+			const teamArray = teams
+				.filter(team => team.type !== constants.teamTypes.ADMIN)
+				.sort(function (a, b) {
+					return a.name.toUpperCase() < b.name.toUpperCase() ? -1 : a.name.toUpperCase() > b.name.toUpperCase() ? 1 : 0;
+				});
+
 			// 2. Return user info
 			return res.json({
 				success: true,
@@ -89,7 +83,7 @@ router.get('/status', function (req, res, next) {
 						name: req.user.firstname + ' ' + req.user.lastname,
 						loggedIn: true,
 						email: req.user.email,
-						teams,
+						teams: [...adminArray, ...teamArray],
 						provider: req.user.provider,
 						advancedSearchRoles: req.user.advancedSearchRoles,
 						acceptedAdvancedSearchTerms: req.user.acceptedAdvancedSearchTerms,
