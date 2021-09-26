@@ -105,25 +105,14 @@ export default class DataUseRegisterController extends Controller {
 	}
 
 	async uploadDataUseRegisters(req, res) {
-		// Model for the data use entity
-
-		// Flag if uploaded version
-
-		// POST to create the data use entries
-
-		// Pre-populate the related resources with a fixed message
-
-		// POST to check for duplicates and return any found datasets, applicants or outputs
 		try {
-			const { placeholder } = req;
-
-			const result = await this.dataUseRegisterService.uploadDataUseRegister(placeholder).catch(err => {
-				logger.logError(err, logCategory);
-			});
-
+			const { teamId, dataUses } = req.body;
+			const requestingUser = req.user;
+			const result = await this.dataUseRegisterService.uploadDataUseRegisters(requestingUser, teamId, dataUses);
 			// Return success
-			return res.status(200).json({
+			return res.status(result.uploadedCount > 0 ? 201 : 200).json({
 				success: true,
+				result,
 			});
 		} catch (err) {
 			// Return error response if something goes wrong

@@ -4,15 +4,15 @@ import { dataUseRegisterService } from './dependency';
 import { logger } from '../utilities/logger';
 import passport from 'passport';
 import constants from './../utilities/constants.util';
-import _ from 'lodash';
+import { isEmpty, isNull } from 'lodash';
 
 const router = express.Router();
 const dataUseRegisterController = new DataUseRegisterController(dataUseRegisterService);
 const logCategory = 'dataUseRegister';
 
-function isUserMemberOfTeam(user, publisherId) {
+function isUserMemberOfTeam(user, teamId) {
 	let { teams } = user;
-	return teams.filter(team => !_.isNull(team.publisher)).some(team => team.publisher._id.equals(publisherId));
+	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id.equals(teamId));
 }
 
 function isUserDataUseAdmin(user) {
@@ -61,12 +61,21 @@ const validateViewRequest = (req, res, next) => {
 };
 
 const validateUploadRequest = (req, res, next) => {
-	const { placeholder } = req.body;
+	const { teamId, dataUses } = req.body;
+	let errors = [];
 
-	if (!req) {
+	if (!teamId) {
+		errors.push('You must provide the custodian team identifier to associate the data uses to');
+	}
+
+	if(!dataUses || isEmpty(dataUses)) {
+		errors.push('You must provide data uses to upload');
+	}
+
+	if(!isEmpty(errors)){
 		return res.status(400).json({
 			success: false,
-			message: 'You must provide...',
+			message: errors.join(', '),
 		});
 	}
 
@@ -116,6 +125,17 @@ const authorizeUpdate = async (req, res, next) => {
 };
 
 const authorizeUpload = async (req, res, next) => {
+	const requestingUser = req.user;
+	const { teamId } = req.body;
+
+	const authorised = isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, teamId);
+
+	if (!authorised) {
+		return res.status(401).json({
+			success: false,
+			message: 'You are not authorised to perform this action',
+		});
+	}
 	
 	next();
 }

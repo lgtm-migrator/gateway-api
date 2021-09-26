@@ -7,16 +7,38 @@ export default class DataUseRegisterRepository extends Repository {
 		this.dataUseRegister = DataUseRegister;
 	}
 
-	async getDataUseRegister(query, options) {
+	getDataUseRegister(query, options) {
 		return this.findOne(query, options);
 	}
 
-	async getDataUseRegisters(query) {
+	getDataUseRegisters(query) {
 		const options = { lean: true };
 		return this.find(query, options);
 	}
 
-	async updateDataUseRegister(id, body) {
+	updateDataUseRegister(id, body) {
 		return this.update(id, body);
+	}
+
+	uploadDataUseRegisters(dataUseRegisters) {
+		return this.dataUseRegister.insertMany(dataUseRegisters);
+	}
+
+	async checkDataUseRegisterExists(dataUseRegister) {
+		const { projectIdText, projectTitle, laySummary, organisationName, datasetTitles, latestApprovalDate } = dataUseRegister;
+		const duplicatesFound = await this.dataUseRegister.countDocuments({
+			$or: [
+				{ projectIdText },
+				{
+					projectTitle,
+					laySummary,
+					organisationName,
+					datasetTitles,
+					latestApprovalDate,
+				},
+			],
+		});
+
+		return duplicatesFound > 0;
 	}
 }
