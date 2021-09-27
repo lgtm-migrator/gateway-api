@@ -1,6 +1,6 @@
 import express from 'express';
 import DataUseRegisterController from './dataUseRegister.controller';
-import { Data } from '../tool/data.model';
+
 import { dataUseRegisterService } from './dependency';
 import { logger } from '../utilities/logger';
 import passport from 'passport';
@@ -124,60 +124,6 @@ router.get(
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed dataUseRegisters data' }),
 	(req, res) => dataUseRegisterController.getDataUseRegisters(req, res)
 );
-
-// @route   GET /api/v2/data-use-registers/{id}
-// @desc    Return the details on the Data Use Register based on the Course ID
-// @access  Public
-router.get('/:id', async (req, res) => {
-	let id = parseInt(req.params.id);
-	var query = Data.aggregate([
-		{ $match: { id: parseInt(req.params.id) } },
-		{
-			$lookup: {
-				from: 'tools',
-				localField: 'creator',
-				foreignField: 'id',
-				as: 'creator',
-			},
-		},
-	]);
-	query.exec((err, data) => {
-		if (data.length > 0) {
-			var p = Data.aggregate([
-				{
-					$match: {
-						$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }],
-					},
-				},
-			]);
-			p.exec((err, relatedData) => {
-				relatedData.forEach(dat => {
-					dat.relatedObjects.forEach(x => {
-						if (x.objectId === req.params.id && dat.id !== req.params.id) {
-							let relatedObject = {
-								objectId: dat.id,
-								reason: x.reason,
-								objectType: dat.type,
-								user: x.user,
-								updated: x.updated,
-							};
-							data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
-						}
-					});
-				});
-
-				if (err) return res.json({ success: false, error: err });
-
-				return res.json({
-					success: true,
-					data: data,
-				});
-			});
-		} else {
-			return res.status(404).send(`Data Use Register not found for Id: ${escape(id)}`);
-		}
-	});
-});
 
 // @route   PUT /api/v2/data-use-registers/id
 // @desc    Update the content of the data user register based on dataUseRegister ID provided
