@@ -125,9 +125,9 @@ router.get(
 	(req, res) => dataUseRegisterController.getDataUseRegisters(req, res)
 );
 
-// {get} /api/v2/data-use-registers/{datauseregisterID} Data Use Register
-// Return the details on the Data Use Register based on the Course ID(?)
-//
+// @route   GET /api/v2/data-use-registers/{id}
+// @desc    Return the details on the Data Use Register based on the Course ID
+// @access  Public
 router.get('/:id', async (req, res) => {
 	let id = parseInt(req.params.id);
 	var query = Data.aggregate([
