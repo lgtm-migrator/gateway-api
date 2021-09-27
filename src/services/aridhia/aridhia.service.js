@@ -42,12 +42,14 @@ export default class aridhiaService {
 				version: '1', // our internal definition 
 			};
 	
-		if (doc.pid === 'fair-icoda-dummy-dataset')
-			doc.datasetfields.publisher = 'ICODA accreditation';
-
 		doc.datasetv2 = this.buildV2(res);
-		doc.datasetfields.technicaldetails = this.resToTechMetaData(res);	
+		doc.datasetfields.technicaldetails = this.resToTechMetaData(res);
 		
+		if (doc.pid === 'fair-icoda-dummy-dataset') {
+			doc.datasetfields.publisher = 'ICODA accreditation';
+			doc.datasetv2.summary.publisher.name = 'ICODA accreditation';
+		}
+			
 		return doc;
 	}
 
@@ -97,8 +99,8 @@ export default class aridhiaService {
 	// private
 	buildV2(res) {
 		const v2 = {
-			issued: res.created_at || "", 
-			modified: res.updated_at || "", 
+			issued: res.created_at.substring(0, 10) || "", 
+			modified: res.updated_at.substring(0, 10) || "", 
 			identifier: '',
 			version: res.catalogue.versionInfo,
 			provenance : {
