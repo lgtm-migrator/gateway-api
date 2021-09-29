@@ -53,7 +53,6 @@ router.get('/getList', passport.authenticate('jwt'), async (req, res) => {
 router.get('/:collectionID', async (req, res) => {
 	var q = Collections.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.collectionID) }] } },
-
 		{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 	]);
 	q.exec((err, data) => {

@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { filtersService } from '../../filters/dependency';
 import { PublisherModel } from '../../publisher/publisher.model';
 import { metadataCatalogues, validateCatalogueParams } from '../dataset.util';
-import { isEmpty } from 'lodash';
+import { has, isEmpty } from 'lodash';
 
 let metadataQualityList = [],
 	phenotypesList = [],
