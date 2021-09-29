@@ -37,8 +37,8 @@ export default class WorkflowRepository extends Repository {
 	getWorkflowById(id, options = {}) {
 		return WorkflowModel.findOne(
 			{
-				_id: id,
-			}, //lgtm [js/sql-injection]
+				_id: { $eq: id },
+			},
 			null,
 			options
 		)
@@ -54,7 +54,7 @@ export default class WorkflowRepository extends Repository {
 
 	async assignWorkflowToApplication(accessRecord, workflowId) {
 		// Retrieve workflow using ID from database
-		const workflow = await this.getWorkflowById(workflowId, { lean: false });
+		const workflow = await WorkflowRepository.getWorkflowById(workflowId, { lean: false });
 		if (!workflow) {
 			throw new Error('Workflow could not be found');
 		}

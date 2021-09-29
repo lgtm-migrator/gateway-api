@@ -9,6 +9,10 @@ export default class PublisherService {
 		return this.publisherRepository.getPublisher(id, options);
 	}
 
+	getPublishersAndIds() {
+		return this.publisherRepository.getPublishersAndIds();
+	}
+
 	async getPublisherDatasets(id) {
 		const datasets = this.publisherRepository.getPublisherDatasets(id);
 
