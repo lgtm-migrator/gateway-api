@@ -7,7 +7,7 @@ import _ from 'lodash';
 import moment from 'moment';
 import helperUtil from '../utilities/helper.util';
 
-export async function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort) {
+export async function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort, authorID, form) {
 	let collection = Data;
 	if (type === 'course') {
 		collection = Course;
@@ -53,6 +53,14 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					'courseOptions.studyMode': 1,
 					domains: 1,
 					award: 1,
+					creator: 1,
+				},
+			},
+			{
+				$addFields: {
+					myEntity: {
+						$eq: ['$creator', authorID],
+					},
 				},
 			},
 		];
@@ -292,6 +300,14 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					journalYear: 1,
 					journal: 1,
 					authorsNew: 1,
+					authors: 1,
+				},
+			},
+			{
+				$addFields: {
+					myEntity: {
+						$in: [authorID, '$authors'],
+					},
 				},
 			},
 		];
@@ -305,8 +321,15 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
 			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
 		} else {
-			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
-			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+			if (form === 'true' && searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, latestUpdate: -1 } });
+			} else if (form === 'true' && !searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, score: { $meta: 'textScore' } } });
+			} else if (form !== 'true' && searchAll) {
+				queryObject.push({ $sort: { latestUpdate: -1 } });
+			} else if (form !== 'true' && !searchAll) {
+				queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+			}
 		}
 	} else if (sort === 'relevance') {
 		if (type === 'person') {
@@ -328,8 +351,15 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
 		else queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, score: { $meta: 'textScore' } } });
 	} else if (sort === 'startdate') {
-		if (searchAll) queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
-		else queryObject.push({ $sort: { 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+		if (form === 'true' && searchAll) {
+			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1 } });
+		} else if (form === 'true' && !searchAll) {
+			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+		} else if (form !== 'true' && searchAll) {
+			queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
+		} else if (form !== 'true' && !searchAll) {
+			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+		}
 	} else if (sort === 'latest') {
 		if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
 		else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
@@ -485,6 +515,125 @@ export function getObjectCount(type, searchAll, searchQuery) {
 						},
 					},
 					{ $match: newSearchQuery },
+					{
+						$group: {
+							_id: {},
+							count: {
+								$sum: 1,
+							},
+						},
+					},
+					{
+						$project: {
+							count: '$count',
+							_id: 0,
+						},
+					},
+				])
+				.sort({ score: { $meta: 'textScore' } });
+		}
+	} else {
+		if (searchAll) {
+			q = collection.aggregate([
+				{ $match: newSearchQuery },
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
+						},
+					},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
+					},
+				},
+			]);
+		} else {
+			q = collection
+				.aggregate([
+					{ $match: newSearchQuery },
+					{
+						$group: {
+							_id: {},
+							count: {
+								$sum: 1,
+							},
+						},
+					},
+					{
+						$project: {
+							count: '$count',
+							_id: 0,
+						},
+					},
+				])
+				.sort({ score: { $meta: 'textScore' } });
+		}
+	}
+
+	return new Promise((resolve, reject) => {
+		q.exec((err, data) => {
+			if (typeof data === 'undefined') resolve([]);
+			else resolve(data);
+		});
+	});
+}
+
+export function getMyObjectsCount(type, searchAll, searchQuery, authorID) {
+	let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
+
+	newSearchQuery['$and'].push({ type: type });
+
+	let collection = Data;
+	if (type === 'course') {
+		collection = Course;
+		newSearchQuery['$and'].push({ creator: authorID });
+	} else {
+		newSearchQuery['$and'].push({ authors: authorID });
+	}
+
+	if (type === 'course') {
+		newSearchQuery['$and'].forEach(x => {
+			if (x.$or) {
+				x.$or.forEach(y => {
+					if (y['courseOptions.startDate']) y['courseOptions.startDate'] = new Date(y['courseOptions.startDate']);
+				});
+			}
+		});
+		newSearchQuery['$and'].push({
+			$or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }],
+		});
+	}
+
+	var q = '';
+	if (type === 'course') {
+		if (searchAll) {
+			q = collection.aggregate([
+				{ $match: newSearchQuery },
+				{ $unwind: '$courseOptions' },
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
+						},
+					},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
+					},
+				},
+			]);
+		} else {
+			q = collection
+				.aggregate([
+					{ $match: newSearchQuery },
+					{ $unwind: '$courseOptions' },
 					{
 						$group: {
 							_id: {},
