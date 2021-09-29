@@ -62,7 +62,7 @@ export default class DataRequestRepository extends Repository {
 	}
 
 	getApplicationWithTeamById(id, options = {}) {
-		return DataRequestModel.findOne({ _id: id }, null, options).populate([
+		return DataRequestModel.findOne({ _id: { $eq: id } }, null, options).populate([
 			//lgtm [js/sql-injection]
 			{
 				path: 'datasets dataset authors',
@@ -106,7 +106,7 @@ export default class DataRequestRepository extends Repository {
 		]);
 	}
 
-	getApplicationToSubmitById(id) {
+ 	getApplicationToSubmitById(id) {
 		return DataRequestModel.findOne({ _id: id }).populate([
 			{
 				path: 'datasets dataset initialDatasets',

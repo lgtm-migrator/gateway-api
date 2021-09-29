@@ -174,8 +174,14 @@ export default class FiltersService {
 		});
 		// 8. Iterate through each filter
 		Object.keys(filters).forEach(filterKey => {
-			// 9. Set filter values to title case and remove white space
-			filters[filterKey] = filters[filterKey].map(value => helper.toTitleCase(value.toString().trim()));
+			// 9. Set filter values to title case (all except publisher) / upper case (publisher) and remove white space
+			if (filterKey === 'publisher') {
+				filters[filterKey] = filters[filterKey].map(value => value.includes(">")
+					? value.split(" > ")[1].toString().toUpperCase().trim() 
+					: value.toString().toUpperCase().trim());
+			} else {
+				filters[filterKey] = filters[filterKey].map(value => helper.toTitleCase(value.toString().trim()));
+			};
 			// 10. Distinct filter values
 			const distinctFilter = uniq(filters[filterKey]);
 			// 11. Sort filter values and update final object
