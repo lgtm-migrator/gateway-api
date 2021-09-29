@@ -2,7 +2,7 @@ import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
 import { findNodeInTree } from '../filters/utils/filters.util';
-import { datasetFilters } from '../filters/filters.mapper';
+import { datasetFilters, toolFilters, projectFilters, paperFilters, collectionFilters, courseFilters } from '../filters/filters.mapper';
 import _ from 'lodash';
 import moment from 'moment';
 import helperUtil from '../utilities/helper.util';
@@ -57,9 +57,33 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			},
 		];
 	} else if (type === 'collection') {
+		
+		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+
+		if(searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+		
 		queryObject = [
-			{ $match: newSearchQuery },
+			{ $match: searchTerm },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			{
+				$addFields: {
+					persons: {
+						$map: {
+							input: '$persons',
+							as: 'row',
+							in: {
+								id: '$$row.id',
+								firstname: '$$row.firstname',
+								lastname: '$$row.lastname',
+								fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+							},
+						},
+					},
+				},
+			},
+			{ $match: newSearchQuery },
 			{
 				$project: {
 					_id: 0,
@@ -72,6 +96,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					'persons.id': 1,
 					'persons.firstname': 1,
 					'persons.lastname': 1,
+					'persons.fullName': 1,
 
 					activeflag: 1,
 					counter: 1,
@@ -319,7 +344,9 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	}
 
 	// Get paged results based on query params
-	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)).catch(err => {
+		console.log(err);
+	});
 	// Return data
 	return { data: searchResults };
 }
@@ -394,8 +421,32 @@ export function getObjectCount(type, searchAll, searchQuery) {
 				.sort({ score: { $meta: 'textScore' } });
 		}
 	} else if (type === 'collection') {
+		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+
+		if(searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+		
 		if (searchAll) {
 			q = collection.aggregate([
+				{ $match: searchTerm },
+				{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+				{
+					$addFields: {
+						persons: {
+							$map: {
+								input: '$persons',
+								as: 'row',
+								in: {
+									id: '$$row.id',
+									firstname: '$$row.firstname',
+									lastname: '$$row.lastname',
+									fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+								},
+							},
+						},
+					},
+				},
 				{ $match: newSearchQuery },
 				{
 					$group: {
@@ -415,6 +466,24 @@ export function getObjectCount(type, searchAll, searchQuery) {
 		} else {
 			q = collection
 				.aggregate([
+					{ $match: searchTerm },
+					{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+					{
+						$addFields: {
+							persons: {
+								$map: {
+									input: '$persons',
+									as: 'row',
+									in: {
+										id: '$$row.id',
+										firstname: '$$row.firstname',
+										lastname: '$$row.lastname',
+										fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+									},
+								},
+							},
+						},
+					},
 					{ $match: newSearchQuery },
 					{
 						$group: {
@@ -486,241 +555,67 @@ export function getObjectCount(type, searchAll, searchQuery) {
 export function getObjectFilters(searchQueryStart, req, type) {
 	let searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
 
-	let {
-		toolprogrammingLanguage = '',
-		toolcategories = '',
-		toolfeatures = '',
-		tooltopics = '',
-		projectcategories = '',
-		projectfeatures = '',
-		projecttopics = '',
-		paperfeatures = '',
-		papertopics = '',
-		coursestartdates = '',
-		coursedomains = '',
-		coursekeywords = '',
-		courseprovider = '',
-		courselocation = '',
-		coursestudymode = '',
-		courseaward = '',
-		courseentrylevel = '',
-		courseframework = '',
-		coursepriority = '',
-		collectionpublisher = '',
-		collectionkeywords = '',
-	} = req.query;
-
-	if (type === 'dataset') {
-		// iterate over query string keys
-		for (const key of Object.keys(req.query)) {
-			try {
-				const filterValues = req.query[key].split('::');
-				// check mapper for query type
-				const filterNode = findNodeInTree(datasetFilters, key);
-				if (filterNode) {
-					// switch on query type	and build up query object
-					const { type = '', dataPath = '', matchField = '' } = filterNode;
-					switch (type) {
-						case 'contains':
-							// use regex to match without case sensitivity
-							searchQuery['$and'].push({
-								$or: filterValues.map(value => {
-									return { [`${dataPath}`]: { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } };
-								}),
-							});
-							break;
-						case 'elementMatch':
-							// use regex to match objects within an array without case sensitivity
-							searchQuery['$and'].push({
-								[`${dataPath}`]: {
-									$elemMatch: {
-										$or: filterValues.map(value => {
-											return { [`${matchField}`]: { $regex: value, $options: 'i' } };
-										}),
-									},
-								},
-							});
-							break;
-						case 'boolean':
-							searchQuery['$and'].push({ [`${dataPath}`]: true });
-							break;
-						default:
-							break;
-					}
-				}
-			} catch (err) {
-				console.error(err.message);
+	// iterate over query string keys
+	for (const key of Object.keys(req.query)) {
+		try {
+			const filterValues = req.query[key].split('::');
+			// check mapper for query type
+			// let filterNode = findNodeInTree(`${type}Filters`, key);
+			let filterNode;
+			if (type === 'dataset') {
+				filterNode = findNodeInTree(datasetFilters, key);
+			} else if (type === 'tool') {
+				filterNode = findNodeInTree(toolFilters, key);
+			} else if (type === 'project') {
+				filterNode = findNodeInTree(projectFilters, key);
+			} else if (type === 'paper') {
+				filterNode = findNodeInTree(paperFilters, key);
+			} else if (type === 'collection') {
+				filterNode = findNodeInTree(collectionFilters, key);
+			} else if (type === 'course') {
+				filterNode = findNodeInTree(courseFilters, key);
 			}
-		}
-	}
 
-	if (type === 'tool') {
-		if (toolprogrammingLanguage.length > 0) {
-			let filterTermArray = [];
-			toolprogrammingLanguage.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'programmingLanguage.programmingLanguage': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (toolcategories.length > 0) {
-			let filterTermArray = [];
-			toolcategories.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'categories.category': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (toolfeatures.length > 0) {
-			let filterTermArray = [];
-			toolfeatures.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (tooltopics.length > 0) {
-			let filterTermArray = [];
-			tooltopics.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.topics': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'project') {
-		if (projectcategories.length > 0) {
-			let filterTermArray = [];
-			projectcategories.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'categories.category': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (projectfeatures.length > 0) {
-			let filterTermArray = [];
-			projectfeatures.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (projecttopics.length > 0) {
-			let filterTermArray = [];
-			projecttopics.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.topics': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'paper') {
-		if (paperfeatures.length > 0) {
-			let filterTermArray = [];
-			paperfeatures.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (papertopics.length > 0) {
-			let filterTermArray = [];
-			papertopics.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.topics': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'course') {
-		if (coursestartdates.length > 0) {
-			let filterTermArray = [];
-			coursestartdates.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'courseOptions.startDate': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courseprovider.length > 0) {
-			let filterTermArray = [];
-			courseprovider.split('::').forEach(filterTerm => {
-				filterTermArray.push({ provider: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courselocation.length > 0) {
-			let filterTermArray = [];
-			courselocation.split('::').forEach(filterTerm => {
-				filterTermArray.push({ location: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (coursestudymode.length > 0) {
-			let filterTermArray = [];
-			coursestudymode.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'courseOptions.studyMode': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courseaward.length > 0) {
-			let filterTermArray = [];
-			courseaward.split('::').forEach(filterTerm => {
-				filterTermArray.push({ award: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courseentrylevel.length > 0) {
-			let filterTermArray = [];
-			courseentrylevel.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'entries.level': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (coursedomains.length > 0) {
-			let filterTermArray = [];
-			coursedomains.split('::').forEach(filterTerm => {
-				filterTermArray.push({ domains: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (coursekeywords.length > 0) {
-			let filterTermArray = [];
-			coursekeywords.split('::').forEach(filterTerm => {
-				filterTermArray.push({ keywords: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courseframework.length > 0) {
-			let filterTermArray = [];
-			courseframework.split('::').forEach(filterTerm => {
-				filterTermArray.push({ competencyFramework: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (coursepriority.length > 0) {
-			let filterTermArray = [];
-			coursepriority.split('::').forEach(filterTerm => {
-				filterTermArray.push({ nationalPriority: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'collection') {
-		if (collectionkeywords.length > 0) {
-			let filterTermArray = [];
-			collectionkeywords.split('::').forEach(filterTerm => {
-				filterTermArray.push({ keywords: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (collectionpublisher.length > 0) {
-			let filterTermArray = [];
-			collectionpublisher.split('::').forEach(filterTerm => {
-				filterTermArray.push({ authors: parseInt(filterTerm) });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
+			if (filterNode) {
+				// switch on query type	and build up query object
+				const { type = '', dataPath = '', matchField = '' } = filterNode;
+				switch (type) {
+					case 'contains':
+						// use regex to match without case sensitivity
+						searchQuery['$and'].push({
+							$or: filterValues.map(value => {
+								return { [`${dataPath}`]: { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } };
+							}),
+						});
+						break;
+					case 'elementMatch':
+						// use regex to match objects within an array without case sensitivity
+						searchQuery['$and'].push({
+							[`${dataPath}`]: {
+								$elemMatch: {
+									$or: filterValues.map(value => {
+										return { [`${matchField}`]: { $regex: value, $options: 'i' } };
+									}),
+								},
+							},
+						});
+						break;
+					case 'boolean':
+						searchQuery['$and'].push({ [`${dataPath}`]: true });
+						break;
+					case 'dateEquals':
+						searchQuery['$and'].push({
+							$or: filterValues.map(value => {
+								return { [`${dataPath}`]: value };
+							}),
+						});
+						break;
+					default:
+						break;
+				}
+			}
+		} catch (err) {
+			console.error(err.message);
 		}
 	}
 	return searchQuery;

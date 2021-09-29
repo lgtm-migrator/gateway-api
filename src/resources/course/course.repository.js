@@ -131,6 +131,7 @@ const editCourse = async req => {
 			if (course == null) {
 				reject(new Error(`No record found with id of ${id}.`));
 			}
+			filtersService.optimiseFilters('course');
 
 			await createMessage(course.creator, id, course.title, course.type, 'edit');
 			await createMessage(0, id, course.title, course.type, 'edit');
@@ -303,6 +304,7 @@ const setStatus = async req => {
 			} else {
 				reject(new Error('Not authorised to change the status of this Course'));
 			}
+			filtersService.optimiseFilters('course');
 
 			await createMessage(course.creator, id, course.title, course.type, activeflag, rejectionReason);
 			await createMessage(0, id, course.title, course.type, activeflag, rejectionReason);
