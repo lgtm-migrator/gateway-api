@@ -138,7 +138,7 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 const getLinkedDatasets = async (datasetNames = []) => {
 	const unverifiedDatasetPids = [];
 	const namedDatasets = [];
-	const validLinkRegexp = new RegExp(`^${process.env.homeURL.replace('//', '//')}\/dataset\/([a-f|\\d|-]+)\/?$`, 'i');
+	const validLinkRegexp = new RegExp(`^${process.env.homeURL}\/dataset\/([a-f|\\d|-]+)\/?$`, 'i');
 
 	for (const datasetName of datasetNames) {
 		const [, datasetPid] = validLinkRegexp.exec(datasetName) || [];
@@ -170,7 +170,7 @@ const getLinkedDatasets = async (datasetNames = []) => {
 const getLinkedApplicants = async (applicantNames = []) => {
 	const unverifiedUserIds = [];
 	const nonGatewayApplicants = [];
-	const validLinkRegexp = new RegExp(`^${process.env.homeURL.replace('//', '//')}\/person\/(\\d+)\/?$`, 'i');
+	const validLinkRegexp = new RegExp(`^${process.env.homeURL}\/person\/(\\d+)\/?$`, 'i');
 
 	for (const applicantName of applicantNames) {
 		const [, userId] = validLinkRegexp.exec(applicantName) || [];
