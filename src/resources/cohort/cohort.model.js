@@ -21,6 +21,7 @@ const cohortSchema = new Schema(
 		request_id: String,
 		cohort: {},
 		items: [],
+		rquestRelatedObjects: [],
 
 		relatedObjects: [
 			{

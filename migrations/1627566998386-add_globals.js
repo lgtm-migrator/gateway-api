@@ -45,7 +45,7 @@ const globalData = {
 						id: mongoose.Types.ObjectId(),
 						displayOrder: 2,
 						label: 'Student / educational project',
-						impliedValues: ['platinum', 'gold', 'silver', 'bronze'],
+						impliedValues: ['platinum', 'silver', 'gold', 'bronze'],
 					},
 					{
 						id: mongoose.Types.ObjectId(),

@@ -6,6 +6,8 @@ import datarequestUtil from '../datarequest/utils/datarequest.util';
 import constants from '../utilities/constants.util';
 import { processFile, fileStatus } from '../utilities/cloudStorage.util';
 import { amendmentService } from '../datarequest/amendment/dependency';
+import { activityLogService } from '../activitylog/dependency';
+import mongoose from 'mongoose';
 
 export default class DataRequestService {
 	constructor(dataRequestRepository) {
@@ -60,6 +62,10 @@ export default class DataRequestService {
 		return this.dataRequestRepository.getDatasetsForApplicationByIds(arrDatasetIds);
 	}
 
+	linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus) {
+		return this.dataRequestRepository.linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus);
+	}
+
 	async deleteApplication(accessRecord) {
 		await this.dataRequestRepository.deleteApplicationById(accessRecord._id);
 
@@ -72,23 +78,43 @@ export default class DataRequestService {
 		return await this.syncRelatedVersions(accessRecord.versionTree);
 	}
 
+	async shareApplication(accessRecord) {
+		const { versionTree, _id: applicationId } = accessRecord;
+		Object.keys(versionTree).forEach(key => {
+			if (versionTree[key].applicationId.toString() === applicationId.toString()) {
+				versionTree[key].isShared = true;
+			}
+		});
+
+		await this.updateApplicationById(applicationId, { isShared: true });
+
+		return await this.syncRelatedVersions(versionTree);
+	}
+
 	replaceApplicationById(id, newAcessRecord) {
 		return this.dataRequestRepository.replaceApplicationById(id, newAcessRecord);
 	}
 
-	async buildApplicationForm(publisher, datasetIds, datasetTitles, requestingUserId) {
-		// 1. Get schema to base application form on
+	async buildApplicationForm(publisher, datasetIds, datasetTitles, userId, userObjectId) {
+		// 1. Create new identifier for application
+		const _id = mongoose.Types.ObjectId();
+
+		// 2. Get schema to base application form on
 		const dataRequestSchema = await this.dataRequestRepository.getApplicationFormSchema(publisher);
 
-		// 2. Build up the accessModel for the user
+		// 3. Build up the accessModel for the user
 		const { jsonSchema, _id: schemaId, isCloneable = false } = dataRequestSchema;
 
-		// 3. Set form type
+		// 4. Set form type
 		const formType = schemaId.toString === constants.enquiryFormId ? constants.formTypes.Enquiry : constants.formTypes.Extended5Safe;
 
-		// 4. Create new DataRequestModel
+		// 5. Link any matching presubmission message topics to this application
+		const presubmissionTopic = await this.linkRelatedPresubmissionTopic(_id, userObjectId, datasetIds, publisher);
+
+		// 6. Create new DataRequestModel
 		return {
-			userId: requestingUserId,
+			_id,
+			userId,
 			datasetIds,
 			datasetTitles,
 			isCloneable,
@@ -99,7 +125,32 @@ export default class DataRequestService {
 			aboutApplication: {},
 			applicationStatus: constants.applicationStatuses.INPROGRESS,
 			formType,
+			presubmissionTopic,
 		};
+	}
+
+	async linkRelatedPresubmissionTopic(applicationId, userObjectId, datasetIds, publisher) {
+		// Find a topic with matching datasets
+		let topicId;
+		const topic = await this.dataRequestRepository.getRelatedPresubmissionTopic(userObjectId, datasetIds);
+
+		if (topic) {
+			// If topic is found, create linkage from topic to application
+			topicId = topic._id;
+			topic.linkedDataAccessApplication = applicationId;
+			topic.save(err => {
+				if (!err) {
+					// Create activity log entries based on existing messages in topic
+					activityLogService.logActivity(constants.activityLogEvents.PRESUBMISSION_MESSAGE, {
+						messages: topic.topicMessages,
+						applicationId,
+						publisher,
+					});
+				}
+			});
+		}
+
+		return topicId;
 	}
 
 	async createApplication(data, applicationType = constants.submissionTypes.INITIAL, versionTree = {}) {
@@ -159,9 +210,10 @@ export default class DataRequestService {
 
 	buildVersionHistory = (versionTree, applicationId, requestedVersion, userType) => {
 		const unsortedVersions = Object.keys(versionTree).reduce((arr, versionKey) => {
-			const { applicationId: _id, link, displayTitle, detailedTitle, applicationStatus } = versionTree[versionKey];
+			const { applicationId: _id, link, displayTitle, detailedTitle, applicationStatus, isShared = false } = versionTree[versionKey];
 
-			if (userType === constants.userTypes.CUSTODIAN && applicationStatus === constants.applicationStatuses.INPROGRESS) return arr;
+			if (userType === constants.userTypes.CUSTODIAN && applicationStatus === constants.applicationStatuses.INPROGRESS && !isShared)
+				return arr;
 
 			const isCurrent = applicationId.toString() === _id.toString() && (requestedVersion === versionKey || !requestedVersion);
 
@@ -300,7 +352,6 @@ export default class DataRequestService {
 	}
 
 	async createAmendment(accessRecord) {
-		// TODO persist messages + private notes between applications (copy)
 		const applicationType = constants.submissionTypes.AMENDED;
 		const applicationStatus = constants.applicationStatuses.INPROGRESS;
 
@@ -315,6 +366,7 @@ export default class DataRequestService {
 			publisher,
 			files,
 			versionTree,
+			isShared = false,
 		} = accessRecord;
 
 		const { jsonSchema, _id: schemaId, isCloneable = false, formType } = await datarequestUtil.getLatestPublisherSchema(publisher);
@@ -337,6 +389,7 @@ export default class DataRequestService {
 			publisher,
 			formType,
 			files,
+			isShared,
 		};
 
 		if (questionAnswers && Object.keys(questionAnswers).length > 0 && datarequestUtil.containsUserRepeatedSections(questionAnswers)) {
@@ -381,8 +434,8 @@ export default class DataRequestService {
 		const initialApplicationId = accessRecord.getInitialApplicationId();
 
 		// Process the files for scanning
+		//lgtm [js/type-confusion-through-parameter-tampering]
 		for (let i = 0; i < files.length; i++) {
-			//lgtm [js/type-confusion-through-parameter-tampering]
 			// Get description information
 			let description = descriptionArray ? descriptions[i] : descriptions;
 			// Get uniqueId
@@ -489,5 +542,26 @@ export default class DataRequestService {
 		}, []);
 		// 2. Update all related applications
 		this.dataRequestRepository.syncRelatedVersions(applicationIds, versionTree);
+	}
+
+	async checkUserAuthForVersions(versionIds, requestingUser) {
+		const { _id: requestingUserObjectId, id: requestingUserId } = requestingUser;
+		let requestingUserType;
+
+		const requestedVersions = await this.dataRequestRepository.getPermittedUsersForVersions(versionIds);
+
+		requestedVersions.forEach(accessRecord => {
+			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
+				accessRecord.toObject(),
+				requestingUserId,
+				requestingUserObjectId
+			);
+
+			if (!authorised) return { authorised };
+
+			requestingUserType = userType;
+		});
+
+		return { authorised: true, userType: requestingUserType, accessRecords: requestedVersions };
 	}
 }

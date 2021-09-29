@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+import constants from '../utilities/constants.util';
 
 const MessageSchema = new Schema(
 	{
@@ -24,8 +25,10 @@ const MessageSchema = new Schema(
 				'data access request',
 				'data access request received',
 				'data access request unlinked',
+				'data access request log updated',
 				'team',
 				'team unlinked',
+				'team added',
 				'edit',
 				'workflow',
 				'data access message sent',
@@ -48,10 +51,6 @@ const MessageSchema = new Schema(
 			type: Schema.Types.ObjectId,
 			ref: 'User',
 		},
-		userType: {
-			type: String,
-			enum: ['applicant', 'custodian'],
-		},
 		createdDate: {
 			type: Date,
 			default: Date.now,
@@ -73,6 +72,10 @@ const MessageSchema = new Schema(
 		],
 		createdByName: {
 			type: Object,
+		},
+		userType: {
+			type: String,
+			enum: constants.userTypes,
 		},
 		firstMessage: {
 			type: Object,

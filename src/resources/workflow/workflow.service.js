@@ -58,7 +58,7 @@ export default class WorkflowService {
 		return this.workflowRepository.assignWorkflowToApplication(accessRecord, workflowId);
 	}
 
-	getWorkflowById(id){
+	getWorkflowById(id) {
 		return this.workflowRepository.getWorkflowById(id);
 	}
 
@@ -129,7 +129,7 @@ export default class WorkflowService {
 		) {
 			accessRecord.remainingActioners = this.getReviewManagers(team, requestingUserId).join(', ');
 		} else if (!isEmpty(workflow) && isEmpty(activeStep) && applicationStatus === constants.applicationStatuses.INREVIEW) {
-			remainingActioners = this.getReviewManagers(team, requestingUserId).join(', ');
+			accessRecord.remainingActioners = this.getReviewManagers(team, requestingUserId).join(', ');
 			accessRecord.reviewStatus = 'Final decision required';
 		} else {
 			accessRecord.remainingActioners = this.getRemainingReviewerNames(activeStep, team.users, requestingUserId);
@@ -427,9 +427,14 @@ export default class WorkflowService {
 		// Extract workflow email variables
 		const { dateReviewStart = '', workflow = {} } = accessRecord;
 		const { workflowName, steps } = workflow;
-		const { stepName, startDateTime = '', endDateTime = '', completed = false, deadline: stepDeadline = 0, reminderOffset = 0 } = steps[
-			relatedStepIndex
-		];
+		const {
+			stepName,
+			startDateTime = '',
+			endDateTime = '',
+			completed = false,
+			deadline: stepDeadline = 0,
+			reminderOffset = 0,
+		} = steps[relatedStepIndex];
 		const stepReviewers = this.getStepReviewers(steps[relatedStepIndex]);
 		const reviewerNames = [...stepReviewers].map(reviewer => `${reviewer.firstname} ${reviewer.lastname}`).join(', ');
 		const reviewSections = [...steps[relatedStepIndex].sections].map(section => constants.darPanelMapper[section]).join(', ');
@@ -485,7 +490,15 @@ export default class WorkflowService {
 			// Calculate total duration for workflow
 			if (steps[relatedStepIndex].completed && !isEmpty(dateReviewStart.toString())) {
 				totalDuration = moment().diff(moment(dateReviewStart), 'days');
-				totalDuration = totalDuration === 0 ? `Same day` : duration === 1 ? `1 day` : `${duration} days`;
+				if (totalDuration === 0) {
+					totalDuration = `Same day`;
+				} else {
+					if (duration === 1) {
+						totalDuration = `1 day`;
+					} else {
+						totalDuration = `${duration} days`;
+					}
+				}
 			}
 		} else {
 			// Get details of next step if this is not the final step
@@ -522,7 +535,11 @@ export default class WorkflowService {
 	}
 
 	startWorkflow(accessRecord, requestingUserObjectId) {
-		const { publisherObj: { name: dataRequestPublisher }, _id, workflow } = accessRecord;
+		const {
+			publisherObj: { name: dataRequestPublisher },
+			_id,
+			workflow,
+		} = accessRecord;
 		const reviewerList = workflow.steps[0].reviewers.map(reviewer => reviewer._id.toString());
 		const bpmContext = {
 			businessKey: _id,

@@ -126,6 +126,7 @@ const DataSchema = new Schema(
 			archived: Date,
 		},
 		datasetVersionIsV1: { type: Boolean, default: false },
+		isCohortDiscovery: { type: Boolean, default: false },
 
 		//not used
 		rating: Number,

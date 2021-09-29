@@ -234,3 +234,108 @@ export const datasets_commercial_expected = [
 		commercialUse: false,
 	},
 ];
+
+export const mock_datasets = [
+	{
+		_id: '0000',
+		tags: {
+			features: ['test'] 
+		},
+		datasetfields: {
+			publisher: 'ALLIANCE > SAIL',
+		  	datautility: {
+				pid: '0000-0000-0000',
+			},
+		  	phenotypes: []
+		},
+		datasetv2: {
+		  	coverage: {
+				spatial: ['England'],
+			},
+		  	provenance: {
+				origin: {
+					purpose: [],
+					source: [],
+					collectionSituation: []
+				},
+				temporal: {
+					accrualPeriodicity: '1 Month Cycle'
+				}
+			},
+		  	accessibility: {
+				usage: {},
+				access: {},
+				formatAndStandards: {}
+			}
+		},
+		hasTechnicalDetails: true
+	},
+	{
+		_id: '1111',
+		tags: {
+			features: ['test'] 
+		},
+		datasetfields: {
+			publisher: 'HUB > Breathe',
+		  	datautility: {
+				pid: '0000-0000-1111',
+			},
+		  	phenotypes: []
+		},
+		datasetv2: {
+		  	coverage: {
+				spatial: ['England'],
+			},
+		  	provenance: {
+				origin: {
+					purpose: [],
+					source: [],
+					collectionSituation: []
+				},
+				temporal: {
+					accrualPeriodicity: '1 Month Cycle'
+				}
+			},
+		  	accessibility: {
+				usage: {},
+				access: {},
+				formatAndStandards: {}
+			}
+		},
+		hasTechnicalDetails: true
+	},
+	{
+		_id: '2222',
+		tags: {
+			features: ['test'] 
+		},
+		datasetfields: {
+			publisher: 'Uk Biobank',
+		  	datautility: {
+				pid: '0000-0000-2222',
+			},
+		  	phenotypes: []
+		},
+		datasetv2: {
+		  	coverage: {
+				spatial: ['England'],
+			},
+		  	provenance: {
+				origin: {
+					purpose: [],
+					source: [],
+					collectionSituation: []
+				},
+				temporal: {
+					accrualPeriodicity: '1 Month Cycle'
+				}
+			},
+		  	accessibility: {
+				usage: {},
+				access: {},
+				formatAndStandards: {}
+			}
+		},
+		hasTechnicalDetails: true
+	}
+]

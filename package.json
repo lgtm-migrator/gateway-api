@@ -10,6 +10,7 @@
 	"dependencies": {
 		"@google-cloud/monitoring": "^2.1.0",
 		"@google-cloud/storage": "^5.3.0",
+		"@hubspot/api-client": "^4.1.0",
 		"@sendgrid/mail": "^7.1.0",
 		"@sentry/node": "^6.4.1",
 		"@sentry/tracing": "^6.4.1",
@@ -27,6 +28,7 @@
 		"cors": "^2.8.5",
 		"crypto": "^1.0.1",
 		"crypto-js": "^4.0.0",
+		"csurf": "^1.11.0",
 		"discourse-sso": "^1.0.3",
 		"dotenv": "^8.2.0",
 		"escape-html": "^1.0.3",
@@ -50,6 +52,7 @@
 		"multer": "^1.4.2",
 		"oidc-provider": "^6.29.3",
 		"passport": "^0.4.1",
+		"passport-azure-ad-oauth2": "0.0.4",
 		"passport-google-oauth": "^2.0.0",
 		"passport-jwt": "^4.0.0",
 		"passport-linkedin-oauth2": "^2.0.0",
