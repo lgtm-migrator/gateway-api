@@ -5,11 +5,11 @@ import constants from './../../resources/utilities/constants.util';
 
 const dataUseRegisterSchema = new Schema(
 	{
-		id: Number,
-		type: String,
+		id: { type: Number, required: true },
+		type: { type: String, required: true },
 		activeflag: { type: String, required: true, enum: Object.values(constants.dataUseRegisterStatus) },
 		updatedon: Date,
-		counter: Number,
+		counter: { type: Number, default: 0 },
 		discourseTopicId: Number,
 		relatedObjects: [
 			{
@@ -22,16 +22,18 @@ const dataUseRegisterSchema = new Schema(
 			},
 		],
 		keywords: [String],
+		manualUpload: Boolean,
 
 		lastActivity: Date,
-		projectTitle: String,
+		projectTitle: { type: String },
 		projectId: { type: Schema.Types.ObjectId, ref: 'data_request' },
 		projectIdText: String, //Project ID
 		datasetTitles: [{ type: String }], //Dataset Name(s)
 		datasetIds: [{ type: String }],
+		datasetPids: [{ type: String }],
 		publisher: { type: Schema.Types.ObjectId, ref: 'Publisher', required: true },
 		user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-		organisationName: String, //Organisation Name
+		organisationName: { type: String }, //Organisation Name
 		organisationSector: String, //Organisation Sector
 		gatewayApplicants: [
 			{
@@ -48,7 +50,7 @@ const dataUseRegisterSchema = new Schema(
 		publicBenefitStatement: String, //Public Benefit Statement
 		requestCategoryType: String, //Request Category Type
 		technicalSummary: String, //Technical Summary
-		otherApprovalCommittees: String, //Other Approval Committees
+		otherApprovalCommittees: [{type: String}], //Other Approval Committees
 		projectStartDate: Date, //Project Start Date
 		projectEndDate: Date, //Project End Date
 		latestApprovalDate: Date, //Latest Approval Date
@@ -62,12 +64,13 @@ const dataUseRegisterSchema = new Schema(
 		accessDate: Date, //Release/Access Date
 		dataLocation: String, //TRE Or Any Other Specified Location
 		privacyEnhancements: String, //How Has Data Been Processed To Enhance Privacy
-		researchOutputs: String, //Link To Research Outputs
+		researchOutputs: [{type: String}], //Link To Research Outputs
 	},
 	{
 		timestamps: true,
 		toJSON: { virtuals: true },
 		toObject: { virtuals: true },
+		strict: false
 	}
 );
 

@@ -20,7 +20,7 @@ export default class DatasetRepository extends Repository {
 			return {};
 		}
 		// Get dataset versions using pid
-		const query = { pid, fields:'datasetid,datasetVersion,activeflag' };
+		const query = { pid, fields: 'datasetid,datasetVersion,activeflag' };
 		const options = { lean: true };
 		const datasets = await this.find(query, options);
 		// Create revision structure
@@ -33,5 +33,14 @@ export default class DatasetRepository extends Repository {
 			}
 			return obj;
 		}, {});
+	}
+
+	getDatasetsByPids(pids) {
+		return this.dataset.aggregate([
+			{ $match: { pid: { $in: pids } } },
+			{ $project: { pid: 1, datasetid: 1, name: 1, createdAt: 1 } },
+			{ $sort: { createdAt: -1 } },
+			{ $group: { _id: '$pid', pid: { $first: '$pid' }, datasetid: { $first: '$datasetid' }, name: { $first: '$name' } } },
+		]);
 	}
 }

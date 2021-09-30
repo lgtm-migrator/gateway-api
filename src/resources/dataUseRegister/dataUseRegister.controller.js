@@ -103,4 +103,24 @@ export default class DataUseRegisterController extends Controller {
 			});
 		}
 	}
+
+	async uploadDataUseRegisters(req, res) {
+		try {
+			const { teamId, dataUses } = req.body;
+			const requestingUser = req.user;
+			const result = await this.dataUseRegisterService.uploadDataUseRegisters(requestingUser, teamId, dataUses);
+			// Return success
+			return res.status(result.uploadedCount > 0 ? 201 : 200).json({
+				success: true,
+				result,
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'A server error occurred, please try again',
+			});
+		}
+	}
 }
