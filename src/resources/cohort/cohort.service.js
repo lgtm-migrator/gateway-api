@@ -18,20 +18,23 @@ export default class CohortService {
 	}
 
 	async addCohort(body = {}) {
+		// 1. Generate uuid for Cohort PID
 		let uuid = '';
 		while (uuid === '') {
 			uuid = uuidv4();
 			if ((await this.cohortRepository.getCohorts({ pid: uuid })).length > 0) uuid = '';
 		}
-
+		// 2. Generate uniqueId for Cohort so we can differentiate between versions
 		let uniqueId = '';
 		while (uniqueId === '') {
 			uniqueId = parseInt(Math.random().toString().replace('0.', ''));
 			if ((await this.cohortRepository.getCohorts({ id: uniqueId }).length) > 0) uniqueId = '';
 		}
 
-		let pids = []; //TODO: Extract Pids from cohort object
-
+		// 3. Extract PIDs from cohort object so we can build up related objects
+		let pids = body.cohort.input.collections.map(collection => {
+			return collection.external_id;
+		});
 		let relatedObjects = [];
 		pids.forEach(pid => {
 			relatedObjects.push({
@@ -41,6 +44,7 @@ export default class CohortService {
 			});
 		});
 
+		// 4. Build document object and save to DB
 		const document = {
 			id: uniqueId,
 			pid: uuid,

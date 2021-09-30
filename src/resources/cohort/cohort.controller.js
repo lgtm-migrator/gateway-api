@@ -68,13 +68,15 @@ export default class CohortController extends Controller {
 
 	async addCohort(req, res) {
 		try {
-			await this.cohortService.addCohort(req.body).catch(err => {
+			const cohort = await this.cohortService.addCohort(req.body).catch(err => {
 				logger.logError(err, logCategory);
 			});
+			const { id } = cohort;
+
 			// Return the cohorts
 			return res.status(201).json({
 				informationrequestid: req.body.query_id,
-				redirect_url: 'https://web.latest.healthdatagateway.org/search?search=bcp&tab=Datasets',
+				redirect_url: `${process.env.homeURL}/cohort/add/${id}`,
 			});
 		} catch (err) {
 			// Return error response if something goes wrong

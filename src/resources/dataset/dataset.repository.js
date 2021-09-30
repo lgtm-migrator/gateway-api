@@ -20,7 +20,7 @@ export default class DatasetRepository extends Repository {
 			return {};
 		}
 		// Get dataset versions using pid
-		const query = { pid, fields:'datasetid,datasetVersion,activeflag' };
+		const query = { pid, fields: 'datasetid,datasetVersion,activeflag' };
 		const options = { lean: true };
 		const datasets = await this.find(query, options);
 		// Create revision structure
