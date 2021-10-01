@@ -671,25 +671,28 @@ export default class DataRequestController extends Controller {
 					//Update any connected version trees
 					this.dataRequestService.updateVersionStatus(accessRecord, accessRecord.applicationStatus);
 
-					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED)
-						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_APPROVED, {
+					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED) {
+						this.dataUseRegisterService.createDataUseRegister(accessRecord);
+						this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_APPROVED, {
 							accessRequest: accessRecord,
 							user: req.user,
 						});
+					}
 					else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
-						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_APPROVED_WITH_CONDITIONS, {
+						this.dataUseRegisterService.createDataUseRegister(accessRecord);
+						this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_APPROVED_WITH_CONDITIONS, {
 							accessRequest: accessRecord,
 							user: req.user,
 						});
 					} else if (accessRecord.applicationStatus === constants.applicationStatuses.REJECTED) {
-						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_REJECTED, {
+						this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_REJECTED, {
 							accessRequest: accessRecord,
 							user: req.user,
 						});
 					}
 
 					// Send notifications to custodian team, main applicant and contributors regarding status change
-					await this.createNotifications(
+					this.createNotifications(
 						constants.notificationTypes.STATUSCHANGE,
 						{ applicationStatus, applicationStatusDesc },
 						accessRecord,
