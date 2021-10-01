@@ -6,6 +6,7 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import { utils } from '../auth';
 import { ROLES } from '../user/user.roles';
+import { filtersService } from '../filters/dependency';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
