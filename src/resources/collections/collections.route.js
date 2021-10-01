@@ -18,6 +18,7 @@ import {
 } from './collections.repository';
 import inputSanitizer from '../utilities/inputSanitizer';
 import urlValidator from '../utilities/urlValidator';
+import { filtersService } from '../filters/dependency';
 
 const router = express.Router();
 
@@ -151,6 +152,7 @@ router.put('/edit/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess
 			}
 		}
 	).then(() => {
+		filtersService.optimiseFilters('collection');
 		return res.json({ success: true });
 	});
 
@@ -222,6 +224,7 @@ router.put('/status/:id', passport.authenticate('jwt'), utils.checkAllowedToAcce
 			return res.json({ success: false, error: err });
 		}
 	}).then(() => {
+		filtersService.optimiseFilters('collection');
 		return res.json({ success: true });
 	});
 });

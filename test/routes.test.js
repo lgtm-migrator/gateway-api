@@ -1,6 +1,14 @@
 const request = require('supertest');
 const testURL = request(process.env.URL || 'https://api.latest.healthdatagateway.org/');
 
+describe('Wake up API', () => {
+	test('Check the api is alive', async () => {
+		jest.setTimeout(60000);
+		const response = await testURL.get('/api/dead');
+		expect(response.statusCode).toBe(404);
+	});
+}, 120000);
+
 describe('Search API', () => {
 	test('Search without any parameters should return at least one result', async () => {
 		const response = await testURL.get('/api/v1/search');
