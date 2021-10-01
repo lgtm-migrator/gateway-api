@@ -381,19 +381,6 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		html = `Your ${tool.type} ${tool.title} has been updated<br /><br /> ${toolLink}`;
 	}
 
-	// Create object to pass through email data
-	let options = {
-		resourceType: tool.type,
-		resourceName: tool.title,
-		resourceLink: toolLink,
-		subject,
-		rejectionReason: rejectionReason,
-		activeflag,
-		type: 'author',
-	};
-	// Create email body content
-	let html = emailGenerator.generateEntityNotification(options);
-
 	if (adminCanUnsubscribe) {
 		// 3. Find the creator of the course and admins if they have opted in to email updates
 		var q = UserModel.aggregate([

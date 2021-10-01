@@ -102,16 +102,6 @@ const addTool = async (req, res) => {
 			if (err) {
 				return new Error({ success: false, error: err });
 			}
-			// Create object to pass through email data
-            			let options = {
-            				resourceType: data.type,
-            				resourceName: data.name,
-            				resourceLink: toolLink,
-            				type: 'admin',
-            			};
-            			// Create email body content
-            			let html = emailGenerator.generateEntityNotification(options);
-
 			emailGenerator.sendEmail(
 				emailRecipients,
 				`${i18next.t('translation:email.sender')}`,
@@ -461,20 +451,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		html = `Your ${tool.type} ${tool.name} has been rejected <br /><br />  Rejection reason: ${rejectionReason} <br /><br /> ${toolLink}`;
 	}
 
-	// 3. Create object to pass through email data
-	let options = {
-		resourceType: tool.type,
-		resourceName: tool.name,
-		resourceLink: toolLink,
-		subject,
-		rejectionReason: rejectionReason,
-		activeflag,
-		type: 'author',
-	};
-	// 4. Create email body content
-	let html = emailGenerator.generateEntityNotification(options);
-
-	// 5. Find all authors of the tool who have opted in to email updates
+	// 3. Find all authors of the tool who have opted in to email updates
 	var q = UserModel.aggregate([
 		// Find all authors of this tool
 		{ $match: { $or: [{ role: 'Admin' }, { id: { $in: tool.authors } }] } },
@@ -486,7 +463,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		{ $project: { _id: 1, firstname: 1, lastname: 1, email: 1, role: 1, 'tool.emailNotifications': 1 } },
 	]);
 
-	// 6. Use the returned array of email recipients to generate and send emails with SendGrid
+	// 4. Use the returned array of email recipients to generate and send emails with SendGrid
 	q.exec((err, emailRecipients) => {
 		if (err) {
 			return new Error({ success: false, error: err });
