@@ -39,7 +39,9 @@ export default class CohortService {
 		});
 		let datasetIdentifiers = await Promise.all(datasetIdentifiersPromises);
 		let relatedObjects = [];
+		let datasetPids = [];
 		datasetIdentifiers.forEach(datasetIdentifier => {
+			datasetPids.push(datasetIdentifier.pid);
 			relatedObjects.push({
 				objectType: 'dataset',
 				pid: datasetIdentifier.pid,
@@ -63,6 +65,7 @@ export default class CohortService {
 			cohort: body.cohort,
 			items: body.items,
 			rquestRelatedObjects: body.relatedObjects,
+			datasetPids,
 			relatedObjects,
 		};
 		return this.cohortRepository.addCohort(document);
