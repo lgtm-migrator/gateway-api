@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { Data } from '../tool/data.model';
 
 export default class CohortService {
 	constructor(cohortRepository) {
@@ -32,14 +33,17 @@ export default class CohortService {
 		}
 
 		// 3. Extract PIDs from cohort object so we can build up related objects
-		let pids = body.cohort.input.collections.map(collection => {
-			return collection.external_id;
+		let datasetIdentifiersPromises = await body.cohort.input.collections.map(async collection => {
+			let dataset = await Data.findOne({ pid: collection.external_id, activeflag: 'active' }, { datasetid: 1 }).lean();
+			return { pid: collection.external_id, datasetId: dataset.datasetid };
 		});
+		let datasetIdentifiers = await Promise.all(datasetIdentifiersPromises);
 		let relatedObjects = [];
-		pids.forEach(pid => {
+		datasetIdentifiers.forEach(datasetIdentifier => {
 			relatedObjects.push({
 				objectType: 'dataset',
-				pid,
+				pid: datasetIdentifier.pid,
+				objectId: datasetIdentifier.datasetId,
 				isLocked: true,
 			});
 		});
