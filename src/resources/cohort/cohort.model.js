@@ -16,6 +16,7 @@ const cohortSchema = new Schema(
 		changeLog: String,
 		updatedAt: Date,
 		lastRefresh: Date,
+		datasetPids: [],
 
 		// fields from RQuest
 		request_id: String,
