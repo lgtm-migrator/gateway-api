@@ -3,7 +3,6 @@ import { isEmpty } from 'lodash';
 import DataUseRegister from './dataUseRegister.entity';
 import { getUsersByIds } from '../user/user.repository';
 import { datasetService } from '../dataset/dependency';
-import constantsUtil from '../utilities/constants.util';
 
 /**
  * Build Data Use Registers
@@ -214,6 +213,16 @@ const buildRelatedDatasets = (creatorUser, datasets = [], manualUpload = true) =
 	});
 };
 
+/**
+ * Extract Form Applicants
+ *
+ * @desc    Accepts an array of authors and object containing answers from a Data Access Request application and extracts the names of non Gateway applicants as provided in the form,
+ * and extracts registered Gateway applicants, combining them before de-duplicating where match is found.
+ * @param 	{Array<Object>} 			authors 	An array of user documents representing contributors and the main applicant to a Data Access Request application
+ * @param 	{Object} 	applicationQuestionAnswers 	    An object of key pairs containing the question identifiers and answers to the questions taken from a Data Access Request application
+ * @returns {Object}						An object containing two arrays, the first being representative of registered Gateway users in the form of their identifying _id 
+ * and the second array being the names of applicants who were extracted from the question answers object passed in but did not match any of the registered users provided in authors
+ */
 const extractFormApplicants = (authors = [], applicationQuestionAnswers = {}) => {
 	const gatewayApplicants = authors.map(el => el._id);
 	const gatewayApplicantsNames = authors.map(el => `${el.firstname.trim()} ${el.lastname.trim()}`);
@@ -229,6 +238,13 @@ const extractFormApplicants = (authors = [], applicationQuestionAnswers = {}) =>
 	return { gatewayApplicants, nonGatewayApplicants };
 };
 
+/**
+ * Extract Funders And Sponsors
+ *
+ * @desc    Accepts an object containing answers from a Data Access Request application and extracts funders and sponsors names from the specific sections where these questions are asked.
+ * @param 	{Object} 	applicationQuestionAnswers 	    An object of key pairs containing the question identifiers and answers to the questions taken from a Data Access Request application
+ * @returns {Array<String>}						An array containing the organisation names provided as funders and sponsors
+ */
 const extractFundersAndSponsors = (applicationQuestionAnswers = {}) => {
 	return Object.keys(applicationQuestionAnswers)
 		.filter(
