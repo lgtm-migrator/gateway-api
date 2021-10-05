@@ -17,6 +17,13 @@ router.get('/:id', logger.logRequestMiddleware({ logCategory, action: 'Viewed a 
 	publisherController.getPublisher(req, res)
 );
 
+// @route   GET api/publishers
+// @desc    GET all publishers and their ids
+// @access  Public
+router.get('/', logger.logRequestMiddleware({ logCategory, action: 'Retrieved a list of publishers and their ids' }), (req, res) =>
+	publisherController.getAllPublishersAndIds(res)
+);
+
 // @route   GET api/publishers/:id/datasets
 // @desc    GET all datasets owned by publisher
 // @access  Private

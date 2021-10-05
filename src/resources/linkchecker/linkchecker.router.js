@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
 	results = await getObjectResult(true, { $and: [{ activeflag: 'active' }] });
 
 	const getAllUsers = persons =>
-		new Promise(async (resolve, reject) => {
+		new Promise(async resolve => {
 			let users = [];
 			for (let p of persons) {
 				let user = await getUserByUserId(p.id);
@@ -51,9 +51,9 @@ router.post('/', async (req, res) => {
 		});
 
 	const getErrorLink = link =>
-		new Promise(async (resolve, reject) => {
+		new Promise(async resolve => {
 			try {
-				const response = await axios.get(link);
+				await axios.get(link);
 				resolve('');
 			} catch (error) {
 				resolve('error');
@@ -61,7 +61,7 @@ router.post('/', async (req, res) => {
 		});
 
 	const checkLinks = (item, key) =>
-		new Promise(async (resolve, reject) => {
+		new Promise(async resolve => {
 			let errors = {};
 			let linkErrors = [];
 			if (allowedKeys.includes(key)) {
@@ -124,7 +124,7 @@ router.post('/', async (req, res) => {
 		}
 	};
 
-	let newResults = results.map(async item => {
+	results.map(async item => {
 		let errors = {};
 		// 1. deconstruct the item and select persons [1,2,4,5,6]
 		let { persons } = { ...item };

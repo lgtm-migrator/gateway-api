@@ -10,6 +10,11 @@ const _formTypes = Object.freeze({
 	Extended5Safe: '5 safe',
 });
 
+const _activityLogNotifications = Object.freeze({
+	MANUALEVENTADDED: 'manualEventAdded',
+	MANUALEVENTREMOVED: 'manualEventRemoved',
+});
+
 const _teamNotificationTypes = Object.freeze({
 	DATAACCESSREQUEST: 'dataAccessRequest',
 	METADATAONBOARDING: 'metaDataOnboarding',
@@ -71,7 +76,7 @@ const _questionActions = {
 const _navigationFlags = {
 	custodian: {
 		submitted: {
-			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# made this change on #DATE#' },
 		},
 		returned: {
 			completed: { status: 'WARNING', options: [], text: '#NAME# requested an update on #DATE#' },
@@ -94,7 +99,7 @@ const _navigationFlags = {
 	},
 	applicant: {
 		submitted: {
-			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# made this change on #DATE#' },
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
 		returned: {
@@ -108,7 +113,7 @@ const _navigationFlags = {
 						displayOrder: 1,
 					},
 				],
-				text: '#NAME# updated this answer on #DATE#',
+				text: '#NAME# made this change on on #DATE#',
 			},
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
@@ -149,6 +154,7 @@ const _notificationTypes = {
 	DATASETREJECTED: 'DatasetRejected',
 	TEAMADDED: 'TeamAdded',
 	MESSAGESENT: 'MessageSent',
+	DATASETDUPLICATED: 'DatasetDuplicated',
 };
 
 const _applicationStatuses = {
@@ -247,7 +253,41 @@ const _dataUseRegisterStatus = {
 	ACTIVE: 'active',
 	INREVIEW: 'inReview',
 	REJECTED: 'rejected',
-	ARCHIVED: 'archived',
+	ARCHIVED: 'archived'
+}
+
+// Activity log related enums
+const _activityLogEvents = {
+	APPLICATION_SUBMITTED: 'applicationSubmitted',
+	REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
+	UPDATES_SUBMITTED: 'updatesSubmitted',
+	AMENDMENT_SUBMITTED: 'amendmentSubmitted',
+	APPLICATION_APPROVED: 'applicationApproved',
+	APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
+	APPLICATION_REJECTED: 'applicationRejected',
+	COLLABORATOR_ADDEDD: 'collaboratorAdded',
+	COLLABORATOR_REMOVED: 'collaboratorRemoved',
+	PRESUBMISSION_MESSAGE: 'presubmissionMessage',
+	UPDATE_REQUESTED: 'updateRequested',
+	UPDATE_SUBMITTED: 'updateSubmitted',
+	WORKFLOW_ASSIGNED: 'workflowAssigned',
+	REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
+	RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
+	RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
+	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
+	DEADLINE_PASSED: 'deadlinePassed',
+	MANUAL_EVENT: 'manualEvent',
+	CONTEXTUAL_MESSAGE: 'contextualMessage',
+	NOTE: 'note',
+};
+
+const _activityLogTypes = {
+	DATA_ACCESS_REQUEST: 'data_request',
+};
+
+const _systemGeneratedUser = {
+	FIRSTNAME: 'System',
+	LASTNAME: 'Generated',
 };
 
 export default {
@@ -274,6 +314,10 @@ export default {
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
 	datatsetStatuses: _datatsetStatuses,
 	logTypes: _logTypes,
+	activityLogEvents: _activityLogEvents,
+	activityLogTypes: _activityLogTypes,
+	systemGeneratedUser: _systemGeneratedUser,
+	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
 	dataUseRegisterStatus: _dataUseRegisterStatus,
 };

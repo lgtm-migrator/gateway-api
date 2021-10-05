@@ -6,6 +6,7 @@ import { createDiscourseTopic } from '../discourse/discourse.service';
 import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 const asyncModule = require('async');
+import { filtersService } from '../filters/dependency';
 import { utils } from '../auth';
 import { ROLES } from '../user/user.roles';
 const hdrukEmail = `enquiry@healthdatagateway.org`;
@@ -50,7 +51,7 @@ const addTool = async (req, res) => {
 		data.description = inputSanitizer.removeNonBreakingSpaces(description);
 		data.resultsInsights = inputSanitizer.removeNonBreakingSpaces(resultsInsights);
 		console.log(req.body);
-		if (categories && typeof categories !== undefined)
+		if (categories && typeof categories !== 'undefined')
 			data.categories.category = inputSanitizer.removeNonBreakingSpaces(categories.category);
 		data.license = inputSanitizer.removeNonBreakingSpaces(license);
 		data.authors = authors;
@@ -150,7 +151,7 @@ const editTool = async (req, res) => {
 		let programmingLanguage = req.body.programmingLanguage;
 		let updatedon = Date.now();
 
-		if (!categories || typeof categories === undefined)
+		if (!categories || typeof categories === 'undefined')
 			categories = { category: '', programmingLanguage: [], programmingLanguageVersion: '' };
 
 		if (programmingLanguage) {
@@ -172,31 +173,31 @@ const editTool = async (req, res) => {
 		Data.findOneAndUpdate(
 			{ id: id },
 			{
-				type: inputSanitizer.removeNonBreakingSpaces(type),
-				name: inputSanitizer.removeNonBreakingSpaces(name),
-				link: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link)),
-				description: inputSanitizer.removeNonBreakingSpaces(description),
-				resultsInsights: inputSanitizer.removeNonBreakingSpaces(resultsInsights),
-				authorsNew: inputSanitizer.removeNonBreakingSpaces(authorsNew),
-				leadResearcher: inputSanitizer.removeNonBreakingSpaces(leadResearcher),
-				journal: inputSanitizer.removeNonBreakingSpaces(journal),
-				journalYear: inputSanitizer.removeNonBreakingSpaces(journalYear),
+				type: { $eq: inputSanitizer.removeNonBreakingSpaces(type) },
+				name: { $eq: inputSanitizer.removeNonBreakingSpaces(name) },
+				link: { $eq: urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(link)) },
+				description: { $eq: inputSanitizer.removeNonBreakingSpaces(description) },
+				resultsInsights: { $eq: inputSanitizer.removeNonBreakingSpaces(resultsInsights) },
+				authorsNew: { $eq: inputSanitizer.removeNonBreakingSpaces(authorsNew) },
+				leadResearcher: { $eq: inputSanitizer.removeNonBreakingSpaces(leadResearcher) },
+				journal: { $eq: inputSanitizer.removeNonBreakingSpaces(journal) },
+				journalYear: { $eq: inputSanitizer.removeNonBreakingSpaces(journalYear) },
 				categories: {
-					category: inputSanitizer.removeNonBreakingSpaces(categories.category),
-					programmingLanguage: categories.programmingLanguage,
-					programmingLanguageVersion: categories.programmingLanguageVersion,
+					category: { $eq: inputSanitizer.removeNonBreakingSpaces(categories.category) },
+					programmingLanguage: { $eq: categories.programmingLanguage },
+					programmingLanguageVersion: { $eq: categories.programmingLanguageVersion },
 				},
-				license: inputSanitizer.removeNonBreakingSpaces(license),
-				authors: authors,
-				programmingLanguage: programmingLanguage,
+				license: { $eq: inputSanitizer.removeNonBreakingSpaces(license) },
+				authors: { $eq: authors },
+				programmingLanguage: { $eq: programmingLanguage },
 				tags: {
-					features: inputSanitizer.removeNonBreakingSpaces(tags.features),
-					topics: inputSanitizer.removeNonBreakingSpaces(tags.topics),
+					features: { $eq: inputSanitizer.removeNonBreakingSpaces(tags.features) },
+					topics: { $eq: inputSanitizer.removeNonBreakingSpaces(tags.topics) },
 				},
-				relatedObjects: relatedObjects,
-				isPreprint: isPreprint,
-				document_links: documentLinksValidated,
-				updatedon: updatedon,
+				relatedObjects: { $eq: relatedObjects },
+				isPreprint: { $eq: isPreprint },
+				document_links: { $eq: documentLinksValidated },
+				updatedon: { $eq: updatedon },
 			},
 			err => {
 				if (err) {
@@ -207,6 +208,7 @@ const editTool = async (req, res) => {
 			if (tool == null) {
 				reject(new Error(`No record found with id of ${id}.`));
 			} else {
+				filtersService.optimiseFilters(tool.type);
 				// Send email notification of update to all authors who have opted in to updates
 				sendEmailNotificationToAuthors(data, toolCreator);
 				storeNotificationsForAuthors(data, toolCreator);
@@ -403,6 +405,7 @@ const setStatus = async (req, res) => {
 				await createDiscourseTopic(tool);
 			}
 
+			filtersService.optimiseFilters(tool.type);
 			// Send email notification of status update to admins and authors who have opted in
 			await sendEmailNotifications(tool, activeflag, rejectionReason);
 

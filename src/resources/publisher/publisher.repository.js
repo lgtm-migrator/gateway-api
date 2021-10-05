@@ -23,6 +23,10 @@ export default class PublisherRepository extends Repository {
 		return this.findOne(query, options);
 	}
 
+	getPublishersAndIds() {
+		return PublisherModel.find({}, { _id: 1, name: 1 });
+	}
+
 	getPublisherDatasets(id) {
 		return Dataset.find({
 			type: 'dataset',

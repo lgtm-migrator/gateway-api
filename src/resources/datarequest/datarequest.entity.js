@@ -1,4 +1,4 @@
-import { last } from 'lodash';
+import { last, capitalize } from 'lodash';
 
 import Entity from '../base/entity';
 import constants from '../utilities/constants.util';
@@ -19,6 +19,7 @@ export default class DataRequestClass extends Entity {
 		for (const versionKey in this.versionTree) {
 			const { applicationId, iterationId } = this.versionTree[versionKey];
 			// 2. If not unique or represents a minor version then ignore
+
 			if (!versionIds.some(v => v === applicationId) && !iterationId) {
 				// 3. If unique, push id to array for return
 				versionIds.push(applicationId);
@@ -74,6 +75,18 @@ export default class DataRequestClass extends Entity {
 
 		this.createMinorVersion();
 	}
+
+	getVersionById(versionId) {
+		return Object.keys(this.versionTree).reduce((obj, key) => {
+			if (
+				this.versionTree[key].applicationId.toString() === versionId.toString() ||
+				(this.versionTree[key].iterationId && this.versionTree[key].iterationId.toString() === versionId.toString())
+			) {
+				obj = this.versionTree[key];
+			}
+			return obj;
+		}, {});
+	}
 }
 
 /**
@@ -93,6 +106,7 @@ export const buildVersionTree = accessRecord => {
 		amendmentIterations = [],
 		applicationType = constants.submissionTypes.INITIAL,
 		applicationStatus = constants.applicationStatuses.INPROGRESS,
+		isShared = false,
 	} = accessRecord;
 	const versionKey = majorVersion ? majorVersion.toString() : '1.0';
 
@@ -118,7 +132,7 @@ export const buildVersionTree = accessRecord => {
 	const hasMinorVersions = amendmentIterations.length > 0;
 	const isInitial = applicationType === constants.submissionTypes.INITIAL;
 	const detailedTitle = `Version ${versionKey}.0${!hasMinorVersions && !isInitial ? ' (latest)' : ''}${
-		isInitial ? '' : ` | ${applicationType}`
+		isInitial ? '' : ` | ${capitalize(applicationType)}`
 	}`;
 	const majorVersionObj = {
 		[`${versionKey}.0`]: {
@@ -128,6 +142,7 @@ export const buildVersionTree = accessRecord => {
 			link: `/data-access-request/${applicationId}?version=${versionKey}.0`,
 			applicationType,
 			applicationStatus,
+			isShared,
 		},
 	};
 

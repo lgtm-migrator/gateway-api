@@ -20,7 +20,7 @@ const addUserSearchPreference = async req => {
 const getAllSavedSearchPreferences = async req => {
 	return new Promise(async resolve => {
 		const userId = req.user.id;
-		const userSearchPreferences = await SearchPreferencesModel.find({ userId }).lean();
+		const userSearchPreferences = await SearchPreferencesModel.find({ userId }).sort({ createdAt: -1 }).lean();
 		resolve(userSearchPreferences);
 	});
 };
