@@ -60,8 +60,9 @@ const strategy = app => {
 		'/auth/linkedin/callback',
 		(req, res, next) => {
 			passport.authenticate('linkedin', (err, user) => {
-				req.err = err;
-				req.user = user;
+				req.auth = {};
+				req.auth.err = err;
+				req.auth.user = user;
 				next();
 			})(req, res, next);
 		},

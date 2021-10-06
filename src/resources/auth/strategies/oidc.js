@@ -70,8 +70,9 @@ const strategy = app => {
 		'/auth/oidc/callback',
 		(req, res, next) => {
 			passport.authenticate('oidc', (err, user) => {
-				req.err = err;
-				req.user = user;
+				req.auth = {};
+				req.auth.err = err;
+				req.auth.user = user;
 				next();
 			})(req, res, next);
 		},
