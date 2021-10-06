@@ -1,8 +1,17 @@
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
+import { Cohort } from '../cohort/cohort.model';
 import { findNodeInTree } from '../filters/utils/filters.util';
-import { datasetFilters, toolFilters, projectFilters, paperFilters, collectionFilters, courseFilters } from '../filters/filters.mapper';
+import {
+	datasetFilters,
+	toolFilters,
+	projectFilters,
+	paperFilters,
+	collectionFilters,
+	courseFilters,
+	cohortFilters,
+} from '../filters/filters.mapper';
 import _ from 'lodash';
 import moment from 'moment';
 import helperUtil from '../utilities/helper.util';
@@ -13,13 +22,15 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		collection = Course;
 	} else if (type === 'collection') {
 		collection = Collections;
+	} else if (type === 'cohort') {
+		collection = Cohort;
 	}
 	// ie copy deep object
 	let newSearchQuery = _.cloneDeep(searchQuery);
-	if (type !== 'collection') {
-		newSearchQuery['$and'].push({ type: type });
-	} else {
+	if (['collection', 'cohort'].includes(type)) {
 		newSearchQuery['$and'].push({ publicflag: true });
+	} else {
+		newSearchQuery['$and'].push({ type: type });
 	}
 
 	if (type === 'course') {
@@ -65,13 +76,12 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			},
 		];
 	} else if (type === 'collection') {
-		
-		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
 
-		if(searchTerm) {
+		if (searchTerm) {
 			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
 		}
-		
+
 		queryObject = [
 			{ $match: searchTerm },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
@@ -116,6 +126,90 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 						},
 					},
 					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+				},
+			},
+		];
+	} else if (type === 'cohort') {
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
+
+		if (searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+		queryObject = [
+			{ $match: searchTerm },
+			{ $lookup: { from: 'tools', localField: 'uploaders', foreignField: 'id', as: 'persons' } },
+			{
+				$lookup: {
+					from: 'tools',
+					let: {
+						datasetPids: '$datasetPids',
+					},
+					pipeline: [
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$in: ['$pid', '$$datasetPids'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+					],
+					as: 'datasets',
+				},
+			},
+			{
+				$addFields: {
+					persons: {
+						$map: {
+							input: '$persons',
+							as: 'row',
+							in: {
+								id: '$$row.id',
+								firstname: '$$row.firstname',
+								lastname: '$$row.lastname',
+								fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+							},
+						},
+					},
+					datasets: {
+						$map: {
+							input: '$datasets',
+							as: 'row',
+							in: {
+								pid: '$$row.pid',
+								name: '$$row.name',
+							},
+						},
+					},
+					counts: {
+						$map: {
+							input: '$cohort.result.counts',
+							as: 'row',
+							in: {
+								rquest_id: '$$row.rquest_id',
+								count: '$$row.count',
+							},
+						},
+					},
+				},
+			},
+			{ $match: newSearchQuery },
+			{
+				$project: {
+					_id: 0,
+					id: 1,
+					name: 1,
+					type: 1,
+					persons: 1,
+					datasets: 1,
+					filterCriteria: 1,
+					counts: 1,
 				},
 			},
 		];
@@ -374,9 +468,13 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	}
 
 	// Get paged results based on query params
-	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)).catch(err => {
-		console.log(err);
-	});
+	const searchResults = await collection
+		.aggregate(queryObject)
+		.skip(parseInt(startIndex))
+		.limit(parseInt(maxResults))
+		.catch(err => {
+			console.log(err);
+		});
 	// Return data
 	return { data: searchResults };
 }
@@ -387,12 +485,14 @@ export function getObjectCount(type, searchAll, searchQuery) {
 		collection = Course;
 	} else if (type === 'collection') {
 		collection = Collections;
+	} else if (type === 'cohort') {
+		collection = Cohort;
 	}
 	let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
-	if (type !== 'collection') {
-		newSearchQuery['$and'].push({ type: type });
-	} else {
+	if (['collection', 'cohort'].includes(type)) {
 		newSearchQuery['$and'].push({ publicflag: true });
+	} else {
+		newSearchQuery['$and'].push({ type: type });
 	}
 	if (type === 'course') {
 		newSearchQuery['$and'].forEach(x => {
@@ -451,12 +551,12 @@ export function getObjectCount(type, searchAll, searchQuery) {
 				.sort({ score: { $meta: 'textScore' } });
 		}
 	} else if (type === 'collection') {
-		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
 
-		if(searchTerm) {
+		if (searchTerm) {
 			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
 		}
-		
+
 		if (searchAll) {
 			q = collection.aggregate([
 				{ $match: searchTerm },
@@ -515,6 +615,202 @@ export function getObjectCount(type, searchAll, searchQuery) {
 						},
 					},
 					{ $match: newSearchQuery },
+					{
+						$group: {
+							_id: {},
+							count: {
+								$sum: 1,
+							},
+						},
+					},
+					{
+						$project: {
+							count: '$count',
+							_id: 0,
+						},
+					},
+				])
+				.sort({ score: { $meta: 'textScore' } });
+		}
+	} else if (type === 'cohort') {
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
+
+		if (searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+
+		if (searchAll) {
+			q = collection.aggregate([
+				{ $match: searchTerm },
+				{ $lookup: { from: 'tools', localField: 'uploaders', foreignField: 'id', as: 'persons' } },
+				{
+					$lookup: {
+						from: 'tools',
+						let: {
+							datasetPids: '$datasetPids',
+						},
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$and: [
+											{
+												$in: ['$pid', '$$datasetPids'],
+											},
+											{
+												$eq: ['$activeflag', 'active'],
+											},
+										],
+									},
+								},
+							},
+						],
+						as: 'datasets',
+					},
+				},
+				{
+					$addFields: {
+						persons: {
+							$map: {
+								input: '$persons',
+								as: 'row',
+								in: {
+									id: '$$row.id',
+									firstname: '$$row.firstname',
+									lastname: '$$row.lastname',
+									fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+								},
+							},
+						},
+						datasets: {
+							$map: {
+								input: '$datasets',
+								as: 'row',
+								in: {
+									pid: '$$row.pid',
+									name: '$$row.name',
+								},
+							},
+						},
+						counts: {
+							$map: {
+								input: '$cohort.result.counts',
+								as: 'row',
+								in: {
+									rquest_id: '$$row.rquest_id',
+									count: '$$row.count',
+								},
+							},
+						},
+					},
+				},
+				{ $match: newSearchQuery },
+				{
+					$project: {
+						_id: 0,
+						id: 1,
+						name: 1,
+						type: 1,
+						persons: 1,
+						datasets: 1,
+						filterCriteria: 1,
+						counts: 1,
+					},
+				},
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
+						},
+					},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
+					},
+				},
+			]);
+		} else {
+			q = collection
+				.aggregate([
+					{ $match: searchTerm },
+					{ $lookup: { from: 'tools', localField: 'uploaders', foreignField: 'id', as: 'persons' } },
+					{
+						$lookup: {
+							from: 'tools',
+							let: {
+								datasetPids: '$datasetPids',
+							},
+							pipeline: [
+								{
+									$match: {
+										$expr: {
+											$and: [
+												{
+													$in: ['$pid', '$$datasetPids'],
+												},
+												{
+													$eq: ['$activeflag', 'active'],
+												},
+											],
+										},
+									},
+								},
+							],
+							as: 'datasets',
+						},
+					},
+					{
+						$addFields: {
+							persons: {
+								$map: {
+									input: '$persons',
+									as: 'row',
+									in: {
+										id: '$$row.id',
+										firstname: '$$row.firstname',
+										lastname: '$$row.lastname',
+										fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+									},
+								},
+							},
+							datasets: {
+								$map: {
+									input: '$datasets',
+									as: 'row',
+									in: {
+										pid: '$$row.pid',
+										name: '$$row.name',
+									},
+								},
+							},
+							counts: {
+								$map: {
+									input: '$cohort.result.counts',
+									as: 'row',
+									in: {
+										rquest_id: '$$row.rquest_id',
+										count: '$$row.count',
+									},
+								},
+							},
+						},
+					},
+					{ $match: newSearchQuery },
+					{
+						$project: {
+							_id: 0,
+							id: 1,
+							name: 1,
+							type: 1,
+							persons: 1,
+							datasets: 1,
+							filterCriteria: 1,
+							counts: 1,
+						},
+					},
 					{
 						$group: {
 							_id: {},
@@ -723,6 +1019,8 @@ export function getObjectFilters(searchQueryStart, req, type) {
 				filterNode = findNodeInTree(collectionFilters, key);
 			} else if (type === 'course') {
 				filterNode = findNodeInTree(courseFilters, key);
+			} else if (type === 'cohort') {
+				filterNode = findNodeInTree(cohortFilters, key);
 			}
 
 			if (filterNode) {
