@@ -50,7 +50,17 @@ export default class CohortService {
 			});
 		});
 
-		// 4. Build document object and save to DB
+		// 4. Extract filter criteria used in query
+		let filterCriteria = [];
+		body.cohort.input.cohorts.forEach(cohort => {
+			cohort.groups.forEach(group => {
+				group.rules.forEach(rule => {
+					filterCriteria.push(rule.value);
+				});
+			});
+		});
+
+		// 5. Build document object and save to DB
 		const document = {
 			id: uniqueId,
 			pid: uuid,
@@ -66,7 +76,10 @@ export default class CohortService {
 			items: body.items,
 			rquestRelatedObjects: body.relatedObjects,
 			datasetPids,
+			filterCriteria,
 			relatedObjects,
+			description: '',
+			publicflag: true,
 		};
 		return this.cohortRepository.addCohort(document);
 	}
