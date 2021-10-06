@@ -253,8 +253,8 @@ const _dataUseRegisterStatus = {
 	ACTIVE: 'active',
 	INREVIEW: 'inReview',
 	REJECTED: 'rejected',
-	ARCHIVED: 'archived'
-}
+	ARCHIVED: 'archived',
+};
 
 // Activity log related enums
 const _activityLogEvents = {
