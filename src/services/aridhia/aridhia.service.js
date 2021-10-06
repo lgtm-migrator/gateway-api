@@ -28,7 +28,6 @@ export default class aridhiaService {
 				datasetid: `datasetid-fair-${res.code}`,
 				description: res.catalogue.description,
 				datasetv2: {},
-				doiName: "" || res.catalogue.identifier,
 				license: res.catalogue.license,
 				name: res.name,
 				publisher: res.catalogue.publisher,
@@ -132,7 +131,7 @@ export default class aridhiaService {
 	
 		v2.doiName = null;
 		if (res.catalogue.identifier)
-			v2.doiName = res.catalogue.identifier;
+			v2.summary.doiName = res.catalogue.identifier;
 	
 		v2.summary.contactPoint = null;
 		if (res.catalogue.creator && res.catalogue.contactPoint) {
