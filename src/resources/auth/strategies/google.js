@@ -62,9 +62,10 @@ const strategy = app => {
 		'/auth/google/callback',
 		(req, res, next) => {
 			passport.authenticate('google', (err, user) => {
-				req.auth = {};
-				req.auth.err = err;
-				req.auth.user = user;
+				req.auth = {
+					err: err,
+					user: user,
+				};
 				next();
 			})(req, res, next);
 		},

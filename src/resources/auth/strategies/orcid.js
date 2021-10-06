@@ -74,9 +74,10 @@ const strategy = app => {
 		'/auth/orcid/callback',
 		(req, res, next) => {
 			passport.authenticate('orcid', (err, user, info) => {
-				req.auth = {};
-				req.auth.err = err;
-				req.auth.user = user;
+				req.auth = {
+					err: err,
+					user: user,
+				};
 				next();
 			})(req, res, next);
 		},

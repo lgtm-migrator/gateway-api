@@ -67,9 +67,10 @@ const strategy = app => {
 		`/auth/azure/callback`,
 		(req, res, next) => {
 			passport.authenticate('azure_ad_oauth2', (err, user) => {
-				req.auth = {};
-				req.auth.err = err;
-				req.auth.user = user;
+				req.auth = {
+					err: err,
+					user: user,
+				};
 				next();
 			})(req, res, next);
 		},
