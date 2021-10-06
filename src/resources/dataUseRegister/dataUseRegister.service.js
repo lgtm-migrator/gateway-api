@@ -128,13 +128,25 @@ export default class DataUseRegisterService {
 				['safeproject-projectdetails-startdate']: startDate,
 				['safeproject-projectdetails-enddate']: endDate,
 				safedatastorageandprocessingaccessmethodtrustedresearchenvironment: dataLocation,
+				safedataconfidentialityavenuelegalbasisconfidentialinformation: dutyOfConfidentiality,
+				safedataotherdatasetslinkadditionaldatasetslinkagedetails: datasetLinkageDetails = '',
+				safedataotherdatasetsrisksmitigations: datasetLinkageRiskMitigation = '',
+				safedatalawfulbasisgdprarticle6basis: legalBasisForDataArticle6,
+				safedatalawfulbasisgdprarticle9conditions: legalBasisForDataArticle9,
+				safedatadatafieldsdatarefreshrequired: dataRefreshRequired = '',
+				safeoutputsoutputsdisseminationplansdisclosurecontrolpolicy: privacyEnhancements,
 			},
 		} = accessRecord;
 
 		const fundersAndSponsors = dataUseRegisterUtil.extractFundersAndSponsors(questionAnswers);
-		const { gatewayApplicants = [], nonGatewayApplicants = [] } = dataUseRegisterUtil.extractFormApplicants([...authors, mainApplicant], questionAnswers);
+		const { gatewayApplicants = [], nonGatewayApplicants = [] } = dataUseRegisterUtil.extractFormApplicants(
+			[...authors, mainApplicant],
+			questionAnswers
+		);
 		const relatedDatasets = dataUseRegisterUtil.buildRelatedDatasets(creatorUser, datasets, false);
 		const relatedApplications = await this.buildRelatedDataUseRegisters(creatorUser, versionTree, applicationId);
+		const datasetLinkageDescription = `${datasetLinkageDetails.toString().trim()} ${datasetLinkageRiskMitigation.toString().trim()}`;
+		const requestFrequency = dataRefreshRequired === 'Yes' ? 'Recurring' : dataRefreshRequired === 'No' ? 'One-off' : '';
 
 		const projectStartDate = moment(startDate, 'DD/MM/YYYY');
 		const projectEndDate = moment(endDate, 'DD/MM/YYYY');
@@ -145,12 +157,18 @@ export default class DataUseRegisterService {
 			projectIdText: projectId,
 			projectId: applicationId,
 			applicantId: applicantId.trim(),
+			accreditedResearcherStatus: isNil(accreditedResearcherStatus) ? 'Unknown' : accreditedResearcherStatus.toString().trim(),
 			...(projectTitle && { projectTitle: projectTitle.toString().trim() }),
-			...(accreditedResearcherStatus && { accreditedResearcherStatus: accreditedResearcherStatus.toString().trim() }),
 			...(organisationName && { organisationName: organisationName.toString().trim() }),
 			...(laySummary && { laySummary: laySummary.toString().trim() }),
 			...(publicBenefitStatement && { publicBenefitStatement: publicBenefitStatement.toString().trim() }),
 			...(dataLocation && { dataLocation: dataLocation.toString().trim() }),
+			...(dutyOfConfidentiality && { dutyOfConfidentiality: dutyOfConfidentiality.toString().trim() }),
+			...(!isEmpty(datasetLinkageDescription) && { datasetLinkageDescription: datasetLinkageDescription.trim() }),
+			...(!isEmpty(requestFrequency) && { requestFrequency }),
+			...(legalBasisForDataArticle6 && { legalBasisForDataArticle6: legalBasisForDataArticle6.toString().trim() }),
+			...(legalBasisForDataArticle9 && { legalBasisForDataArticle9: legalBasisForDataArticle9.toString().trim() }),
+			...(privacyEnhancements && { privacyEnhancements: privacyEnhancements.toString().trim() }),
 			...(projectStartDate.isValid() && { projectStartDate }),
 			...(projectEndDate.isValid() && { projectEndDate }),
 			...(latestApprovalDate.isValid() && { latestApprovalDate }),
@@ -169,7 +187,7 @@ export default class DataUseRegisterService {
 			lastActivity: Date.now(),
 			manualUpload: false,
 		});
-		
+
 		this.dataUseRegisterRepository.createDataUseRegister(dataUseRegister);
 	}
 
@@ -189,7 +207,11 @@ export default class DataUseRegisterService {
 		const ignoredApplicationTypes = [constants.submissionTypes.INPROGRESS, constants.submissionTypes.RESUBMISSION];
 
 		for (const key of Object.keys(versionTree)) {
-			if (versionTree[key].applicationType && !ignoredApplicationTypes.includes(versionTree[key].applicationType) && versionTree[key].toString() !== applicationId.toString()) {
+			if (
+				versionTree[key].applicationType &&
+				!ignoredApplicationTypes.includes(versionTree[key].applicationType) &&
+				versionTree[key].toString() !== applicationId.toString()
+			) {
 				const { applicationId } = versionTree[key];
 				const dataUseRegister = await this.dataUseRegisterRepository.getDataUseRegisterByApplicationId(applicationId);
 
