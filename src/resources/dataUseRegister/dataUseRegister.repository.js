@@ -16,6 +16,10 @@ export default class DataUseRegisterRepository extends Repository {
 		return this.find(query, options);
 	}
 
+	getDataUseRegisterByApplicationId(applicationId) {
+		return this.dataUseRegister.findOne({ projectId: applicationId }, 'id').lean();
+	}
+
 	updateDataUseRegister(id, body) {
 		return this.update(id, body);
 	}
@@ -24,6 +28,11 @@ export default class DataUseRegisterRepository extends Repository {
 		return this.dataUseRegister.insertMany(dataUseRegisters);
 	}
 
+	async createDataUseRegister(dataUseRegister) {
+		await this.linkRelatedDataUseRegisters(dataUseRegister);
+		return await this.create(dataUseRegister);
+	}
+	
 	async checkDataUseRegisterExists(dataUseRegister) {
 		const { projectIdText, projectTitle, laySummary, organisationName, datasetTitles, latestApprovalDate } = dataUseRegister;
 		const duplicatesFound = await this.dataUseRegister.countDocuments({
