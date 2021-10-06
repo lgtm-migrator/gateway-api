@@ -8,6 +8,7 @@ const cohortSchema = new Schema(
 		pid: String,
 		type: String,
 		name: String,
+		description: String,
 		activeflag: String,
 		userId: Number,
 		uploaders: [],

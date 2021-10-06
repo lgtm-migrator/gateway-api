@@ -87,4 +87,27 @@ export default class CohortController extends Controller {
 			});
 		}
 	}
+
+	async editCohort(req, res) {
+		try {
+			const { name } = req.body;
+
+			await this.cohortService.editCohort(req.params.id, req.body).catch(err => {
+				logger.logError(err, logCategory);
+			});
+
+			return res.status(201).json({
+				success: true,
+				cohortName: name,
+				cohortId: req.params.id,
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'A server error occurred, please try again',
+			});
+		}
+	}
 }

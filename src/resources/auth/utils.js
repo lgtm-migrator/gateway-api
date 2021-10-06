@@ -7,6 +7,7 @@ import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
 import { Data } from '../tool/data.model';
 import { TeamModel } from '../team/team.model';
+import { Cohort } from '../cohort/cohort.model';
 import constants from '../utilities/constants.util';
 import { isEmpty } from 'lodash';
 
@@ -92,6 +93,9 @@ const checkAllowedToAccess = type => async (req, res, next) => {
 			} else if (type === 'collection') {
 				data = await Collections.findOne({ id: params.id }, { authors: 1 }).lean();
 				if (!isEmpty(data) && data.authors.includes(user.id)) return next();
+			} else if (type === 'cohort') {
+				data = await Cohort.findOne({ id: params.id }, { uploaders: 1 }).lean();
+				if (!isEmpty(data) && data.uploaders.includes(user.id)) return next();
 			} else {
 				data = await Data.findOne({ id: params.id }, { authors: 1, uploader: 1 }).lean();
 				if (!isEmpty(data) && [...data.authors, data.uploader].includes(user.id)) return next();
