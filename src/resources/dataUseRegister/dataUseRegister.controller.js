@@ -2,6 +2,7 @@ import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import _ from 'lodash';
 import constants from './../utilities/constants.util';
+import dataUseRegisterUtil from './dataUseRegister.util';
 
 const logCategory = 'dataUseRegister';
 
@@ -114,6 +115,23 @@ export default class DataUseRegisterController extends Controller {
 				success: true,
 				result,
 			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'A server error occurred, please try again',
+			});
+		}
+	}
+
+	async checkDataUseRegister(req, res) {
+		try {
+			const { dataUses } = req.body;
+
+			const result = await this.dataUseRegisterService.checkDataUseRegisters(dataUses);
+
+			return res.status(200).json({ success: true, result });
 		} catch (err) {
 			// Return error response if something goes wrong
 			logger.logError(err, logCategory);

@@ -107,7 +107,7 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 				...(!isEmpty(datasetTitles) && { datasetTitles }),
 				...(!isEmpty(datasetIds) && { datasetIds }),
 				...(!isEmpty(datasetPids) && { datasetPids }),
-				...(!isEmpty(gatewayApplicants) && { gatewayApplicants }),
+				...(!isEmpty(gatewayApplicants) && { gatewayApplicants: gatewayApplicants.map(gatewayApplicant => gatewayApplicant._id) }),
 				...(!isEmpty(nonGatewayApplicants) && { nonGatewayApplicants }),
 				...(!isEmpty(fundersAndSponsors) && { fundersAndSponsors }),
 				...(!isEmpty(researchOutputs) && { researchOutputs }),
@@ -118,7 +118,7 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 				user: creatorUser._id,
 				updatedon: Date.now(),
 				lastActivity: Date.now(),
-				manualUpload: true
+				manualUpload: true,
 			})
 		);
 	}
@@ -181,7 +181,11 @@ const getLinkedApplicants = async (applicantNames = []) => {
 		}
 	}
 
-	const gatewayApplicants = isEmpty(unverifiedUserIds) ? [] : (await getUsersByIds(unverifiedUserIds)).map(el => el._id);
+	const gatewayApplicants = isEmpty(unverifiedUserIds)
+		? []
+		: (await getUsersByIds(unverifiedUserIds)).map(el => {
+				return { _id: el._id, id: el.id, firstname: el.firstname, lastname: el.lastname };
+		  });
 
 	return { gatewayApplicants, nonGatewayApplicants };
 };
@@ -213,5 +217,5 @@ export default {
 	buildDataUseRegisters,
 	getLinkedDatasets,
 	getLinkedApplicants,
-	buildRelatedObjects
+	buildRelatedObjects,
 };

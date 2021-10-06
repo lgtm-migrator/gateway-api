@@ -68,11 +68,11 @@ const validateUploadRequest = (req, res, next) => {
 		errors.push('You must provide the custodian team identifier to associate the data uses to');
 	}
 
-	if(!dataUses || isEmpty(dataUses)) {
+	if (!dataUses || isEmpty(dataUses)) {
 		errors.push('You must provide data uses to upload');
 	}
 
-	if(!isEmpty(errors)){
+	if (!isEmpty(errors)) {
 		return res.status(400).json({
 			success: false,
 			message: errors.join(', '),
@@ -136,9 +136,9 @@ const authorizeUpload = async (req, res, next) => {
 			message: 'You are not authorised to perform this action',
 		});
 	}
-	
+
 	next();
-}
+};
 
 // @route   GET /api/v2/data-use-registers/id
 // @desc    Returns a dataUseRegister based on dataUseRegister ID provided
@@ -172,6 +172,13 @@ router.patch(
 	authorizeUpdate,
 	logger.logRequestMiddleware({ logCategory, action: 'Updated dataUseRegister data' }),
 	(req, res) => dataUseRegisterController.updateDataUseRegister(req, res)
+);
+
+// @route   POST /api/v2/data-use-registers/check
+// @desc    Check the submitted data uses for duplicates and returns links to Gatway entities (datasets, users)
+// @access  Public
+router.post('/check', passport.authenticate('jwt'), logger.logRequestMiddleware({ logCategory, action: 'Check data uses' }), (req, res) =>
+	dataUseRegisterController.checkDataUseRegister(req, res)
 );
 
 // @route   POST /api/v2/data-use-registers/upload
