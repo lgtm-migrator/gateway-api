@@ -2,13 +2,12 @@ import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
 import { findNodeInTree } from '../filters/utils/filters.util';
-import { datasetFilters } from '../filters/filters.mapper';
+import { datasetFilters, toolFilters, projectFilters, paperFilters, collectionFilters, courseFilters } from '../filters/filters.mapper';
 import _ from 'lodash';
 import moment from 'moment';
 import helperUtil from '../utilities/helper.util';
 
-export async function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort) {
-
+export async function getObjectResult(type, searchAll, searchQuery, startIndex, maxResults, sort, authorID, form) {
 	let collection = Data;
 	if (type === 'course') {
 		collection = Course;
@@ -54,11 +53,196 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					'courseOptions.studyMode': 1,
 					domains: 1,
 					award: 1,
+					creator: 1,
+				},
+			},
+			{
+				$addFields: {
+					myEntity: {
+						$eq: ['$creator', authorID],
+					},
 				},
 			},
 		];
 	} else if (type === 'collection') {
-		queryObject = [{ $match: newSearchQuery }, { $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } }];
+		
+		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+
+		if(searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+		
+		queryObject = [
+			{ $match: searchTerm },
+			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			{
+				$addFields: {
+					persons: {
+						$map: {
+							input: '$persons',
+							as: 'row',
+							in: {
+								id: '$$row.id',
+								firstname: '$$row.firstname',
+								lastname: '$$row.lastname',
+								fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+							},
+						},
+					},
+				},
+			},
+			{ $match: newSearchQuery },
+			{
+				$project: {
+					_id: 0,
+					id: 1,
+					name: 1,
+					description: 1,
+					imageLink: 1,
+					relatedObjects: 1,
+
+					'persons.id': 1,
+					'persons.firstname': 1,
+					'persons.lastname': 1,
+					'persons.fullName': 1,
+
+					activeflag: 1,
+					counter: 1,
+					latestUpdate: {
+						$cond: {
+							if: { $gte: ['$createdAt', '$updatedon'] },
+							then: '$createdAt',
+							else: '$updatedon',
+						},
+					},
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+				},
+			},
+		];
+	} else if (type === 'dataset') {
+		queryObject = [
+			{ $match: newSearchQuery },
+			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			{
+				$lookup: {
+					from: 'tools',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [
+						{ $unwind: '$relatedObjects' },
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$eq: ['$relatedObjects.pid', '$$pid'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $group: { _id: null, count: { $sum: 1 } } },
+					],
+					as: 'relatedResourcesTools',
+				},
+			},
+			{
+				$lookup: {
+					from: 'course',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [
+						{ $unwind: '$relatedObjects' },
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$eq: ['$relatedObjects.pid', '$$pid'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $group: { _id: null, count: { $sum: 1 } } },
+					],
+					as: 'relatedResourcesCourses',
+				},
+			},
+			{
+				$project: {
+					_id: 0,
+					id: 1,
+					name: 1,
+					type: 1,
+					description: 1,
+					bio: {
+						$cond: {
+							if: { $eq: [false, '$showBio'] },
+							then: '$$REMOVE',
+							else: '$bio',
+						},
+					},
+					'categories.category': 1,
+					'categories.programmingLanguage': 1,
+					'programmingLanguage.programmingLanguage': 1,
+					'programmingLanguage.version': 1,
+					license: 1,
+					'tags.features': 1,
+					'tags.topics': 1,
+					firstname: 1,
+					lastname: 1,
+					datasetid: 1,
+					pid: 1,
+					isCohortDiscovery: 1,
+					'datasetfields.publisher': 1,
+					'datasetfields.geographicCoverage': 1,
+					'datasetfields.physicalSampleAvailability': 1,
+					'datasetfields.abstract': 1,
+					'datasetfields.ageBand': 1,
+					'datasetfields.phenotypes': 1,
+					'datasetv2.summary.publisher.name': 1,
+					'datasetv2.summary.publisher.logo': 1,
+					'datasetv2.summary.publisher.memberOf': 1,
+
+					'persons.id': 1,
+					'persons.firstname': 1,
+					'persons.lastname': 1,
+
+					activeflag: 1,
+					counter: 1,
+					'datasetfields.metadataquality.quality_score': 1,
+
+					latestUpdate: '$timestamps.updated',
+					relatedresources: {
+						$add: [
+							{
+								$cond: {
+									if: { $eq: [{ $size: '$relatedResourcesTools' }, 0] },
+									then: 0,
+									else: { $first: '$relatedResourcesTools.count' },
+								},
+							},
+							{
+								$cond: {
+									if: { $eq: [{ $size: '$relatedResourcesCourses' }, 0] },
+									then: 0,
+									else: { $first: '$relatedResourcesCourses.count' },
+								},
+							},
+						],
+					},
+				},
+			},
+		];
 	} else {
 		queryObject = [
 			{ $match: newSearchQuery },
@@ -112,12 +296,42 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 							else: '$updatedon',
 						},
 					},
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+					journalYear: 1,
+					journal: 1,
+					authorsNew: 1,
+					authors: 1,
+				},
+			},
+			{
+				$addFields: {
+					myEntity: {
+						$in: [authorID, '$authors'],
+					},
 				},
 			},
 		];
 	}
 
-	if (sort === '' || sort === 'relevance') {
+	if (sort === '') {
+		if (type === 'dataset') {
+			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
+			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+		} else if (type === 'paper') {
+			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
+			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
+		} else {
+			if (form === 'true' && searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, latestUpdate: -1 } });
+			} else if (form === 'true' && !searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, score: { $meta: 'textScore' } } });
+			} else if (form !== 'true' && searchAll) {
+				queryObject.push({ $sort: { latestUpdate: -1 } });
+			} else if (form !== 'true' && !searchAll) {
+				queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+			}
+		}
+	} else if (sort === 'relevance') {
 		if (type === 'person') {
 			if (searchAll) queryObject.push({ $sort: { lastname: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
@@ -137,16 +351,32 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
 		else queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, score: { $meta: 'textScore' } } });
 	} else if (sort === 'startdate') {
-		if (searchAll) queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
-		else queryObject.push({ $sort: { 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+		if (form === 'true' && searchAll) {
+			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1 } });
+		} else if (form === 'true' && !searchAll) {
+			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+		} else if (form !== 'true' && searchAll) {
+			queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
+		} else if (form !== 'true' && !searchAll) {
+			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+		}
 	} else if (sort === 'latest') {
-		if (type === 'person') {
-			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
-			else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+		if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+		else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'resources') {
+		if (searchAll) queryObject.push({ $sort: { relatedresources: -1 } });
+		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'sortbyyear') {
+		if (type === 'paper') {
+			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
+			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
 		}
 	}
+
 	// Get paged results based on query params
-	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults));
+	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)).catch(err => {
+		console.log(err);
+	});
 	// Return data
 	return { data: searchResults };
 }
@@ -221,6 +451,88 @@ export function getObjectCount(type, searchAll, searchQuery) {
 				.sort({ score: { $meta: 'textScore' } });
 		}
 	} else if (type === 'collection') {
+		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+
+		if(searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+		
+		if (searchAll) {
+			q = collection.aggregate([
+				{ $match: searchTerm },
+				{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+				{
+					$addFields: {
+						persons: {
+							$map: {
+								input: '$persons',
+								as: 'row',
+								in: {
+									id: '$$row.id',
+									firstname: '$$row.firstname',
+									lastname: '$$row.lastname',
+									fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+								},
+							},
+						},
+					},
+				},
+				{ $match: newSearchQuery },
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
+						},
+					},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
+					},
+				},
+			]);
+		} else {
+			q = collection
+				.aggregate([
+					{ $match: searchTerm },
+					{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+					{
+						$addFields: {
+							persons: {
+								$map: {
+									input: '$persons',
+									as: 'row',
+									in: {
+										id: '$$row.id',
+										firstname: '$$row.firstname',
+										lastname: '$$row.lastname',
+										fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+									},
+								},
+							},
+						},
+					},
+					{ $match: newSearchQuery },
+					{
+						$group: {
+							_id: {},
+							count: {
+								$sum: 1,
+							},
+						},
+					},
+					{
+						$project: {
+							count: '$count',
+							_id: 0,
+						},
+					},
+				])
+				.sort({ score: { $meta: 'textScore' } });
+		}
+	} else {
 		if (searchAll) {
 			q = collection.aggregate([
 				{ $match: newSearchQuery },
@@ -243,6 +555,85 @@ export function getObjectCount(type, searchAll, searchQuery) {
 			q = collection
 				.aggregate([
 					{ $match: newSearchQuery },
+					{
+						$group: {
+							_id: {},
+							count: {
+								$sum: 1,
+							},
+						},
+					},
+					{
+						$project: {
+							count: '$count',
+							_id: 0,
+						},
+					},
+				])
+				.sort({ score: { $meta: 'textScore' } });
+		}
+	}
+
+	return new Promise((resolve, reject) => {
+		q.exec((err, data) => {
+			if (typeof data === 'undefined') resolve([]);
+			else resolve(data);
+		});
+	});
+}
+
+export function getMyObjectsCount(type, searchAll, searchQuery, authorID) {
+	let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
+
+	newSearchQuery['$and'].push({ type: type });
+
+	let collection = Data;
+	if (type === 'course') {
+		collection = Course;
+		newSearchQuery['$and'].push({ creator: authorID });
+	} else {
+		newSearchQuery['$and'].push({ authors: authorID });
+	}
+
+	if (type === 'course') {
+		newSearchQuery['$and'].forEach(x => {
+			if (x.$or) {
+				x.$or.forEach(y => {
+					if (y['courseOptions.startDate']) y['courseOptions.startDate'] = new Date(y['courseOptions.startDate']);
+				});
+			}
+		});
+		newSearchQuery['$and'].push({
+			$or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }],
+		});
+	}
+
+	var q = '';
+	if (type === 'course') {
+		if (searchAll) {
+			q = collection.aggregate([
+				{ $match: newSearchQuery },
+				{ $unwind: '$courseOptions' },
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
+						},
+					},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
+					},
+				},
+			]);
+		} else {
+			q = collection
+				.aggregate([
+					{ $match: newSearchQuery },
+					{ $unwind: '$courseOptions' },
 					{
 						$group: {
 							_id: {},
@@ -313,241 +704,67 @@ export function getObjectCount(type, searchAll, searchQuery) {
 export function getObjectFilters(searchQueryStart, req, type) {
 	let searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
 
-	let {
-		toolprogrammingLanguage = '',
-		toolcategories = '',
-		toolfeatures = '',
-		tooltopics = '',
-		projectcategories = '',
-		projectfeatures = '',
-		projecttopics = '',
-		paperfeatures = '',
-		papertopics = '',
-		coursestartdates = '',
-		coursedomains = '',
-		coursekeywords = '',
-		courseprovider = '',
-		courselocation = '',
-		coursestudymode = '',
-		courseaward = '',
-		courseentrylevel = '',
-		courseframework = '',
-		coursepriority = '',
-		collectionpublisher = '',
-		collectionkeywords = '',
-	} = req.query;
-
-	if (type === 'dataset') {
-		// iterate over query string keys
-		for (const key of Object.keys(req.query)) {
-			try {
-				const filterValues = req.query[key].split('::');
-				// check mapper for query type
-				const filterNode = findNodeInTree(datasetFilters, key);
-				if (filterNode) {
-					// switch on query type	and build up query object
-					const { type = '', dataPath = '', matchField = '' } = filterNode;
-					switch (type) {
-						case 'contains':
-							// use regex to match without case sensitivity
-							searchQuery['$and'].push({
-								$or: filterValues.map(value => {
-									return { [`${dataPath}`]: { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } };
-								}),
-							});
-							break;
-						case 'elementMatch':
-							// use regex to match objects within an array without case sensitivity
-							searchQuery['$and'].push({
-								[`${dataPath}`]: {
-									$elemMatch: {
-										$or: filterValues.map(value => {
-											return { [`${matchField}`]: { $regex: value, $options: 'i' } };
-										}),
-									},
-								},
-							});
-							break;
-						case 'boolean':
-							searchQuery['$and'].push({ [`${dataPath}`]: true });
-							break;
-						default:
-							break;
-					}
-				}
-			} catch (err) {
-				console.error(err.message);
+	// iterate over query string keys
+	for (const key of Object.keys(req.query)) {
+		try {
+			const filterValues = req.query[key].split('::');
+			// check mapper for query type
+			// let filterNode = findNodeInTree(`${type}Filters`, key);
+			let filterNode;
+			if (type === 'dataset') {
+				filterNode = findNodeInTree(datasetFilters, key);
+			} else if (type === 'tool') {
+				filterNode = findNodeInTree(toolFilters, key);
+			} else if (type === 'project') {
+				filterNode = findNodeInTree(projectFilters, key);
+			} else if (type === 'paper') {
+				filterNode = findNodeInTree(paperFilters, key);
+			} else if (type === 'collection') {
+				filterNode = findNodeInTree(collectionFilters, key);
+			} else if (type === 'course') {
+				filterNode = findNodeInTree(courseFilters, key);
 			}
-		}
-	}
 
-	if (type === 'tool') {
-		if (toolprogrammingLanguage.length > 0) {
-			let filterTermArray = [];
-			toolprogrammingLanguage.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'programmingLanguage.programmingLanguage': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (toolcategories.length > 0) {
-			let filterTermArray = [];
-			toolcategories.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'categories.category': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (toolfeatures.length > 0) {
-			let filterTermArray = [];
-			toolfeatures.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (tooltopics.length > 0) {
-			let filterTermArray = [];
-			tooltopics.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.topics': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'project') {
-		if (projectcategories.length > 0) {
-			let filterTermArray = [];
-			projectcategories.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'categories.category': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (projectfeatures.length > 0) {
-			let filterTermArray = [];
-			projectfeatures.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (projecttopics.length > 0) {
-			let filterTermArray = [];
-			projecttopics.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.topics': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'paper') {
-		if (paperfeatures.length > 0) {
-			let filterTermArray = [];
-			paperfeatures.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.features': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (papertopics.length > 0) {
-			let filterTermArray = [];
-			papertopics.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'tags.topics': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'course') {
-		if (coursestartdates.length > 0) {
-			let filterTermArray = [];
-			coursestartdates.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'courseOptions.startDate': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courseprovider.length > 0) {
-			let filterTermArray = [];
-			courseprovider.split('::').forEach(filterTerm => {
-				filterTermArray.push({ provider: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courselocation.length > 0) {
-			let filterTermArray = [];
-			courselocation.split('::').forEach(filterTerm => {
-				filterTermArray.push({ location: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (coursestudymode.length > 0) {
-			let filterTermArray = [];
-			coursestudymode.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'courseOptions.studyMode': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courseaward.length > 0) {
-			let filterTermArray = [];
-			courseaward.split('::').forEach(filterTerm => {
-				filterTermArray.push({ award: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courseentrylevel.length > 0) {
-			let filterTermArray = [];
-			courseentrylevel.split('::').forEach(filterTerm => {
-				filterTermArray.push({ 'entries.level': filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (coursedomains.length > 0) {
-			let filterTermArray = [];
-			coursedomains.split('::').forEach(filterTerm => {
-				filterTermArray.push({ domains: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (coursekeywords.length > 0) {
-			let filterTermArray = [];
-			coursekeywords.split('::').forEach(filterTerm => {
-				filterTermArray.push({ keywords: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (courseframework.length > 0) {
-			let filterTermArray = [];
-			courseframework.split('::').forEach(filterTerm => {
-				filterTermArray.push({ competencyFramework: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (coursepriority.length > 0) {
-			let filterTermArray = [];
-			coursepriority.split('::').forEach(filterTerm => {
-				filterTermArray.push({ nationalPriority: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-	} else if (type === 'collection') {
-		if (collectionkeywords.length > 0) {
-			let filterTermArray = [];
-			collectionkeywords.split('::').forEach(filterTerm => {
-				filterTermArray.push({ keywords: filterTerm });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
-		}
-
-		if (collectionpublisher.length > 0) {
-			let filterTermArray = [];
-			collectionpublisher.split('::').forEach(filterTerm => {
-				filterTermArray.push({ authors: parseInt(filterTerm) });
-			});
-			searchQuery['$and'].push({ $or: filterTermArray });
+			if (filterNode) {
+				// switch on query type	and build up query object
+				const { type = '', dataPath = '', matchField = '' } = filterNode;
+				switch (type) {
+					case 'contains':
+						// use regex to match without case sensitivity
+						searchQuery['$and'].push({
+							$or: filterValues.map(value => {
+								return { [`${dataPath}`]: { $regex: helperUtil.escapeRegexChars(value), $options: 'i' } };
+							}),
+						});
+						break;
+					case 'elementMatch':
+						// use regex to match objects within an array without case sensitivity
+						searchQuery['$and'].push({
+							[`${dataPath}`]: {
+								$elemMatch: {
+									$or: filterValues.map(value => {
+										return { [`${matchField}`]: { $regex: value, $options: 'i' } };
+									}),
+								},
+							},
+						});
+						break;
+					case 'boolean':
+						searchQuery['$and'].push({ [`${dataPath}`]: true });
+						break;
+					case 'dateEquals':
+						searchQuery['$and'].push({
+							$or: filterValues.map(value => {
+								return { [`${dataPath}`]: value };
+							}),
+						});
+						break;
+					default:
+						break;
+				}
+			}
+		} catch (err) {
+			console.error(err.message);
 		}
 	}
 	return searchQuery;

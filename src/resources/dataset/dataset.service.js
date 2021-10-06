@@ -65,7 +65,7 @@ export default class DatasetService {
 			this.paperRepository.find(query, { lean }),
 			this.toolRepository.find(query, { lean }),
 			this.projectRepository.find(query, { lean }),
-			this.courseRepository.find(query, { lean })
+			this.courseRepository.find(query, { lean }),
 		]);
 
 		// Flatten and reduce related entities into related objects
@@ -79,7 +79,7 @@ export default class DatasetService {
 					objectType: entity.type,
 					user: obj.user,
 					updated: obj.updated,
-				}
+				};
 			});
 			arr = [...arr, ...formattedEntityRelatedObjects];
 			return arr;
@@ -87,7 +87,7 @@ export default class DatasetService {
 		return relatedObjects;
 	}
 
-	 reformatTechnicalDetails (dataset) {
+	reformatTechnicalDetails(dataset) {
 		// Return if no technical details found
 		if (_.isNil(dataset.structuralMetadata) || _.isNil(dataset.structuralMetadata.dataClasses)) {
 			return dataset;
@@ -109,5 +109,5 @@ export default class DatasetService {
 			return { id, description, name, dataElementsCount: dataElements.length || 0, dataElements };
 		});
 		return dataset;
-	};
+	}
 }

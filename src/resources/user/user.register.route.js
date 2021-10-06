@@ -5,6 +5,7 @@ import { updateUser } from '../user/user.service';
 import { createPerson } from '../person/person.service';
 import { getUserByUserId } from '../user/user.repository';
 import { registerDiscourseUser } from '../discourse/discourse.service';
+import hubspotConnector from '../../services/hubspot/hubspot';
 const urlValidator = require('../utilities/urlValidator');
 const eventLogController = require('../eventlog/eventlog.controller');
 const router = express.Router();
@@ -32,11 +33,10 @@ router.post('/', async (req, res) => {
 		showBio,
 		showLink,
 		showOrcid,
-		redirectURL,
+		redirectURL: redirectURLis = '',
 		sector,
 		showSector,
 		organisation,
-		emailNotifications,
 		feedback,
 		news,
 		terms,
@@ -47,7 +47,6 @@ router.post('/', async (req, res) => {
 	} = req.body;
 	let link = urlValidator.validateURL(req.body.link);
 	let orcid = urlValidator.validateOrcidURL(req.body.orcid);
-	let username = `${firstname.toLowerCase()}.${lastname.toLowerCase()}`;
 	let discourseUsername,
 		discourseKey = '';
 
@@ -56,7 +55,7 @@ router.post('/', async (req, res) => {
 	}
 
 	// 1. Update existing user record created during login
-	let [userErr, user] = await to(
+	let [, user] = await to(
 		updateUser({
 			id,
 			firstname,
@@ -64,11 +63,13 @@ router.post('/', async (req, res) => {
 			email,
 			discourseKey,
 			discourseUsername,
+			feedback,
+			news,
 		})
 	);
 
 	// 2. Create person entry in tools
-	let [personErr, person] = await to(
+	await to(
 		createPerson({
 			id,
 			firstname,
@@ -79,9 +80,6 @@ router.post('/', async (req, res) => {
 			showLink,
 			orcid,
 			showOrcid,
-			emailNotifications,
-			feedback,
-			news,
 			terms,
 			sector,
 			showSector,
@@ -101,6 +99,9 @@ router.post('/', async (req, res) => {
 		email,
 	});
 
+	// 4. Sync contact in Hubspot
+	hubspotConnector.syncContact({ ...user.toObject(), orcid, sector, organisation });
+
 	const [loginErr, token] = await to(login(req, user));
 
 	if (loginErr) {
@@ -108,13 +109,7 @@ router.post('/', async (req, res) => {
 		return res.status(500).json({ success: false, data: 'Authentication error!' });
 	}
 
-	var redirectURLis = redirectURL;
-
-	if (redirectURLis === null || redirectURLis === '') {
-		redirectURLis = '';
-	}
-
-	//Build event object for user registered and log it to DB
+	// 5. Build event object for user registered and log it to DB
 	let eventObj = {
 		userId: req.user.id,
 		event: `user_registered_${req.user.provider}`,

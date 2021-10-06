@@ -1,3 +1,5 @@
+import { isNaN } from 'lodash';
+
 export default class Repository {
 	constructor(Model) {
 		this.collection = Model;
@@ -8,9 +10,14 @@ export default class Repository {
 		//Build query
 		let queryObj = { ...query };
 
+		// Check if each param should be a Number.  Allows searching for a value in a Numbers array
+		Object.keys(queryObj).forEach(key => {
+			queryObj[key] = isNaN(queryObj[key] * 1) ? queryObj[key] : queryObj[key] * 1;
+		});
+
 		// Population from query
-		if(query.populate) {
-			populate = query.populate.split(',').join(' '); 
+		if (query.populate) {
+			populate = query.populate.split(',').join(' ');
 		}
 
 		// Filtering
@@ -41,7 +48,7 @@ export default class Repository {
 
 		// Pagination
 		const page = query.page * 1 || 1;
-		const limit = query.limit * 1 || null;
+		const limit = query.limit * 1 || 500;
 		const skip = (page - 1) * limit;
 		results = results.skip(skip).limit(limit);
 
@@ -76,6 +83,11 @@ export default class Repository {
 	async update(document, body = {}) {
 		const id = typeof document._id !== 'undefined' ? document._id : document;
 		return this.collection.findByIdAndUpdate(id, body, { new: true });
+	}
+
+	// @desc    Allows us to update existing Mongoose documents found by a query within the collection via the model inheriting this class
+	async updateByQuery(query = {}, body = {}) {
+		return this.collection.findOneAndUpdate(query, body, { new: true, upsert: true });
 	}
 
 	// @desc    Allows us to delete an existing Mongoose document within the collection via the model inheriting this class
@@ -118,9 +130,9 @@ export default class Repository {
 	}
 }
 
-export const processQueryParamOperators = (queryStr) => {
+export const processQueryParamOperators = queryStr => {
 	return queryStr.replace(/\"\b(gte|gt|lte|lt|eq)\b\":\"\b(\-?\d*\.?\d+)\b\"/g, (match, operator, value) => {
 		const parsedValue = parseFloat(value);
 		return `"$${operator}":${parsedValue}`;
 	});
-}
+};
