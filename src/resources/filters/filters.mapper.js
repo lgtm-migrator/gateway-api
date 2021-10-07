@@ -854,3 +854,36 @@ export const courseFilters = [
 		beta: false,
 	},
 ];
+
+export const cohortFilters = [
+	{
+		id: 1,
+		label: 'Inclusion/exclusion criteria',
+		key: 'inclusionExclusion',
+		alias: 'cohortinclusionexclusion',
+		dataPath: 'filterCriteria',
+		type: 'contains',
+		tooltip: null,
+		closed: true,
+		isSearchable: false,
+		selectedCount: 0,
+		filters: [],
+		highlighted: [],
+		beta: false,
+	},
+	{
+		id: 2,
+		label: 'Datasets',
+		key: 'datasets',
+		alias: 'cohortdatasets',
+		dataPath: 'datasets.name',
+		type: 'contains',
+		tooltip: null,
+		closed: true,
+		isSearchable: false,
+		selectedCount: 0,
+		filters: [],
+		highlighted: [],
+		beta: false,
+	},
+];

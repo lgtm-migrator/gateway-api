@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
 	} else {
 		const type = !isEmpty(tab) && typeof tab === 'string' ? lowerCase(tab.substring(0, tab.length - 1)) : '';
 		let defaultQuery = { $and: [{ activeflag: 'active' }] };
-		if (type === 'collection') {
+		if (['collection', 'cohort'].includes(type)) {
 			defaultQuery['$and'].push({ publicflag: true });
 		} else if (type === 'course') {
 			defaultQuery['$and'].push({

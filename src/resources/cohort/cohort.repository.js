@@ -1,6 +1,7 @@
 import Repository from '../base/repository';
 import { Cohort } from './cohort.model';
 import { filtersService } from '../filters/dependency';
+import { isNil } from 'lodash';
 
 export default class CohortRepository extends Repository {
 	constructor() {
@@ -12,9 +13,69 @@ export default class CohortRepository extends Repository {
 		return this.findOne(query, options);
 	}
 
-	async getCohorts(query) {
-		const options = { lean: true };
-		return this.find(query, options);
+	async getCohorts(query, options = {}) {
+		if (options.aggregate) {
+			const searchTerm = (query && query['$and'] && query['$and'].find(exp => !isNil(exp['$text']))) || {};
+
+			if (searchTerm) {
+				query['$and'] = query['$and'].filter(exp => !exp['$text']);
+			}
+
+			const aggregateQuery = [
+				{ $match: searchTerm },
+				{
+					$lookup: {
+						from: 'tools',
+						let: {
+							datasetPids: '$datasetPids',
+						},
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$and: [
+											{
+												$in: ['$pid', '$$datasetPids'],
+											},
+											{
+												$eq: ['$activeflag', 'active'],
+											},
+										],
+									},
+								},
+							},
+						],
+						as: 'datasets',
+					},
+				},
+				{
+					$addFields: {
+						datasets: {
+							$map: {
+								input: '$datasets',
+								as: 'row',
+								in: {
+									pid: '$$row.pid',
+									name: '$$row.name',
+									activeflag: '$$row.activeflag',
+								},
+							},
+						},
+					},
+				},
+				{ $match: { $and: [...query['$and']] } },
+			];
+
+			if (query.fields) {
+				aggregateQuery.push({
+					$project: { filterCriteria: 1, 'datasets.name': 1 },
+				});
+			}
+			return Cohort.aggregate(aggregateQuery);
+		} else {
+			const options = { lean: true };
+			return this.find(query, options);
+		}
 	}
 
 	async addCohort(body) {
