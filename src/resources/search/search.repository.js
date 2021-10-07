@@ -733,100 +733,98 @@ export function getObjectCount(type, searchAll, searchQuery) {
 				},
 			]);
 		} else {
-			q = collection
-				.aggregate([
-					{ $match: searchTerm },
-					{ $lookup: { from: 'tools', localField: 'uploaders', foreignField: 'id', as: 'persons' } },
-					{
-						$lookup: {
-							from: 'tools',
-							let: {
-								datasetPids: '$datasetPids',
-							},
-							pipeline: [
-								{
-									$match: {
-										$expr: {
-											$and: [
-												{
-													$in: ['$pid', '$$datasetPids'],
-												},
-												{
-													$eq: ['$activeflag', 'active'],
-												},
-											],
-										},
-									},
-								},
-							],
-							as: 'datasets',
+			q = collection.aggregate([
+				{ $match: searchTerm },
+				{ $lookup: { from: 'tools', localField: 'uploaders', foreignField: 'id', as: 'persons' } },
+				{
+					$lookup: {
+						from: 'tools',
+						let: {
+							datasetPids: '$datasetPids',
 						},
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$and: [
+											{
+												$in: ['$pid', '$$datasetPids'],
+											},
+											{
+												$eq: ['$activeflag', 'active'],
+											},
+										],
+									},
+								},
+							},
+						],
+						as: 'datasets',
 					},
-					{
-						$addFields: {
-							persons: {
-								$map: {
-									input: '$persons',
-									as: 'row',
-									in: {
-										id: '$$row.id',
-										firstname: '$$row.firstname',
-										lastname: '$$row.lastname',
-										fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
-									},
+				},
+				{
+					$addFields: {
+						persons: {
+							$map: {
+								input: '$persons',
+								as: 'row',
+								in: {
+									id: '$$row.id',
+									firstname: '$$row.firstname',
+									lastname: '$$row.lastname',
+									fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
 								},
 							},
-							datasets: {
-								$map: {
-									input: '$datasets',
-									as: 'row',
-									in: {
-										pid: '$$row.pid',
-										name: '$$row.name',
-									},
+						},
+						datasets: {
+							$map: {
+								input: '$datasets',
+								as: 'row',
+								in: {
+									pid: '$$row.pid',
+									name: '$$row.name',
 								},
 							},
-							counts: {
-								$map: {
-									input: '$cohort.result.counts',
-									as: 'row',
-									in: {
-										rquest_id: '$$row.rquest_id',
-										count: '$$row.count',
-									},
+						},
+						counts: {
+							$map: {
+								input: '$cohort.result.counts',
+								as: 'row',
+								in: {
+									rquest_id: '$$row.rquest_id',
+									count: '$$row.count',
 								},
 							},
 						},
 					},
-					{ $match: newSearchQuery },
-					{
-						$project: {
-							_id: 0,
-							id: 1,
-							name: 1,
-							type: 1,
-							persons: 1,
-							datasets: 1,
-							filterCriteria: 1,
-							counts: 1,
+				},
+				{ $match: newSearchQuery },
+				{
+					$project: {
+						_id: 0,
+						id: 1,
+						name: 1,
+						type: 1,
+						persons: 1,
+						datasets: 1,
+						filterCriteria: 1,
+						counts: 1,
+					},
+				},
+				{
+					$group: {
+						_id: {},
+						count: {
+							$sum: 1,
 						},
 					},
-					{
-						$group: {
-							_id: {},
-							count: {
-								$sum: 1,
-							},
-						},
+				},
+				{
+					$project: {
+						count: '$count',
+						_id: 0,
 					},
-					{
-						$project: {
-							count: '$count',
-							_id: 0,
-						},
-					},
-				])
-				.sort({ score: { $meta: 'textScore' } });
+				},
+			]);
 		}
 	} else {
 		if (searchAll) {
