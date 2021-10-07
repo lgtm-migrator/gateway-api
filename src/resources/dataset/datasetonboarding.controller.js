@@ -4,7 +4,7 @@ import { filtersService } from '../filters/dependency';
 import constants from '../utilities/constants.util';
 import datasetonboardingUtil from './utils/datasetonboarding.util';
 import { v4 as uuidv4 } from 'uuid';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, escapeRegExp } from 'lodash';
 import axios from 'axios';
 import FormData from 'form-data';
 import moment from 'moment';
@@ -708,7 +708,7 @@ module.exports = {
 	//GET api/v1/dataset-onboarding/checkUniqueTitle
 	checkUniqueTitle: async (req, res) => {
 		let { pid, title = '' } = req.query;
-		let regex = new RegExp(`^${title}$`, 'i');
+		let regex = new RegExp(`^${escapeRegExp(title)}$`, 'i');
 		let dataset = await Data.findOne({ name: regex, pid: { $ne: pid } });
 		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
 	},
@@ -721,8 +721,8 @@ module.exports = {
 			let dataset = {};
 
 			if (!isEmpty(pid)) {
-				dataset = await Data.findOne({ pid, activeflag: 'active' }).lean();
-				if (!isEmpty(datasetID)) dataset = await Data.findOne({ pid: datasetID, activeflag: 'archive' }).sort({ createdAt: -1 });
+				dataset = await Data.findOne({ pid: { $eq: pid }, activeflag: 'active' }).lean();
+				if (!isEmpty(datasetID)) dataset = await Data.findOne({ pid: { $eq: datasetID }, activeflag: 'archive' }).sort({ createdAt: -1 });
 			} else if (!isEmpty(datasetID)) dataset = await Data.findOne({ datasetid: { datasetID } }).lean();
 
 			if (isEmpty(dataset)) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
@@ -855,6 +855,49 @@ module.exports = {
 			Sentry.captureException(err);
 			console.error(err.message);
 			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
+		}
+	},
+  
+	//POST api/v1/dataset-onboarding/duplicate/:id
+	duplicateDataset: async (req, res) => {
+		try {
+			let id = req.params.id;
+
+			//Check user type and authentication to submit application
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			if (!authorised) {
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			}
+
+			let dataset = await Data.findOne({ _id: id });
+			let datasetCopy = JSON.parse(JSON.stringify(dataset));
+			let duplicateText = '-duplicate';
+
+			delete datasetCopy._id;
+			datasetCopy.pid = uuidv4();
+
+			let parsedQuestionAnswers = JSON.parse(datasetCopy.questionAnswers);
+			parsedQuestionAnswers['properties/summary/title'] += duplicateText;
+
+			datasetCopy.name += duplicateText;
+			datasetCopy.activeflag = 'draft';
+			datasetCopy.datasetVersion = '1.0.0';
+			datasetCopy.questionAnswers = JSON.stringify(parsedQuestionAnswers);
+			if (datasetCopy.datasetv2.summary.title) {
+				datasetCopy.datasetv2.summary.title += duplicateText;
+			}
+
+			await Data.create(datasetCopy);
+
+			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
+
+			return res.status(200).json({
+				success: true,
+				datasetName: dataset.name,
+			});
+		} catch (err) {
+			console.error(err.message);
+			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
 };

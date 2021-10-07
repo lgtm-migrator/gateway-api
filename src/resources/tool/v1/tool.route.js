@@ -267,9 +267,9 @@ router.post('/review/add', passport.authenticate('jwt'), async (req, res) => {
 router.post('/reply', passport.authenticate('jwt'), async (req, res) => {
 	const { reviewID, replierID, reply } = req.body;
 	Reviews.findOneAndUpdate(
-		{ reviewID: reviewID },
+		{ reviewID: { $eq: reviewID } },
 		{
-			replierID: replierID,
+			replierID,
 			reply: inputSanitizer.removeNonBreakingSpaces(reply),
 			replydate: Date.now(),
 		},
@@ -288,9 +288,9 @@ router.post('/reply', passport.authenticate('jwt'), async (req, res) => {
 router.put('/review/approve', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
 	const { id, activeflag } = req.body;
 	Reviews.findOneAndUpdate(
-		{ reviewID: id },
+		{ reviewID: { $eq: id } },
 		{
-			activeflag: activeflag,
+			activeflag,
 		},
 		err => {
 			if (err) return res.json({ success: false, error: err });
@@ -298,7 +298,7 @@ router.put('/review/approve', passport.authenticate('jwt'), utils.checkIsInRole(
 			return res.json({ success: true });
 		}
 	).then(async () => {
-		const review = await Reviews.findOne({ reviewID: id });
+		const review = await Reviews.findOne({ reviewID: { $eq: id } });
 
 		await storeNotificationMessages(review);
 
@@ -314,7 +314,7 @@ router.put('/review/approve', passport.authenticate('jwt'), utils.checkIsInRole(
  */
 router.delete('/review/reject', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
 	const { id } = req.body;
-	Reviews.findOneAndDelete({ reviewID: id }, err => {
+	Reviews.findOneAndDelete({ reviewID: { $eq: id } }, err => {
 		if (err) return res.send(err);
 		return res.json({ success: true });
 	});
@@ -327,7 +327,7 @@ router.delete('/review/reject', passport.authenticate('jwt'), utils.checkIsInRol
  */
 router.delete('/review/delete', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const { id } = req.body;
-	Data.findOneAndDelete({ id: id }, err => {
+	Data.findOneAndDelete({ id: { $eq: id } }, err => {
 		if (err) return res.send(err);
 		return res.json({ success: true });
 	});

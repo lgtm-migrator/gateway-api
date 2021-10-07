@@ -4,63 +4,29 @@ import { utils } from '../auth';
 import passport from 'passport';
 import { getAllTools } from '../tool/data.repository';
 import { UserModel } from '../user/user.model';
-import mailchimpConnector from '../../services/mailchimp/mailchimp';
-import constants from '../utilities/constants.util';
+import hubspotConnector from '../../services/hubspot/hubspot';
 import helper from '../utilities/helper.util';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
+import { logger } from '../utilities/logger';
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
+const logCategory = 'Person API';
 
 const router = express.Router();
 
 router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
-	let {
-		id,
-		firstname,
-		lastname,
-		email,
-		bio,
-		showBio,
-		showLink,
-		showOrcid,
-		feedback,
-		news,
-		terms,
-		sector,
-		showSector,
-		organisation,
-		showOrganisation,
-		tags,
-		showDomain,
-		profileComplete,
-	} = req.body;
-	const type = 'person';
-	let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
-	let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
-	(firstname = inputSanitizer.removeNonBreakingSpaces(firstname)),
-		(lastname = inputSanitizer.removeNonBreakingSpaces(lastname)),
-		(bio = inputSanitizer.removeNonBreakingSpaces(bio));
-	sector = inputSanitizer.removeNonBreakingSpaces(sector);
-	organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
-	tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
-
-	const userId = parseInt(id);
-	const { news: newsOriginalValue, feedback: feedbackOriginalValue } = await UserModel.findOne({ id: userId }, 'news feedback').lean();
-	const newsDirty = newsOriginalValue !== news && !isNil(news);
-	const feedbackDirty = feedbackOriginalValue !== feedback && !isNil(feedback);
-
-	await Data.findOneAndUpdate(
-		{ id: userId },
-		{
+	try {
+		let {
+			id,
 			firstname,
 			lastname,
-			type,
+			email,
 			bio,
 			showBio,
-			link,
 			showLink,
-			orcid,
 			showOrcid,
+			feedback,
+			news,
 			terms,
 			sector,
 			showSector,
@@ -69,29 +35,59 @@ router.put('/', passport.authenticate('jwt'), utils.checkIsUser(), async (req, r
 			tags,
 			showDomain,
 			profileComplete,
+		} = req.body;
+		const type = 'person';
+		let link = urlValidator.validateURL(inputSanitizer.removeNonBreakingSpaces(req.body.link));
+		let orcid = req.body.orcid !== '' ? urlValidator.validateOrcidURL(inputSanitizer.removeNonBreakingSpaces(req.body.orcid)) : '';
+		(firstname = inputSanitizer.removeNonBreakingSpaces(firstname)),
+			(lastname = inputSanitizer.removeNonBreakingSpaces(lastname)),
+			(bio = inputSanitizer.removeNonBreakingSpaces(bio));
+		sector = inputSanitizer.removeNonBreakingSpaces(sector);
+		organisation = inputSanitizer.removeNonBreakingSpaces(organisation);
+		tags.topics = inputSanitizer.removeNonBreakingSpaces(tags.topics);
+
+		const userId = parseInt(id);
+
+		await Data.findOneAndUpdate(
+		{ id: userId },
+		{
+			firstname: firstname,
+			lastname: lastname,
+			type: type,
+			bio: bio,
+			showBio: showBio,
+			link: link,
+			showLink: showLink,
+			orcid: orcid,
+			showOrcid: showOrcid,
+			terms: terms,
+			sector: sector,
+			showSector: showSector,
+			organisation: organisation,
+			showOrganisation: showOrganisation,
+			tags: tags,
+			showDomain: showDomain,
+			profileComplete: profileComplete,
 		}
 	);
 
-	if (newsDirty) {
-		const newsSubscriptionId = process.env.MAILCHIMP_NEWS_AUDIENCE_ID;
-		const newsStatus = news ? constants.mailchimpSubscriptionStatuses.SUBSCRIBED : constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
-		await mailchimpConnector.updateSubscriptionUsers(newsSubscriptionId, [req.user], newsStatus);
-	}
-	if (feedbackDirty) {
-		const feedbackSubscriptionId = process.env.MAILCHIMP_FEEDBACK_AUDIENCE_ID;
-		const feedbackStatus = feedback
-			? constants.mailchimpSubscriptionStatuses.SUBSCRIBED
-			: constants.mailchimpSubscriptionStatuses.UNSUBSCRIBED;
-		await mailchimpConnector.updateSubscriptionUsers(feedbackSubscriptionId, [req.user], feedbackStatus);
-	}
+		const user = await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } }, { new: true });
 
-	await UserModel.findOneAndUpdate({ id: userId }, { $set: { firstname, lastname, email, feedback, news } })
-		.then(person => {
-			return res.json({ success: true, data: person });
-		})
-		.catch(err => {
-			return res.json({ success: false, error: err });
+		// Sync contact in Hubspot
+		hubspotConnector.syncContact({ ...user.toObject(), orcid, sector, organisation });
+
+		return res.status(200).json({
+			status: 'success',
+			data: user,
 		});
+	} catch (err) {
+		// Return error response if something goes wrong
+		logger.logError(err, logCategory);
+		return res.status(500).json({
+			success: false,
+			message: 'An error occurred attempting to update the user record',
+		});
+	}
 });
 
 // @router   GET /api/v1/person/unsubscribe/:userObjectId

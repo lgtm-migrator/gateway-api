@@ -21,7 +21,7 @@ const hdrukEmail = `enquiry@healthdatagateway.org`;
  */
 router.delete('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const { id } = req.body;
-	Data.findOneAndDelete({ id: id }, err => {
+	Data.findOneAndDelete({ id: { $eq: id } }, err => {
 		if (err) return res.send(err);
 		return res.json({ success: true });
 	});
@@ -35,16 +35,16 @@ router.delete('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
  */
 router.get('/admin', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
 	var result;
-	var startIndex = 0;
-	var maxResults = 25;
+	//var startIndex = 0;
+	//var maxResults = 25;
 	var typeString = '';
 
-	if (req.query.startIndex) {
+	/* if (req.query.startIndex) {
 		startIndex = req.query.startIndex;
 	}
 	if (req.query.maxResults) {
 		maxResults = req.query.maxResults;
-	}
+	} */
 	if (req.query.type) {
 		typeString = req.query.type;
 	}
@@ -146,8 +146,8 @@ router.get('/collections', passport.authenticate('jwt'), utils.checkIsInRole(ROL
 router.put('/status', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
 	const { id, activeflag } = req.body;
 	try {
-		await Data.findOneAndUpdate({ id: id }, { $set: { activeflag: activeflag } });
-		const tool = await Data.findOne({ id: id });
+		await Data.findOneAndUpdate({ id: { $eq: id } }, { $set: { activeflag: activeflag } });
+		const tool = await Data.findOne({ id: { $eq: id } });
 
 		if (!tool) {
 			return res.status(400).json({ success: false, error: 'Tool not found' });

@@ -6,11 +6,12 @@ const cohortSchema = new Schema(
 	{
 		id: Number,
 		pid: String,
+		type: String,
 		name: String,
-		status: String,
+		activeflag: String,
 		userId: Number,
 		uploaders: [],
-		isPublic: Boolean,
+		publicflag: Boolean,
 		version: Number,
 		changeLog: String,
 		updatedAt: Date,
@@ -20,6 +21,19 @@ const cohortSchema = new Schema(
 		request_id: String,
 		cohort: {},
 		items: [],
+		rquestRelatedObjects: [],
+
+		relatedObjects: [
+			{
+				objectId: String,
+				reason: String,
+				objectType: String,
+				pid: String,
+				user: String,
+				updated: String,
+				isLocked: Boolean,
+			},
+		],
 	},
 	{
 		timestamps: true,

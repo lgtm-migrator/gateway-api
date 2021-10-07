@@ -19,11 +19,12 @@ const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
-	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService) {
+	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService) {
 		super(dataRequestService);
 		this.dataRequestService = dataRequestService;
 		this.workflowService = workflowService;
 		this.amendmentService = amendmentService;
+		this.activityLogService = activityLogService;
 		this.topicService = topicService;
 		this.messageService = messageService;
 	}
@@ -234,7 +235,7 @@ export default class DataRequestController extends Controller {
 			const arrDatasetIds = resolvedIds.split(',');
 
 			// 2. Get the user details
-			const { id: requestingUserId, firstname, lastname } = req.user;
+			const { _id: requestingUserObjectId, id: requestingUserId, firstname, lastname } = req.user;
 
 			// 3. Find the matching record
 			let accessRecord = await this.dataRequestService.getApplicationByDatasets(
@@ -260,7 +261,13 @@ export default class DataRequestController extends Controller {
 				} = datasets[0];
 
 				// 1. GET the template from the custodian or take the default (Cannot have dataset specific question sets for multiple datasets)
-				accessRecord = await this.dataRequestService.buildApplicationForm(publisher, arrDatasetIds, arrDatasetNames, requestingUserId);
+				accessRecord = await this.dataRequestService.buildApplicationForm(
+					publisher,
+					arrDatasetIds,
+					arrDatasetNames,
+					requestingUserId,
+					requestingUserObjectId
+				);
 
 				// 2. Ensure a question set was found
 				if (!accessRecord) {
@@ -355,11 +362,19 @@ export default class DataRequestController extends Controller {
 				switch (accessRecord.applicationType) {
 					case constants.submissionTypes.AMENDED:
 						accessRecord = await this.dataRequestService.doAmendSubmission(accessRecord, description);
+						await this.activityLogService.logActivity(constants.activityLogEvents.AMENDMENT_SUBMITTED, {
+							accessRequest: accessRecord,
+							user: requestingUser,
+						});
 						notificationType = constants.notificationTypes.APPLICATIONAMENDED;
 						break;
 					case constants.submissionTypes.INITIAL:
 					default:
 						accessRecord = await this.dataRequestService.doInitialSubmission(accessRecord);
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_SUBMITTED, {
+							accessRequest: accessRecord,
+							user: requestingUser,
+						});
 						notificationType = constants.notificationTypes.SUBMITTED;
 						break;
 				}
@@ -369,6 +384,10 @@ export default class DataRequestController extends Controller {
 			) {
 				accessRecord = await this.amendmentService.doResubmission(accessRecord, requestingUserObjectId.toString());
 				await this.dataRequestService.syncRelatedVersions(accessRecord.versionTree);
+				await this.activityLogService.logActivity(constants.activityLogEvents.UPDATES_SUBMITTED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 				notificationType = constants.notificationTypes.RESUBMITTED;
 			}
 
@@ -629,10 +648,45 @@ export default class DataRequestController extends Controller {
 						accessRecord,
 						requestingUser
 					);
+
+					let addedAuthors = [...newAuthors].filter(author => !currentAuthors.includes(author));
+					await addedAuthors.forEach(addedAuthor =>
+						this.activityLogService.logActivity(constants.activityLogEvents.COLLABORATOR_ADDEDD, {
+							accessRequest: accessRecord,
+							user: req.user,
+							collaboratorId: addedAuthor,
+						})
+					);
+
+					let removedAuthors = [...currentAuthors].filter(author => !newAuthors.includes(author));
+					await removedAuthors.forEach(removedAuthor =>
+						this.activityLogService.logActivity(constants.activityLogEvents.COLLABORATOR_REMOVED, {
+							accessRequest: accessRecord,
+							user: req.user,
+							collaboratorId: removedAuthor,
+						})
+					);
 				}
 				if (statusChange) {
 					//Update any connected version trees
 					this.dataRequestService.updateVersionStatus(accessRecord, accessRecord.applicationStatus);
+
+					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED)
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_APPROVED, {
+							accessRequest: accessRecord,
+							user: req.user,
+						});
+					else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_APPROVED_WITH_CONDITIONS, {
+							accessRequest: accessRecord,
+							user: req.user,
+						});
+					} else if (accessRecord.applicationStatus === constants.applicationStatuses.REJECTED) {
+						await this.activityLogService.logActivity(constants.activityLogEvents.APPLICATION_REJECTED, {
+							accessRequest: accessRecord,
+							user: req.user,
+						});
+					}
 
 					// Send notifications to custodian team, main applicant and contributors regarding status change
 					await this.createNotifications(
@@ -1330,6 +1384,18 @@ export default class DataRequestController extends Controller {
 			// Create our notifications to the custodian team managers if assigned a workflow to a DAR application
 			this.createNotifications(constants.notificationTypes.WORKFLOWASSIGNED, emailContext, accessRecord, requestingUser);
 
+			//Create activity log
+			this.activityLogService.logActivity(constants.activityLogEvents.WORKFLOW_ASSIGNED, {
+				accessRequest: accessRecord,
+				user: req.user,
+			});
+
+			//Create activity log
+			this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PHASE_STARTED, {
+				accessRequest: accessRecord,
+				user: req.user,
+			});
+
 			return res.status(200).json({
 				success: true,
 			});
@@ -1432,10 +1498,18 @@ export default class DataRequestController extends Controller {
 				// Create notifications to managers that the application is awaiting final approval
 				relevantStepIndex = activeStepIndex;
 				relevantNotificationType = constants.notificationTypes.FINALDECISIONREQUIRED;
+				this.activityLogService.logActivity(constants.activityLogEvents.FINAL_DECISION_REQUIRED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 			} else {
 				// Create notifications to reviewers of the next step that has been activated
 				relevantStepIndex = activeStepIndex + 1;
 				relevantNotificationType = constants.notificationTypes.REVIEWSTEPSTART;
+				this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PHASE_STARTED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 			}
 			// Get the email context only if required
 			if (relevantStepIndex !== activeStepIndex) {
@@ -1572,6 +1646,20 @@ export default class DataRequestController extends Controller {
 				logger.logError(err, logCategory);
 			});
 
+			if (approved) {
+				this.activityLogService.logActivity(constants.activityLogEvents.RECOMMENDATION_WITH_NO_ISSUE, {
+					comments,
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
+			} else {
+				this.activityLogService.logActivity(constants.activityLogEvents.RECOMMENDATION_WITH_ISSUE, {
+					comments,
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
+			}
+
 			// 15. Create emails and notifications
 			let relevantStepIndex = 0,
 				relevantNotificationType = '';
@@ -1579,10 +1667,18 @@ export default class DataRequestController extends Controller {
 				// Create notifications to reviewers of the next step that has been activated
 				relevantStepIndex = activeStepIndex + 1;
 				relevantNotificationType = constants.notificationTypes.REVIEWSTEPSTART;
+				this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PHASE_STARTED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 			} else if (bpmContext.stepComplete && bpmContext.finalPhaseApproved) {
 				// Create notifications to managers that the application is awaiting final approval
 				relevantStepIndex = activeStepIndex;
 				relevantNotificationType = constants.notificationTypes.FINALDECISIONREQUIRED;
+				this.activityLogService.logActivity(constants.activityLogEvents.FINAL_DECISION_REQUIRED, {
+					accessRequest: accessRecord,
+					user: requestingUser,
+				});
 			}
 			// Continue only if notification required
 			if (!_.isEmpty(relevantNotificationType)) {
@@ -1674,7 +1770,13 @@ export default class DataRequestController extends Controller {
 				bpmController.postStartManagerReview(bpmContext);
 			}
 
-			// 11. Return aplication and successful response
+			// 11. Log event in the activity log
+			await this.activityLogService.logActivity(constants.activityLogEvents.REVIEW_PROCESS_STARTED, {
+				accessRequest: accessRecord,
+				user: req.user,
+			});
+
+			// 12. Return aplication and successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
 			// Return error response if something goes wrong
@@ -1714,6 +1816,9 @@ export default class DataRequestController extends Controller {
 			// 4. Send emails based on deadline elapsed or approaching
 			if (emailContext.deadlineElapsed) {
 				this.createNotifications(constants.notificationTypes.DEADLINEPASSED, emailContext, accessRecord, requestingUser);
+				await this.activityLogService.logActivity(constants.activityLogEvents.DEADLINE_PASSED, {
+					accessRequest: accessRecord,
+				});
 			} else {
 				this.createNotifications(constants.notificationTypes.DEADLINEWARNING, emailContext, accessRecord, requestingUser);
 			}
@@ -1862,14 +1967,7 @@ export default class DataRequestController extends Controller {
 				};
 
 				// Build email template
-				({ html, jsonContent } = await emailGenerator.generateEmail(
-					aboutApplication,
-					questions,
-					pages,
-					questionPanels,
-					questionAnswers,
-					options
-				));
+				({ html } = await emailGenerator.generateEmail(aboutApplication, questions, pages, questionPanels, questionAnswers, options));
 				await emailGenerator.sendEmail(
 					[user],
 					constants.hdrukEmail,
@@ -2643,7 +2741,7 @@ export default class DataRequestController extends Controller {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			await this.dataRequestService.updateApplicationById(id, { isShared: true }).catch(err => {
+			await this.dataRequestService.shareApplication(accessRecord).catch(err => {
 				logger.logError(err, logCategory);
 			});
 
@@ -2806,6 +2904,19 @@ export default class DataRequestController extends Controller {
 					requestingUser
 				);
 			}
+
+			this.activityLogService.logActivity(
+				messageType === constants.DARMessageTypes.DARMESSAGE
+					? constants.activityLogEvents.CONTEXTUAL_MESSAGE
+					: constants.activityLogEvents.NOTE,
+				{
+					accessRequest: accessRecord,
+					user: req.user,
+					userType,
+					questionId,
+					messageBody,
+				}
+			);
 
 			return res.status(200).json({
 				status: 'success',
