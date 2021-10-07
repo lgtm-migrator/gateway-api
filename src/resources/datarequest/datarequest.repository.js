@@ -1,7 +1,9 @@
 import Repository from '../base/repository';
 import { DataRequestModel } from './datarequest.model';
 import { DataRequestSchemaModel } from './schema/datarequest.schemas.model';
+import { TopicModel } from '../topic/topic.model';
 import { Data as ToolModel } from '../tool/data.model';
+import constants from '../utilities/constants.util';
 
 export default class DataRequestRepository extends Repository {
 	constructor() {
@@ -60,7 +62,7 @@ export default class DataRequestRepository extends Repository {
 	}
 
 	getApplicationWithTeamById(id, options = {}) {
-		return DataRequestModel.findOne({ _id: id }, null, options).populate([
+		return DataRequestModel.findOne({ _id: { $eq: id } }, null, options).populate([
 			//lgtm [js/sql-injection]
 			{
 				path: 'datasets dataset authors',
@@ -104,7 +106,7 @@ export default class DataRequestRepository extends Repository {
 		]);
 	}
 
-	getApplicationToSubmitById(id) {
+ 	getApplicationToSubmitById(id) {
 		return DataRequestModel.findOne({ _id: id }).populate([
 			{
 				path: 'datasets dataset initialDatasets',
@@ -198,6 +200,50 @@ export default class DataRequestRepository extends Repository {
 					},
 				},
 			]);
+	}
+
+	getPermittedUsersForVersions(versionIds) {
+		return DataRequestModel.find({ $or: [{ _id: { $in: versionIds } }, { 'amendmentIterations._id': { $in: versionIds } }] })
+			.select(
+				'userId authorIds publisher majorVersion applicationType applicationStatus dateSubmitted dateFinalStatus amendmentIterations._id amendmentIterations.dateSubmitted amendmentIterations.dateCreated amendmentIterations.dateReturned versionTree aboutApplication.projectName isShared'
+			)
+			.populate([
+				{
+					path: 'publisherObj',
+					select: '_id',
+					populate: {
+						path: 'team',
+						select: 'members',
+						populate: {
+							path: 'users',
+						},
+					},
+				},
+			]);
+	}
+
+	getRelatedPresubmissionTopic(userObjectId, datasetIds) {
+		return TopicModel.findOne({
+			recipients: userObjectId,
+			'datasets.datasetId': { $all: datasetIds },
+			linkedDataAccessApplication: { $exists: false },
+		})
+			.select('_id')
+			.populate({ path: 'topicMessages', populate: { path: 'createdBy' } });
+	}
+
+	linkRelatedApplicationByMessageContext(topicId, userId, datasetIds, applicationStatus) {
+		return DataRequestModel.findOneAndUpdate(
+			{
+				userId,
+				datasetIds: { $all: datasetIds },
+				presubmissionTopic: { $exists: false },
+				applicationType: constants.submissionTypes.INITIAL,
+				...(applicationStatus && { applicationStatus }),
+			},
+			{ $set: { presubmissionTopic: topicId } },
+			{ upsert: false, new: true }
+		).select('_id');
 	}
 
 	updateApplicationById(id, data, options = {}) {

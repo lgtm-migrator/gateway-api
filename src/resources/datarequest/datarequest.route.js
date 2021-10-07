@@ -7,7 +7,8 @@ import { param } from 'express-validator';
 import { logger } from '../utilities/logger';
 import DataRequestController from './datarequest.controller';
 import AmendmentController from './amendment/amendment.controller';
-import { dataRequestService, workflowService, amendmentService, topicService, messageService } from './dependency';
+import { dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService } from './dependency';
+import { dataUseRegisterService } from '../dataUseRegister/dependency';
 
 const fs = require('fs');
 const path = './tmp';
@@ -26,9 +27,11 @@ const dataRequestController = new DataRequestController(
 	workflowService,
 	amendmentService,
 	topicService,
-	messageService
+	messageService,
+	activityLogService,
+	dataUseRegisterService
 );
-const amendmentController = new AmendmentController(amendmentService, dataRequestService);
+const amendmentController = new AmendmentController(amendmentService, dataRequestService, activityLogService);
 const router = express.Router();
 
 // @route   GET api/v1/data-access-request

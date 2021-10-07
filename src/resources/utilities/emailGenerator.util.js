@@ -38,7 +38,7 @@ const _unNestQuestionPanels = panels => {
 			if (questionSets.length > 1) {
 				// filters excluded questionSetIds
 				let filtered = [...questionSets].filter(item => {
-					let [questionId, uniqueId] = item.questionSetId.split('_');
+					let [questionId] = item.questionSetId.split('_');
 					return !excludedQuestionSetIds.includes(questionId);
 				});
 				// builds new array of [{panelId, pageId, etc}]
@@ -97,7 +97,7 @@ const _initalQuestionSpread = (questions, pages, questionPanels) => {
 				let { questionId } = question;
 
 				// split questionId
-				let [qId, uniqueQId] = questionId.split('_');
+				let [qId] = questionId.split('_');
 
 				// pass in questionPanels
 				let questionPanel = [...questionPanels].find(i => i.panelId === qSId);
@@ -200,7 +200,7 @@ const _getSubmissionDetails = (
 	let body = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
   <tr>
       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
-      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
     </tr>
     <tr>
       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Related NCS project</td>
@@ -228,7 +228,7 @@ const _getSubmissionDetails = (
 	const amendBody = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
   <tr>
       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
-      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName || 'No project name set'}</td>
     </tr>
     <tr>
       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of amendment submission</td>
@@ -273,8 +273,8 @@ const _getSubmissionDetails = (
 			subject = `You have made updates to your Data Access Request for ${datasetTitles}. The custodian will be in contact about the application.`;
 			break;
 		case constants.submissionTypes.AMENDED:
-			heading = 'Data access request application amended';
-			subject = `${userName} has made amendments to an approved application`;
+			heading = 'New amendment request application';
+			subject = `Applicant has submitted an amendment to an approved application.  Please let the applicant know as soon as there is progress in the review of their submission.`;
 			body = amendBody;
 			break;
 	}
@@ -330,7 +330,8 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		applicationId,
 	} = options;
 	const dateSubmitted = moment().format('D MMM YYYY');
-	const { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
+	const year = moment().year();
+	const { projectName, isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
 	const linkNationalCoreStudies =
 		nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
 
@@ -338,7 +339,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 	let questionTree = { ...fullQuestions };
 	let answers = { ...questionAnswers };
 	let pages = Object.keys(questionTree);
-	let gatewayAttributionPolicy = `We ask that use of the Innovation Gateway be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage 2020.'`;
+	let gatewayAttributionPolicy = `We ask that use of the Health Data Research Innovation Gateway (the 'Gateway') be attributed in any resulting research outputs. Please include the following statement in the acknowledgments: 'Data discovery and access was facilitated by the Health Data Research UK Innovation Gateway - HDRUK Innovation Gateway  | Homepage ${year}.'`;
 
 	let table = _getSubmissionDetails(
 		userType,
@@ -347,7 +348,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		datasetTitles,
 		initialDatasetTitles,
 		submissionType,
-		projectName,
+		projectName || 'No project name set',
 		isNationalCoreStudies,
 		dateSubmitted,
 		linkNationalCoreStudies
@@ -355,7 +356,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 
 	// Create json content payload for attaching to email
 	const jsonContent = {
-		applicationDetails: { projectName, linkNationalCoreStudies, datasetTitles, dateSubmitted, applicantName: userName },
+		applicationDetails: { projectName: projectName || 'No project name set', linkNationalCoreStudies, datasetTitles, dateSubmitted, applicantName: userName },
 		questions: { ...fullQuestions },
 		answers: { ...questionAnswers },
 	};
@@ -624,6 +625,13 @@ const _displayDARLink = accessId => {
 	return `<a style="color: #475da7;" href="${darLink}">View application</a>`;
 };
 
+const _displayActivityLogLink = (accessId, publisher) => {
+	if (!accessId) return '';
+
+	const activityLogLink = `${process.env.homeURL}/account?tab=dataaccessrequests&team=${publisher}&id=${accessId}`;
+	return `<a style="color: #475da7;" href="${activityLogLink}">View activity log</a>`;
+};
+
 const _generateDARStatusChangedEmail = options => {
 	let {
 		id,
@@ -652,7 +660,9 @@ const _generateDARStatusChangedEmail = options => {
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     ${publisher} has ${applicationStatus} your data access request application.
+                    Your data access request for ${projectName || datasetTitles} has been approved with conditions by ${publisher}. 
+                    Summary information about your approved project will be included in the Gateway data use register. 
+                    You will be notified as soon as this becomes visible and searchable on the Gateway.
                     </th>
                   </tr>
                 </thead>
@@ -1551,7 +1561,6 @@ const _generateFinalDecisionRequiredEmail = options => {
 		projectName,
 		projectId,
 		datasetTitles,
-		actioner,
 		applicants,
 		workflowName,
 		stepName,
@@ -1873,7 +1882,7 @@ const _generateNewTeamManagers = options => {
 							</table>
 						</div>
 					</div>`;
-  	return body;
+	return body;
 };
 
 const _generateNewDARMessage = options => {
@@ -2115,7 +2124,7 @@ const _generateMetadataOnboardingRejected = options => {
 };
 
 const _generateMetadataOnboardingDraftDeleted = options => {
-	let { publisherName, draftDatasetName } = options;
+	let { draftDatasetName } = options;
 
 	let body = `<div>
 						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -2146,6 +2155,39 @@ const _generateMetadataOnboardingDraftDeleted = options => {
 							</table>
 						</div>
 					</div>`;
+	return body;
+};
+
+const _generateMetadataOnboardingDuplicated = options => {
+	let { name, publisher, version } = options;
+
+	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;"> 
+                      Dataset duplicated
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      ${publisher.name} has duplicated ${version} of ${name}.
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                    <a style="color: #475da7;" href="${process.env.homeURL}/account?tab=datasets&team=${publisher.identifier}">View dataset dashboard</a>
+                  </th>
+                  </tr>
+                </thead>
+                </table>
+          </div>`;
 	return body;
 };
 
@@ -2256,6 +2298,104 @@ const _generateEntityNotification = options => {
 							</table>
 						</div>
 					</div>`;
+	return body;
+};
+
+const _generateActivityLogManualEventCreated = options => {
+	const { id, userName, description, publisher, timestamp, projectName } = options;
+	const dateTime = moment(timestamp).format('DD/MM/YYYY, HH:mmA');
+	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      A new event has been added to an activity log
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${userName} (${publisher}) has added a new event to the activity log of '${
+		projectName || `No project name set`
+	}' data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Event</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${description}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date and time</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateTime}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayActivityLogLink(id, publisher)}
+            </div>
+          </div>`;
+	return body;
+};
+
+const _generateActivityLogManualEventDeleted = options => {
+	const { id, userName, description, publisher, timestamp, projectName } = options;
+	const dateTime = moment(timestamp).format('DD/MM/YYYY, HH:mmA');
+	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <table
+                align="center"
+                border="0"
+                cellpadding="0"
+                cellspacing="40"
+                width="700"
+                style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                      An event has been deleted from an activity log
+                    </th>
+                  </tr>
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                     ${userName} (${publisher}) has deleted the following event from the activity log of '${
+		projectName || `No project name set`
+	}' data access request application.
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td bgcolor="#fff" style="padding: 0; border: 0;">
+                    <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Event</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${description}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date and time</td>
+                        <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${dateTime}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="padding: 0 40px 40px 40px;">
+            ${_displayActivityLogLink(id, publisher)}
+            </div>
+          </div>`;
 	return body;
 };
 
@@ -2409,9 +2549,13 @@ export default {
 	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
 	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
 	generateMetadataOnboardingDraftDeleted: _generateMetadataOnboardingDraftDeleted,
+  generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
 	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages
 	generateMessageNotification: _generateMessageNotification,
 	generateEntityNotification: _generateEntityNotification,
+	//ActivityLog
+	generateActivityLogManualEventCreated: _generateActivityLogManualEventCreated,
+	generateActivityLogManualEventDeleted: _generateActivityLogManualEventDeleted,
 };

@@ -1,5 +1,5 @@
 import { PublisherModel } from '../src/resources/publisher/publisher.model';
-import { DataRequestSchemaModel } from '../src/resources/datarequest/datarequest.schemas.model';
+import { DataRequestSchemaModel } from '../src/resources/datarequest/schema/datarequest.schemas.model';
 import { Data as ToolModel } from '../src/resources/tool/data.model';
 
 /**

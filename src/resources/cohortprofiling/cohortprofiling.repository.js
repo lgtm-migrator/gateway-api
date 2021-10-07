@@ -1,6 +1,6 @@
 import Repository from '../base/repository';
 import { CohortProfiling } from './cohortprofiling.model';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, escapeRegExp } from 'lodash';
 
 export default class CohortProfilingRepository extends Repository {
 	constructor() {
@@ -24,13 +24,13 @@ export default class CohortProfilingRepository extends Repository {
 
 	buildMatchQuery(value) {
 		return !isEmpty(value)
-			? { 'dataClasses.dataElements.frequencies.value': new RegExp(`${value}`, 'i') }
+			? { 'dataClasses.dataElements.frequencies.value': new RegExp(`${escapeRegExp(value)}`, 'i') }
 			: { 'dataClasses.dataElements.frequencies.value': { $ne: '' } };
 	}
 
 	async getCohortProfilingByVariable(pid, tableName, variable, value, sort) {
-		const matchQuery = this.buildMatchQuery(value);
-		const sortQuery = this.buildSortQuery(sort);
+		const matchQuery = CohortProfilingRepository.buildMatchQuery(value);
+		const sortQuery = CohortProfilingRepository.buildSortQuery(sort);
 
 		let cohortProfiling = await CohortProfiling.aggregate([
 			{
@@ -138,7 +138,7 @@ export default class CohortProfilingRepository extends Repository {
 			});
 
 			const newDataObj = await CohortProfiling.updateOne(
-				{ pid: profilingData.pid },
+				{ pid: { $eq: profilingData.pid } },
 				{ $set: { dataClasses: dataClassesComplete } },
 				{ upsert: true }
 			);

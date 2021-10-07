@@ -1,10 +1,9 @@
 import express from 'express';
 
 import { RecordSearchData } from '../search/record.search.model';
-import { getObjectResult, getObjectCount, getObjectFilters } from './search.repository';
+import { getObjectResult, getObjectCount, getObjectFilters, getMyObjectsCount } from './search.repository';
 
 const router = express.Router();
-
 /**
  * {get} /api/search Search tools
  *
@@ -58,7 +57,7 @@ router.get('/', async (req, res) => {
 		Courses: 'course',
 		Collections: 'collection',
 	};
-	
+
 	const entityType = typeMapper[`${tab}`];
 
 	// if (!entityType) {
@@ -83,7 +82,9 @@ router.get('/', async (req, res) => {
 				getObjectFilters(searchQuery, req, 'tool'),
 				req.query.toolIndex || 0,
 				req.query.maxResults || 40,
-				req.query.toolSort || ''
+				req.query.toolSort || '',
+				authorID,
+				req.query.form
 			),
 			getObjectResult(
 				'project',
@@ -91,7 +92,9 @@ router.get('/', async (req, res) => {
 				getObjectFilters(searchQuery, req, 'project'),
 				req.query.projectIndex || 0,
 				req.query.maxResults || 40,
-				req.query.projectSort || ''
+				req.query.projectSort || '',
+				authorID,
+				req.query.form
 			),
 			getObjectResult(
 				'paper',
@@ -99,7 +102,9 @@ router.get('/', async (req, res) => {
 				getObjectFilters(searchQuery, req, 'paper'),
 				req.query.paperIndex || 0,
 				req.query.maxResults || 40,
-				req.query.paperSort || ''
+				req.query.paperSort || '',
+				authorID,
+				req.query.form
 			),
 			getObjectResult('person', searchAll, searchQuery, req.query.personIndex || 0, req.query.maxResults || 40, req.query.personSort),
 			getObjectResult(
@@ -108,7 +113,9 @@ router.get('/', async (req, res) => {
 				getObjectFilters(searchQuery, req, 'course'),
 				req.query.courseIndex || 0,
 				req.query.maxResults || 40,
-				'startdate'
+				'startdate',
+				authorID,
+				req.query.form
 			),
 			getObjectResult(
 				'collection',
@@ -143,13 +150,30 @@ router.get('/', async (req, res) => {
 
 	const summary = {
 		datasetCount: summaryCounts[0][0] !== undefined ? summaryCounts[0][0].count : 0,
-		toolCount: summaryCounts[1][0]!== undefined ? summaryCounts[1][0].count : 0,
+		toolCount: summaryCounts[1][0] !== undefined ? summaryCounts[1][0].count : 0,
 		projectCount: summaryCounts[2][0] !== undefined ? summaryCounts[2][0].count : 0,
-		paperCount: summaryCounts[3][0]!== undefined ? summaryCounts[3][0].count : 0,
-		personCount: summaryCounts[4][0]!== undefined ? summaryCounts[4][0].count : 0,
-		courseCount: summaryCounts[5][0]!== undefined ? summaryCounts[5][0].count : 0,
+		paperCount: summaryCounts[3][0] !== undefined ? summaryCounts[3][0].count : 0,
+		personCount: summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0,
+		courseCount: summaryCounts[5][0] !== undefined ? summaryCounts[5][0].count : 0,
 		collectionCount: summaryCounts[6][0] !== undefined ? summaryCounts[6][0].count : 0,
 	};
+
+	let myEntitiesSummary = {};
+	if (req.query.form === 'true') {
+		const summaryMyEntityCounts = await Promise.all([
+			getMyObjectsCount('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), authorID),
+			getMyObjectsCount('project', searchAll, getObjectFilters(searchQuery, req, 'project'), authorID),
+			getMyObjectsCount('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), authorID),
+			getMyObjectsCount('course', searchAll, getObjectFilters(searchQuery, req, 'course'), authorID),
+		]);
+
+		myEntitiesSummary = {
+			myToolsCount: summaryMyEntityCounts[0][0] != undefined ? summaryMyEntityCounts[0][0].count : 0,
+			myProjectsCount: summaryMyEntityCounts[1][0] != undefined ? summaryMyEntityCounts[1][0].count : 0,
+			myPapersCount: summaryMyEntityCounts[2][0] != undefined ? summaryMyEntityCounts[2][0].count : 0,
+			myCoursesCount: summaryMyEntityCounts[3][0] != undefined ? summaryMyEntityCounts[3][0].count : 0,
+		};
+	}
 
 	const recordSearchData = new RecordSearchData();
 	recordSearchData.searched = searchString;
@@ -174,6 +198,7 @@ router.get('/', async (req, res) => {
 			courseResults: allResults[5].data,
 			collectionResults: allResults[6].data,
 			summary: summary,
+			myEntitiesSummary: myEntitiesSummary,
 		});
 	} else {
 		return res.json({
