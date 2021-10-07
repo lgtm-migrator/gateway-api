@@ -83,4 +83,8 @@ export default class CohortService {
 		};
 		return this.cohortRepository.addCohort(document);
 	}
+
+	async editCohort(id, body = {}) {
+		return this.cohortRepository.editCohort(id, body);
+	}
 }
