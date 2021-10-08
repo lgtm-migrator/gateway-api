@@ -187,16 +187,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 							},
 						},
 					},
-					counts: {
-						$map: {
-							input: '$cohort.result.counts',
-							as: 'row',
-							in: {
-								rquest_id: '$$row.rquest_id',
-								count: '$$row.count',
-							},
-						},
-					},
 				},
 			},
 			{ $match: newSearchQuery },
@@ -209,7 +199,17 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					persons: 1,
 					datasets: 1,
 					filterCriteria: 1,
-					counts: 1,
+					counter: 1,
+					latestUpdate: {
+						$cond: {
+							if: { $gte: ['$createdAt', '$updatedon'] },
+							then: '$createdAt',
+							else: '$updatedon',
+						},
+					},
+					totalResultCount: 1,
+					numberOfDatasets: 1,
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 				},
 			},
 		];
@@ -465,6 +465,12 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
 			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
 		}
+	} else if (sort === 'entries') {
+		if (searchAll) queryObject.push({ $sort: { totalResultCount: -1, numberOfDatasets: -1 } });
+		else queryObject.push({ $sort: { totalResultCount: -1, numberOfDatasets: -1, score: { $meta: 'textScore' } } });
+	} else if (sort === 'datasets') {
+		if (searchAll) queryObject.push({ $sort: { numberOfDatasets: -1, totalResultCount: -1 } });
+		else queryObject.push({ $sort: { numberOfDatasets: -1, totalResultCount: -1, score: { $meta: 'textScore' } } });
 	}
 
 	// Get paged results based on query params
@@ -692,16 +698,6 @@ export function getObjectCount(type, searchAll, searchQuery) {
 								},
 							},
 						},
-						counts: {
-							$map: {
-								input: '$cohort.result.counts',
-								as: 'row',
-								in: {
-									rquest_id: '$$row.rquest_id',
-									count: '$$row.count',
-								},
-							},
-						},
 					},
 				},
 				{ $match: newSearchQuery },
@@ -714,7 +710,8 @@ export function getObjectCount(type, searchAll, searchQuery) {
 						persons: 1,
 						datasets: 1,
 						filterCriteria: 1,
-						counts: 1,
+						totalResultCount: 1,
+						numberOfDatasets: 1,
 					},
 				},
 				{
@@ -785,16 +782,6 @@ export function getObjectCount(type, searchAll, searchQuery) {
 								},
 							},
 						},
-						counts: {
-							$map: {
-								input: '$cohort.result.counts',
-								as: 'row',
-								in: {
-									rquest_id: '$$row.rquest_id',
-									count: '$$row.count',
-								},
-							},
-						},
 					},
 				},
 				{ $match: newSearchQuery },
@@ -807,7 +794,8 @@ export function getObjectCount(type, searchAll, searchQuery) {
 						persons: 1,
 						datasets: 1,
 						filterCriteria: 1,
-						counts: 1,
+						totalResultCount: 1,
+						numberOfDatasets: 1,
 					},
 				},
 				{

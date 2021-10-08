@@ -94,7 +94,7 @@ export default class FiltersService {
 	async optimiseFilters(type) {
 		// 1. Build filters from type using entire Db collection
 		let query = { $and: [{ activeflag: 'active' }] };
-		if (type === 'collection') {
+		if (['collection', 'cohort'].includes(type)) {
 			query['$and'].push({ publicflag: true });
 		} else if (type === 'course') {
 			query['$and'].push({ $or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }] });
