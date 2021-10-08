@@ -19,6 +19,10 @@ const cohortSchema = new Schema(
 		lastRefresh: Date,
 		datasetPids: [],
 		filterCriteria: [],
+		counter: Number,
+		updatedon: Date,
+		totalResultCount: Number,
+		numberOfDatasets: Number,
 
 		// fields from RQuest
 		request_id: String,

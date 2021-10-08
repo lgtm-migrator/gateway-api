@@ -1,5 +1,6 @@
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
+import { UserModel } from '../user/user.model';
 
 const logCategory = 'cohort';
 
@@ -68,6 +69,13 @@ export default class CohortController extends Controller {
 
 	async addCohort(req, res) {
 		try {
+			// Check for userId in payload
+			const userId = parseInt(req.body.user_id);
+			const user = await UserModel.findOne({ id: userId }).lean();
+			if (!user) {
+				throw new Error('No user associated with this user_id');
+			}
+
 			const cohort = await this.cohortService.addCohort(req.body).catch(err => {
 				logger.logError(err, logCategory);
 			});

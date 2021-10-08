@@ -60,7 +60,11 @@ export default class CohortService {
 			});
 		});
 
-		// 5. Build document object and save to DB
+		// 5. Extract result counts
+		const totalResultCount = body.cohort.result.counts.reduce((a, curr) => a + parseInt(curr.count), 0);
+		const numberOfDatasets = body.cohort.result.counts.length;
+
+		// 6. Build document object and save to DB
 		const document = {
 			id: uniqueId,
 			pid: uuid,
@@ -80,6 +84,8 @@ export default class CohortService {
 			relatedObjects,
 			description: '',
 			publicflag: true,
+			totalResultCount,
+			numberOfDatasets,
 		};
 		return this.cohortRepository.addCohort(document);
 	}

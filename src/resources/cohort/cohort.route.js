@@ -27,6 +27,9 @@ router.get(
 	(req, res) => cohortController.getCohorts(req, res)
 );
 
+// @route   POST /api/v1/save-cohort
+// @desc    Creates a draft Cohort in the database
+// @access  Public
 router.post('/', (req, res) => cohortController.addCohort(req, res));
 
 // @route   PUT /api/v1/cohorts/:id
