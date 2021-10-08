@@ -1,5 +1,6 @@
 import express from 'express';
 import DataUseRegisterController from './dataUseRegister.controller';
+
 import { dataUseRegisterService } from './dependency';
 import { logger } from '../utilities/logger';
 import passport from 'passport';
