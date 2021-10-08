@@ -70,7 +70,8 @@ export default class CohortController extends Controller {
 	async addCohort(req, res) {
 		try {
 			// Check for userId in payload
-			const user = await UserModel.findOne({ id: req.body.user_id }).lean();
+			const userId = parseInt(req.body.user_id);
+			const user = await UserModel.findOne({ id: userId }).lean();
 			if (!user) {
 				throw new Error('No user associated with this user_id');
 			}
