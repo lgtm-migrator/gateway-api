@@ -11,7 +11,7 @@ describe('Utilities', () => {
 			let req = {
 				auth: {
 					user: 'someUser',
-					err: null
+					err: null,
 				},
 			};
 			const next = jest.fn();
