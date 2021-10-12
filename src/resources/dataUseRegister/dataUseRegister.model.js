@@ -50,7 +50,7 @@ const dataUseRegisterSchema = new Schema(
 		publicBenefitStatement: String, //Public Benefit Statement
 		requestCategoryType: String, //Request Category Type
 		technicalSummary: String, //Technical Summary
-		otherApprovalCommittees: [{type: String}], //Other Approval Committees
+		otherApprovalCommittees: [{ type: String }], //Other Approval Committees
 		projectStartDate: Date, //Project Start Date
 		projectEndDate: Date, //Project End Date
 		latestApprovalDate: Date, //Latest Approval Date
@@ -65,15 +65,22 @@ const dataUseRegisterSchema = new Schema(
 		accessDate: Date, //Release/Access Date
 		dataLocation: String, //TRE Or Any Other Specified Location
 		privacyEnhancements: String, //How Has Data Been Processed To Enhance Privacy
-		researchOutputs: [{type: String}], //Link To Research Outputs
+		researchOutputs: [{ type: String }], //Link To Research Outputs
 	},
 	{
 		timestamps: true,
 		toJSON: { virtuals: true },
 		toObject: { virtuals: true },
-		strict: false
+		strict: false,
 	}
 );
+
+dataUseRegisterSchema.virtual('gatewayApplicantsNames', {
+	ref: 'User',
+	foreignField: '_id',
+	localField: 'gatewayApplicants',
+	justOne: false,
+});
 
 // Load entity class
 dataUseRegisterSchema.loadClass(DataUseRegisterClass);

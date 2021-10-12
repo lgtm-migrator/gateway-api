@@ -137,25 +137,27 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 
 		queryObject = [
-			{ $match: searchTerm },
-			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+			{
+				$lookup: {
+					from: 'publishers',
+					localField: 'publisher',
+					foreignField: '_id',
+					as: 'publisherDetails',
+				},
+			},
 			{
 				$addFields: {
-					persons: {
+					publisherDetails: {
 						$map: {
-							input: '$persons',
+							input: '$publisherDetails',
 							as: 'row',
 							in: {
-								id: '$$row.id',
-								firstname: '$$row.firstname',
-								lastname: '$$row.lastname',
-								fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+								name: '$$row.name',
 							},
 						},
 					},
 				},
 			},
-			{ $match: newSearchQuery },
 			{
 				$project: {
 					_id: 0,
@@ -164,6 +166,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					organisationName: 1,
 					keywords: 1,
 					datasetTitles: 1,
+					publisherDetails: 1,
 					activeflag: 1,
 					counter: 1,
 					type: 1,

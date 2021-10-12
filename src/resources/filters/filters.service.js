@@ -145,12 +145,12 @@ export default class FiltersService {
 				entities = await this.collectionRepository.getCollections({ ...query, fields }, { aggregate: true });
 				break;
 			case 'course':
-				fields = `courseOptions.startDate, provider,location,courseOptions.studyMode,award,entries.level,domains,keywords,competencyFramework,nationalPriority`;
+				fields = `courseOptions.startDate,provider,location,courseOptions.studyMode,award,entries.level,domains,keywords,competencyFramework,nationalPriority`;
 				entities = await this.courseRepository.getCourses({ ...query, fields }, { lean: true, dateFormat: 'DD MMM YYYY' });
 				break;
 			case 'dataUseRegister':
-				fields = `organisationName organisationSector keywords`;
-				entities = await this.DataUseRegisterRepository.getDataUseRegisters({ ...query, fields }, { lean: true });
+				fields = `organisationName,organisationSector,keywords,publisherDetails.name,fundersAndSponsors`;
+				entities = await this.DataUseRegisterRepository.getDataUseRegisters({ ...query, fields }, { aggregate: true });
 				break;
 		}
 		// 3. Loop over each entity
@@ -312,13 +312,15 @@ export default class FiltersService {
 			}
 			case 'dataUseRegister': {
 				// 2. Extract all properties used for filtering
-				let { keywords = [], organisationName = '', organisationSector = '' } = entity;
+				let { keywords = [], organisationName = '', organisationSector = '', publisherDetails = '', fundersAndSponsors = [] } = entity;
 
 				// 3. Create flattened filter props object
 				filterValues = {
 					keywords,
 					organisationName,
 					organisationSector,
+					publisher: publisherDetails[0].name,
+					fundersAndSponsors,
 				};
 				break;
 			}

@@ -1,5 +1,6 @@
 import Repository from '../base/repository';
 import { DataUseRegister } from './dataUseRegister.model';
+import { isNil } from 'lodash';
 
 export default class DataUseRegisterRepository extends Repository {
 	constructor() {
@@ -11,9 +12,52 @@ export default class DataUseRegisterRepository extends Repository {
 		return this.findOne(query, options);
 	}
 
-	getDataUseRegisters(query) {
-		const options = { lean: true };
-		return this.find(query, options);
+	async getDataUseRegisters(query, options = {}) {
+		if (options.aggregate) {
+			const searchTerm = (query && query['$and'] && query['$and'].find(exp => !isNil(exp['$text']))) || {};
+
+			if (searchTerm) {
+				query['$and'] = query['$and'].filter(exp => !exp['$text']);
+			}
+
+			const aggregateQuery = [
+				{ $match: searchTerm },
+				{
+					$lookup: {
+						from: 'publishers',
+						localField: 'publisher',
+						foreignField: '_id',
+						as: 'publisherDetails',
+					},
+				},
+				{
+					$addFields: {
+						publisherDetails: {
+							$map: {
+								input: '$publisherDetails',
+								as: 'row',
+								in: {
+									name: '$$row.name',
+								},
+							},
+						},
+					},
+				},
+				{ $match: { $and: [...query['$and']] } },
+			];
+
+			if (query.fields) {
+				aggregateQuery.push({
+					$project: query.fields.split(',').reduce((obj, key) => {
+						return { ...obj, [key]: 1 };
+					}, {}),
+				});
+			}
+			return DataUseRegister.aggregate(aggregateQuery);
+		} else {
+			const options = { lean: true };
+			return this.find(query, options);
+		}
 	}
 
 	getDataUseRegisterByApplicationId(applicationId) {
