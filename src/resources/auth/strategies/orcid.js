@@ -1,7 +1,6 @@
 import passport from 'passport';
 import passportOrcid from 'passport-orcid';
 import { to } from 'await-to-js';
-import axios from 'axios';
 
 import { catchLoginErrorAndRedirect, loginAndSignToken } from '../utils';
 import { getUserByProviderId } from '../../user/user.repository';
