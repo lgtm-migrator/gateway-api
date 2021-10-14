@@ -61,8 +61,17 @@ export default class CohortService {
 		});
 
 		// 5. Extract result counts
-		const totalResultCount = body.cohort.result.counts.reduce((a, curr) => a + parseInt(curr.count), 0);
-		const numberOfDatasets = body.cohort.result.counts.length;
+		const countsPerDataset = body.cohort.result.counts.map((item, i) => {
+			const { pid, count } = Object.assign(
+				{ pid: body.cohort.input.collections[i].external_id, count: item.count },
+				item,
+				body.cohort.input.collections[i]
+			);
+			return { pid, count };
+		});
+
+		const totalResultCount = countsPerDataset.reduce((a, curr) => a + parseInt(curr.count), 0);
+		const numberOfDatasets = countsPerDataset.length;
 
 		// 6. Build document object and save to DB
 		const document = {
@@ -86,6 +95,7 @@ export default class CohortService {
 			publicflag: true,
 			totalResultCount,
 			numberOfDatasets,
+			countsPerDataset,
 		};
 		return this.cohortRepository.addCohort(document);
 	}

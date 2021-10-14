@@ -22,7 +22,7 @@ export default class CohortController extends Controller {
 				});
 			}
 			// Find the cohort
-			const options = { lean: true };
+			const options = { lean: true, populate: { path: 'persons', select: 'firstname lastname' } };
 			const cohort = await this.cohortService.getCohort(id, req.query, options);
 			// Return if no cohort found
 			if (!cohort) {
