@@ -41,7 +41,7 @@ describe('CourseRepository', function () {
 		it('should return an array of courses', async function () {
 			const courseRepository = new CourseRepository();
 			const stub = sinon.stub(courseRepository, 'find').returns(coursesStub);
-			const courses = await courseRepository.getCourses();
+			const courses = await courseRepository.getCourses({}, {});
 
 			expect(stub.calledOnce).toBe(true);
 
@@ -54,7 +54,7 @@ describe('CourseRepository', function () {
 			const courseRepository = new CourseRepository();
 			const stub = sinon.stub(courseRepository, 'findCountOf').returns(1);
 			const courseCount = await courseRepository.findCountOf({ name: 'Admitted Patient Care Course' });
-			
+
 			expect(stub.calledOnce).toBe(true);
 
 			expect(courseCount).toEqual(1);
