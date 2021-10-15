@@ -129,21 +129,7 @@ const getTeams = async () => {
 
 const catchLoginErrorAndRedirect = (req, res, next) => {
 	if (req.auth.err || !req.auth.user) {
-		if (req.auth.err === 'loginError' || req.auth.user === undefined) {
-			return res.status(200).redirect(process.env.homeURL + '/loginerror');
-		}
-
-		let redirect = '/';
-		let returnPage = null;
-		if (req.param.returnpage) {
-			returnPage = Url.parse(req.param.returnpage);
-			redirect = returnPage.path;
-			delete req.param.returnpage;
-		}
-
-		let redirectUrl = process.env.homeURL + redirect;
-
-		return res.status(200).redirect(redirectUrl);
+		return res.status(200).redirect(process.env.homeURL + '/loginerror');
 	}
 	next();
 };
