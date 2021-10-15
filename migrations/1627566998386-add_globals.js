@@ -101,6 +101,13 @@ const globalData = {
 						label: '1 year',
 						impliedValues: ['platinum', 'gold', 'silver', 'bronze'],
 					},
+					{
+						id: mongoose.Types.ObjectId(),
+						displayOrder: 5,
+						definition: 'N/A',
+						label: 'N/A',
+						impliedValues: [],
+					},
 				],
 			},
 			{
@@ -232,6 +239,13 @@ const globalData = {
 						label: 'More than 10 years',
 						impliedValues: ['platinum'],
 					},
+					{
+						id: mongoose.Types.ObjectId(),
+						displayOrder: 5,
+						definition: 'N/A',
+						label: 'N/A',
+						impliedValues: [],
+					},
 				],
 			},
 			{
@@ -306,6 +320,13 @@ const globalData = {
 						label: 'Model conforms to national standard and key fields coded to national/internal standard',
 						impliedValues: ['platinum'],
 					},
+					{
+						id: mongoose.Types.ObjectId(),
+						displayOrder: 5,
+						definition: 'N/A',
+						label: 'N/A',
+						impliedValues: [],
+					},
 				],
 			},
 			{
@@ -379,6 +400,21 @@ const globalData = {
 							'Ability to view earlier versions, including versions before any transformations have been applied data (in line with deidentification and IG approval) and review the impact of each stage of data cleaning',
 						label: "Earlier and 'raw' versions and the impact of each stage of data cleaning",
 						impliedValues: ['platinum'],
+					},
+					{
+						id: mongoose.Types.ObjectId(),
+						displayOrder: 4,
+						definition:
+							'Ability to view earlier versions, including versions before any transformations have been applied data (in line with deidentification and IG approval) and review the impact of each stage of data cleaning',
+						label: "Earlier and 'raw' versions and the impact of each stage of data cleaning",
+						impliedValues: ['platinum'],
+					},
+					{
+						id: mongoose.Types.ObjectId(),
+						displayOrder: 4,
+						definition:'N/A',
+						label: "N/A",
+						impliedValues: [],
 					},
 				],
 			},
