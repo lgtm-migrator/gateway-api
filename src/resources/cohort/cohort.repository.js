@@ -68,7 +68,9 @@ export default class CohortRepository extends Repository {
 
 			if (query.fields) {
 				aggregateQuery.push({
-					$project: { filterCriteria: 1, 'datasets.name': 1 },
+					$project: query.fields.split(',').reduce((obj, key) => {
+						return { ...obj, [key]: 1 };
+					}, {}),
 				});
 			}
 			return Cohort.aggregate(aggregateQuery);

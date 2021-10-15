@@ -21,6 +21,7 @@ const cohortSchema = new Schema(
 		filterCriteria: [],
 		counter: Number,
 		updatedon: Date,
+		countsPerDataset: [],
 		totalResultCount: Number,
 		numberOfDatasets: Number,
 
@@ -48,6 +49,12 @@ const cohortSchema = new Schema(
 		toObject: { virtuals: true },
 	}
 );
+
+cohortSchema.virtual('persons', {
+	ref: 'Data',
+	foreignField: 'id',
+	localField: 'uploaders',
+});
 
 // Load entity class
 cohortSchema.loadClass(CohortClass);

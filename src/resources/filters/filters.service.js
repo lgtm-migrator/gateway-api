@@ -149,7 +149,7 @@ export default class FiltersService {
 				entities = await this.courseRepository.getCourses({ ...query, fields }, { lean: true, dateFormat: 'DD MMM YYYY' });
 				break;
 			case 'cohort':
-				fields = `filterCriteria, datasets.name`;
+				fields = `filterCriteria,datasets.name`;
 				entities = await this.cohortRepository.getCohorts({ ...query, fields }, { aggregate: true });
 				break;
 		}
