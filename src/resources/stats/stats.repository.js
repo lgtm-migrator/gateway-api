@@ -323,15 +323,15 @@ export default class StatsRepository extends Repository {
 						await Promise.all([
 							this.getObjectResult('dataset', searchQuery),
 							this.getObjectResult('tool', searchQuery),
-							this.getObjectResult('project', searchQuery),
 							this.getObjectResult('paper', searchQuery),
 							this.getObjectResult('course', searchQuery),
+							this.getObjectResult('dataUseRegister', searchQuery),
 						]).then(resources => {
 							topSearch.datasets = resources[0][0] !== undefined && resources[0][0].count !== undefined ? resources[0][0].count : 0;
 							topSearch.tools = resources[1][0] !== undefined && resources[1][0].count !== undefined ? resources[1][0].count : 0;
-							topSearch.projects = resources[2][0] !== undefined && resources[2][0].count !== undefined ? resources[2][0].count : 0;
-							topSearch.papers = resources[3][0] !== undefined && resources[3][0].count !== undefined ? resources[3][0].count : 0;
-							topSearch.courses = resources[4][0] !== undefined && resources[4][0].count !== undefined ? resources[4][0].count : 0;
+							topSearch.papers = resources[2][0] !== undefined && resources[2][0].count !== undefined ? resources[2][0].count : 0;
+							topSearch.courses = resources[3][0] !== undefined && resources[3][0].count !== undefined ? resources[3][0].count : 0;
+							topSearch.dataUseRegisters = resources[4][0] !== undefined && resources[4][0].count !== undefined ? resources[4][0].count : 0;
 						});
 						return topSearch;
 					})
@@ -346,43 +346,33 @@ export default class StatsRepository extends Repository {
 		newSearchQuery['$and'].push({ type });
 		var q = '';
 
-		if (type === 'course') {
-			q = Course.aggregate([
-				{ $match: newSearchQuery },
-				{
-					$group: {
-						_id: {},
-						count: {
-							$sum: 1,
-						},
+		const typeMapper = {
+			dataset: Data,
+			tool: Data,
+			paper: Data,
+			course: Course,
+			dataUseRegister: DataUseRegister,
+		};
+
+		const model = typeMapper[type];
+
+		q = model.aggregate([
+			{ $match: newSearchQuery },
+			{
+				$group: {
+					_id: {},
+					count: {
+						$sum: 1,
 					},
 				},
-				{
-					$project: {
-						count: '$count',
-						_id: 0,
-					},
+			},
+			{
+				$project: {
+					count: '$count',
+					_id: 0,
 				},
-			]);
-		} else {
-			q = Data.aggregate([
-				{ $match: newSearchQuery },
-				{
-					$group: {
-						_id: {},
-						count: {
-							$sum: 1,
-						},
-					},
-				},
-				{
-					$project: {
-						count: '$count',
-						_id: 0,
-					},
-				},
-			]);
-		}
+			},
+		]);
 
 		return new Promise((resolve, reject) => {
 			q.exec((err, data) => {
