@@ -4,6 +4,7 @@ import { Data } from '../tool/data.model';
 import { RecordSearchData } from '../search/record.search.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { Course } from '../course/course.model';
+import { Cohort } from '../cohort/cohort.model';
 import { MessagesModel } from '../message/message.model';
 import constants from '../utilities/constants.util';
 
@@ -469,8 +470,67 @@ export default class StatsRepository extends Repository {
 		]);
 	}
 
+	async getPopularCohorts() {
+		return Cohort.find(
+			{
+				activeflag: 'active',
+				publicflag: true,
+				counter: {
+					$gt: 0,
+				},
+			},
+			{
+				_id: 0,
+				type: 1,
+				name: 1,
+				filterCriteria: 1,
+				totalResultCount: 1,
+				numberOfDatasets: 1,
+				id: 1,
+				counter: 1,
+				activeflag: 1,
+				publicflag: 1,
+			}
+		)
+			.populate({
+				path: 'persons',
+			})
+			.sort({ counter: -1, title: 1 })
+			.limit(10)
+			.lean();
+	}
+
 	async getActiveCourseCount() {
 		return Course.countDocuments({ activeflag: 'active' });
+	}
+
+	async getActiveCohortsCount() {
+		return Cohort.countDocuments({ activeflag: 'active', publicflag: true });
+	}
+
+	async getRecentlyUpdatedCohorts() {
+		return Cohort.find(
+			{ activeflag: 'active', publicflag: true },
+			{
+				_id: 0,
+				type: 1,
+				name: 1,
+				filterCriteria: 1,
+				totalResultCount: 1,
+				numberOfDatasets: 1,
+				id: 1,
+				counter: 1,
+				updatedon: 1,
+				activeflag: 1,
+				publicflag: 1,
+			}
+		)
+			.populate({
+				path: 'persons',
+			})
+			.sort({ updatedon: -1, title: 1 })
+			.limit(10)
+			.lean();
 	}
 
 	async getPopularEntitiesByType(entityType) {

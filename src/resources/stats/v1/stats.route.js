@@ -61,11 +61,12 @@ router.get('', logger.logRequestMiddleware({ logCategory, action: 'Viewed stats'
 				break;
 
 			default:
-				const [searchCounts, accessRequestCount, entityTotalCounts, coursesActiveCount] = await Promise.all([
+				const [searchCounts, accessRequestCount, entityTotalCounts, coursesActiveCount, cohortsActiveCount] = await Promise.all([
 					statsService.getTotalSearchesByUsers(),
 					statsService.getDataAccessRequestStats(),
 					statsService.getTotalEntityCounts(),
 					statsService.getActiveCourseCount(),
+					statsService.getActiveCohortsCount(),
 				]).catch(err => {
 					logger.logError(err, logCategory);
 				});
@@ -75,6 +76,7 @@ router.get('', logger.logRequestMiddleware({ logCategory, action: 'Viewed stats'
 						...entityTotalCounts,
 						accessRequests: accessRequestCount,
 						course: coursesActiveCount,
+						cohort: cohortsActiveCount,
 					},
 					daycounts: searchCounts,
 				};

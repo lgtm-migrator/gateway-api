@@ -118,6 +118,8 @@ export default class StatsService {
 		switch (entityType) {
 			case 'course':
 				return this.statsRepository.getPopularCourses();
+			case 'cohort':
+				return this.statsRepository.getPopularCohorts();
 			default:
 				return this.statsRepository.getPopularEntitiesByType(entityType);
 		}
@@ -127,12 +129,18 @@ export default class StatsService {
 		return this.statsRepository.getActiveCourseCount();
 	}
 
+	async getActiveCohortsCount() {
+		return this.statsRepository.getActiveCohortsCount();
+	}
+
 	async getRecentlyUpdatedEntitiesByType(entityType) {
 		switch (entityType) {
 			case 'course':
 				return this.statsRepository.getRecentlyUpdatedCourses();
 			case 'dataset':
 				return this.statsRepository.getRecentlyUpdatedDatasets();
+			case 'cohort':
+				return this.statsRepository.getRecentlyUpdatedCohorts();
 			default:
 				return this.statsRepository.getRecentlyUpdatedEntitiesByType(entityType);
 		}
