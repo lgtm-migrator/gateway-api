@@ -9,6 +9,7 @@ const RecordSearchSchema = new Schema(
 			project: Number,
 			paper: Number,
 			person: Number,
+			datause: Number,
 		},
 		datesearched: Date,
 	},

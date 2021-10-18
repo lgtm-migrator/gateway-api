@@ -402,6 +402,7 @@ export default class StatsRepository extends Repository {
 					maxPapers: { $max: '$returned.paper' },
 					maxCourses: { $max: '$returned.course' },
 					maxPeople: { $max: '$returned.people' },
+					maxDataUses: { $max: '$returned.datause' },
 					entity: { $max: entityType },
 				},
 			},
