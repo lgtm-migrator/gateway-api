@@ -26,7 +26,7 @@ export async function getUserByUserId(id) {
 }
 
 export async function getUsersByIds(userIds) {
-	return await UserModel.find({ id: { $in: userIds } }, '_id').lean();
+	return await UserModel.find({ id: { $in: userIds } }).lean();
 }
 
 export async function getServiceAccountByClientCredentials(clientId, clientSecret) {

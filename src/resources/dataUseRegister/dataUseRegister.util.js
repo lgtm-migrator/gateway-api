@@ -108,7 +108,7 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 				...(!isEmpty(datasetTitles) && { datasetTitles }),
 				...(!isEmpty(datasetIds) && { datasetIds }),
 				...(!isEmpty(datasetPids) && { datasetPids }),
-				...(!isEmpty(gatewayApplicants) && { gatewayApplicants }),
+				...(!isEmpty(gatewayApplicants) && { gatewayApplicants: gatewayApplicants.map(gatewayApplicant => gatewayApplicant._id) }),
 				...(!isEmpty(nonGatewayApplicants) && { nonGatewayApplicants }),
 				...(!isEmpty(fundersAndSponsors) && { fundersAndSponsors }),
 				...(!isEmpty(researchOutputs) && { researchOutputs }),
@@ -182,7 +182,11 @@ const getLinkedApplicants = async (applicantNames = []) => {
 		}
 	}
 
-	const gatewayApplicants = isEmpty(unverifiedUserIds) ? [] : (await getUsersByIds(unverifiedUserIds)).map(el => el._id);
+	const gatewayApplicants = isEmpty(unverifiedUserIds)
+		? []
+		: (await getUsersByIds(unverifiedUserIds)).map(el => {
+				return { _id: el._id, id: el.id, firstname: el.firstname, lastname: el.lastname };
+		  });
 
 	return { gatewayApplicants, nonGatewayApplicants };
 };
@@ -221,7 +225,7 @@ const buildRelatedDatasets = (creatorUser, datasets = [], manualUpload = true) =
  * and extracts registered Gateway applicants, combining them before de-duplicating where match is found.
  * @param 	{Array<Object>} 			authors 	An array of user documents representing contributors and the main applicant to a Data Access Request application
  * @param 	{Object} 	applicationQuestionAnswers 	    An object of key pairs containing the question identifiers and answers to the questions taken from a Data Access Request application
- * @returns {Object}						An object containing two arrays, the first being representative of registered Gateway users in the form of their identifying _id 
+ * @returns {Object}						An object containing two arrays, the first being representative of registered Gateway users in the form of their identifying _id
  * and the second array being the names of applicants who were extracted from the question answers object passed in but did not match any of the registered users provided in authors
  */
 const extractFormApplicants = (authors = [], applicationQuestionAnswers = {}) => {
