@@ -3,6 +3,7 @@ import { logger } from '../utilities/logger';
 import _ from 'lodash';
 import constants from './../utilities/constants.util';
 import dataUseRegisterUtil from './dataUseRegister.util';
+import { Data } from '../tool/data.model';
 
 const logCategory = 'dataUseRegister';
 
@@ -26,6 +27,54 @@ export default class DataUseRegisterController extends Controller {
 			// Find the dataUseRegister
 			const options = { lean: true };
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, req.query, options);
+			// Reverse look up
+			var query = Data.aggregate([
+				{ $match: { id: parseInt(req.params.id) } },
+				{
+					$lookup: {
+						from: 'tools',
+						localField: 'creator',
+						foreignField: 'id',
+						as: 'creator',
+					},
+				},
+			]);
+			query.exec((err, data) => {
+				if (data.length > 0) {
+					var p = Data.aggregate([
+						{
+							$match: {
+								$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }],
+							},
+						},
+					]);
+					p.exec((err, relatedData) => {
+						relatedData.forEach(dat => {
+							dat.relatedObjects.forEach(x => {
+								if (x.objectId === req.params.id && dat.id !== req.params.id) {
+									let relatedObject = {
+										objectId: dat.id,
+										reason: x.reason,
+										objectType: dat.type,
+										user: x.user,
+										updated: x.updated,
+									};
+									data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
+								}
+							});
+						});
+
+						if (err) return res.json({ success: false, error: err });
+
+						return res.json({
+							success: true,
+							data: data,
+						});
+					});
+				} else {
+					return res.status(404).send(`Data Use Register not found for Id: ${escape(id)}`);
+				}
+			});
 			// Return if no dataUseRegister found
 			if (!dataUseRegister) {
 				return res.status(404).json({
