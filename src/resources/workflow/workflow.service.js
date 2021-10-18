@@ -5,7 +5,7 @@ import teamController from '../team/team.controller';
 import constants from '../utilities/constants.util';
 import emailGenerator from '../utilities/emailGenerator.util';
 import notificationBuilder from '../utilities/notificationBuilder';
-
+import workflowRepository from './workflow.repository.js';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class WorkflowService {
@@ -59,6 +59,7 @@ export default class WorkflowService {
 	}
 
 	getWorkflowById(id) {
+	console.log("getWorkflowById(id) service 61")
 		return this.workflowRepository.getWorkflowById(id);
 	}
 

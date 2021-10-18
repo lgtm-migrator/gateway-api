@@ -52,7 +52,7 @@ configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
 
-var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
+var domains = [process.env.homeURL];
 
 var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
@@ -112,6 +112,7 @@ app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
 		if (err || !user) {
 			return res.status(200).redirect(process.env.homeURL + '/search?search=');
 		}
+		oidc.Session.destory;
 		req.logout();
 		res.clearCookie('jwt');
 
@@ -127,7 +128,9 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 			return res.status(200).redirect(process.env.homeURL + '/search?search=&showLogin=true&loginReferrer=' + apiURL + req.url);
 		} else {
 			try {
-				const { prompt, session } = await oidc.interactionDetails(req, res);
+				const { uid, prompt, params, session } = await oidc.interactionDetails(req, res);
+
+				const client = await oidc.Client.find(params.client_id);
 
 				switch (prompt.name) {
 					case 'select_account': {
@@ -147,7 +150,12 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 							return oidc.interactionFinished(req, res, { select_account: {} }, { mergeWithLastSubmission: false });
 						}
 
-						await oidc.interactionDetails(req, res);
+						const account = await oidc.Account.findAccount(undefined, session.accountId);
+						const { email } = await account.claims('prompt', 'email', { email: null }, []);
+
+						const {
+							prompt: { name, details },
+						} = await oidc.interactionDetails(req, res);
 						//assert.equal(name, 'consent');
 
 						const consent = {};

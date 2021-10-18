@@ -39,7 +39,7 @@ const _unNestQuestionPanels = panels => {
 			if (questionSets.length > 1) {
 				// filters excluded questionSetIds
 				let filtered = [...questionSets].filter(item => {
-					let [questionId] = item.questionSetId.split('_');
+					let [questionId, uniqueId] = item.questionSetId.split('_');
 					return !excludedQuestionSetIds.includes(questionId);
 				});
 				// builds new array of [{panelId, pageId, etc}]
@@ -2414,7 +2414,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 
 	// 3. Build each email object for SendGrid extracting email addresses from user object with unique unsubscribe link (to)
 	for (let recipient of recipients) {
-		let body = _generateEmailHeader + html + _generateEmailFooter(recipient, allowUnsubscribe);
+		let body = html + _generateEmailFooter(recipient, allowUnsubscribe);
 		let msg = {
 			to: recipient.email,
 			from: from,
@@ -2458,10 +2458,6 @@ const _sendIntroEmail = msg => {
 		}
 	});
 };
-
-const _generateEmailHeader = `
-    <img src="https://storage.googleapis.com/hdruk-gateway_prod-cms/web-assets/HDRUK_logo_colour.png" alt="HDR UK Logo" width="127" height="63" style="display: block; margin-left: auto; margin-right: auto; margin-bottom: 24px; margin-top: 24px;"></img>
-  `;
 
 const _generateEmailFooter = (recipient, allowUnsubscribe) => {
 	// 1. Generate HTML for unsubscribe link if allowed depending on context

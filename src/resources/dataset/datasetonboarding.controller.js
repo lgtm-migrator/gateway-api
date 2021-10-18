@@ -110,6 +110,7 @@ module.exports = {
 	//POST api/v1/dataset-onboarding
 	createNewDatasetVersion: async (req, res) => {
 		try {
+		console.log("In createNewDatasetVersion ")
 			const publisherID = req.body.publisherID || null;
 			const pid = req.body.pid || null;
 			const currentVersionId = req.body.currentVersionId || null;
@@ -117,13 +118,15 @@ module.exports = {
 			//Check user type and authentication to submit application
 			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(null, req.user, publisherID);
 			if (!authorised) {
+			console.log("In not wuthorised if ")
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
 			//If no publisher then return error
 			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Dataset publisher could not be found.' });
-
+            console.log("pre publisherData")
 			const publisherData = await PublisherModel.find({ _id: publisherID }).lean();
+			console.log("publisherData", publisherData[0].publisherDetails)
 			let publisherObject = {
 				summary: {
 					publisher: {
@@ -134,6 +137,7 @@ module.exports = {
 				},
 			};
 
+            console.log("post publisherData")
 			//If publisher but no pid then new dataset - create new pid and version is 1.0.0
 			if (!pid) {
 				let uuid = '';

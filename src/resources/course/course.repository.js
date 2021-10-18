@@ -393,8 +393,7 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 		activeflag,
 		type: 'author',
 	};
-	// Create email body content
-	let html = emailGenerator.generateEntityNotification(options);
+
 
 	if (adminCanUnsubscribe) {
 		// 3. Find the creator of the course and admins if they have opted in to email updates
@@ -451,22 +450,6 @@ async function sendEmailNotifications(tool, activeflag, rejectionReason) {
 				return new Error({ success: false, error: err });
 			}
 			emailGenerator.sendEmail(emailRecipients, `${i18next.t('translation:email.sender')}`, subject, html, adminCanUnsubscribe);
-           });
-
-			// Create object to pass through email data
-			options = {
-				resourceType: tool.type,
-				resourceName: tool.title,
-				resourceLink: toolLink,
-				subject,
-				rejectionReason: rejectionReason,
-				activeflag,
-				type: 'admin',
-			};
-
-			html = emailGenerator.generateEntityNotification(options);
-
-			emailGenerator.sendEmail(emailRecipients, `${hdrukEmail}`, subject, html, adminCanUnsubscribe);
 		});
 	}
 }

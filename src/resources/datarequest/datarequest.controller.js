@@ -9,11 +9,12 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import helper from '../utilities/helper.util';
 import dynamicForm from '../utilities/dynamicForms/dynamicForm.util';
 import constants from '../utilities/constants.util';
-import { getFile, fileStatus } from '../utilities/cloudStorage.util';
+import { processFile, getFile, fileStatus } from '../utilities/cloudStorage.util';
 import inputSanitizer from '../utilities/inputSanitizer';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
+import i18next from '../internationalization/i18next';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -411,6 +412,7 @@ export default class DataRequestController extends Controller {
 			await this.createNotifications(notificationType, {}, accessRecord.toObject(), requestingUser);
 
 			// 10. Start workflow process in Camunda if publisher requires it and it is the first submission
+			console.log("savedAccessRecord.workflowEnabled", savedAccessRecord.workflowEnabled)
 			if (savedAccessRecord.workflowEnabled && savedAccessRecord.applicationType === constants.submissionTypes.INITIAL) {
 				let {
 					publisherObj: { name: publisher },
@@ -1708,6 +1710,7 @@ export default class DataRequestController extends Controller {
 			const {
 				params: { id },
 			} = req;
+			console.log()
 			const requestingUserObjectId = req.user._id;
 
 			// 2. Retrieve DAR from database

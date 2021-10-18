@@ -22,7 +22,7 @@ const UserSchema = new Schema(
 		discourseUsername: String,
 		discourseKey: String,
 		isServiceAccount: { type: Boolean, default: false },
-		clientId: String,
+		clientID: String,
 		clientSecret: String,
 		advancedSearchRoles: [],
 		acceptedAdvancedSearchTerms: Boolean,

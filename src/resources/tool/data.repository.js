@@ -11,6 +11,8 @@ import { utils } from '../auth';
 import { ROLES } from '../user/user.roles';
 const urlValidator = require('../utilities/urlValidator');
 const inputSanitizer = require('../utilities/inputSanitizer');
+import i18next from '../internationalization/i18next';
+
 
 export async function getObjectById(id) {
 	return await Data.findOne({ id }).exec();

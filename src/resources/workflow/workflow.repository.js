@@ -35,9 +35,10 @@ export default class WorkflowRepository extends Repository {
 	}
 
 	getWorkflowById(id, options = {}) {
+		console.log('in getWorkflowById id= ', id);
 		return WorkflowModel.findOne(
 			{
-				_id: { $eq: id },
+				_id: id,
 			},
 			null,
 			options
@@ -54,7 +55,11 @@ export default class WorkflowRepository extends Repository {
 
 	async assignWorkflowToApplication(accessRecord, workflowId) {
 		// Retrieve workflow using ID from database
-		const workflow = await WorkflowRepository.getWorkflowById(workflowId, { lean: false });
+		console.log('workflowId  ', workflowId);
+
+		const workflow = await this.getWorkflowById(workflowId, { lean: false });
+		console.log('');
+		console.log('workflow', workflow);
 		if (!workflow) {
 			throw new Error('Workflow could not be found');
 		}
