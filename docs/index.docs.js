@@ -11,6 +11,9 @@ import project from './resources/project.docs';
 import paper from './resources/paper.docs';
 import tool from './resources/tool.docs';
 import course from './resources/course.docs';
+import collection from './resources/collections.docs';
+
+import collectionsSchema from './schemas/collections.schema';
 
 module.exports = {
 	openapi: '3.0.1',
@@ -59,6 +62,7 @@ module.exports = {
 		...paper,
 		...tool,
 		...course,
+		...collection,
 	},
 	components: {
 		securitySchemes: {
@@ -73,8 +77,11 @@ module.exports = {
 			},
 			cookieAuth: {
 				type: 'http',
-				scheme: 'jwt',
+				scheme: 'bearer',
 			},
+		},
+		schemas: {
+			Collections: { ...collectionsSchema },
 		},
 	},
 };
