@@ -1022,9 +1022,8 @@ const buildBulkUploadObject = async arrayOfDraftDatasets => {
 					//Check to see that publisher exists
 					publisher = await PublisherModel.findOne({ _id: { $eq: dataset.summary.publisher } }).lean();
 					if (isEmpty(publisher)) {
-						resultObject.error = `${dataset.summary.title} failed because publisher was no found`;
+						resultObject.error.push(`${dataset.summary.title} failed because publisher was no found`);
 						resultObject.result = false;
-						break;
 					}
 
 					//Check to see if this is a new entry or a new version
@@ -1054,17 +1053,24 @@ const buildBulkUploadObject = async arrayOfDraftDatasets => {
 
 						//If no pid then all the datasets in the revision history do not exist on the Gateway
 						if (isEmpty(pid)) {
-							resultObject.error = `${dataset.summary.title} failed because there was revision history but did not match an existing dataset on the Gateway`;
+							resultObject.error.push(
+								`${dataset.summary.title} failed because there was revision history but did not match an existing dataset on the Gateway`
+							);
 							resultObject.result = false;
-							break;
 						}
 
 						//Check there is not already a draft
 						let isDraft = await Data.findOne({ pid, activeflag: 'draft' }, { pid: 1 }).lean();
 						if (!isEmpty(isDraft)) {
-							resultObject.error = `${dataset.summary.title} failed because there was already a draft for this dataset`;
+							resultObject.error.push(`${dataset.summary.title} failed because there was already a draft for this dataset`);
 							resultObject.result = false;
-							break;
+						}
+
+						//Check there is not already a draft in review
+						let isDraftInReview = await Data.findOne({ pid, activeflag: 'inReview' }, { pid: 1 }).lean();
+						if (!isEmpty(isDraftInReview)) {
+							resultObject.error.push(`${dataset.summary.title} failed because there was already a draft in review for this dataset`);
+							resultObject.result = false;
 						}
 					}
 
@@ -1077,19 +1083,18 @@ const buildBulkUploadObject = async arrayOfDraftDatasets => {
 						title: dataset.summary.title,
 					});
 				} else {
-					resultObject.error = `${dataset.summary.title} failed because there was no publisher`;
+					resultObject.error.push(`${dataset.summary.title} failed because there was no publisher`);
 					resultObject.result = false;
-					break;
 				}
 			} catch (err) {
-				resultObject.error = `${dataset.summary.title} failed because ${err}`;
+				resultObject.error.push(`${dataset.summary.title} failed because ${err}`);
 				resultObject.result = false;
 			}
 		}
 
 		return resultObject;
 	} catch (err) {
-		resultObject.error = `Failed because ${err}`;
+		resultObject.error.push(`Failed because ${err}`);
 		resultObject.result = false;
 	}
 };
