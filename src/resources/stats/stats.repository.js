@@ -490,11 +490,10 @@ export default class StatsRepository extends Repository {
 				counter: 1,
 				activeflag: 1,
 				publicflag: 1,
+				uploaders: 1,
 			}
 		)
-			.populate({
-				path: 'persons',
-			})
+			.populate({ path: 'persons', select: 'firstname lastname' })
 			.sort({ counter: -1, title: 1 })
 			.limit(10)
 			.lean();
@@ -523,11 +522,10 @@ export default class StatsRepository extends Repository {
 				updatedon: 1,
 				activeflag: 1,
 				publicflag: 1,
+				uploaders: 1,
 			}
 		)
-			.populate({
-				path: 'persons',
-			})
+			.populate({ path: 'persons', select: 'firstname lastname' })
 			.sort({ updatedon: -1, title: 1 })
 			.limit(10)
 			.lean();
