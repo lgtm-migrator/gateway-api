@@ -326,12 +326,14 @@ export default class StatsRepository extends Repository {
 							this.getObjectResult('project', searchQuery),
 							this.getObjectResult('paper', searchQuery),
 							this.getObjectResult('course', searchQuery),
+							this.getObjectResult('cohort', searchQuery),
 						]).then(resources => {
 							topSearch.datasets = resources[0][0] !== undefined && resources[0][0].count !== undefined ? resources[0][0].count : 0;
 							topSearch.tools = resources[1][0] !== undefined && resources[1][0].count !== undefined ? resources[1][0].count : 0;
 							topSearch.projects = resources[2][0] !== undefined && resources[2][0].count !== undefined ? resources[2][0].count : 0;
 							topSearch.papers = resources[3][0] !== undefined && resources[3][0].count !== undefined ? resources[3][0].count : 0;
-							topSearch.course = resources[4][0] !== undefined && resources[4][0].count !== undefined ? resources[4][0].count : 0;
+							topSearch.courses = resources[4][0] !== undefined && resources[4][0].count !== undefined ? resources[4][0].count : 0;
+							topSearch.cohorts = resources[5][0] !== undefined && resources[5][0].count !== undefined ? resources[5][0].count : 0;
 						});
 						return topSearch;
 					})
@@ -344,9 +346,23 @@ export default class StatsRepository extends Repository {
 	async getObjectResult(type, searchQuery) {
 		let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
 		newSearchQuery['$and'].push({ type });
+
+		type === 'cohort' && newSearchQuery['$and'].push({ publicflag: true });
+
 		var q = '';
 
-		q = Data.aggregate([
+		const typeMapper = {
+			dataset: Data,
+			tool: Data,
+			paper: Data,
+			project: Data,
+			course: Course,
+			cohort: Cohort,
+		};
+
+		const model = typeMapper[type];
+
+		q = model.aggregate([
 			{ $match: newSearchQuery },
 			{
 				$group: {
@@ -391,7 +407,8 @@ export default class StatsRepository extends Repository {
 					maxTools: { $max: '$returned.tool' },
 					maxPapers: { $max: '$returned.paper' },
 					maxCourses: { $max: '$returned.course' },
-					maxPeople: { $max: '$returned.people' },
+					maxPeople: { $max: '$returned.person' },
+					maxCohorts: { $max: '$returned.cohort' },
 					entity: { $max: entityType },
 				},
 			},
