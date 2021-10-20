@@ -87,8 +87,7 @@ const authorizeView = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { team } = req.query;
 
-	const authorised =
-		team === 'user' || (team === 'admin' && isUserDataUseAdmin(requestingUser)) || isUserMemberOfTeam(requestingUser, team);
+	const authorised = team === 'user' || isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, team);
 
 	if (!authorised) {
 		return res.status(401).json({

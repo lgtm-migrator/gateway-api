@@ -66,6 +66,7 @@ const dataUseRegisterSchema = new Schema(
 		dataLocation: String, //TRE Or Any Other Specified Location
 		privacyEnhancements: String, //How Has Data Been Processed To Enhance Privacy
 		researchOutputs: [{ type: String }], //Link To Research Outputs
+		rejectionReason: String, //Reason For Rejecting A Data Use Register
 	},
 	{
 		timestamps: true,

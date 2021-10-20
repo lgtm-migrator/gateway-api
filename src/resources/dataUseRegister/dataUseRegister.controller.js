@@ -1,10 +1,10 @@
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
-import _ from 'lodash';
 import constants from './../utilities/constants.util';
-import dataUseRegisterUtil from './dataUseRegister.util';
 import { Data } from '../tool/data.model';
-
+import { TeamModel } from '../team/team.model';
+import teamController from '../team/team.controller';
+import emailGenerator from '../utilities/emailGenerator.util';
 const logCategory = 'dataUseRegister';
 
 export default class DataUseRegisterController extends Controller {
@@ -108,7 +108,7 @@ export default class DataUseRegisterController extends Controller {
 					query = { user: requestingUser._id };
 					break;
 				case 'admin':
-					query = { status: constants.dataUseRegisterStatus.INREVIEW };
+					query = { activeflag: constants.dataUseRegisterStatus.INREVIEW };
 					break;
 				default:
 					query = { publisher: team };
@@ -135,11 +135,28 @@ export default class DataUseRegisterController extends Controller {
 	async updateDataUseRegister(req, res) {
 		try {
 			const id = req.params.id;
-			const body = req.body;
+			const { activeflag, rejectionReason } = req.body;
+			const requestingUser = req.user;
 
-			this.dataUseRegisterService.updateDataUseRegister(id, body).catch(err => {
+			const options = { lean: true, populate: 'user' };
+			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, {}, options);
+
+			this.dataUseRegisterService.updateDataUseRegister(id, req.body).catch(err => {
 				logger.logError(err, logCategory);
 			});
+
+			// Send notifications
+			if (activeflag === 'active') {
+				this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister, requestingUser);
+			} else if (activeflag === 'rejected') {
+				this.createNotifications(
+					constants.dataUseRegisterNotifications.DATAUSEREJECTED,
+					{ rejectionReason },
+					dataUseRegister,
+					requestingUser
+				);
+			}
+
 			// Return success
 			return res.status(200).json({
 				success: true,
@@ -188,6 +205,54 @@ export default class DataUseRegisterController extends Controller {
 				success: false,
 				message: 'A server error occurred, please try again',
 			});
+		}
+	}
+
+	async createNotifications(type, context, dataUseRegister, requestingUser) {
+		const { teams } = requestingUser;
+		const { rejectionReason } = context;
+		const { id, projectTitle, user: uploader } = dataUseRegister;
+
+		switch (type) {
+			case constants.dataUseRegisterNotifications.DATAUSEAPPROVED: {
+				const adminTeam = await TeamModel.findOne({ type: 'admin' })
+					.populate({
+						path: 'users',
+					})
+					.lean();
+				const dataUseTeamMembers = teamController.getTeamMembersByRole(adminTeam, constants.roleTypes.ADMIN_DATA_USE);
+				const emailRecipients = [...dataUseTeamMembers, uploader];
+
+				const options = {
+					id,
+					projectTitle,
+				};
+
+				const html = emailGenerator.generateDataUseRegisterApproved(options);
+				emailGenerator.sendEmail(emailRecipients, constants.hdrukEmail, `A data use has been approved by HDR UK`, html, false);
+				break;
+			}
+
+			case constants.dataUseRegisterNotifications.DATAUSEREJECTED: {
+				const adminTeam = await TeamModel.findOne({ type: 'admin' })
+					.populate({
+						path: 'users',
+					})
+					.lean();
+
+				const dataUseTeamMembers = teamController.getTeamMembersByRole(adminTeam, constants.roleTypes.ADMIN_DATA_USE);
+				const emailRecipients = [...dataUseTeamMembers, uploader];
+
+				const options = {
+					id,
+					projectTitle,
+					rejectionReason,
+				};
+
+				const html = emailGenerator.generateDataUseRegisterRejected(options);
+				emailGenerator.sendEmail(emailRecipients, constants.hdrukEmail, `A data use has been rejected by HDR UK`, html, false);
+				break;
+			}
 		}
 	}
 }

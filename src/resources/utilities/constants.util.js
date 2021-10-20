@@ -15,6 +15,11 @@ const _activityLogNotifications = Object.freeze({
 	MANUALEVENTREMOVED: 'manualEventRemoved',
 });
 
+const _dataUseRegisterNotifications = Object.freeze({
+	DATAUSEAPPROVED: 'dataUseApproved',
+	DATAUSEREJECTED: 'dataUseRejected',
+});
+
 const _teamNotificationTypes = Object.freeze({
 	DATAACCESSREQUEST: 'dataAccessRequest',
 	METADATAONBOARDING: 'metaDataOnboarding',
@@ -320,4 +325,5 @@ export default {
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
 	dataUseRegisterStatus: _dataUseRegisterStatus,
+	dataUseRegisterNotifications: _dataUseRegisterNotifications,
 };
