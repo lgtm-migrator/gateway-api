@@ -146,9 +146,15 @@ export default class DataUseRegisterController extends Controller {
 			});
 
 			// Send notifications
-			if (activeflag === 'active') {
+			if (
+				activeflag === constants.dataUseRegisterStatus.ACTIVE &&
+				dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW
+			) {
 				this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister, requestingUser);
-			} else if (activeflag === 'rejected') {
+			} else if (
+				activeflag === constants.dataUseRegisterStatus.REJECTED &&
+				dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW
+			) {
 				this.createNotifications(
 					constants.dataUseRegisterNotifications.DATAUSEREJECTED,
 					{ rejectionReason },
