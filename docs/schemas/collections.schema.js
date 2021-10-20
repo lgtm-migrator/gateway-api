@@ -11,6 +11,7 @@ module.exports = {
 		},
 		imageLink: {
 			type: 'string',
+			format: 'uri',
 		},
 		authors: {
 			type: 'array',
