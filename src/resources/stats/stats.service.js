@@ -172,4 +172,5 @@ const entityTypeMap = {
 	Courses: 'course',
 	Papers: 'papers',
 	People: 'person',
+	Cohorts: 'cohort',
 };
