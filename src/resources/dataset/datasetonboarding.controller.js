@@ -110,7 +110,6 @@ module.exports = {
 	//POST api/v1/dataset-onboarding
 	createNewDatasetVersion: async (req, res) => {
 		try {
-		console.log("In createNewDatasetVersion ")
 			const publisherID = req.body.publisherID || null;
 			const pid = req.body.pid || null;
 			const currentVersionId = req.body.currentVersionId || null;
