@@ -5,7 +5,7 @@ import { dataUseRegisterService } from './dependency';
 import { logger } from '../utilities/logger';
 import passport from 'passport';
 import constants from './../utilities/constants.util';
-import { isEmpty, isNull } from 'lodash';
+import { isEmpty, isNull, isUndefined } from 'lodash';
 
 const router = express.Router();
 const dataUseRegisterController = new DataUseRegisterController(dataUseRegisterService);
@@ -48,18 +48,18 @@ const validateUpdateRequest = (req, res, next) => {
 	next();
 };
 
-const validateViewRequest = (req, res, next) => {
-	const { team } = req.query;
+// const validateViewRequest = (req, res, next) => {
+//  const { team } = req.query;
 
-	if (!team) {
-		return res.status(400).json({
-			success: false,
-			message: 'You must provide a team parameter',
-		});
-	}
+//  if (!team) {
+//      return res.status(400).json({
+//          success: false,
+//          message: 'You must provide a team parameter',
+//      });
+//  }
 
-	next();
-};
+//  next();
+// };
 
 const validateUploadRequest = (req, res, next) => {
 	const { teamId, dataUses } = req.body;
@@ -87,7 +87,7 @@ const authorizeView = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { team } = req.query;
 
-	const authorised = team === 'user' || isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, team);
+	const authorised = isUndefined(team) || isUserMemberOfTeam(requestingUser, team) || team === 'user' || isUserDataUseAdmin(requestingUser);
 
 	if (!authorised) {
 		return res.status(401).json({
@@ -156,7 +156,7 @@ router.get(
 router.get(
 	'/',
 	passport.authenticate('jwt'),
-	validateViewRequest,
+	// validateViewRequest,
 	authorizeView,
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed dataUseRegisters data' }),
 	(req, res) => dataUseRegisterController.getDataUseRegisters(req, res)
@@ -191,6 +191,13 @@ router.post(
 	authorizeUpload,
 	logger.logRequestMiddleware({ logCategory, action: 'Bulk uploaded data uses' }),
 	(req, res) => dataUseRegisterController.uploadDataUseRegisters(req, res)
+);
+
+router.get(
+	'/search',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Search uploaded data uses' }),
+	(req, res) => dataUseRegisterController.searchDataUseRegisters(req, res)
 );
 
 module.exports = router;

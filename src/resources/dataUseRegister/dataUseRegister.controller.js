@@ -6,6 +6,10 @@ import { Data } from '../tool/data.model';
 import { TeamModel } from '../team/team.model';
 import teamController from '../team/team.controller';
 import emailGenerator from '../utilities/emailGenerator.util';
+
+import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
+import { getObjectFilters } from '../search/search.repository';
+
 const logCategory = 'dataUseRegister';
 
 export default class DataUseRegisterController extends Controller {
@@ -210,6 +214,67 @@ export default class DataUseRegisterController extends Controller {
 			return res.status(200).json({ success: true, result });
 		} catch (err) {
 			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'A server error occurred, please try again',
+			});
+		}
+	}
+
+	async searchDataUseRegisters(req, res) {
+		try {
+			// getObjectFilters;
+
+			const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
+
+			if (searchTerm) {
+				newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+			}
+
+			queryObject = [
+				{ $match: searchTerm },
+				{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
+				{
+					$addFields: {
+						persons: {
+							$map: {
+								input: '$persons',
+								as: 'row',
+								in: {
+									id: '$$row.id',
+									firstname: '$$row.firstname',
+									lastname: '$$row.lastname',
+									fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
+								},
+							},
+						},
+					},
+				},
+				{ $match: newSearchQuery },
+				{
+					$project: {
+						_id: 0,
+						id: 1,
+						projectTitle: 1,
+						organisationName: 1,
+						keywords: 1,
+						datasetTitles: 1,
+						activeflag: 1,
+						counter: 1,
+						type: 1,
+					},
+				},
+			];
+
+			const result = await DataUseRegister.aggregate(queryObject).catch(err => {
+				console.log(err);
+			});
+
+			// Return data
+			return res.status(200).json({ success: true, result });
+		} catch (err) {
+			//Return error response if something goes wrong
 			logger.logError(err, logCategory);
 			return res.status(500).json({
 				success: false,
