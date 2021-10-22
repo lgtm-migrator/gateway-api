@@ -2,6 +2,7 @@ import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
 import { UserModel } from '../user/user.model';
+import { Cohort } from '../cohort/cohort.model';
 import emailGenerator from '../utilities/emailGenerator.util';
 import inputSanitizer from '../utilities/inputSanitizer';
 import _ from 'lodash';
@@ -51,7 +52,7 @@ export default class CollectionsService {
 
 		return new Promise(async resolve => {
 			let data;
-			if (objectType !== 'dataset' && objectType !== 'course') {
+			if (objectType !== 'dataset' && objectType !== 'course' && objectType !== 'cohort') {
 				data = await Data.find(
 					{ id: parseInt(id) },
 					{
@@ -92,6 +93,28 @@ export default class CollectionsService {
 						relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 					}
 				).lean();
+			} else if (!isNaN(id) && objectType === 'cohort') {
+				data = await Cohort.find(
+					{ id: parseInt(id) },
+					{
+						_id: 0,
+						id: 1,
+						type: 1,
+						activeflag: 1,
+						publicflag: 1,
+						name: 1,
+						filterCriteria: 1,
+						totalResultCount: 1,
+						numberOfDatasets: 1,
+						activeflag: 1,
+						publicflag: 1,
+						uploaders: 1,
+						counter: { $ifNull: ['$counter', 0] },
+						relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+					}
+				)
+					.populate({ path: 'persons', select: 'firstname lastname' })
+					.lean();
 			} else {
 				const datasetRelatedResources = {
 					$lookup: {
