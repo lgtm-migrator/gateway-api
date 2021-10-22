@@ -223,6 +223,7 @@ app.use('/api/v1/save-cohort', require('../resources/cohort/cohort.route'));
 
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
+app.use('/api/v1/cohortcounter', require('../resources/cohort/cohortcounter.route'));
 app.use('/api/v1/collectioncounter', require('../resources/collections/collectioncounter.route'));
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
