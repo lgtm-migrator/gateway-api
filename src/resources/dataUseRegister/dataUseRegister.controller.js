@@ -1,3 +1,4 @@
+import { isUndefined } from 'lodash';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import constants from './../utilities/constants.util';
@@ -103,15 +104,18 @@ export default class DataUseRegisterController extends Controller {
 			const requestingUser = req.user;
 
 			let query = '';
-			switch (team) {
-				case 'user':
-					query = { user: requestingUser._id };
-					break;
-				case 'admin':
-					query = { activeflag: constants.dataUseRegisterStatus.INREVIEW };
-					break;
-				default:
-					query = { publisher: team };
+
+			if (team === 'user') {
+				delete req.query.team;
+				query = { ...req.query, user: requestingUser._id };
+			} else if (team === 'admin') {
+				delete req.query.team;
+				query = { ...req.query, activeflag: constants.dataUseRegisterStatus.INREVIEW };
+			} else if (team !== 'user' && team !== 'admin') {
+				delete req.query.team;
+				query = { ...req.query, publisher: team };
+			} else {
+				query = req.query;
 			}
 
 			const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters(query).catch(err => {
@@ -141,20 +145,20 @@ export default class DataUseRegisterController extends Controller {
 			const options = { lean: true, populate: 'user' };
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, {}, options);
 
-			this.dataUseRegisterService.updateDataUseRegister(id, req.body).catch(err => {
+			this.dataUseRegisterService.updateDataUseRegister(dataUseRegister._id, req.body).catch(err => {
 				logger.logError(err, logCategory);
 			});
 
+			const isDataUseRegisterApproved =
+				activeflag === constants.dataUseRegisterStatus.ACTIVE && dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW;
+
+			const isDataUseRegisterRejected =
+				activeflag === constants.dataUseRegisterStatus.REJECTED && dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW;
+
 			// Send notifications
-			if (
-				activeflag === constants.dataUseRegisterStatus.ACTIVE &&
-				dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW
-			) {
+			if (isDataUseRegisterApproved) {
 				this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister, requestingUser);
-			} else if (
-				activeflag === constants.dataUseRegisterStatus.REJECTED &&
-				dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW
-			) {
+			} else if (isDataUseRegisterRejected) {
 				this.createNotifications(
 					constants.dataUseRegisterNotifications.DATAUSEREJECTED,
 					{ rejectionReason },
