@@ -141,7 +141,7 @@ router.post('/:id/email', passport.authenticate('jwt'), datarequestController.ma
 // @access  Private - Applicant
 router.delete('/:id', passport.authenticate('jwt'), datarequestController.deleteDraftAccessRequest);
 
-// @route   GET api/v1/data-access-request/team.:team
+// @route   GET api/v1/data-access-request/team/:team
 // @desc    GET all team data requests
 // @access  Private
 router.get('/team/:team', passport.authenticate('jwt'), datarequestController.getAccessRequestsByTeam);
