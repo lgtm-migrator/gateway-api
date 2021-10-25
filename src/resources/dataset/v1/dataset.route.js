@@ -5,6 +5,7 @@ import { getAllTools } from '../../tool/data.repository';
 import { isEmpty, isNil } from 'lodash';
 import escape from 'escape-html';
 import { Course } from '../../course/course.model';
+import { Cohort } from '../../cohort/cohort.model';
 import { filtersService } from '../../filters/dependency';
 import * as Sentry from '@sentry/node';
 const router = express.Router();
@@ -175,7 +176,24 @@ router.get('/:datasetID', async (req, res) => {
 		activeflag: 'active',
 	});
 
-	relatedData = [...relatedData, ...relatedDataFromCourses];
+	let relatedDataFromCohorts = await Cohort.find({
+		relatedObjects: {
+			$elemMatch: {
+				$or: [
+					{
+						objectId: { $in: dataVersionsArray },
+					},
+					{
+						pid: pid,
+					},
+				],
+			},
+		},
+		activeflag: 'active',
+		publicflag: true,
+	});
+
+	relatedData = [...relatedData, ...relatedDataFromCourses, ...relatedDataFromCohorts];
 
 	relatedData.forEach(dat => {
 		dat.relatedObjects.forEach(relatedObject => {

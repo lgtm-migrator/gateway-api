@@ -106,8 +106,6 @@ export default class CollectionsService {
 						filterCriteria: 1,
 						totalResultCount: 1,
 						numberOfDatasets: 1,
-						activeflag: 1,
-						publicflag: 1,
 						uploaders: 1,
 						counter: { $ifNull: ['$counter', 0] },
 						relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },

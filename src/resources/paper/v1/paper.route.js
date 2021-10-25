@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 import express from 'express';
 import { Data } from '../../tool/data.model';
+import { Cohort } from '../../cohort/cohort.model';
 import { ROLES } from '../../user/user.roles';
 import passport from 'passport';
 import { utils } from '../../auth';
@@ -115,11 +116,11 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('pap
 		});
 });
 
-// @router   GET /api/v1/paper/{paperID}
+// @router   GET /api/v1/papers/{paperID}
 // @desc     Return the details on the paper based on the tool ID.
 // @access   Public
 router.get('/:paperID', async (req, res) => {
-	var q = Data.aggregate([
+	let q = Data.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.paperID) }, { type: 'paper' }] } },
 		{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
 		{ $lookup: { from: 'tools', localField: 'uploader', foreignField: 'id', as: 'uploaderIs' } },
@@ -133,23 +134,57 @@ router.get('/:paperID', async (req, res) => {
 	]);
 	q.exec((err, data) => {
 		if (data.length > 0) {
-			var p = Data.aggregate([{ $match: { $and: [{ relatedObjects: { $elemMatch: { objectId: req.params.paperID } } }] } }]);
+			data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
+
+			if (Array.isArray(data[0].document_links)) {
+				data[0].document_links = formatRetroDocumentLinks(data[0].document_links);
+			}
+
+			let p = Data.aggregate([{ $match: { $and: [{ relatedObjects: { $elemMatch: { objectId: req.params.paperID } } }] } }]);
 			p.exec((err, relatedData) => {
+				if (err) return res.json({ success: false, error: err });
+
 				relatedData.forEach(dat => {
 					dat.relatedObjects.forEach(x => {
 						if (x.objectId === req.params.paperID && dat.id !== req.params.paperID) {
 							if (typeof data[0].relatedObjects === 'undefined') data[0].relatedObjects = [];
-							data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type, user: x.user, updated: x.updated });
+							let relatedObject = {
+								objectId: dat.id,
+								reason: x.reason,
+								objectType: dat.type,
+								user: x.user,
+								updated: x.updated,
+							};
+							data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
 						}
 					});
 				});
-				if (err) return res.json({ success: false, error: err });
 
-				data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
-				if (Array.isArray(data[0].document_links)) {
-					data[0].document_links = formatRetroDocumentLinks(data[0].document_links);
-				}
-				return res.json({ success: true, data: data });
+				let r = Cohort.aggregate([{ $match: { $and: [{ relatedObjects: { $elemMatch: { objectId: req.params.paperID } } }] } }]);
+				r.exec(async (err, relatedData) => {
+					if (err) return res.json({ success: false, error: err });
+
+					relatedData.forEach(dat => {
+						dat.relatedObjects.forEach(x => {
+							if (x.objectId === req.params.paperID && dat.id !== req.params.paperID) {
+								if (typeof data[0].relatedObjects === 'undefined') data[0].relatedObjects = [];
+								let relatedObject = {
+									objectId: dat.id,
+									reason: x.reason,
+									objectType: dat.type,
+									user: x.user,
+									updated: x.updated,
+								};
+								data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
+							}
+						});
+					});
+
+					return res.json({
+						success: true,
+						data: data,
+					});
+				});
 			});
 		} else {
 			return res.status(404).send(`Paper not found for Id: ${escape(req.params.paperID)}`);
