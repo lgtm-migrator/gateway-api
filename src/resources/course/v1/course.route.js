@@ -2,10 +2,13 @@ import express from 'express';
 import { ROLES } from '../../user/user.roles';
 import { Data } from '../../tool/data.model';
 import { Course } from '../course.model';
+import { Cohort } from '../../cohort/cohort.model';
 import passport from 'passport';
 import { utils } from '../../auth';
 import { addCourse, editCourse, setStatus, getCourseAdmin, getCourse, getAllCourses } from '../course.repository';
 import escape from 'escape-html';
+import helper from '../../utilities/helper.util';
+
 const router = express.Router();
 
 // @router   POST /api/v1/course
@@ -93,7 +96,7 @@ router.patch('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('c
  */
 router.get('/:id', async (req, res) => {
 	let id = parseInt(req.params.id);
-	var query = Course.aggregate([
+	let query = Course.aggregate([
 		{ $match: { id: parseInt(req.params.id) } },
 		{
 			$lookup: {
@@ -106,14 +109,12 @@ router.get('/:id', async (req, res) => {
 	]);
 	query.exec((err, data) => {
 		if (data.length > 0) {
-			var p = Data.aggregate([
-				{
-					$match: {
-						$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }],
-					},
-				},
-			]);
+			data[0].creator = helper.hidePrivateProfileDetails(data[0].creator);
+
+			let p = Data.aggregate([{ $match: { $and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }] } }]);
 			p.exec((err, relatedData) => {
+				if (err) return res.json({ success: false, error: err });
+
 				relatedData.forEach(dat => {
 					dat.relatedObjects.forEach(x => {
 						if (x.objectId === req.params.id && dat.id !== req.params.id) {
@@ -129,11 +130,29 @@ router.get('/:id', async (req, res) => {
 					});
 				});
 
-				if (err) return res.json({ success: false, error: err });
+				let r = Cohort.aggregate([{ $match: { $and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }] } }]);
+				r.exec(async (err, relatedData) => {
+					if (err) return res.json({ success: false, error: err });
 
-				return res.json({
-					success: true,
-					data: data,
+					relatedData.forEach(dat => {
+						dat.relatedObjects.forEach(x => {
+							if (x.objectId === req.params.id && dat.id !== req.params.id) {
+								let relatedObject = {
+									objectId: dat.id,
+									reason: x.reason,
+									objectType: dat.type,
+									user: x.user,
+									updated: x.updated,
+								};
+								data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
+							}
+						});
+					});
+
+					return res.json({
+						success: true,
+						data: data,
+					});
 				});
 			});
 		} else {

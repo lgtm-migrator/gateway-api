@@ -2,6 +2,7 @@ import express from 'express';
 import _ from 'lodash';
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
+import { Cohort } from '../cohort/cohort.model';
 
 const router = express.Router();
 
@@ -79,6 +80,19 @@ router.get('/course/:id', async (req, res) => {
 	var q = Course.aggregate([
 		{ $match: { $and: [{ id: parseInt(id) }] } },
 		// { $lookup: { from: "tools", localField: "authors", foreignField: "id", as: "persons" } }
+	]);
+	q.exec((err, data) => {
+		if (err) return res.json({ success: false, error: err });
+		return res.json({ success: true, data: data });
+	});
+});
+
+router.get('/cohort/:id', async (req, res) => {
+	let id = req.params.id;
+
+	let q = Cohort.aggregate([
+		{ $match: { $and: [{ id: parseInt(id) }] } },
+		{ $lookup: { from: 'tools', localField: 'uploaders', foreignField: 'id', as: 'persons' } },
 	]);
 	q.exec((err, data) => {
 		if (err) return res.json({ success: false, error: err });
