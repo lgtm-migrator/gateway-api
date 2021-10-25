@@ -25,6 +25,14 @@ const amendmentController = require('./amendment/amendment.controller');
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 module.exports = {
+
+	getAccessRequestsByTeam: async(req, res) => {
+ 
+    // fetch from the database. dars for dataAccessRequests
+    const dars = await DataRequestModel.find({team: 'ICODA'}) 
+    res.send(dars);
+})  
+
 	//GET api/v1/data-access-request
 	getAccessRequestsByUser: async (req, res) => {
 		try {
