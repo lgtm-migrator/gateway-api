@@ -196,7 +196,7 @@ export default class CohortService {
 		const cohort = await this.cohortRepository.getCohort({ id });
 		const activeCohort = await this.cohortRepository.getCohorts({ pid: cohort.pid, activeflag: 'active' });
 		// 2. Unarchive (set to active) the cohort
-		if (activeCohort && activeCohort.length > 0)  throw Error('An active cohort with this PID already exists.');
+		if (activeCohort && activeCohort.length > 0) throw Error('An active cohort with this PID already exists.');
 
 		const editedCohort = await this.cohortRepository.editCohort({ id }, { activeflag: 'active' });
 		return editedCohort;
