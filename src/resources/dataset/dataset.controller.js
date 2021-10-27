@@ -10,13 +10,7 @@ export default class DatasetController extends Controller {
 		try {
             // Extract id parameter from query string
 			const { id } = req.params;
-            // If no id provided, it is a bad request
-			if (!id) {
-				return res.status(400).json({
-					success: false,
-					message: 'You must provide a dataset identifier',
-				});
-			}
+
             // Find the dataset
 			const options = { lean: false, populate: { path: 'submittedDataAccessRequests' } };
 			let dataset = await this.datasetService.getDataset(id, req.query, options);
