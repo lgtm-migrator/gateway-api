@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Data } from '../tool/data.model';
 import { filtersService } from '../filters/dependency';
+import moment from 'moment';
 
 const createMode = {
 	new: 'createNew',
@@ -24,7 +25,7 @@ export default class CohortService {
 		return this.cohortRepository.getCohorts(query);
 	}
 
-	async addCohort(body = {}) {
+	async addCohort(body = {}, user) {
 		// 1. Generate uuid for Cohort PID
 		let uuid = '';
 		while (uuid === '') {
@@ -53,6 +54,10 @@ export default class CohortService {
 				pid: datasetIdentifier.pid,
 				objectId: datasetIdentifier.datasetId,
 				isLocked: true,
+				reason: 'The cohort discovery tool has identified this as one of the datasets where this cohort can be found.',
+				user: `${user.firstname} ${user.lastname}`,
+				updated: moment().format('DD MMM YYYY')
+
 			});
 		});
 
@@ -138,6 +143,7 @@ export default class CohortService {
 			id: uniqueId,
 			changeLog: body.changeLog,
 			name: body.name,
+			type: 'cohort',
 			description: body.description,
 			uploaders: body.uploaders,
 			publicflag: body.publicflag,
