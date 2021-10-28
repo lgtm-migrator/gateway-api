@@ -25,7 +25,7 @@ export default class CohortService {
 		return this.cohortRepository.getCohorts(query);
 	}
 
-	async addCohort(body = {}) {
+	async addCohort(body = {}, user) {
 		// 1. Generate uuid for Cohort PID
 		let uuid = '';
 		while (uuid === '') {
