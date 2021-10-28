@@ -87,8 +87,7 @@ const authorizeView = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { team } = req.query;
 
-	const authorised =
-		team === 'user' || (team === 'admin' && isUserDataUseAdmin(requestingUser)) || isUserMemberOfTeam(requestingUser, team);
+	const authorised = team === 'user' || isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, team);
 
 	if (!authorised) {
 		return res.status(401).json({
@@ -173,6 +172,13 @@ router.patch(
 	authorizeUpdate,
 	logger.logRequestMiddleware({ logCategory, action: 'Updated dataUseRegister data' }),
 	(req, res) => dataUseRegisterController.updateDataUseRegister(req, res)
+);
+
+// @route   POST /api/v2/data-use-registers/check
+// @desc    Check the submitted data uses for duplicates and returns links to Gatway entities (datasets, users)
+// @access  Public
+router.post('/check', passport.authenticate('jwt'), logger.logRequestMiddleware({ logCategory, action: 'Check data uses' }), (req, res) =>
+	dataUseRegisterController.checkDataUseRegister(req, res)
 );
 
 // @route   POST /api/v2/data-use-registers/upload

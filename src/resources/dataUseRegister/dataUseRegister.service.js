@@ -13,7 +13,7 @@ export default class DataUseRegisterService {
 		// Protect for no id passed
 		if (!id) return;
 
-		query = { ...query, id: id };
+		query = { ...query, id };
 		return this.dataUseRegisterRepository.getDataUseRegister(query, options);
 	}
 
@@ -99,7 +99,60 @@ export default class DataUseRegisterService {
 	}
 
 	/**
-	 * Create Data Use Register
+	 * Filter Existing Data Uses
+	 *
+	 * @desc    Accepts multiple data uses, verifying each in turn is considered 'new' to the database, then outputs the list of data uses.
+	 * 			A duplicate project id is automatically indicates a duplicate entry as the id must be unique.
+	 * 			Alternatively, a combination of matching title, summary, organisation name and dataset titles indicates a duplicate entry.
+	 * @param 	{Array<Object>} 	dataUses 	    	Array of data use objects to iterate through and check for existence in database
+	 * @returns {Array<Object>}		Filtered array of data uses linked entites and flat to indicates a duplicate entry
+	 */
+	async checkDataUseRegisters(dataUses = []) {
+		const dataUsesChecks = [];
+
+		for (const obj of dataUses) {
+			const { linkedDatasets = [], namedDatasets = [] } = await dataUseRegisterUtil.getLinkedDatasets(
+				obj.datasetNames &&
+					obj.datasetNames
+						.toString()
+						.split(',')
+						.map(el => {
+							if (!isEmpty(el)) return el.trim();
+						})
+			);
+
+			const { gatewayApplicants, nonGatewayApplicants } = await dataUseRegisterUtil.getLinkedApplicants(
+				obj.applicantNames &&
+					obj.applicantNames
+						.toString()
+						.split(',')
+						.map(el => {
+							if (!isEmpty(el)) return el.trim();
+						})
+			);
+
+			const exists = await this.dataUseRegisterRepository.checkDataUseRegisterExists(obj);
+
+			//Add new data use with linked entities
+			dataUsesChecks.push({
+				projectIdText: obj.projectIdText,
+				projectTitle: obj.projectTitle,
+				laySummary: obj.laySummary,
+				organisationName: obj.organisationName,
+				datasetTitles: obj.datasetTitles,
+				latestApprovalDate: obj.latestApprovalDate,
+				linkedDatasets,
+				namedDatasets,
+				gatewayApplicants,
+				nonGatewayApplicants,
+				isDuplicated: exists,
+			});
+		}
+
+		return dataUsesChecks;
+	}
+
+	/* Create Data Use Register
 	 *
 	 * @desc    Accepts a single data access request record and automatically generates a data use register record in the 'inReview' state.
 	 * Related resources, project Id, origin, uploader, applicant names, and answers are determined from the application provided.

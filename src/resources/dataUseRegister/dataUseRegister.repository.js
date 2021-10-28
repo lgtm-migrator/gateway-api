@@ -65,6 +65,9 @@ export default class DataUseRegisterRepository extends Repository {
 	}
 
 	updateDataUseRegister(id, body) {
+		body.updatedon = Date.now();
+		body.lastActivity = Date.now();
+
 		return this.update(id, body);
 	}
 

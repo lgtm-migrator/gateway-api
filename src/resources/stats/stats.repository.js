@@ -5,6 +5,7 @@ import { RecordSearchData } from '../search/record.search.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 import { Course } from '../course/course.model';
 import { MessagesModel } from '../message/message.model';
+import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
 import constants from '../utilities/constants.util';
 
 export default class StatsRepository extends Repository {
@@ -322,15 +323,15 @@ export default class StatsRepository extends Repository {
 						await Promise.all([
 							this.getObjectResult('dataset', searchQuery),
 							this.getObjectResult('tool', searchQuery),
-							this.getObjectResult('project', searchQuery),
 							this.getObjectResult('paper', searchQuery),
 							this.getObjectResult('course', searchQuery),
+							this.getObjectResult('dataUseRegister', searchQuery),
 						]).then(resources => {
 							topSearch.datasets = resources[0][0] !== undefined && resources[0][0].count !== undefined ? resources[0][0].count : 0;
 							topSearch.tools = resources[1][0] !== undefined && resources[1][0].count !== undefined ? resources[1][0].count : 0;
-							topSearch.projects = resources[2][0] !== undefined && resources[2][0].count !== undefined ? resources[2][0].count : 0;
-							topSearch.papers = resources[3][0] !== undefined && resources[3][0].count !== undefined ? resources[3][0].count : 0;
-							topSearch.course = resources[4][0] !== undefined && resources[4][0].count !== undefined ? resources[4][0].count : 0;
+							topSearch.papers = resources[2][0] !== undefined && resources[2][0].count !== undefined ? resources[2][0].count : 0;
+							topSearch.courses = resources[3][0] !== undefined && resources[3][0].count !== undefined ? resources[3][0].count : 0;
+							topSearch.dataUseRegisters = resources[4][0] !== undefined && resources[4][0].count !== undefined ? resources[4][0].count : 0;
 						});
 						return topSearch;
 					})
@@ -345,7 +346,17 @@ export default class StatsRepository extends Repository {
 		newSearchQuery['$and'].push({ type });
 		var q = '';
 
-		q = Data.aggregate([
+		const typeMapper = {
+			dataset: Data,
+			tool: Data,
+			paper: Data,
+			course: Course,
+			dataUseRegister: DataUseRegister,
+		};
+
+		const model = typeMapper[type];
+
+		q = model.aggregate([
 			{ $match: newSearchQuery },
 			{
 				$group: {
@@ -390,7 +401,8 @@ export default class StatsRepository extends Repository {
 					maxTools: { $max: '$returned.tool' },
 					maxPapers: { $max: '$returned.paper' },
 					maxCourses: { $max: '$returned.course' },
-					maxPeople: { $max: '$returned.people' },
+					maxPeople: { $max: '$returned.person' },
+					maxDataUses: { $max: '$returned.datause' },
 					entity: { $max: entityType },
 				},
 			},
@@ -469,8 +481,42 @@ export default class StatsRepository extends Repository {
 		]);
 	}
 
+	async getPopularDataUses() {
+		return DataUseRegister.find(
+			{
+				activeflag: 'active',
+				counter: {
+					$gt: 0,
+				},
+			},
+			{
+				_id: 0,
+				type: 1,
+				projectTitle: 1,
+				organisationName: 1,
+				keywords: 1,
+				datasetTitles: 1,
+				publisher: 1,
+				id: 1,
+				counter: 1,
+				updatedon: 1,
+			}
+		)
+			.populate({
+				path: 'publisherInfo',
+				select: { name: 1, _id: 0 },
+			})
+			.sort({ counter: -1, title: 1 })
+			.limit(10)
+			.lean();
+	}
+
 	async getActiveCourseCount() {
 		return Course.countDocuments({ activeflag: 'active' });
+	}
+
+	async getActiveDataUsesCount() {
+		return DataUseRegister.countDocuments({ activeflag: 'active' });
 	}
 
 	async getPopularEntitiesByType(entityType) {
@@ -600,6 +646,31 @@ export default class StatsRepository extends Repository {
 			}
 		)
 			.sort({ updatedAt: -1, name: 1 })
+			.limit(10)
+			.lean();
+	}
+
+	async getRecentlyUpdatedDataUses() {
+		return DataUseRegister.find(
+			{ activeflag: 'active' },
+			{
+				_id: 0,
+				type: 1,
+				projectTitle: 1,
+				organisationName: 1,
+				keywords: 1,
+				datasetTitles: 1,
+				publisher: 1,
+				id: 1,
+				counter: 1,
+				updatedon: 1,
+			}
+		)
+			.populate({
+				path: 'publisherInfo',
+				select: { name: 1, _id: 0 },
+			})
+			.sort({ updatedon: -1, title: 1 })
 			.limit(10)
 			.lean();
 	}
