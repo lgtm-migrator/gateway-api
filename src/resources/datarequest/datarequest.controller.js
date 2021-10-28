@@ -26,12 +26,18 @@ const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 module.exports = {
 
-	getAccessRequestsByTeam: async(req, res) => {
- 
-    // fetch from the database. dars for dataAccessRequests
-    const dars = await DataRequestModel.find({team: 'ICODA'}) 
-    res.send(dars);
-})  
+	getAccessRequestsByTeam: async(req, res) => {	
+		try {
+			const dars = await DataRequestModel.find({publisher: req.params.publisher}) 
+			return res.status(200).json({ success: true, dars });	    
+		} catch (err) {
+			console.error(err.message);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred searching for user applications',
+			});
+		}
+	},  
 
 	//GET api/v1/data-access-request
 	getAccessRequestsByUser: async (req, res) => {
