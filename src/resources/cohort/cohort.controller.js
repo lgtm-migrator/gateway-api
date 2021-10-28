@@ -76,7 +76,7 @@ export default class CohortController extends Controller {
 				throw new Error('No user associated with this user_id');
 			}
 
-			const cohort = await this.cohortService.addCohort(req.body).catch(err => {
+			const cohort = await this.cohortService.addCohort(req.body, user).catch(err => {
 				logger.logError(err, logCategory);
 			});
 			const { id } = cohort;
