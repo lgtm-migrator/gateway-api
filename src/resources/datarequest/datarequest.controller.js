@@ -29,10 +29,11 @@ module.exports = {
 	getAccessRequestsByTeam: async(req, res) => {	
 		try {
 			const dars = await DataRequestModel.find({publisher: req.params.publisher}) 
-			return res.status(200).json({ success: true, dars });	    
+			return res.status(200).json({ success: true, dars });   
 		} catch (err) {
 			console.error(err.message);
-			return res.status(500).json({
+			
+			 return res.status(500).json({
 				success: false,
 				message: 'An error occurred searching for user applications',
 			});
