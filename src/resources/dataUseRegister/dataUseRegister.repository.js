@@ -58,17 +58,14 @@ export default class DataUseRegisterRepository extends Repository {
 		);
 	}
 
-	async checkDataUseRegisterExists(dataUseRegister) {
-		const { projectIdText, projectTitle, laySummary, organisationName, datasetTitles, latestApprovalDate } = dataUseRegister;
+	async checkDataUseRegisterExists(projectIdText, projectTitle, organisationName, datasetTitles) {
 		const duplicatesFound = await this.dataUseRegister.countDocuments({
 			$or: [
 				{ projectIdText },
 				{
 					projectTitle,
-					laySummary,
 					organisationName,
 					datasetTitles,
-					latestApprovalDate,
 				},
 			],
 		});

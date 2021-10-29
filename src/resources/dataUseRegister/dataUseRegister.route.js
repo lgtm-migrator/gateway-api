@@ -140,6 +140,10 @@ const authorizeUpload = async (req, res, next) => {
 	next();
 };
 
+router.get('/search', logger.logRequestMiddleware({ logCategory, action: 'Search uploaded data uses' }), (req, res) =>
+	dataUseRegisterController.searchDataUseRegisters(req, res)
+);
+
 // @route   GET /api/v2/data-use-registers/id
 // @desc    Returns a dataUseRegister based on dataUseRegister ID provided
 // @access  Public
@@ -191,13 +195,6 @@ router.post(
 	authorizeUpload,
 	logger.logRequestMiddleware({ logCategory, action: 'Bulk uploaded data uses' }),
 	(req, res) => dataUseRegisterController.uploadDataUseRegisters(req, res)
-);
-
-router.get(
-	'/search',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Search uploaded data uses' }),
-	(req, res) => dataUseRegisterController.searchDataUseRegisters(req, res)
 );
 
 module.exports = router;

@@ -68,10 +68,8 @@ export default class DataUseRegisterService {
 				el =>
 					el.projectIdText === dataUse.projectIdText ||
 					(el.projectTitle === dataUse.projectTitle &&
-						el.laySummary === dataUse.laySummary &&
 						el.organisationName === dataUse.organisationName &&
-						el.datasetTitles === dataUse.datasetTitles &&
-						el.latestApprovalDate === dataUse.latestApprovalDate)
+						el.datasetTitles === dataUse.datasetTitles)
 			);
 			if (!isDuplicate) arr = [...arr, dataUse];
 			return arr;
@@ -91,7 +89,26 @@ export default class DataUseRegisterService {
 		const newDataUses = [];
 
 		for (const dataUse of dataUses) {
-			const exists = await this.dataUseRegisterRepository.checkDataUseRegisterExists(dataUse);
+			const { linkedDatasets = [], namedDatasets = [] } = await dataUseRegisterUtil.getLinkedDatasets(
+				dataUse.datasetNames &&
+					dataUse.datasetNames
+						.toString()
+						.split(',')
+						.map(el => {
+							if (!isEmpty(el)) return el.trim();
+						})
+			);
+
+			const datasetTitles = [...linkedDatasets.map(dataset => dataset.name), ...namedDatasets];
+
+			const { projectIdText, projectTitle, organisationName } = dataUse;
+
+			const exists = await this.dataUseRegisterRepository.checkDataUseRegisterExists(
+				projectIdText,
+				projectTitle,
+				organisationName,
+				datasetTitles
+			);
 			if (exists === false) newDataUses.push(dataUse);
 		}
 
@@ -131,7 +148,15 @@ export default class DataUseRegisterService {
 						})
 			);
 
-			const exists = await this.dataUseRegisterRepository.checkDataUseRegisterExists(obj);
+			const { projectIdText, projectTitle, organisationName } = obj;
+			const datasetTitles = [...linkedDatasets.map(dataset => dataset.name), ...namedDatasets];
+
+			const exists = await this.dataUseRegisterRepository.checkDataUseRegisterExists(
+				projectIdText,
+				projectTitle,
+				organisationName,
+				datasetTitles
+			);
 
 			//Add new data use with linked entities
 			dataUsesChecks.push({

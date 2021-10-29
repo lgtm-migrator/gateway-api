@@ -1,4 +1,4 @@
-import { isUndefined } from 'lodash';
+import { isNil } from 'lodash';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import constants from './../utilities/constants.util';
@@ -6,9 +6,9 @@ import { Data } from '../tool/data.model';
 import { TeamModel } from '../team/team.model';
 import teamController from '../team/team.controller';
 import emailGenerator from '../utilities/emailGenerator.util';
+import { getObjectFilters } from '../search/search.repository';
 
 import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
-import { getObjectFilters } from '../search/search.repository';
 
 const logCategory = 'dataUseRegister';
 
@@ -161,9 +161,9 @@ export default class DataUseRegisterController extends Controller {
 
 			// Send notifications
 			if (isDataUseRegisterApproved) {
-				this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister, requestingUser);
+				await this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister, requestingUser);
 			} else if (isDataUseRegisterRejected) {
-				this.createNotifications(
+				await this.createNotifications(
 					constants.dataUseRegisterNotifications.DATAUSEREJECTED,
 					{ rejectionReason },
 					dataUseRegister,
@@ -224,54 +224,20 @@ export default class DataUseRegisterController extends Controller {
 
 	async searchDataUseRegisters(req, res) {
 		try {
-			// getObjectFilters;
+			let searchString = req.query.search || '';
 
-			const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
-
-			if (searchTerm) {
-				newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+			if (searchString.includes('-') && !searchString.includes('"')) {
+				const regex = /(?=\S*[-])([a-zA-Z'-]+)/g;
+				searchString = searchString.replace(regex, '"$1"');
 			}
+			let searchQuery = { $and: [{ activeflag: 'active' }] };
 
-			queryObject = [
-				{ $match: searchTerm },
-				{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
-				{
-					$addFields: {
-						persons: {
-							$map: {
-								input: '$persons',
-								as: 'row',
-								in: {
-									id: '$$row.id',
-									firstname: '$$row.firstname',
-									lastname: '$$row.lastname',
-									fullName: { $concat: ['$$row.firstname', ' ', '$$row.lastname'] },
-								},
-							},
-						},
-					},
-				},
-				{ $match: newSearchQuery },
-				{
-					$project: {
-						_id: 0,
-						id: 1,
-						projectTitle: 1,
-						organisationName: 1,
-						keywords: 1,
-						datasetTitles: 1,
-						activeflag: 1,
-						counter: 1,
-						type: 1,
-					},
-				},
-			];
+			if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
 
-			const result = await DataUseRegister.aggregate(queryObject).catch(err => {
-				console.log(err);
-			});
+			searchQuery = getObjectFilters(searchQuery, req, 'dataUseRegister');
 
-			// Return data
+			const result = await DataUseRegister.aggregate([{ $match: searchQuery }]);
+
 			return res.status(200).json({ success: true, result });
 		} catch (err) {
 			//Return error response if something goes wrong
