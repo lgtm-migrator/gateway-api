@@ -5,7 +5,7 @@ import { dataUseRegisterService } from './dependency';
 import { logger } from '../utilities/logger';
 import passport from 'passport';
 import constants from './../utilities/constants.util';
-import { isEmpty, isNull, isUndefined } from 'lodash';
+import { isEmpty, isNull } from 'lodash';
 
 const router = express.Router();
 const dataUseRegisterController = new DataUseRegisterController(dataUseRegisterService);
@@ -70,11 +70,24 @@ const validateUploadRequest = (req, res, next) => {
 	next();
 };
 
+const validateViewRequest = (req, res, next) => {
+	const { team } = req.query;
+
+	if (!team) {
+		return res.status(400).json({
+			success: false,
+			message: 'You must provide a team parameter',
+		});
+	}
+
+	next();
+};
+
 const authorizeView = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { team } = req.query;
 
-	const authorised = isUndefined(team) || isUserMemberOfTeam(requestingUser, team) || team === 'user' || isUserDataUseAdmin(requestingUser);
+	const authorised = team === 'user' || isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, team);
 
 	if (!authorised) {
 		return res.status(401).json({
@@ -147,7 +160,7 @@ router.get(
 router.get(
 	'/',
 	passport.authenticate('jwt'),
-	// validateViewRequest,
+	validateViewRequest,
 	authorizeView,
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed dataUseRegisters data' }),
 	(req, res) => dataUseRegisterController.getDataUseRegisters(req, res)
