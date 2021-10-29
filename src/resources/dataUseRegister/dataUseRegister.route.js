@@ -48,19 +48,6 @@ const validateUpdateRequest = (req, res, next) => {
 	next();
 };
 
-// const validateViewRequest = (req, res, next) => {
-//  const { team } = req.query;
-
-//  if (!team) {
-//      return res.status(400).json({
-//          success: false,
-//          message: 'You must provide a team parameter',
-//      });
-//  }
-
-//  next();
-// };
-
 const validateUploadRequest = (req, res, next) => {
 	const { teamId, dataUses } = req.body;
 	let errors = [];
