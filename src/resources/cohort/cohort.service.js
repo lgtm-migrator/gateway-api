@@ -1,16 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Data } from '../tool/data.model';
 import { filtersService } from '../filters/dependency';
 import moment from 'moment';
-
 const createMode = {
 	new: 'createNew',
 	minor: 'minorVersion',
 	major: 'majorVersion',
 };
 export default class CohortService {
-	constructor(cohortRepository) {
+	constructor(cohortRepository, datasetService) {
 		this.cohortRepository = cohortRepository;
+		this.datasetService = datasetService;
 	}
 
 	getCohort(id, query = {}, options = {}) {
@@ -41,7 +40,7 @@ export default class CohortService {
 
 		// 3. Extract PIDs from cohort object so we can build up related objects
 		let datasetIdentifiersPromises = await body.cohort.input.collections.map(async collection => {
-			let dataset = await Data.findOne({ pid: collection.external_id, activeflag: 'active' }, { datasetid: 1 }).lean();
+			let dataset = await this.datasetService.getActiveDatasetByPid(collection.external_id, { fields: 'datasetid' }, { lean: true });
 			return { pid: collection.external_id, datasetId: dataset.datasetid };
 		});
 		let datasetIdentifiers = await Promise.all(datasetIdentifiersPromises);
@@ -56,8 +55,7 @@ export default class CohortService {
 				isLocked: true,
 				reason: 'The cohort discovery tool has identified this as one of the datasets where this cohort can be found.',
 				user: `${user.firstname} ${user.lastname}`,
-				updated: moment().format('DD MMM YYYY')
-
+				updated: moment().format('DD MMM YYYY'),
 			});
 		});
 
@@ -95,6 +93,7 @@ export default class CohortService {
 			uploaders: [parseInt(body.user_id)],
 			updatedAt: Date.now(),
 			lastRefresh: Date.now(),
+			updatedon: Date.now(),
 			request_id: body.request_id,
 			cohort: body.cohort,
 			items: body.items,
