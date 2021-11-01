@@ -1,4 +1,4 @@
-import { isUndefined } from 'lodash';
+import { isNil } from 'lodash';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import constants from './../utilities/constants.util';
@@ -6,6 +6,10 @@ import { Data } from '../tool/data.model';
 import { TeamModel } from '../team/team.model';
 import teamController from '../team/team.controller';
 import emailGenerator from '../utilities/emailGenerator.util';
+import { getObjectFilters } from '../search/search.repository';
+
+import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
+
 const logCategory = 'dataUseRegister';
 
 export default class DataUseRegisterController extends Controller {
@@ -157,9 +161,9 @@ export default class DataUseRegisterController extends Controller {
 
 			// Send notifications
 			if (isDataUseRegisterApproved) {
-				this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister, requestingUser);
+				await this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister, requestingUser);
 			} else if (isDataUseRegisterRejected) {
-				this.createNotifications(
+				await this.createNotifications(
 					constants.dataUseRegisterNotifications.DATAUSEREJECTED,
 					{ rejectionReason },
 					dataUseRegister,
@@ -210,6 +214,33 @@ export default class DataUseRegisterController extends Controller {
 			return res.status(200).json({ success: true, result });
 		} catch (err) {
 			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'A server error occurred, please try again',
+			});
+		}
+	}
+
+	async searchDataUseRegisters(req, res) {
+		try {
+			let searchString = req.query.search || '';
+
+			if (searchString.includes('-') && !searchString.includes('"')) {
+				const regex = /(?=\S*[-])([a-zA-Z'-]+)/g;
+				searchString = searchString.replace(regex, '"$1"');
+			}
+			let searchQuery = { $and: [{ activeflag: 'active' }] };
+
+			if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
+
+			searchQuery = getObjectFilters(searchQuery, req, 'dataUseRegister');
+
+			const result = await DataUseRegister.aggregate([{ $match: searchQuery }]);
+
+			return res.status(200).json({ success: true, result });
+		} catch (err) {
+			//Return error response if something goes wrong
 			logger.logError(err, logCategory);
 			return res.status(500).json({
 				success: false,
