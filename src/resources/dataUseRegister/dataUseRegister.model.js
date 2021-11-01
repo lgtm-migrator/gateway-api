@@ -76,13 +76,6 @@ const dataUseRegisterSchema = new Schema(
 	}
 );
 
-dataUseRegisterSchema.virtual('gatewayApplicantsNames', {
-	ref: 'User',
-	foreignField: '_id',
-	localField: 'gatewayApplicants',
-	justOne: false,
-});
-
 // Load entity class
 dataUseRegisterSchema.loadClass(DataUseRegisterClass);
 

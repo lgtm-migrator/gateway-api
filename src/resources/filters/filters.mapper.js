@@ -861,7 +861,7 @@ export const dataUseRegisterFilters = [
 		label: 'Data custodian',
 		key: 'publisher',
 		alias: 'datausedatacustodian',
-		dataPath: 'publisher',
+		dataPath: 'publisherDetails.name',
 		type: 'contains',
 		tooltip: null,
 		closed: true,

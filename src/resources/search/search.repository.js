@@ -137,6 +137,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 
 		queryObject = [
+			{ $match: searchTerm },
 			{
 				$lookup: {
 					from: 'publishers',
@@ -158,6 +159,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					},
 				},
 			},
+			{ $match: newSearchQuery },
 			{
 				$project: {
 					_id: 0,
@@ -592,6 +594,52 @@ export function getObjectCount(type, searchAll, searchQuery) {
 				])
 				.sort({ score: { $meta: 'textScore' } });
 		}
+	} else if (type === 'dataUseRegister') {
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
+
+		if (searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+
+		q = collection.aggregate([
+			{ $match: searchTerm },
+			{
+				$lookup: {
+					from: 'publishers',
+					localField: 'publisher',
+					foreignField: '_id',
+					as: 'publisherDetails',
+				},
+			},
+			{
+				$addFields: {
+					publisherDetails: {
+						$map: {
+							input: '$publisherDetails',
+							as: 'row',
+							in: {
+								name: '$$row.name',
+							},
+						},
+					},
+				},
+			},
+			{ $match: newSearchQuery },
+			{
+				$group: {
+					_id: {},
+					count: {
+						$sum: 1,
+					},
+				},
+			},
+			{
+				$project: {
+					count: '$count',
+					_id: 0,
+				},
+			},
+		]);
 	} else {
 		if (searchAll) {
 			q = collection.aggregate([

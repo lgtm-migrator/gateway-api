@@ -143,11 +143,8 @@ const authorizeUpload = async (req, res, next) => {
 // @route   GET /api/v2/data-use-registers/id
 // @desc    Returns a dataUseRegister based on dataUseRegister ID provided
 // @access  Public
-router.get(
-	'/:id',
-	passport.authenticate('jwt'),
-	logger.logRequestMiddleware({ logCategory, action: 'Viewed dataUseRegister data' }),
-	(req, res) => dataUseRegisterController.getDataUseRegister(req, res)
+router.get('/:id', logger.logRequestMiddleware({ logCategory, action: 'Viewed dataUseRegister data' }), (req, res) =>
+	dataUseRegisterController.getDataUseRegister(req, res)
 );
 
 // @route   GET /api/v2/data-use-registers

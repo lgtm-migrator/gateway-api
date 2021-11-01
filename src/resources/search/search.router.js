@@ -155,7 +155,7 @@ router.get('/', async (req, res) => {
 		getObjectCount('person', searchAll, searchQuery),
 		getObjectCount('course', searchAll, getObjectFilters(searchQuery, req, 'course')),
 		getObjectCount('collection', searchAll, getObjectFilters(searchQuery, req, 'collection')),
-		getObjectCount('dataUseRegister', searchAll, getObjectFilters(searchQuery, req, ' dataUseRegister')),
+		getObjectCount('dataUseRegister', searchAll, getObjectFilters(searchQuery, req, 'dataUseRegister')),
 	]);
 
 	const summary = {

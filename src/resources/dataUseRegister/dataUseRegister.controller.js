@@ -26,7 +26,7 @@ export default class DataUseRegisterController extends Controller {
 				});
 			}
 			// Find the dataUseRegister
-			const options = { lean: true };
+			const options = { lean: true, populate: { path: 'gatewayApplicants', select: 'id firstname lastname' } };
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, req.query, options);
 			// Reverse look up
 			var query = Data.aggregate([
@@ -42,7 +42,7 @@ export default class DataUseRegisterController extends Controller {
 			]);
 			query.exec((err, data) => {
 				if (data.length > 0) {
-					var p = Data.aggregate([
+					/* var p = Data.aggregate([
 						{
 							$match: {
 								$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }],
@@ -71,9 +71,9 @@ export default class DataUseRegisterController extends Controller {
 							success: true,
 							data: data,
 						});
-					});
+					}); */
 				} else {
-					return res.status(404).send(`Data Use Register not found for Id: ${escape(id)}`);
+					//return res.status(404).send(`Data Use Register not found for Id: ${escape(id)}`);
 				}
 			});
 			// Return if no dataUseRegister found
