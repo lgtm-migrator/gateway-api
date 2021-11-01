@@ -48,19 +48,6 @@ const validateUpdateRequest = (req, res, next) => {
 	next();
 };
 
-const validateViewRequest = (req, res, next) => {
-	const { team } = req.query;
-
-	if (!team) {
-		return res.status(400).json({
-			success: false,
-			message: 'You must provide a team parameter',
-		});
-	}
-
-	next();
-};
-
 const validateUploadRequest = (req, res, next) => {
 	const { teamId, dataUses } = req.body;
 	let errors = [];
@@ -77,6 +64,19 @@ const validateUploadRequest = (req, res, next) => {
 		return res.status(400).json({
 			success: false,
 			message: errors.join(', '),
+		});
+	}
+
+	next();
+};
+
+const validateViewRequest = (req, res, next) => {
+	const { team } = req.query;
+
+	if (!team) {
+		return res.status(400).json({
+			success: false,
+			message: 'You must provide a team parameter',
 		});
 	}
 
@@ -139,6 +139,10 @@ const authorizeUpload = async (req, res, next) => {
 
 	next();
 };
+
+router.get('/search', logger.logRequestMiddleware({ logCategory, action: 'Search uploaded data uses' }), (req, res) =>
+	dataUseRegisterController.searchDataUseRegisters(req, res)
+);
 
 // @route   GET /api/v2/data-use-registers/id
 // @desc    Returns a dataUseRegister based on dataUseRegister ID provided

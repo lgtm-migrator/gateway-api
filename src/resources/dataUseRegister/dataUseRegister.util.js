@@ -101,6 +101,7 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 				...(obj.confidentialDataDescription && { confidentialDataDescription: obj.confidentialDataDescription.toString().trim() }),
 				...(obj.dataLocation && { dataLocation: obj.dataLocation.toString().trim() }),
 				...(obj.privacyEnhancements && { privacyEnhancements: obj.privacyEnhancements.toString().trim() }),
+				...(obj.dutyOfConfidentiality && { dutyOfConfidentiality: obj.dutyOfConfidentiality.toString().trim() }),
 				...(projectStartDate.isValid() && { projectStartDate }),
 				...(projectEndDate.isValid() && { projectEndDate }),
 				...(latestApprovalDate.isValid() && { latestApprovalDate }),

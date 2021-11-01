@@ -167,6 +167,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					activeflag: 1,
 					counter: 1,
 					type: 1,
+					latestUpdate: '$lastActivity',
 				},
 			},
 		];
