@@ -68,4 +68,5 @@ describe('Utilities', () => {
 			expect(req.login.mock.calls.length).toBe(1);
 		});
 	});
+	});
 });
