@@ -10,6 +10,7 @@ import { logger } from '../../resources/utilities/logger';
 // Default service params
 const apiKey = process.env.HUBSPOT_API_KEY;
 const logCategory = 'Hubspot Integration';
+const readEnv = process.env.ENV || 'prod';
 let hubspotClient;
 if (apiKey) hubspotClient = new Client({ apiKey, numberOfApiCallRetries: NumberOfRetries.Three });
 
@@ -140,11 +141,13 @@ const syncAllContacts = async () => {
 	if (apiKey) {
 		try {
 			// Track attempted sync in Sentry using log
-			Sentry.addBreadcrumb({
-				category: 'Hubspot',
-				message: `Syncing Gateway users with Hubspot contacts`,
-				level: Sentry.Severity.Log,
-			});
+			if (readEnv === 'test' || readEnv === 'prod') {
+				Sentry.addBreadcrumb({
+					category: 'Hubspot',
+					message: `Syncing Gateway users with Hubspot contacts`,
+					level: Sentry.Severity.Log,
+				});
+			}
 
 			// Batch import subscription changes from Hubspot
 			await batchImportFromHubspot();

@@ -16,6 +16,8 @@ const datasetLimiter = rateLimit({
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
 });
 
+const readEnv = process.env.ENV || 'prod';
+
 router.post('/', async (req, res) => {
 	try {
 		// Check to see if header is in json format
@@ -43,7 +45,9 @@ router.post('/', async (req, res) => {
 		// Return response indicating job has started (do not await async import)
 		return res.status(200).json({ success: true, message: 'Caching started' });
 	} catch (err) {
-		Sentry.captureException(err);
+		if (readEnv === 'test' || readEnv === 'prod') {
+			Sentry.captureException(err);
+		}
 		console.error(err.message);
 		return res.status(500).json({ success: false, message: 'Caching failed' });
 	}
@@ -73,7 +77,9 @@ router.post('/updateServices', async (req, res) => {
 
 		return res.status(200).json({ success: true, message: 'Services Update started' });
 	} catch (err) {
-		Sentry.captureException(err);
+		if (readEnv === 'test' || readEnv === 'prod') {
+			Sentry.captureException(err);
+		}
 		console.error(err.message);
 		return res.status(500).json({ success: false, message: 'Services update failed' });
 	}
