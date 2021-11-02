@@ -9,6 +9,8 @@ const datarequestController = require('../datarequest/datarequest.controller');
 export class PublisherService {
 
     /**
+     *
+     *
      * @param {*} publisherId 
      * @param {*} user 
      * @returns 

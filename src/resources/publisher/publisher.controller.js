@@ -80,7 +80,8 @@ module.exports = {
 
 	// GET api/v1/publishers/team/:team/dataaccessrequests
 	getDataAccessRequestsByPublisherName: async (req, res) => {
-		const publisher = getPublisherById(req.params.publisher); // change the name
+		// TODO: change the hardcoding
+		const publisher = await PublisherModel.findOne({ name: 'ICODA' });
 		
 		const publisherService = new PublisherService();
 		return publisherService.getDataRequestsByPublisherId(publisher._id, req.user, res);
