@@ -1,4 +1,4 @@
-
+src/resources/auth/utils.js
 # HDR UK GATEWAY - Data Migrations
 
 The primary data source used by the Gateway Project is the noSQL solution provided by MongoDb.  Data migration strategy is a fundamental part of software development and release cycles for a data intensive web application.  The project team have chosen the NPM package Migrate-Mongoose - https://www.npmjs.com/package/migrate-mongoose to assist in the management of data migration scripts.  This package allows developers to write versioned, reversible data migration scripts using the Mongoose library.

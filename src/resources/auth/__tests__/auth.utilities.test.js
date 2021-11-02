@@ -45,30 +45,6 @@ describe('Utilities', () => {
 			expect(res.redirect.mock.calls.length).toBe(1);
 		});
 
-		it('should not call next when (req.auth.err === loginError || req.auth.user === undefined) == true', () => {
-			let res = {};
-			res.status = jest.fn().mockReturnValue(res);
-			res.redirect = jest.fn().mockReturnValue(res);
-			let req = {
-				auth: {
-					user: undefined,
-					err: 'loginError',
-				},
-				param: {
-					returnpage: 'somePage',
-				},
-			};
-			const next = jest.fn();
-
-			catchLoginErrorAndRedirect(req, res, next);
-
-			// assert
-			expect(next.mock.calls.length).toBe(0);
-			expect(res.status.mock.calls.length).toBe(1);
-			expect(res.redirect.mock.calls.length).toBe(1);
-		});
-	});
-
 	describe('loginAndSignToken middleware', () => {
 		it('should be a function', () => {
 			expect(typeof loginAndSignToken).toBe('function');
