@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { Collections } from './collections.model';
@@ -7,7 +8,7 @@ import _ from 'lodash';
 import helper from '../utilities/helper.util';
 import i18next from '../internationalization/i18next';
 
-const getCollectionObjects = async (req, res) => {
+const getCollectionObjects = async req => {
 	let relatedObjects = [];
 	await Collections.find(
 		{ id: parseInt(req.params.collectionID) },
@@ -45,7 +46,7 @@ const getCollectionObjects = async (req, res) => {
 function getCollectionObject(objectId, objectType, pid, updated) {
 	let id = pid && pid.length > 0 ? pid : objectId;
 
-	return new Promise(async (resolve, reject) => {
+	return new Promise(async resolve => {
 		let data;
 		if (objectType !== 'dataset' && objectType !== 'course') {
 			data = await Data.find(
@@ -64,6 +65,8 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 					lastname: 1,
 					bio: 1,
 					authors: 1,
+					counter: { $ifNull: ['$counter', 0] },
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 				}
 			)
 				.populate([{ path: 'persons', options: { select: { id: 1, firstname: 1, lastname: 1 } } }])
@@ -71,29 +74,140 @@ function getCollectionObject(objectId, objectType, pid, updated) {
 		} else if (!isNaN(id) && objectType === 'course') {
 			data = await Course.find(
 				{ id: parseInt(id) },
-				{ id: 1, type: 1, activeflag: 1, title: 1, provider: 1, courseOptions: 1, award: 1, domains: 1, tags: 1, description: 1 }
+				{
+					id: 1,
+					type: 1,
+					activeflag: 1,
+					title: 1,
+					provider: 1,
+					courseOptions: 1,
+					award: 1,
+					domains: 1,
+					tags: 1,
+					description: 1,
+					counter: { $ifNull: ['$counter', 0] },
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+				}
 			).lean();
 		} else {
+			const datasetRelatedResources = {
+				$lookup: {
+					from: 'tools',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [
+						{ $unwind: '$relatedObjects' },
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$eq: ['$relatedObjects.pid', '$$pid'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $group: { _id: null, count: { $sum: 1 } } },
+					],
+					as: 'relatedResourcesTools',
+				},
+			};
+
+			const datasetRelatedCourses = {
+				$lookup: {
+					from: 'course',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [
+						{ $unwind: '$relatedObjects' },
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{
+											$eq: ['$relatedObjects.pid', '$$pid'],
+										},
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $group: { _id: null, count: { $sum: 1 } } },
+					],
+					as: 'relatedResourcesCourses',
+				},
+			};
+
+			const datasetProjectFields = {
+				$project: {
+					id: 1,
+					datasetid: 1,
+					pid: 1,
+					type: 1,
+					activeflag: 1,
+					name: 1,
+					datasetv2: 1,
+					datasetfields: 1,
+					tags: 1,
+					description: 1,
+					counter: { $ifNull: ['$counter', 0] },
+					relatedresources: {
+						$add: [
+							{
+								$cond: {
+									if: { $eq: [{ $size: '$relatedResourcesTools' }, 0] },
+									then: 0,
+									else: { $first: '$relatedResourcesTools.count' },
+								},
+							},
+							{
+								$cond: {
+									if: { $eq: [{ $size: '$relatedResourcesCourses' }, 0] },
+									then: 0,
+									else: { $first: '$relatedResourcesCourses.count' },
+								},
+							},
+						],
+					},
+				},
+			};
+
 			// 1. Search for a dataset based on pid
-			data = await Data.find(
-				{ pid: id, activeflag: 'active' },
-				{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
-			).lean();
+			data = await Data.aggregate([
+				{ $match: { $and: [{ pid: id }, { activeflag: 'active' }] } },
+				datasetRelatedResources,
+				datasetRelatedCourses,
+				datasetProjectFields,
+			]);
+
 			// 2. If dataset not found search for a dataset based on datasetID
 			if (!data || data.length <= 0) {
 				data = await Data.find({ datasetid: objectId }, { datasetid: 1, pid: 1 }).lean();
 				// 3. Use retrieved dataset's pid to search by pid again
-				data = await Data.find(
-					{ pid: data[0].pid, activeflag: 'active' },
-					{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
-				).lean();
+				data = await Data.aggregate([
+					{ $match: { $and: [{ pid: data[0].pid }, { activeflag: 'active' }] } },
+					datasetRelatedResources,
+					datasetRelatedCourses,
+					datasetProjectFields,
+				]);
 			}
+
 			// 4. If dataset still not found search for deleted dataset by pid
 			if (!data || data.length <= 0) {
-				data = await Data.find(
-					{ pid: id, activeflag: 'archive' },
-					{ id: 1, datasetid: 1, pid: 1, type: 1, activeflag: 1, name: 1, datasetv2: 1, datasetfields: 1, tags: 1, description: 1 }
-				).lean();
+				data = await Data.aggregate([
+					{ $match: { $and: [{ pid: id }, { activeflag: 'archive' }] } },
+					datasetRelatedResources,
+					datasetRelatedCourses,
+					datasetProjectFields,
+				]);
 			}
 		}
 
@@ -227,8 +341,8 @@ function generateCollectionEmailContent(role, publicflag, collectionName, collec
 			</div>`;
 }
 
-const getCollectionsAdmin = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getCollectionsAdmin = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 40;
 		let searchString = '';
@@ -268,8 +382,8 @@ const getCollectionsAdmin = async (req, res) => {
 	});
 };
 
-const getCollections = async (req, res) => {
-	return new Promise(async (resolve, reject) => {
+const getCollections = async req => {
+	return new Promise(async resolve => {
 		let startIndex = 0;
 		let limit = 40;
 		let idString = req.user.id;
@@ -308,7 +422,7 @@ const getCollections = async (req, res) => {
 		});
 
 		function getUserCollections(query) {
-			return new Promise((resolve, reject) => {
+			return new Promise(resolve => {
 				query.exec((err, data) => {
 					data &&
 						data.map(dat => {
@@ -343,7 +457,7 @@ function getObjectResult(searchAll, searchQuery, startIndex, limit) {
 			.skip(parseInt(startIndex))
 			.limit(parseInt(limit));
 	}
-	return new Promise((resolve, reject) => {
+	return new Promise(resolve => {
 		q.exec((err, data) => {
 			if (typeof data === 'undefined') {
 				resolve([]);
@@ -366,7 +480,7 @@ function getCountsByStatus(idString) {
 		q = Collections.find({ authors: parseInt(idString) }, { id: 1, name: 1, activeflag: 1 });
 	}
 
-	return new Promise((resolve, reject) => {
+	return new Promise(resolve => {
 		q.exec((err, data) => {
 			const activeCount = data.filter(dat => dat.activeflag === 'active').length;
 			const archiveCount = data.filter(dat => dat.activeflag === 'archive').length;

@@ -1,7 +1,8 @@
 import constants from '../../../utilities/constants.util';
+import DataRequestClass from '../../datarequest.entity';
+import { amendmentService } from '../dependency';
 import _ from 'lodash';
 
-const amendmentController = require('../amendment.controller');
 const dataRequest = require('../../__mocks__/datarequest');
 const users = require('../../__mocks__/users');
 
@@ -23,7 +24,7 @@ describe('addAmendment', () => {
 			requestedByUser: user._id,
 		};
 		// Act
-		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
+		amendmentService.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
 		// Assert
 		expect(dataRequest[0].amendmentIterations[1].questionAnswers).not.toHaveProperty('title');
 		expect(Object.keys(data.amendmentIterations[1].questionAnswers).length).toBe(2);
@@ -50,7 +51,7 @@ describe('addAmendment', () => {
 			updatedByUser: user._id,
 		};
 		// Act
-		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
+		amendmentService.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
 		// Assert
 		expect(dataRequest[0].amendmentIterations[1].questionAnswers).not.toHaveProperty('dateofbirth');
 		expect(Object.keys(data.amendmentIterations[1].questionAnswers).length).toBe(2);
@@ -81,11 +82,11 @@ describe('addAmendment', () => {
 			updatedByUser: user._id,
 		};
 		// Act
-		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
+		amendmentService.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
 		let firstAnswer = data.amendmentIterations[1].questionAnswers['dateofbirth']['answer'];
 		let firstDateUpdated = data.amendmentIterations[1].questionAnswers['dateofbirth']['dateUpdated'];
 		setTimeout(() => {
-			amendmentController.addAmendment(data, questionId, questionSetId, secondAnswer, reason, user, requested);
+			amendmentService.addAmendment(data, questionId, questionSetId, secondAnswer, reason, user, requested);
 			// Assert
 			expect(dataRequest[0].amendmentIterations[1].questionAnswers).not.toHaveProperty('dateofbirth');
 			expect(firstAnswer).toBe(answer);
@@ -123,7 +124,7 @@ describe('addAmendment', () => {
 			},
 		};
 		// Act
-		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
+		amendmentService.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
 		// Assert
 		expect(dataRequest[1].amendmentIterations).toHaveLength(0);
 		expect(data.amendmentIterations).toHaveLength(1);
@@ -156,7 +157,7 @@ describe('addAmendment', () => {
 			},
 		};
 		// Act
-		amendmentController.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
+		amendmentService.addAmendment(data, questionId, questionSetId, answer, reason, user, requested);
 		// Assert
 		expect(dataRequest[1].amendmentIterations).toHaveLength(0);
 		expect(data.amendmentIterations).toHaveLength(1);
@@ -186,7 +187,7 @@ describe('getCurrentAmendmentIteration', () => {
 			},
 		};
 		// Act
-		const result = amendmentController.getCurrentAmendmentIteration(data.amendmentIterations);
+		const result = amendmentService.getCurrentAmendmentIteration(data.amendmentIterations);
 		// Assert
 		expect(result).toEqual(expected);
 	});
@@ -197,7 +198,7 @@ describe('getLatestAmendmentIterationIndex', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
 		// Act
-		const result = amendmentController.getLatestAmendmentIterationIndex(data);
+		const result = amendmentService.getLatestAmendmentIterationIndex(data);
 		// Assert
 		expect(result).toBe(1);
 	});
@@ -208,7 +209,7 @@ describe('getAmendmentIterationParty', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[0]);
 		// Act
-		const result = amendmentController.getAmendmentIterationParty(data);
+		const result = amendmentService.getAmendmentIterationParty(data);
 		// Assert
 		expect(result).toBe(constants.userTypes.CUSTODIAN);
 	});
@@ -219,7 +220,7 @@ describe('getAmendmentIterationParty', () => {
 		// Act
 		data.amendmentIterations[1].dateReturned = new Date();
 		// Assert
-		expect(amendmentController.getAmendmentIterationParty(data)).toBe(constants.userTypes.APPLICANT);
+		expect(amendmentService.getAmendmentIterationParty(data)).toBe(constants.userTypes.APPLICANT);
 	});
 });
 
@@ -258,7 +259,7 @@ describe('removeIterationAnswers', () => {
 		'given an amendment iteration which is not resubmitted, it strips answers',
 		(accessRecord, iteration, expectedResult) => {
 			// Act
-			const result = amendmentController.removeIterationAnswers(accessRecord, iteration);
+			const result = amendmentService.removeIterationAnswers(accessRecord, iteration);
 			// Assert
 			expect(result).toEqual(expectedResult);
 		}
@@ -274,7 +275,7 @@ describe('handleApplicantAmendment', () => {
 			answer = 'Smith',
 			user = users.applicant;
 		// Act
-		data = amendmentController.handleApplicantAmendment(data, questionId, questionSetId, answer, user);
+		data = amendmentService.handleApplicantAmendment(data, questionId, questionSetId, answer, user);
 		// Assert
 		expect(dataRequest[1].amendmentIterations.length).toBeFalsy();
 		expect(Object.keys(data.amendmentIterations[0].questionAnswers).length).toBe(1);
@@ -292,9 +293,9 @@ describe('handleApplicantAmendment', () => {
 			answer = 'Smyth',
 			secondAnswer = 'Smith',
 			user = users.applicant;
-		data = amendmentController.handleApplicantAmendment(data, questionId, questionSetId, answer, user);
+		data = amendmentService.handleApplicantAmendment(data, questionId, questionSetId, answer, user);
 		// Act
-		data = amendmentController.handleApplicantAmendment(data, questionId, questionSetId, secondAnswer, user);
+		data = amendmentService.handleApplicantAmendment(data, questionId, questionSetId, secondAnswer, user);
 		// Assert
 		expect(dataRequest[1].amendmentIterations.length).toBeFalsy();
 		expect(Object.keys(data.amendmentIterations[0].questionAnswers).length).toBe(1);
@@ -320,7 +321,7 @@ describe('removeAmendment', () => {
 			dateRequested: '2020-11-03T11:14:01.840+00:00',
 		};
 		//Act
-		amendmentController.removeAmendment(data, questionId);
+		amendmentService.removeAmendment(data, questionId);
 		//Assert
 		expect(initialLastName).toEqual(expected);
 		expect(dataRequest[0].amendmentIterations[1]).not.toBeFalsy();
@@ -341,7 +342,7 @@ describe('doesAmendmentExist', () => {
 		'given a data request object %p and %p as the question amended, returns %p for an amendment existing',
 		(data, questionId, expectedResult) => {
 			// Act
-			const result = amendmentController.doesAmendmentExist(data, questionId);
+			const result = amendmentService.doesAmendmentExist(data, questionId);
 			// Assert
 			expect(result).toBe(expectedResult);
 		}
@@ -357,7 +358,7 @@ describe('updateAmendment', () => {
 			user = users.applicant,
 			initialUpdatedDate = dataRequest[2].amendmentIterations[0].questionAnswers['lastName'].dateUpdated;
 		// Act
-		data = amendmentController.updateAmendment(data, questionId, answer, user);
+		data = amendmentService.updateAmendment(data, questionId, answer, user);
 		// Assert
 		expect(Object.keys(data.amendmentIterations[0].questionAnswers).length).toBe(1);
 		expect(new Date(data.amendmentIterations[0].questionAnswers['lastName']['dateUpdated']).getTime()).toBeGreaterThan(
@@ -377,7 +378,7 @@ describe('updateAmendment', () => {
 			'lastName'
 		];
 		// Act
-		data = amendmentController.updateAmendment(data, questionId, answer, user);
+		data = amendmentService.updateAmendment(data, questionId, answer, user);
 		// Assert
 		expect(initialUpdatedBy).toBe('test applicant 1');
 		expect(Object.keys(data.amendmentIterations[0].questionAnswers).length).toBe(1);
@@ -396,7 +397,7 @@ describe('updateAmendment', () => {
 			answer = 'James',
 			user = users.applicant;
 		// Act
-		data = amendmentController.updateAmendment(data, questionId, answer, user);
+		data = amendmentService.updateAmendment(data, questionId, answer, user);
 		// Assert
 		expect(Object.keys(data.amendmentIterations[0].questionAnswers).length).toBe(1);
 		expect(data.amendmentIterations[0].questionAnswers['firstName']).toBeFalsy();
@@ -409,7 +410,7 @@ describe('updateAmendment', () => {
 			answer = 'James',
 			user = users.applicant;
 		// Act
-		data = amendmentController.updateAmendment(data, questionId, answer, user);
+		data = amendmentService.updateAmendment(data, questionId, answer, user);
 		// Assert
 		expect(data.amendmentIterations.length).toBeFalsy();
 		expect(data).toEqual(dataRequest[1]);
@@ -421,7 +422,7 @@ describe('formatQuestionAnswers', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[0]);
 		// Act
-		data.questionAnswers = amendmentController.formatQuestionAnswers(data.questionAnswers, data.amendmentIterations);
+		data.questionAnswers = amendmentService.formatQuestionAnswers(data.questionAnswers, data.amendmentIterations);
 		// Assert
 		expect(dataRequest[0].questionAnswers['firstName']).toBe('ra');
 		expect(dataRequest[0].questionAnswers['lastName']).toBe('adsf');
@@ -432,7 +433,7 @@ describe('formatQuestionAnswers', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[3]);
 		// Act
-		data.questionAnswers = amendmentController.formatQuestionAnswers(data.questionAnswers, data.amendmentIterations);
+		data.questionAnswers = amendmentService.formatQuestionAnswers(data.questionAnswers, data.amendmentIterations);
 		// Assert
 		expect(data.questionAnswers['firstName']).toBe('Mark');
 		expect(data.questionAnswers['lastName']).toBe('Connolly');
@@ -444,7 +445,7 @@ describe('filterAmendments', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[3]);
 		// Act
-		const result = amendmentController.filterAmendments(data, constants.userTypes.APPLICANT);
+		const result = amendmentService.filterAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.length).toBe(2);
 		expect(result[result.length - 1].dateReturned).not.toBeFalsy();
@@ -453,7 +454,7 @@ describe('filterAmendments', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[3]);
 		// Act
-		const result = amendmentController.filterAmendments(data, constants.userTypes.CUSTODIAN);
+		const result = amendmentService.filterAmendments(data, constants.userTypes.CUSTODIAN);
 		// Assert
 		expect(result.length).toBe(3);
 		expect(result[result.length - 1].dateCreated).not.toBeFalsy();
@@ -463,7 +464,7 @@ describe('filterAmendments', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[4]);
 		// Act
-		const result = amendmentController.filterAmendments(data, constants.userTypes.CUSTODIAN);
+		const result = amendmentService.filterAmendments(data, constants.userTypes.CUSTODIAN);
 		// Assert
 		expect(result.length).toBe(3);
 		expect(result[result.length - 1].questionAnswers['country']['answer']).toBe('UK');
@@ -475,7 +476,7 @@ describe('filterAmendments', () => {
 		// Arrange
 		const data = _.cloneDeep(dataRequest[4]);
 		// Act
-		const result = amendmentController.filterAmendments(data, constants.userTypes.APPLICANT);
+		const result = amendmentService.filterAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.length).toBe(3);
 		expect(result[result.length - 1].questionAnswers['country']).toHaveProperty('answer');
@@ -490,7 +491,7 @@ describe('injectAmendments', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[5]);
 		// Act
-		data = amendmentController.injectAmendments(data, constants.userTypes.CUSTODIAN);
+		data = amendmentService.injectAmendments(data, constants.userTypes.CUSTODIAN);
 		// Assert
 		expect(data.questionAnswers['firstName']).toBe('Mark');
 		expect(data.questionAnswers['lastName']).toBe('Connolly');
@@ -500,7 +501,7 @@ describe('injectAmendments', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[5]);
 		// Act
-		data = amendmentController.injectAmendments(data, constants.userTypes.APPLICANT);
+		data = amendmentService.injectAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(data.questionAnswers['firstName']).toBe('Mark');
 		expect(data.questionAnswers['lastName']).toBe('Connolly');
@@ -510,7 +511,7 @@ describe('injectAmendments', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[6]);
 		// Act
-		data = amendmentController.injectAmendments(data, constants.userTypes.APPLICANT);
+		data = amendmentService.injectAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(data).toEqual(dataRequest[6]);
 	});
@@ -518,7 +519,7 @@ describe('injectAmendments', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[6]);
 		// Act
-		data = amendmentController.injectAmendments(data, constants.userTypes.CUSTODIAN);
+		data = amendmentService.injectAmendments(data, constants.userTypes.CUSTODIAN);
 		// Assert
 		expect(data).toEqual(dataRequest[6]);
 	});
@@ -528,26 +529,27 @@ describe('doResubmission', () => {
 	test('given a data access record is resubmitted with a valid amendment iteration, then the iteration is updated to submitted', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[4]);
+		let accessRecord = new DataRequestClass(data);
 		// Act
-		data = amendmentController.doResubmission(data, users.applicant._id);
+		accessRecord = amendmentService.doResubmission(accessRecord, users.applicant._id);
 		// Assert
 		expect(dataRequest[4].amendmentIterations[2].dateSubmitted).toBeFalsy();
 		expect(dataRequest[4].amendmentIterations[2].submittedBy).toBeFalsy();
-		expect(data.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
-		expect(data.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
-		expect(data.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
-		expect(data.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
-		expect(data.amendmentIterations[2]).toHaveProperty('dateSubmitted');
-		expect(data.amendmentIterations[2].submittedBy).toBe(users.applicant._id);
+		expect(accessRecord.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
+		expect(accessRecord.amendmentIterations[0]).toEqual(dataRequest[4].amendmentIterations[0]);
+		expect(accessRecord.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
+		expect(accessRecord.amendmentIterations[1]).toEqual(dataRequest[4].amendmentIterations[1]);
+		expect(accessRecord.amendmentIterations[2]).toHaveProperty('dateSubmitted');
+		expect(accessRecord.amendmentIterations[2].submittedBy).toBe(users.applicant._id);
 	});
 });
 
-describe('countUnsubmittedAmendments', () => {
+describe('countAmendments', () => {
 	test('given a data access record with unsubmitted amendments, the correct number of answered and unanswered amendments in returned', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[5]);
 		// Act
-		const result = amendmentController.countUnsubmittedAmendments(data, constants.userTypes.APPLICANT);
+		const result = amendmentService.countAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.unansweredAmendments).toBe(2);
 		expect(result.answeredAmendments).toBe(1);
@@ -556,7 +558,7 @@ describe('countUnsubmittedAmendments', () => {
 		// Arrange
 		let data = _.cloneDeep(dataRequest[6]);
 		// Act
-		const result = amendmentController.countUnsubmittedAmendments(data, constants.userTypes.APPLICANT);
+		const result = amendmentService.countAmendments(data, constants.userTypes.APPLICANT);
 		// Assert
 		expect(result.unansweredAmendments).toBe(0);
 		expect(result.answeredAmendments).toBe(0);
@@ -577,7 +579,7 @@ describe('getLatestQuestionAnswer', () => {
 		'given a data access record with multiple amendment versions, the latest previous answer is returned',
 		(accessRecord, questionId, expectedResult) => {
 			// Act
-			const result = amendmentController.getLatestQuestionAnswer(accessRecord, questionId);
+			const result = amendmentService.getLatestQuestionAnswer(accessRecord, questionId);
 			// Assert
 			expect(result).toBe(expectedResult);
 		}
@@ -591,7 +593,7 @@ describe('revertAmendmentAnswer', () => {
 		let questionId = 'country';
 		let user = users.applicant;
 		// Act
-		amendmentController.revertAmendmentAnswer(data, questionId, user);
+		amendmentService.revertAmendmentAnswer(data, questionId, user);
 		// Assert
 		expect(dataRequest[4].amendmentIterations[2].questionAnswers[questionId].answer).not.toBeFalsy();
 		expect(data.amendmentIterations[2].questionAnswers[questionId].answer).toBeFalsy();
@@ -602,7 +604,7 @@ describe('revertAmendmentAnswer', () => {
 		let questionId = 'reasonforaccess';
 		let user = users.applicant;
 		// Act
-		amendmentController.revertAmendmentAnswer(data, questionId, user);
+		amendmentService.revertAmendmentAnswer(data, questionId, user);
 		// Assert
 		expect(dataRequest[4]).toEqual(data);
 	});
@@ -612,7 +614,7 @@ describe('revertAmendmentAnswer', () => {
 		let questionId = 'firstname';
 		let user = users.applicant;
 		// Act
-		amendmentController.revertAmendmentAnswer(data, questionId, user);
+		amendmentService.revertAmendmentAnswer(data, questionId, user);
 		// Assert
 		expect(dataRequest[4]).toEqual(data);
 	});
@@ -634,7 +636,7 @@ describe('injectNavigationAmendment', () => {
 		'given a valid json schema, and a requested amendment, then the corresponding navigation panels are highlighted to reflect the amendment status',
 		(jsonSchema, questionSetId, pageId, userType, completed, iterationStatus, expectedPageResult, expectedPanelResult) => {
 			// Act
-			const result = amendmentController.injectNavigationAmendment(jsonSchema, questionSetId, userType, completed, iterationStatus);
+			const result = amendmentService.injectNavigationAmendment(jsonSchema, questionSetId, userType, completed, iterationStatus);
 			// Assert
 			expect(result.pages.find(page => page.pageId === pageId)).toMatchObject(expectedPageResult);
 			expect(result.questionPanels.find(panel => panel.panelId === questionSetId)).toMatchObject(expectedPageResult);
@@ -645,8 +647,8 @@ describe('injectNavigationAmendment', () => {
 		let data = _.cloneDeep(dataRequest[0]);
 		let pageId = 'safePeople';
 		// Act
-		let jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'completed', 'submitted');
-		jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
+		let jsonSchema = amendmentService.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'completed', 'submitted');
+		jsonSchema = amendmentService.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
 		// Assert
 		expect(jsonSchema.pages.find(page => page.pageId === pageId)).toMatchObject({"flag": "DANGER"});
 		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'applicant')).toMatchObject({"flag": "SUCCESS"});
@@ -657,8 +659,8 @@ describe('injectNavigationAmendment', () => {
 		let data = _.cloneDeep(dataRequest[0]);
 		let pageId = 'safePeople';
 		// Act
-		let jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
-		jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
+		let jsonSchema = amendmentService.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
+		jsonSchema = amendmentService.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'incomplete', 'submitted');
 		// Assert
 		expect(jsonSchema.pages.find(page => page.pageId === pageId)).toMatchObject({"flag": "DANGER"});
 		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'applicant')).toMatchObject({"flag": "DANGER"});
@@ -669,8 +671,8 @@ describe('injectNavigationAmendment', () => {
 		let data = _.cloneDeep(dataRequest[0]);
 		let pageId = 'safePeople';
 		// Act
-		let jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'completed', 'submitted');
-		jsonSchema = amendmentController.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'completed', 'submitted');
+		let jsonSchema = amendmentService.injectNavigationAmendment(data.jsonSchema, 'applicant', constants.userTypes.APPLICANT, 'completed', 'submitted');
+		jsonSchema = amendmentService.injectNavigationAmendment(data.jsonSchema, 'principleInvestigator', constants.userTypes.APPLICANT, 'completed', 'submitted');
 		// Assert
 		expect(jsonSchema.pages.find(page => page.pageId === pageId)).toMatchObject({"flag": "SUCCESS"});
 		expect(jsonSchema.questionPanels.find(panel => panel.panelId === 'applicant')).toMatchObject({"flag": "SUCCESS"});

@@ -7,6 +7,8 @@ const UserSchema = new Schema(
 			unique: true,
 		},
 		email: String,
+		feedback: { type: Boolean, default: false }, 	//email subscription
+		news: { type: Boolean, default: false }, 		//email subscription
 		password: String,
 		businessName: String,
 		firstname: String,
@@ -20,7 +22,7 @@ const UserSchema = new Schema(
 		discourseUsername: String,
 		discourseKey: String,
 		isServiceAccount: { type: Boolean, default: false },
-		clientId: String,
+		clientID: String,
 		clientSecret: String,
 		advancedSearchRoles: [],
 		acceptedAdvancedSearchTerms: Boolean,

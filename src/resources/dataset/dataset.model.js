@@ -15,6 +15,7 @@ const datasetSchema = new Schema(
 		source: String,
 		is5Safes: Boolean,
 		hasTechnicalDetails: Boolean,
+		commercialUse: Boolean,
 		resultsInsights: String,
 		link: String,
 		type: String,

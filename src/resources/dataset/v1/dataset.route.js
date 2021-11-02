@@ -1,6 +1,6 @@
 import express from 'express';
 import { Data } from '../../tool/data.model';
-import { loadDataset, saveUptime, importCatalogues } from './dataset.service';
+import { saveUptime, importCatalogues, updateExternalDatasetServices } from './dataset.service';
 import { getAllTools } from '../../tool/data.repository';
 import { isEmpty, isNil } from 'lodash';
 import escape from 'escape-html';
@@ -65,6 +65,36 @@ router.post('/', async (req, res) => {
 	}
 });
 
+router.post('/updateServices', async (req, res) => {
+	try {
+		//Check to see if header is in json format
+		let parsedBody = {};
+		if (req.header('content-type') === 'application/json') {
+			parsedBody = req.body;
+		} else {
+			parsedBody = JSON.parse(req.body);
+		}
+		//Check for key
+		if (parsedBody.key !== process.env.cachingkey) {
+			return res.status(400).json({ success: false, error: 'Services could not be updated' });
+		}
+
+		if (parsedBody.error === true) {
+			throw new Error('services error');
+		}
+
+		updateExternalDatasetServices(parsedBody.services).then(() => {
+			filtersService.optimiseFilters('dataset');
+		});
+
+		return res.status(200).json({ success: true, message: 'Services Update started' });
+	} catch (err) {
+		Sentry.captureException(err);
+		console.error(err.message);
+		return res.status(500).json({ success: false, message: 'Services update failed' });
+	}
+});
+
 // @router   GET /api/v1/datasets/pidList
 // @desc     Returns List of PIDs with linked datasetIDs
 // @access   Public
@@ -114,12 +144,7 @@ router.get('/:datasetID', async (req, res) => {
 		// if no active version found look for the next latest version using the pid and set the isDatasetArchived flag to true
 		dataset = await Data.findOne({ pid: datasetID, activeflag: 'archive' }).sort({ createdAt: -1 });
 		if (isNil(dataset)) {
-			try {
-				// if still not found then look up the MDC for the dataset
-				dataset = await loadDataset(datasetID);
-			} catch (err) {
-				return res.status(404).send(`Dataset not found for Id: ${escape(datasetID)}`);
-			}
+			return res.status(404).send(`Dataset not found for Id: ${escape(datasetID)}`);
 		} else {
 			isDatasetArchived = true;
 		}

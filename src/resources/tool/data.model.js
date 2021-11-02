@@ -19,7 +19,12 @@ const DataSchema = new Schema(
 			programmingLanguageVersion: { type: String },
 		},
 		license: String,
+		// Appears as Uploaders in the F/E for tools, projects, papers
 		authors: [Number],
+		// Original uploader of entity
+		uploader: Number,
+		// List of authors
+		authorsNew: String,
 		tags: {
 			features: [String],
 			topics: [String],
@@ -38,7 +43,6 @@ const DataSchema = new Schema(
 				updated: String,
 			},
 		],
-		uploader: Number,
 		//tools related fields
 		programmingLanguage: [
 			{
@@ -55,6 +59,8 @@ const DataSchema = new Schema(
 			pdf: [String],
 			html: [String],
 		},
+		//project related fields
+		leadResearcher: String,
 
 		//person related fields
 		firstname: String,
@@ -64,8 +70,6 @@ const DataSchema = new Schema(
 		orcid: String,
 		showOrcid: Boolean,
 		emailNotifications: { type: Boolean, default: true },
-		feedback: Boolean,
-		news: Boolean,
 		terms: Boolean,
 		sector: String,
 		showSector: Boolean,
@@ -79,6 +83,7 @@ const DataSchema = new Schema(
 		source: String,
 		is5Safes: Boolean,
 		hasTechnicalDetails: Boolean,
+		commercialUse: Boolean,
 		datasetid: String,
 		pid: String,
 		datasetVersion: String,
@@ -107,6 +112,21 @@ const DataSchema = new Schema(
 			phenotypes: [],
 		},
 		datasetv2: {},
+		questionAnswers: {},
+		structuralMetadata: [],
+		percentageCompleted: {},
+		applicationStatusDesc: String,
+		applicationStatusAuthor: String,
+		timestamps: {
+			updated: Date,
+			created: Date,
+			submitted: Date,
+			published: Date,
+			rejected: Date,
+			archived: Date,
+		},
+		datasetVersionIsV1: { type: Boolean, default: false },
+		isCohortDiscovery: { type: Boolean, default: false },
 
 		//not used
 		rating: Number,
@@ -144,6 +164,13 @@ DataSchema.virtual('persons', {
 	ref: 'Data',
 	foreignField: 'id',
 	localField: 'authors',
+});
+
+DataSchema.virtual('user', {
+	ref: 'User',
+	foreignField: 'id',
+	localField: 'id',
+	justOne: true,
 });
 
 export const Data = model('Data', DataSchema);

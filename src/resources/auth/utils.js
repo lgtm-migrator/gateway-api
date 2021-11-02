@@ -1,8 +1,14 @@
+/* eslint-disable no-undef */
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
-import { UserModel } from '../user/user.model';
-import bcrypt from 'bcrypt';
 import { ROLES } from '../user/user.roles';
+import { UserModel } from '../user/user.model';
+import { Course } from '../course/course.model';
+import { Collections } from '../collections/collections.model';
+import { Data } from '../tool/data.model';
+import { TeamModel } from '../team/team.model';
+import constants from '../utilities/constants.util';
+import { isEmpty } from 'lodash';
 
 const setup = () => {
 	passport.serializeUser((user, done) => done(null, user._id));
@@ -21,35 +27,23 @@ const signToken = (user, expiresIn = 604800) => {
 	return jwt.sign({ data: user }, process.env.JWTSecret, {
 		//Here change it so only id
 		algorithm: 'HS256',
-		expiresIn
+		expiresIn,
 	});
 };
 
 const camundaToken = () => {
-    return jwt.sign(
-        // This structure must not change or the authenication between camunda and the gateway will fail
-        // username: An admin user the exists within the camunda-admin group
-        // groupIds: The admin group that has been configured on the camunda portal.
-        { username: process.env.BPMN_ADMIN_USER, groupIds: ["camunda-admin"], tenantIds: []},
-        process.env.JWTSecret || "local",  
-        { //Here change it so only id
-            algorithm: 'HS256',
-            expiresIn: 604800
-        }
-    )
-}
-
-const hashPassword = async password => {
-	if (!password) {
-		throw new Error('Password was not provided');
-	}
-
-	const salt = await bcrypt.genSalt(10);
-	return await bcrypt.hash(password, salt);
-};
-
-const verifyPassword = async (candidate, actual) => {
-	return await bcrypt.compare(candidate, actual);
+	return jwt.sign(
+		// This structure must not change or the authenication between camunda and the gateway will fail
+		// username: An admin user the exists within the camunda-admin group
+		// groupIds: The admin group that has been configured on the camunda portal.
+		{ username: process.env.BPMN_ADMIN_USER, groupIds: ['camunda-admin'], tenantIds: [] },
+		process.env.JWTSecret || 'local',
+		{
+			//Here change it so only id
+			algorithm: 'HS256',
+			expiresIn: 604800,
+		}
+	);
 };
 
 const checkIsInRole = (...roles) => (req, res, next) => {
@@ -73,15 +67,53 @@ const whatIsRole = req => {
 	}
 };
 
-const getRedirectUrl = role => {
-	switch (role) {
-		case ROLES.Admin:
-			return '/admin-dashboard';
-		case ROLES.Creator:
-			return '/customer-dashboard';
-		default:
-			return '/';
+const checkIsUser = () => (req, res, next) => {
+	if (req.user) {
+		if (req.params.userID && req.params.userID === req.user.id.toString()) return next();
+		else if (req.params.id && req.params.id === req.user.id.toString()) return next();
+		else if (req.body.id && req.body.id.toString() === req.user.id.toString()) return next();
 	}
+
+	return res.status(401).json({
+		status: 'error',
+		message: 'Unauthorised to perform this action.',
+	});
 };
 
-export { setup, signToken, camundaToken, hashPassword, verifyPassword, checkIsInRole, getRedirectUrl, whatIsRole };
+const checkAllowedToAccess = type => async (req, res, next) => {
+	const { user, params } = req;
+	if (!isEmpty(user)) {
+		if (user.role === ROLES.Admin) return next();
+		else if (!isEmpty(params.id)) {
+			let data = {};
+			if (type === 'course') {
+				data = await Course.findOne({ id: params.id }, { creator: 1 }).lean();
+				if (!isEmpty(data) && [data.creator].includes(user.id)) return next();
+			} else if (type === 'collection') {
+				data = await Collections.findOne({ id: params.id }, { authors: 1 }).lean();
+				if (!isEmpty(data) && data.authors.includes(user.id)) return next();
+			} else {
+				data = await Data.findOne({ id: params.id }, { authors: 1, uploader: 1 }).lean();
+				if (!isEmpty(data) && [...data.authors, data.uploader].includes(user.id)) return next();
+			}
+		}
+	}
+
+	return res.status(401).json({
+		status: 'error',
+		message: 'Unauthorised to perform this action.',
+	});
+};
+
+const getTeams = async () => {
+	const teams = await TeamModel.find({ type: { $ne: constants.teamTypes.ADMIN } }, { _id: 1, type: 1 })
+		.populate({
+			path: 'publisher',
+			select: 'name',
+		})
+		.lean();
+
+	return teams;
+};
+
+export { setup, signToken, camundaToken, checkIsInRole, whatIsRole, checkIsUser, checkAllowedToAccess, getTeams };

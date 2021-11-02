@@ -6,10 +6,10 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 const swaggerDocument = YAML.load('./swagger.yaml');
 import cors from 'cors';
-import bodyParser from 'body-parser';
 import logger from 'morgan';
 import passport from 'passport';
 import cookieParser from 'cookie-parser';
+import bodyParser from 'body-parser';
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
 import * as Sentry from '@sentry/node';
@@ -54,7 +54,7 @@ oidc.proxy = true;
 
 var domains = [process.env.homeURL];
 
-var rx = /^([http|https]+:\/\/[a-z]+)\.([^/]*)/;
+var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
 
 if (Array.isArray(arr) && arr.length > 0) {
@@ -79,8 +79,10 @@ connectToDatabase();
 
 // (optional) only made for logging and
 // bodyParser, parses the request body to be a readable json format
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+
+app.use(bodyParser.json({ limit: '10mb', extended: true }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }));
+
 app.use(logger('dev'));
 app.use(cookieParser());
 app.use(passport.initialize());
@@ -208,8 +210,9 @@ app.use('/api/v1/search', require('../resources/search/search.router')); // tool
 
 app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router'));
 
-app.use('/api/v1/stats', require('../resources/stats/stats.router'));
-app.use('/api/v1/kpis', require('../resources/stats/kpis.router'));
+app.use('/api/v1/stats', require('../resources/stats/v1/stats.route'));
+app.use('/api/v2/stats', require('../resources/stats/v2/stats.route'));
+app.use('/api/v1/kpis', require('../resources/stats/v1/kpis.route'));
 
 app.use('/api/v1/course', require('../resources/course/v1/course.route'));
 app.use('/api/v2/courses', require('../resources/course/v2/course.route'));
@@ -225,24 +228,38 @@ app.use('/api/v2/projects', require('../resources/project/v2/project.route'));
 app.use('/api/v1/papers', require('../resources/paper/v1/paper.route'));
 app.use('/api/v2/papers', require('../resources/paper/v2/paper.route'));
 
+app.use('/api/v1/cohorts', require('../resources/cohort/cohort.route'));
+app.use('/api/v1/save-cohort', require('../resources/cohort/cohort.route'));
+
 app.use('/api/v1/counter', require('../resources/tool/counter.route'));
 app.use('/api/v1/coursecounter', require('../resources/course/coursecounter.route'));
+app.use('/api/v1/collectioncounter', require('../resources/collections/collectioncounter.route'));
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
+app.use('/api/v1/dataset-onboarding', require('../resources/dataset/datasetonboarding.route'));
 app.use('/api/v1/datasets', require('../resources/dataset/v1/dataset.route'));
 app.use('/api/v2/datasets', require('../resources/dataset/v2/dataset.route'));
 
-app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/datarequest.schemas.route'));
+app.use('/api/v1/data-access-request/schema', require('../resources/datarequest/schema/datarequest.schemas.route'));
 app.use('/api/v1/data-access-request', require('../resources/datarequest/datarequest.route'));
 
 app.use('/api/v1/collections', require('../resources/collections/collections.route'));
 
-app.use('/api/v1/analyticsdashboard', require('../resources/googleanalytics/googleanalytics.router'));
+app.use('/api/v1/analyticsdashboard', require('../services/googleAnalytics/googleAnalytics.route'));
 
 app.use('/api/v1/help', require('../resources/help/help.router'));
 
 app.use('/api/v2/filters', require('../resources/filters/filters.route'));
+app.use('/api/v2/activitylog', require('../resources/activitylog/activitylog.route'));
+
+app.use('/api/v1/hubspot', require('../services/hubspot/hubspot.route'));
+
+app.use('/api/v1/cohortprofiling', require('../resources/cohortprofiling/cohortprofiling.route'));
+
+app.use('/api/v1/global', require('../resources/global/global.route'));
+
+app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
 
 initialiseAuthentication(app);
 

@@ -118,7 +118,7 @@ router.post('/user/posts', passport.authenticate('jwt'), utils.checkIsInRole(ROL
 			// 2. Check if comment is on a tool or collection
 			if (toolId) {
 				// 3. Get the tool details from MongoDb to create the new topic
-				await Data.findOne({ id: toolId })
+				await Data.findOne({ id: { $eq: toolId } })
 					.then(async tool => {
 						// 4. If no tool was found, return 404
 						if (!tool) {
@@ -138,7 +138,7 @@ router.post('/user/posts', passport.authenticate('jwt'), utils.checkIsInRole(ROL
 					});
 			} else if (collectionId) {
 				// 3. Get the collection details from MongoDb to create the new topic
-				await Collections.findOne({ id: parseInt(collectionId) })
+				await Collections.findOne({ id: { $eq: parseInt(collectionId) } })
 					.then(async collection => {
 						// 4. If no collection was found, return 404
 						if (!collection) {
