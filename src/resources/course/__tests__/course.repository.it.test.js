@@ -35,7 +35,7 @@ describe('CourseRepository', function () {
 	describe('getCourses', () => {
 		it('should return an array of courses', async function () {
 			const courseRepository = new CourseRepository();
-			const courses = await courseRepository.getCourses();
+			const courses = await courseRepository.getCourses({}, {});
 			expect(courses.length).toBeGreaterThan(0);
 		});
 	});

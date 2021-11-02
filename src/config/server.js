@@ -3,8 +3,6 @@
 import express from 'express';
 import Provider from 'oidc-provider';
 import swaggerUi from 'swagger-ui-express';
-import YAML from 'yamljs';
-const swaggerDocument = YAML.load('./swagger.yaml');
 import cors from 'cors';
 import logger from 'morgan';
 import passport from 'passport';
@@ -180,7 +178,7 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 
 app.use('/api/v1/openid', oidc.callback);
 app.use('/api', router);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(require('../../docs/index.docs')));
 
 app.use('/oauth', require('../resources/auth/oauth.route'));
 app.use('/api/v1/auth/sso/discourse', require('../resources/auth/sso/sso.discourse.router'));
