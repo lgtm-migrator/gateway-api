@@ -56,7 +56,7 @@ export class PublisherService {
 					{ applicationStatus: { $nin: applicationStatus } },
 				],
 			})
-				.select('-jsonSchema -questionAnswers -files')
+				.select('-jsonSchema -files')
 				.sort({ updatedAt: -1 })
 				.populate([
 					{
