@@ -44,6 +44,7 @@ describe('Utilities', () => {
 			expect(res.status.mock.calls.length).toBe(1);
 			expect(res.redirect.mock.calls.length).toBe(1);
 		});
+	});
 
 	describe('loginAndSignToken middleware', () => {
 		it('should be a function', () => {
@@ -67,6 +68,5 @@ describe('Utilities', () => {
 			// assert
 			expect(req.login.mock.calls.length).toBe(1);
 		});
-	});
 	});
 });
