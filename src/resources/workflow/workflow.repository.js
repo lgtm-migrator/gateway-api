@@ -35,7 +35,6 @@ export default class WorkflowRepository extends Repository {
 	}
 
 	getWorkflowById(id, options = {}) {
-		console.log('in getWorkflowById id= ', id);
 		return WorkflowModel.findOne(
 			{
 				_id: id,
@@ -58,8 +57,6 @@ export default class WorkflowRepository extends Repository {
 		console.log('workflowId  ', workflowId);
 
 		const workflow = await this.getWorkflowById(workflowId, { lean: false });
-		console.log('');
-		console.log('workflow', workflow);
 		if (!workflow) {
 			throw new Error('Workflow could not be found');
 		}

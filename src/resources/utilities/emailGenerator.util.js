@@ -554,8 +554,6 @@ const _generateEmail = async (aboutApplication, questions, pages, questionPanels
 	let flatQuestionPanels = _unNestQuestionPanels(questionPanels);
 	// unnest question flat
 	let unNestedQuestions = _initalQuestionSpread(questions, pages, flatQuestionPanels);
-	// assigns to questionList
-	let fullQuestionSet = _getAllQuestionsFlattened(unNestedQuestions);
 	// fullQuestions [SafePeople: {Applicant: {}, Applicant_aca: {}}, SafeProject:{}]
 	let fullQuestions = _groupByPageSection([...questionList]);
 	// build up  email with  values

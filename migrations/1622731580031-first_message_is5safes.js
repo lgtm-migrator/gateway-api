@@ -1,6 +1,5 @@
 import { TopicModel } from '../src/resources/topic/topic.model';
-import { MessagesModel } from '../src/resources/message/message.model';
-import { UserModel } from '../src/resources/user/user.model';
+
 
 /**
  * Make any changes you need to make to the database here
