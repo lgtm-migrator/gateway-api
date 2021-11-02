@@ -28,7 +28,7 @@ Complete the scripts required for the UP process, and if possible, the DOWN proc
 #### Step 4
 
 With the scripts written, the functions can be tested by running the following command, replacing 'my_new_migration_script' with the name of the script you want to execute without the time stamp so for example 
-node -r esm migrations/migrate.js up my_new_migration_script
+node -r esm migrations/migrate.js up add_globals 
 
 node -r esm migrations/migrate.js up my_new_migration_script
 

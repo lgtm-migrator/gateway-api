@@ -59,6 +59,12 @@ const globalData = {
 						label: 'Commercial project',
 						impliedValues: ['platinum', 'gold'],
 					},
+					{
+						id: mongoose.Types.ObjectId(),
+						displayOrder: 5,
+						label: 'N/A',
+						impliedValues: [],
+					},
 				],
 			},
 			{
@@ -411,7 +417,7 @@ const globalData = {
 					},
 					{
 						id: mongoose.Types.ObjectId(),
-						displayOrder: 4,
+						displayOrder: 5,
 						definition:'N/A',
 						label: "N/A",
 						impliedValues: [],
