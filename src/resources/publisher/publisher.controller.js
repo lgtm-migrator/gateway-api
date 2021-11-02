@@ -81,10 +81,10 @@ module.exports = {
 	// GET api/v1/publishers/team/:team/dataaccessrequests
 	getDataAccessRequestsByPublisherName: async (req, res) => {
 		// TODO: change the hardcoding
-		const publisher = await PublisherModel.findOne({ name: 'ICODA' });
+		// const publisher = await PublisherModel.findOne({ name: 'ICODA' });
 		
 		const publisherService = new PublisherService();
-		return publisherService.getDataRequestsByPublisherId(publisher._id, req.user, res);
+		return publisherService.getDataRequestsByPublisherId('ICODA', req.user, res);
 	},
 
 	// GET api/v1/publishers/:id/dataaccessrequests
