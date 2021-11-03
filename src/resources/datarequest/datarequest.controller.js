@@ -20,6 +20,7 @@ import inputSanitizer from '../utilities/inputSanitizer';
 import moment from 'moment';
 import mongoose from 'mongoose';
 import i18next from '../internationalization/i18next';
+import { PublisherModel } from '../publisher/publisher.model';
 
 const amendmentController = require('./amendment/amendment.controller');
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -28,6 +29,26 @@ module.exports = {
 
 	getAccessRequestsByTeam: async(req, res) => {	
 		try {
+
+			// 1. Deconstruct the request
+			let { _id } = req.user;
+
+			// 2. Lookup publisher team
+			const publisher = await PublisherModel.findOne({ name: req.params.publisher }).populate('team', 'members').lean();
+			if (!publisher) {
+				return res.status(404).json({ success: false });
+			}
+			// 3. Check the requesting user is a member of the custodian team
+			let found = false;
+			if (_.has(publisher, 'team.members')) {
+				let { members } = publisher.team;
+				found = members.some(el => el.memberid.toString() === _id.toString());
+			}
+
+			if (!found) return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+
+			//Check if current use is a manager
+			let isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, publisher.team, _id);
 			const dars = await DataRequestModel.find({publisher: req.params.publisher}) 
 			return res.status(200).json({ success: true, dars });   
 		} catch (err) {

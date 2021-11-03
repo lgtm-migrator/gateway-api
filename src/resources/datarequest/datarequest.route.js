@@ -141,4 +141,9 @@ router.post('/:id/email', passport.authenticate('jwt'), datarequestController.ma
 // @access  Private - Applicant
 router.delete('/:id', passport.authenticate('jwt'), datarequestController.deleteDraftAccessRequest);
 
+// @route   GET api/v1/data-access-request/publisher/:publisher
+// @desc    GET all team data requests
+// @access  Private
+router.get('/publisher/:publisher', passport.authenticate('jwt'), datarequestController.getAccessRequestsByTeam);
 module.exports = router;
+
