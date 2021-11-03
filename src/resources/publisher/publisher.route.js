@@ -18,16 +18,11 @@ router.get('/:id/datasets', passport.authenticate('jwt'), publisherController.ge
 // @route   GET api/publishers/:id/dataaccessrequests
 // @desc    GET all data access requests to a publisher
 // @access  Private
-router.get('/:id/dataaccessrequests', passport.authenticate('jwt'), publisherController.getDataAccessRequestsByPublisherId);
+router.get('/:id/dataaccessrequests', passport.authenticate('jwt'), publisherController.getPublisherDataAccessRequests);
 
 // @route   GET api/publishers/:id/workflows
 // @desc    GET workflows for publisher
 // @access  Private
 router.get('/:id/workflows', passport.authenticate('jwt'), publisherController.getPublisherWorkflows);
 
-// @route   GET api/v1/data-access-request/publisher/team/:team/dataaccessrequests
-// @desc    GET all team data requests
-// @access  Private
-router.get('/team/:team/dar', passport.authenticate('jwt'), publisherController.getDataAccessRequestsByPublisherName);
- 
 module.exports = router;
