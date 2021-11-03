@@ -15,7 +15,6 @@ const cohortSchema = new Schema(
 		publicflag: Boolean,
 		version: Number,
 		changeLog: String,
-		updatedAt: Date,
 		lastRefresh: Date,
 		datasetPids: [],
 		filterCriteria: [],

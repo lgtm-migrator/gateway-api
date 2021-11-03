@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { filtersService } from '../filters/dependency';
 import moment from 'moment';
+
 const createMode = {
 	new: 'createNew',
 	minor: 'minorVersion',
@@ -61,15 +62,14 @@ export default class CohortService {
 
 		// 4. Extract filter criteria used in query
 		let filterCriteria = [];
-		body.cohort.input.cohorts.forEach(cohort => {
-			cohort.groups.forEach(group => {
-				group.rules.forEach(rule => {
-					filterCriteria.push(rule.value);
-				});
-			});
+		body.cohort.query_codes.forEach(query_code => {
+			filterCriteria.push(query_code.description);
 		});
 
-		// 5. Extract result counts
+		// 5. Lookup OMOP code
+		body.cohort.input.cohorts = appendTranslatedOMOPDescriptions(body.cohort.query_codes, body.cohort.input.cohorts);
+
+		// 6. Extract result counts
 		const countsPerDataset = body.cohort.result.counts.map((item, i) => {
 			const { pid, count } = Object.assign(
 				{ pid: body.cohort.input.collections[i].external_id, count: item.count },
@@ -82,7 +82,7 @@ export default class CohortService {
 		const totalResultCount = countsPerDataset.reduce((a, curr) => a + parseInt(curr.count), 0);
 		const numberOfDatasets = countsPerDataset.length;
 
-		// 6. Build document object and save to DB
+		// 7. Build document object and save to DB
 		const document = {
 			id: uniqueId,
 			pid: uuid,
@@ -91,7 +91,6 @@ export default class CohortService {
 			activeflag: 'draft',
 			userId: body.user_id,
 			uploaders: [parseInt(body.user_id)],
-			updatedAt: Date.now(),
 			lastRefresh: Date.now(),
 			updatedon: Date.now(),
 			request_id: body.request_id,
@@ -217,4 +216,29 @@ export default class CohortService {
 				return (Math.floor(currentVersion.version) + 1).toFixed(1);
 		}
 	}
+}
+
+function appendTranslatedOMOPDescriptions(query_codes, cohorts) {
+	let newCohorts = cohorts;
+	let omopMap = {};
+	query_codes.forEach(query_code => {
+		omopMap[query_code.varname] = query_code.description;
+	});
+
+	return newCohorts.map(cohort => {
+		return {
+			...cohort,
+			groups: cohort.groups.map(group => {
+				return {
+					...group,
+					rules: group.rules.map(rule => {
+						return {
+							...rule,
+							description: omopMap[rule.varname],
+						};
+					}),
+				};
+			}),
+		};
+	});
 }
