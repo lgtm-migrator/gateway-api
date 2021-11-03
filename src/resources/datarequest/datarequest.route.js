@@ -145,5 +145,6 @@ router.delete('/:id', passport.authenticate('jwt'), datarequestController.delete
 // @desc    GET all team data requests
 // @access  Private
 router.get('/publisher/:publisher', passport.authenticate('jwt'), datarequestController.getAccessRequestsByTeam);
+
 module.exports = router;
 
