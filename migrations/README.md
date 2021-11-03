@@ -1,4 +1,3 @@
-
 # HDR UK GATEWAY - Data Migrations
 
 The primary data source used by the Gateway Project is the noSQL solution provided by MongoDb.  Data migration strategy is a fundamental part of software development and release cycles for a data intensive web application.  The project team have chosen the NPM package Migrate-Mongoose - https://www.npmjs.com/package/migrate-mongoose to assist in the management of data migration scripts.  This package allows developers to write versioned, reversible data migration scripts using the Mongoose library.
@@ -27,11 +26,12 @@ Complete the scripts required for the UP process, and if possible, the DOWN proc
 
 #### Step 4
 
-With the scripts written, the functions can be tested by running the following command, replacing 'my_new_migration_script' with the name of the script you want to execute.
+With the scripts written, the functions can be tested by running the following command, replacing 'my_new_migration_script' with the name of the script you want to execute without the time stamp so for example 
+node -r esm migrations/migrate.js up add_globals 
 
 node -r esm migrations/migrate.js up my_new_migration_script
 
-When this process is completed, the connected database will have a new document representing your migration scripts inside the 'migrations' collection, which tracks the state of the migration.  If you need to run your scripts multiple times for test purposes, you can change the state of the migration to 'Down'. 
+When this process is completed, the connected database will have a new document representing your migration scripts inside the 'migrations' collection, which tracks the state of the migration.  If you need to run your scripts multiple times for test purposes, you can change the state of the migration to 'Down'.  
 
 During this process, please ensure you are using a personal database.
 
