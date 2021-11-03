@@ -37,7 +37,22 @@ export default class DatasetService {
 		return dataset;
 	}
 
-	async getDatasets(query = {}, options = {} ) {
+	async getActiveDatasetByPid(pid, query = {}, options = {}) {
+		// Protect for no id passed
+		if (!pid) return;
+
+		// Get dataset from Db by pid
+		query = { ...query, pid: pid, activeflag: 'active' };
+
+		let dataset = await this.datasetRepository.getDataset(query, options);
+
+		// Return undefined if no dataset found
+		if (!dataset) return;
+
+		return dataset;
+	}
+
+	async getDatasets(query = {}, options = {}) {
 		return this.datasetRepository.getDatasets(query, options);
 	}
 
