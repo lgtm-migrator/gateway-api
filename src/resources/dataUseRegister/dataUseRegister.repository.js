@@ -1,6 +1,7 @@
 import Repository from '../base/repository';
 import { DataUseRegister } from './dataUseRegister.model';
 import { isNil } from 'lodash';
+import { filtersService } from '../filters/dependency';
 
 export default class DataUseRegisterRepository extends Repository {
 	constructor() {
@@ -28,6 +29,30 @@ export default class DataUseRegisterRepository extends Repository {
 						localField: 'publisher',
 						foreignField: '_id',
 						as: 'publisherDetails',
+					},
+				},
+				{
+					$lookup: {
+						from: 'tools',
+						let: {
+							listOfGatewayDatasets: '$gatewayDatasets',
+						},
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$and: [
+											{ $in: ['$pid', '$$listOfGatewayDatasets'] },
+											{
+												$eq: ['$activeflag', 'active'],
+											},
+										],
+									},
+								},
+							},
+							{ $project: { pid: 1, name: 1 } },
+						],
+						as: 'gatewayDatasets',
 					},
 				},
 				{
@@ -64,11 +89,12 @@ export default class DataUseRegisterRepository extends Repository {
 		return this.dataUseRegister.findOne({ projectId: applicationId }, 'id').lean();
 	}
 
-	updateDataUseRegister(id, body) {
+	async updateDataUseRegister(id, body) {
 		body.updatedon = Date.now();
 		body.lastActivity = Date.now();
-
-		return this.update(id, body);
+		const updatedBody = await this.update(id, body);
+		filtersService.optimiseFilters('dataUseRegister');
+		return updatedBody;
 	}
 
 	uploadDataUseRegisters(dataUseRegisters) {

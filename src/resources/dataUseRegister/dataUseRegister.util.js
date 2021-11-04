@@ -29,8 +29,6 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 					})
 		);
 		const datasetTitles = [...linkedDatasets.map(dataset => dataset.name), ...namedDatasets];
-		const datasetIds = [...linkedDatasets.map(dataset => dataset.datasetid)];
-		const datasetPids = [...linkedDatasets.map(dataset => dataset.pid)];
 
 		// Handle applicant linkages
 		const { gatewayApplicants, nonGatewayApplicants } = await getLinkedApplicants(
@@ -84,6 +82,7 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 				...(obj.projectTitle && { projectTitle: obj.projectTitle.toString().trim() }),
 				...(obj.projectIdText && { projectIdText: obj.projectIdText.toString().trim() }),
 				...(obj.organisationName && { organisationName: obj.organisationName.toString().trim() }),
+				...(obj.organisationId && { organisationId: obj.organisationId.toString().trim() }),
 				...(obj.organisationSector && { organisationSector: obj.organisationSector.toString().trim() }),
 				...(obj.applicantId && { applicantId: obj.applicantId.toString().trim() }),
 				...(obj.accreditedResearcherStatus && { accreditedResearcherStatus: obj.accreditedResearcherStatus.toString().trim() }),
@@ -107,8 +106,9 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 				...(latestApprovalDate.isValid() && { latestApprovalDate }),
 				...(accessDate.isValid() && { accessDate }),
 				...(!isEmpty(datasetTitles) && { datasetTitles }),
-				...(!isEmpty(datasetIds) && { datasetIds }),
-				...(!isEmpty(datasetPids) && { datasetPids }),
+				...(!isEmpty(linkedDatasets) && { gatewayDatasets: linkedDatasets.map(dataset => dataset.pid) }),
+				...(!isEmpty(namedDatasets) && { nonGatewayDatasets: namedDatasets }),
+
 				...(!isEmpty(gatewayApplicants) && { gatewayApplicants: gatewayApplicants.map(gatewayApplicant => gatewayApplicant._id) }),
 				...(!isEmpty(nonGatewayApplicants) && { nonGatewayApplicants }),
 				...(!isEmpty(fundersAndSponsors) && { fundersAndSponsors }),
@@ -147,7 +147,12 @@ const getLinkedDatasets = async (datasetNames = []) => {
 		if (datasetPid) {
 			unverifiedDatasetPids.push(datasetPid);
 		} else {
-			namedDatasets.push(datasetName);
+			let foundDataset = await datasetService.getDatasetsByName(datasetName);
+			if (foundDataset) {
+				unverifiedDatasetPids.push(foundDataset.pid);
+			} else {
+				namedDatasets.push(datasetName);
+			}
 		}
 	}
 

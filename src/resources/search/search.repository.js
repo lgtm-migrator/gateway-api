@@ -147,13 +147,37 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 				},
 			},
 			{
+				$lookup: {
+					from: 'tools',
+					let: {
+						listOfGatewayDatasets: '$gatewayDatasets',
+					},
+					pipeline: [
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{ $in: ['$pid', '$$listOfGatewayDatasets'] },
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $project: { pid: 1, name: 1 } },
+					],
+					as: 'gatewayDatasets',
+				},
+			},
+			{
 				$addFields: {
 					publisherDetails: {
 						$map: {
 							input: '$publisherDetails',
 							as: 'row',
 							in: {
-								name: '$$row.name',
+								name: '$$row.publisherDetails.name',
 							},
 						},
 					},
@@ -169,6 +193,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					keywords: 1,
 					datasetTitles: 1,
 					publisherDetails: 1,
+					gatewayDatasets: 1,
+					nonGatewayDatasets: 1,
 					activeflag: 1,
 					counter: 1,
 					type: 1,

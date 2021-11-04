@@ -17,8 +17,8 @@ export default class DataUseRegisterService {
 		return this.dataUseRegisterRepository.getDataUseRegister(query, options);
 	}
 
-	getDataUseRegisters(query = {}) {
-		return this.dataUseRegisterRepository.getDataUseRegisters(query);
+	getDataUseRegisters(query = {}, options = {}) {
+		return this.dataUseRegisterRepository.getDataUseRegisters(query, options);
 	}
 
 	updateDataUseRegister(id, body = {}) {

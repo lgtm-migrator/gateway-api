@@ -37,7 +37,7 @@ export default class DatasetService {
 		return dataset;
 	}
 
-	async getDatasets(query = {}, options = {} ) {
+	async getDatasets(query = {}, options = {}) {
 		return this.datasetRepository.getDatasets(query, options);
 	}
 
@@ -113,5 +113,10 @@ export default class DatasetService {
 
 	getDatasetsByPids(pids) {
 		return this.datasetRepository.getDatasetsByPids(pids);
+	}
+
+	getDatasetsByName(name) {
+		let query = {};
+		return this.datasetRepository.getDataset({ name, fields: 'pid' }, { lean: true });
 	}
 }

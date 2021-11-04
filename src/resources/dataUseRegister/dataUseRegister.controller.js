@@ -1,4 +1,4 @@
-import { isNil } from 'lodash';
+import Mongoose from 'mongoose';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import constants from './../utilities/constants.util';
@@ -43,6 +43,52 @@ export default class DataUseRegisterController extends Controller {
 						as: 'creator',
 					},
 				},
+				{
+					$lookup: {
+						from: 'tools',
+						let: {
+							pid: '$pid',
+						},
+						pipeline: [
+							//{ $match: { $expr: { $in: ['$gatewayDatasets', '$$pid'] } } },
+							{
+								$match: {
+									$expr: {
+										$and: [{ $eq: ['$gatewayDatasets', '$$pid'] }],
+									},
+								},
+							},
+							{ $project: { pid: 1, name: 1 } },
+
+							/* {
+								$match: {
+									$expr: {
+										$and: [
+											{
+												$eq: ['$relatedObjects.pid', '$$pid'],
+											},
+											{
+												$eq: ['$activeflag', 'active'],
+											},
+										],
+									},
+								},
+							},
+							{ $group: { _id: null, count: { $sum: 1 } } },
+	 */
+						],
+						as: 'gatewayDatasets2',
+					},
+				},
+
+				/* {
+					$lookup: {
+						from: 'tools',
+						localField: 'gatewayDatasets',
+						foreignField: 'pid',
+						as: 'gatewayDatasets',
+					},
+				}, */
 			]);
 			query.exec((err, data) => {
 				if (data.length > 0) {
@@ -117,12 +163,12 @@ export default class DataUseRegisterController extends Controller {
 				query = { ...req.query, activeflag: constants.dataUseRegisterStatus.INREVIEW };
 			} else if (team !== 'user' && team !== 'admin') {
 				delete req.query.team;
-				query = { ...req.query, publisher: team };
+				query = { publisher: new Mongoose.Types.ObjectId(team) };
 			} else {
 				query = req.query;
 			}
 
-			const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters(query).catch(err => {
+			const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters({ $and: [query] }, { aggregate: true }).catch(err => {
 				logger.logError(err, logCategory);
 			});
 			// Return the dataUseRegisters

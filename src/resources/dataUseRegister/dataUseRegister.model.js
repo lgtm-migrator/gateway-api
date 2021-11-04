@@ -29,11 +29,12 @@ const dataUseRegisterSchema = new Schema(
 		projectId: { type: Schema.Types.ObjectId, ref: 'data_request' },
 		projectIdText: String, //Project ID
 		datasetTitles: [{ type: String }], //Dataset Name(s)
-		datasetIds: [{ type: String }],
-		datasetPids: [{ type: String }],
+		gatewayDatasets: [{ type: String }], //Datasets on the Gateway
+		nonGatewayDatasets: [{ type: String }], //Dataset Name(s)
 		publisher: { type: Schema.Types.ObjectId, ref: 'Publisher', required: true },
 		user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 		organisationName: { type: String }, //Organisation Name
+		organisationId: { type: String }, //Organisation ID
 		organisationSector: String, //Organisation Sector
 		gatewayApplicants: [
 			{

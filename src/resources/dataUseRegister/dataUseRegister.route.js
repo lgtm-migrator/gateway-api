@@ -70,7 +70,7 @@ const validateUploadRequest = (req, res, next) => {
 	next();
 };
 
-const validateViewRequest = (req, res, next) => {
+/* const validateViewRequest = (req, res, next) => {
 	const { team } = req.query;
 
 	if (!team) {
@@ -81,7 +81,7 @@ const validateViewRequest = (req, res, next) => {
 	}
 
 	next();
-};
+}; */
 
 const authorizeView = async (req, res, next) => {
 	const requestingUser = req.user;
@@ -157,13 +157,13 @@ router.get('/:id', logger.logRequestMiddleware({ logCategory, action: 'Viewed da
 router.get(
 	'/',
 	passport.authenticate('jwt'),
-	validateViewRequest,
+	/* validateViewRequest, */
 	authorizeView,
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed dataUseRegisters data' }),
 	(req, res) => dataUseRegisterController.getDataUseRegisters(req, res)
 );
 
-// @route   PUT /api/v2/data-use-registers/id
+// @route   PATCH /api/v2/data-use-registers/id
 // @desc    Update the content of the data user register based on dataUseRegister ID provided
 // @access  Public
 router.patch(
