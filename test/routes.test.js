@@ -3,11 +3,11 @@ const testURL = request(process.env.URL || 'https://api.latest.healthdatagateway
 
 describe('Wake up API', () => {
 	test('Check the api is alive', async () => {
-		jest.setTimeout(30000);
+		jest.setTimeout(60000);
 		const response = await testURL.get('/api/dead');
 		expect(response.statusCode).toBe(404);
 	});
-}, 30000);
+}, 120000);
 
 describe('Search API', () => {
 	test('Search without any parameters should return at least one result', async () => {

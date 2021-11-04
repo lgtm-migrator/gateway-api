@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { TopicModel } from './topic.model';
 import { Data as ToolModel } from '../tool/data.model';
 import _ from 'lodash';
+
 module.exports = {
 	buildRecipients: async (team, createdBy) => {
 		// 1. Cause error if no members found
@@ -14,7 +15,7 @@ module.exports = {
 			console.error('A topic cannot be created with only the creating user');
 			return [];
 		}
-		let recipients = members.map(m => m.memberid);
+		let recipients = members.filter(mem => mem.roles.includes('manager') || mem.roles.includes('reviewer')).map(m => m.memberid);
 		// 2. Return team recipients plus the user that created the message
 		recipients = [...recipients, createdBy];
 		return recipients;
@@ -25,6 +26,7 @@ module.exports = {
 			let subTitle = '';
 			let datasets = [];
 			let tags = [];
+			let is5Safes = false;
 			const { createdBy, relatedObjectIds } = context;
 			// 1. Topic cannot be created without related object i.e. data/project/tool/paper
 			if (_.isEmpty(relatedObjectIds)) {
@@ -51,12 +53,14 @@ module.exports = {
 							name: datasetTitle,
 							datasetid = '',
 							datasetfields: { publisher },
+							is5Safes: isDataset5Safes = false,
 						} = tool;
 						// set title of topic which is publisher
 						title = publisher;
 						subTitle = _.isEmpty(subTitle) ? datasetTitle : `${subTitle}, ${datasetTitle}`;
 						datasets.push({ datasetId: datasetid, publisher });
-						tags.push(datasetTitle);
+						is5Safes = isDataset5Safes;
+						tags.push({ datasetId: datasetid, name: datasetTitle, _id: relatedObjectIds[0], publisher });
 						break;
 					default:
 						break;
@@ -90,6 +94,7 @@ module.exports = {
 				recipients,
 				datasets,
 				tags,
+				is5Safes,
 			});
 			// 9. Return created object
 			return topic;
@@ -111,6 +116,12 @@ module.exports = {
 					topic.unreadMessages++;
 				}
 			});
+
+			if (topic.tags.length === 1) {
+				let { datasetId } = topic.datasets[0];
+				topic.tags = [{ name: topic.subTitle, _id: topic.relatedObjectIds[0], datasetId, publisher: topic.title }];
+			}
+
 			return topic;
 		} catch (err) {
 			console.error(err.message);
@@ -163,6 +174,11 @@ module.exports = {
 					topic.lastUnreadMessage = topic.topicMessages.reduce((a, b) => {
 						return (new Date(a.createdDate) > new Date(b.createdDate) ? a : b).createdDate;
 					});
+
+					if (topic.tags.length === 1) {
+						let { datasetId, publisher } = topic.datasets[0];
+						topic.tags = [{ name: topic.subTitle, datasetId: datasetId, _id: topic.relatedObjectIds[0], publisher }];
+					}
 				});
 			});
 			// Sort topics by most unread first followed by created date

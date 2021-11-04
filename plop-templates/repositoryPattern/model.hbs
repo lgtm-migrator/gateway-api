@@ -1,0 +1,19 @@
+import { model, Schema } from 'mongoose';
+
+import {{capitalise entityName}}Class from './{{entityName}}.entity';
+
+const {{entityName}}Schema = new Schema(
+	{
+		// New object properties here
+	},
+	{
+		timestamps: true,
+		toJSON: { virtuals: true },
+		toObject: { virtuals: true },
+	}
+);
+
+// Load entity class
+{{entityName}}Schema.loadClass({{capitalise entityName}}Class);
+
+export const {{capitalise entityName}} = model('{{capitalise entityName}}', {{entityName}}Schema);

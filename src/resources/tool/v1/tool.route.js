@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import express from 'express';
 import { ROLES } from '../../user/user.roles';
 import { Reviews } from '../review.model';
@@ -15,10 +16,10 @@ import escape from 'escape-html';
 import helperUtil from '../../utilities/helper.util';
 const router = express.Router();
 
-// @router   POST /api/v1/add
+// @router   POST /api/v1/tool/add
 // @desc     Add tools user
 // @access   Private
-router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/', passport.authenticate('jwt'), async (req, res) => {
 	await addTool(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -28,11 +29,11 @@ router.post('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, 
 		});
 });
 
-// @router   PUT /api/v1/{id}
+// @router   PUT /api/v1/tool/{id}
 // @desc     Edit tools user
 // @access   Private
 // router.put('/{id}',
-router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.put('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('tool'), async (req, res) => {
 	await editTool(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -42,10 +43,10 @@ router.put('/:id', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin
 		});
 });
 
-// @router   GET /api/v1/get/admin
+// @router   GET /api/v1/tool/getList
 // @desc     Returns List of Tool objects
 // @access   Private
-router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/getList', passport.authenticate('jwt'), async (req, res) => {
 	req.params.type = 'tool';
 	let role = req.user.role;
 
@@ -68,7 +69,7 @@ router.get('/getList', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.A
 	}
 });
 
-// @router   GET /api/v1/
+// @router   GET /api/v1/tool
 // @desc     Returns List of Tool Objects No auth
 //           This unauthenticated route was created specifically for API-docs
 // @access   Public
@@ -83,10 +84,10 @@ router.get('/', async (req, res) => {
 		});
 });
 
-// @router   PATCH /api/v1/status
+// @router   PATCH /api/v1/tool/{id}
 // @desc     Set tool status
 // @access   Private
-router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
+router.patch('/:id', passport.authenticate('jwt'), utils.checkAllowedToAccess('tool'), async (req, res) => {
 	await setStatus(req)
 		.then(response => {
 			return res.json({ success: true, response });
@@ -96,11 +97,9 @@ router.patch('/:id', passport.authenticate('jwt'), async (req, res) => {
 		});
 });
 
-/**
- * {get} /tool/:id Tool
- *
- * Return the details on the tool based on the tool ID.
- */
+// @router   GET /api/v1/tool/{id}
+// @desc     Return the details on the tool based on the tool ID.
+// @access   Public
 router.get('/:id', async (req, res) => {
 	var query = Data.aggregate([
 		{ $match: { $and: [{ id: parseInt(req.params.id) }, { type: 'tool' }] } },
@@ -235,7 +234,7 @@ router.get('/edit/:id', async (req, res) => {
  * When they submit, authenticate the user, validate the data and add review data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
-router.post('/review/add', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/review/add', passport.authenticate('jwt'), async (req, res) => {
 	let reviews = new Reviews();
 	const { toolID, reviewerID, rating, projectName, review } = req.body;
 
@@ -264,12 +263,12 @@ router.post('/review/add', passport.authenticate('jwt'), utils.checkIsInRole(ROL
  * When they submit, authenticate the user, validate the data and add reply data to the DB.
  * We will also check the review (Free word entry) for exclusion data (node module?)
  */
-router.post('/reply', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.post('/reply', passport.authenticate('jwt'), async (req, res) => {
 	const { reviewID, replierID, reply } = req.body;
 	Reviews.findOneAndUpdate(
-		{ reviewID: reviewID },
+		{ reviewID: { $eq: reviewID } },
 		{
-			replierID: replierID,
+			replierID,
 			reply: inputSanitizer.removeNonBreakingSpaces(reply),
 			replydate: Date.now(),
 		},
@@ -288,22 +287,22 @@ router.post('/reply', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Ad
 router.put('/review/approve', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
 	const { id, activeflag } = req.body;
 	Reviews.findOneAndUpdate(
-		{ reviewID: id },
+		{ reviewID: { $eq: id } },
 		{
-			activeflag: activeflag,
+			activeflag,
 		},
 		err => {
 			if (err) return res.json({ success: false, error: err });
 
 			return res.json({ success: true });
 		}
-	).then(async res => {
-		const review = await Reviews.findOne({ reviewID: id });
+	).then(async () => {
+		const review = await Reviews.findOne({ reviewID: { $eq: id } });
 
 		await storeNotificationMessages(review);
 
 		// Send email notififcation of approval to authors and admins who have opted in
-		await sendEmailNotifications(review);
+		await sendEmailNotifications(review, activeflag);
 	});
 });
 
@@ -314,7 +313,7 @@ router.put('/review/approve', passport.authenticate('jwt'), utils.checkIsInRole(
  */
 router.delete('/review/reject', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
 	const { id } = req.body;
-	Reviews.findOneAndDelete({ reviewID: id }, err => {
+	Reviews.findOneAndDelete({ reviewID: { $eq: id } }, err => {
 		if (err) return res.send(err);
 		return res.json({ success: true });
 	});
@@ -327,7 +326,7 @@ router.delete('/review/reject', passport.authenticate('jwt'), utils.checkIsInRol
  */
 router.delete('/review/delete', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
 	const { id } = req.body;
-	Data.findOneAndDelete({ id: id }, err => {
+	Data.findOneAndDelete({ id: { $eq: id } }, err => {
 		if (err) return res.send(err);
 		return res.json({ success: true });
 	});
@@ -351,7 +350,7 @@ router.delete('/review/delete', passport.authenticate('jwt'), utils.checkIsInRol
 // @router   GET /api/v1/project/tag/
 // @desc     Get tools by tag search
 // @access   Private
-router.get('/:type/tag', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, ROLES.Creator), async (req, res) => {
+router.get('/:type/tag', passport.authenticate('jwt'), async (req, res) => {
 	try {
 		// 1. Destructure tag name parameter passed
 		let { type } = req.params;
@@ -425,11 +424,11 @@ async function storeNotificationMessages(review) {
 	return { success: true, id: message.messageID };
 }
 
-async function sendEmailNotifications(review) {
+async function sendEmailNotifications(review, activeflag) {
 	// 1. Retrieve tool for authors and reviewer user plus generate URL for linking tool
 	const tool = await Data.findOne({ id: review.toolID });
 	const reviewer = await UserModel.findOne({ id: review.reviewerID });
-	const toolLink = process.env.homeURL + '/tool/' + tool.id + '/' + tool.name;
+	const toolLink = process.env.homeURL + '/tool/' + tool.id;
 
 	// 2. Query Db for all admins or authors of the tool who have opted in to email updates
 	var q = UserModel.aggregate([
@@ -464,6 +463,59 @@ async function sendEmailNotifications(review) {
 		if (err) {
 			return new Error({ success: false, error: err });
 		}
+
+		let subject;
+		if (activeflag === 'active') {
+			subject = `A review has been added to the ${tool.type} ${tool.name}`;
+		} else if (activeflag === 'rejected') {
+			subject = `A review on the ${tool.type} ${tool.name} has been rejected`;
+		} else if (activeflag === 'archive') {
+			subject = `A review on the ${tool.type} ${tool.name} has been archived`;
+		}
+
+		let html = `<div>
+						<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+							<table
+							align="center"
+							border="0"
+							cellpadding="0"
+							cellspacing="40"
+							width="700"
+							word-break="break-all"
+							style="font-family: Arial, sans-serif">
+								<thead>
+									<tr>
+										<th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+											${subject}
+										</th>
+										</tr>
+										<tr>
+										<th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+											<p>
+												${
+													activeflag === 'active'
+														? `${reviewer.firstname} ${reviewer.lastname} gave a ${review.rating}-star review to the tool ${tool.name}.`
+														: activeflag === 'rejected'
+														? `A ${review.rating}-star review from ${reviewer.firstname} ${reviewer.lastname} on the ${tool.type} ${tool.name} has been rejected.`
+														: activeflag === 'archive'
+														? `A ${review.rating}-star review from ${reviewer.firstname} ${reviewer.lastname} on the ${tool.type} ${tool.name} has been archived.`
+														: ``
+												}
+											</p>
+										</th>
+									</tr>
+								</thead>
+								<tbody style="overflow-y: auto; overflow-x: hidden;">
+									<tr style="width: 100%; text-align: left;">
+										<td style=" font-size: 14px; color: #3c3c3b; padding: 5px 5px; width: 50%; text-align: left; vertical-align: top;">
+											<a href=${toolLink}>View ${tool.type}</a>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>`;
+
 		emailGenerator.sendEmail(
 			emailRecipients,
 			`${i18next.t('translation:email.sender')}`,

@@ -2,240 +2,81 @@
 const _userTypes = {
 	CUSTODIAN: 'custodian',
 	APPLICANT: 'applicant',
+	ADMIN: 'admin',
 };
 
 const _formTypes = Object.freeze({
-  Enquiry : 'enquiry',
-  Extended5Safe : '5 safe'
+	Enquiry: 'enquiry',
+	Extended5Safe: '5 safe',
+});
+
+const _activityLogNotifications = Object.freeze({
+	MANUALEVENTADDED: 'manualEventAdded',
+	MANUALEVENTREMOVED: 'manualEventRemoved',
 });
 
 const _teamNotificationTypes = Object.freeze({
-  DATAACCESSREQUEST : 'dataAccessRequest',
-  METADATAONBOARDING : 'metaDataOnboarding'
+	DATAACCESSREQUEST: 'dataAccessRequest',
+	METADATAONBOARDING: 'metaDataOnboarding',
 });
 
+const _teamNotificationMessages = {
+	DATAACCESSREQUEST: 'A team manager removed team email addresses. Your email notifications are now being sent to your gateway email',
+};
+
+const _teamNotificationEmailContentTypes = {
+	TEAMEMAILHEADERADD: 'A team manager has added a new team email address',
+	TEAMEMAILHEADEREMOVE: 'A team manager has removed a team email address',
+	TEAMEMAILSUBHEADERADD:
+		'has added a new team email address. All emails relating to pre-submission messages from researchers will be sent to the following email addresses:',
+	TEAMEMAILSUBHEADEREMOVE:
+		'has removed a team email address. All emails relating to pre-submission messages from researchers will no longer be sent to the following email addresses:',
+	TEAMEMAILFOOTERREMOVE:
+		'If you had stopped emails being sent to your gateway log in email address and no team email address is now active, your emails will have reverted back to your gateway log in email.',
+};
+
 const _teamNotificationTypesHuman = Object.freeze({
-  dataAccessRequest : 'Data access request',
-  metaDataOnboarding : 'Meta data on-boarding'
+	dataAccessRequest: 'Data access request',
+	metaDataOnboarding: 'Meta data on-boarding',
 });
 
 const _enquiryFormId = '5f0c4af5d138d3e486270031';
 
-const _userQuestionActions = {
-	custodian: {
-		reviewer: {
-			submitted: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			inReview: {
-				custodian: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
-				applicant: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
-			},
-			approved: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			['approved with conditions']: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			rejected: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			withdrawn: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-		},
-		manager: {
-			submitted: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			inReview: {
-				custodian: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-					{
-						key: 'requestAmendment',
-						icon: 'fas fa-exclamation-circle',
-						color: '#F0BB24',
-						toolTip: 'Request applicant updates answer',
-						order: 2,
-					},
-				],
-				applicant: [
-					{
-						key: 'guidance',
-						icon: 'far fa-question-circle',
-						color: '#475da7',
-						toolTip: 'Guidance',
-						order: 1,
-					},
-				],
-			},
-			approved: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			['approved with conditions']: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			rejected: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-			withdrawn: [
-				{
-					key: 'guidance',
-					icon: 'far fa-question-circle',
-					color: '#475da7',
-					toolTip: 'Guidance',
-					order: 1,
-				},
-			],
-		},
+const _questionActions = {
+	guidance: {
+		key: 'guidance',
+		icon: 'far fa-question-circle',
+		color: '#475da7',
+		toolTip: 'Guidance',
+		order: 1,
 	},
-	applicant: {
-		inProgress: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		submitted: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		inReview: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		approved: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		['approved with conditions']: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		rejected: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
-		withdrawn: [
-			{
-				key: 'guidance',
-				icon: 'far fa-question-circle',
-				color: '#475da7',
-				toolTip: 'Guidance',
-				order: 1,
-			},
-		],
+	messages: {
+		key: 'messages',
+		icon: 'far fa-comment-alt',
+		color: '#475da7',
+		toolTip: 'Messages',
+		order: 2,
+	},
+	notes: {
+		key: 'notes',
+		icon: 'far fa-edit',
+		color: '#475da7',
+		toolTip: 'Notes',
+		order: 3,
+	},
+	updates: {
+		key: 'requestAmendment',
+		icon: 'fas fa-exclamation-circle',
+		color: '#F0BB24',
+		toolTip: 'Request applicant updates answer',
+		order: 4,
 	},
 };
 
 const _navigationFlags = {
 	custodian: {
 		submitted: {
-			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# made this change on #DATE#' },
 		},
 		returned: {
 			completed: { status: 'WARNING', options: [], text: '#NAME# requested an update on #DATE#' },
@@ -258,7 +99,7 @@ const _navigationFlags = {
 	},
 	applicant: {
 		submitted: {
-			completed: { status: 'SUCCESS', options: [], text: '#NAME# updated this answer on #DATE#' },
+			completed: { status: 'SUCCESS', options: [], text: '#NAME# made this change on #DATE#' },
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
 		returned: {
@@ -272,7 +113,7 @@ const _navigationFlags = {
 						displayOrder: 1,
 					},
 				],
-				text: '#NAME# updated this answer on #DATE#',
+				text: '#NAME# made this change on on #DATE#',
 			},
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
@@ -298,6 +139,7 @@ const _notificationTypes = {
 	FINALDECISIONREQUIRED: 'FinalDecisionRequired',
 	DEADLINEWARNING: 'DeadlineWarning',
 	DEADLINEPASSED: 'DeadlinePassed',
+	APPLICATIONAMENDED: 'ApplicationAmended',
 	RETURNED: 'Returned',
 	MEMBERADDED: 'MemberAdded',
 	MEMBERREMOVED: 'MemberRemoved',
@@ -307,6 +149,12 @@ const _notificationTypes = {
 	INPROGRESS: 'InProgress',
 	APPLICATIONCLONED: 'ApplicationCloned',
 	APPLICATIONDELETED: 'ApplicationDeleted',
+	DATASETSUBMITTED: 'DatasetSubmitted',
+	DATASETAPPROVED: 'DatasetApproved',
+	DATASETREJECTED: 'DatasetRejected',
+	TEAMADDED: 'TeamAdded',
+	MESSAGESENT: 'MessageSent',
+	DATASETDUPLICATED: 'DatasetDuplicated',
 };
 
 const _applicationStatuses = {
@@ -329,6 +177,9 @@ const _submissionTypes = {
 	INPROGRESS: 'inProgress',
 	INITIAL: 'initial',
 	RESUBMISSION: 'resubmission',
+	AMENDED: 'amendment',
+	EXTENDED: 'extension',
+	RENEWAL: 'renewal',
 };
 
 const _formActions = {
@@ -346,25 +197,101 @@ const _darPanelMapper = {
 	safeoutputs: 'Safe outputs',
 };
 
-// </DAR related enums>
-
-// <Team related enums>
-const _roleTypes = {
-	MANAGER: 'manager',
-	REVIEWER: 'reviewer',
+const _DARMessageTypes = {
+	DARMESSAGE: 'DAR_Message',
+	DARNOTESAPPLICANT: 'DAR_Notes_Applicant',
+	DARNOTESCUSTODIAN: 'DAR_Notes_Custodian',
 };
 
 // </DAR related enums>
 
+// <Team related enums>
+const _teamTypes = {
+	PUBLISHER: 'publisher',
+	ADMIN: 'admin',
+};
+
+const _roleTypes = {
+	MANAGER: 'manager',
+	REVIEWER: 'reviewer',
+	METADATA_EDITOR: 'metadata_editor',
+	ADMIN_DATASET: 'admin_dataset',
+};
+
+// </Team related enums>
+
+// <Dataset onboarding related enums>
+
+const _datatsetStatuses = {
+	DRAFT: 'draft',
+	INPROGRESS: 'inProgress',
+	INREVIEW: 'inReview',
+	APPROVED: 'approved',
+	REJECTED: 'rejected',
+	APPROVEDWITHCONDITIONS: 'approved with conditions',
+	ARCHIVE: 'archive',
+};
+
+// </Dataset onboarding related enums>
+
 const _hdrukEmail = 'enquiry@icodaresearch.org';
+
+const _mailchimpSubscriptionStatuses = {
+	SUBSCRIBED: 'subscribed',
+	UNSUBSCRIBED: 'unsubscribed',
+	CLEANED: 'cleaned',
+	PENDING: 'pending',
+};
+
+const _logTypes = {
+	SYSTEM: 'System',
+	USER: 'User',
+};
+
+// Activity log related enums
+
+const _activityLogEvents = {
+	APPLICATION_SUBMITTED: 'applicationSubmitted',
+	REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
+	UPDATES_SUBMITTED: 'updatesSubmitted',
+	AMENDMENT_SUBMITTED: 'amendmentSubmitted',
+	APPLICATION_APPROVED: 'applicationApproved',
+	APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
+	APPLICATION_REJECTED: 'applicationRejected',
+	COLLABORATOR_ADDEDD: 'collaboratorAdded',
+	COLLABORATOR_REMOVED: 'collaboratorRemoved',
+	PRESUBMISSION_MESSAGE: 'presubmissionMessage',
+	UPDATE_REQUESTED: 'updateRequested',
+	UPDATE_SUBMITTED: 'updateSubmitted',
+	WORKFLOW_ASSIGNED: 'workflowAssigned',
+	REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
+	RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
+	RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
+	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
+	DEADLINE_PASSED: 'deadlinePassed',
+	MANUAL_EVENT: 'manualEvent',
+	CONTEXTUAL_MESSAGE: 'contextualMessage',
+	NOTE: 'note',
+};
+
+const _activityLogTypes = {
+	DATA_ACCESS_REQUEST: 'data_request',
+};
+
+const _systemGeneratedUser = {
+	FIRSTNAME: 'System',
+	LASTNAME: 'Generated',
+};
 
 export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
 	formTypes: _formTypes,
 	teamNotificationTypes: _teamNotificationTypes,
+	teamNotificationMessages: _teamNotificationMessages,
 	teamNotificationTypesHuman: _teamNotificationTypesHuman,
-	userQuestionActions: _userQuestionActions,
+	teamNotificationEmailContentTypes: _teamNotificationEmailContentTypes,
+	questionActions: _questionActions,
 	navigationFlags: _navigationFlags,
 	amendmentStatuses: _amendmentStatuses,
 	notificationTypes: _notificationTypes,
@@ -372,8 +299,17 @@ export default {
 	amendmentModes: _amendmentModes,
 	submissionTypes: _submissionTypes,
 	formActions: _formActions,
+	teamTypes: _teamTypes,
 	roleTypes: _roleTypes,
 	darPanelMapper: _darPanelMapper,
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
-	hdrukEmail: _hdrukEmail
+	hdrukEmail: _hdrukEmail,
+	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
+	datatsetStatuses: _datatsetStatuses,
+	logTypes: _logTypes,
+	activityLogEvents: _activityLogEvents,
+	activityLogTypes: _activityLogTypes,
+	systemGeneratedUser: _systemGeneratedUser,
+	activityLogNotifications: _activityLogNotifications,
+	DARMessageTypes: _DARMessageTypes,
 };

@@ -38,6 +38,7 @@ steps:
     args: ['npm', 'test']
     env:
       - 'URL=https://${_TEST_URL}'
+
 images:
   - gcr.io/$PROJECT_ID/${_APP_NAME}:${_ENVIRONMENT}
 timeout: 900s
