@@ -34,6 +34,7 @@ module.exports = {
 			let { _id } = req.user;
 
 			// 2. Lookup publisher team
+
 			const publisher = await PublisherModel.findOne({ name: req.params.publisher }).populate('team', 'members').lean();
 			if (!publisher) {
 				return res.status(404).json({ success: false });
@@ -49,7 +50,9 @@ module.exports = {
 
 			//Check if current use is a manager
 			let isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, publisher.team, _id);
-			const dars = await DataRequestModel.find({publisher: req.params.publisher}) 
+
+			const query = {publisher: req.params.publisher, applicationStatus: {$not: {$in: ["inProgress"]}} }
+			const dars = await DataRequestModel.find(query) 
 			return res.status(200).json({ success: true, dars });   
 		} catch (err) {
 			console.error(err.message);
