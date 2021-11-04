@@ -15,6 +15,7 @@ import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
 import i18next from '../internationalization/i18next';
+import { PublisherModel } from '../publisher/publisher.model';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -32,6 +33,44 @@ export default class DataRequestController extends Controller {
 
 	// ###### APPLICATION CRUD OPERATIONS #######
 
+  //GET api/v1/data-access-request/publisher/:publisher
+  async getAccessRequestsByTeam(req, res) {	
+		try {
+
+			// 1. Deconstruct the request
+			let { _id } = req.user;
+
+			// 2. Lookup publisher team
+
+			const publisher = await PublisherModel.findOne({ name: req.params.publisher }).populate('team', 'members').lean();
+			if (!publisher) {
+				return res.status(404).json({ success: false });
+			}
+			// 3. Check the requesting user is a member of the custodian team
+			let found = false;
+			if (_.has(publisher, 'team.members')) {
+				let { members } = publisher.team;
+				found = members.some(el => el.memberid.toString() === _id.toString());
+			}
+
+			if (!found) return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+
+			//Check if current use is a manager
+			let isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, publisher.team, _id);
+
+			const query = {publisher: req.params.publisher, applicationStatus: {$not: {$in: ["inProgress"]}} }
+			const dars = await DataRequestModel.find(query) 
+			return res.status(200).json({ success: true, dars });   
+		} catch (err) {
+			console.error(err.message);
+			
+			 return res.status(500).json({
+				success: false,
+				message: 'An error occurred searching for user applications',
+			});
+		}
+	}
+  
 	//GET api/v1/data-access-request
 	async getAccessRequestsByUser(req, res) {
 		try {
