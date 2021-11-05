@@ -64,7 +64,7 @@ const dataUseRegisterSchema = new Schema(
 		datasetLinkageDescription: String, //Description Of How The Data Will Be Processed (changed to 'For linked datasets, specify how the linkage will take place')
 		confidentialDataDescription: String, //Description Of The Confidential Data Being Used
 		accessDate: Date, //Release/Access Date
-		dataLocation: String, //TRE Or Any Other Specified Location
+		accessType: String, //TRE Or Any Other Specified Location
 		privacyEnhancements: String, //How Has Data Been Processed To Enhance Privacy
 		researchOutputs: [{ type: String }], //Link To Research Outputs
 		rejectionReason: String, //Reason For Rejecting A Data Use Register

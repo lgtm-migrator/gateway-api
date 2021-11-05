@@ -98,7 +98,7 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 				...(obj.requestFrequency && { requestFrequency: obj.requestFrequency.toString().trim() }),
 				...(obj.datasetLinkageDescription && { datasetLinkageDescription: obj.datasetLinkageDescription.toString().trim() }),
 				...(obj.confidentialDataDescription && { confidentialDataDescription: obj.confidentialDataDescription.toString().trim() }),
-				...(obj.dataLocation && { dataLocation: obj.dataLocation.toString().trim() }),
+				...(obj.accessType && { accessType: obj.accessType.toString().trim() }),
 				...(obj.privacyEnhancements && { privacyEnhancements: obj.privacyEnhancements.toString().trim() }),
 				...(obj.dutyOfConfidentiality && { dutyOfConfidentiality: obj.dutyOfConfidentiality.toString().trim() }),
 				...(projectStartDate.isValid() && { projectStartDate }),
