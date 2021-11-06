@@ -4,13 +4,14 @@ import { PublisherModel } from '../../publisher/publisher.model';
 import { UserModel } from '../../user/user.model';
 import notificationBuilder from '../../utilities/notificationBuilder';
 import emailGenerator from '../../utilities/emailGenerator.util';
-import { isEmpty, isNil, cloneDeep, isString, map, groupBy, orderBy } from 'lodash';
+import _, { isEmpty, isNil, cloneDeep, isString, map, groupBy, orderBy } from 'lodash';
 import constants from '../../utilities/constants.util';
 import moment from 'moment';
 import randomstring from 'randomstring';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 var fs = require('fs');
+import { flatten, unflatten } from 'flat';
 
 /**
  * Checks to see if the user has the correct permissions to access the dataset
@@ -1099,6 +1100,133 @@ const buildBulkUploadObject = async arrayOfDraftDatasets => {
 	}
 };
 
+/**
+ * Build the datasetV2 object from dataset.questionAnswers
+ *
+ * @param   {Object}  dataset  [dataset.questionAnswers object]
+ *
+ * @return  {Object}           [return datasetv2 object]
+ */
+const buildv2Object = async (dataset, newDatasetVersionId = '') => {
+	const publisherData = await PublisherModel.find({ _id: dataset.datasetv2.summary.publisher.identifier }).lean();
+	const questionAnswers = dataset.questionAnswers;
+	const observations = await buildObservations(dataset.questionAnswers);
+
+	let datasetv2Object = {
+		identifier: newDatasetVersionId || '',
+		version: dataset.datasetVersion,
+		issued: moment(Date.now()).format('DD/MM/YYYY'),
+		modified: moment(Date.now()).format('DD/MM/YYYY'),
+		revisions: [],
+		summary: {
+			title: questionAnswers['properties/summary/title'] || '',
+			abstract: questionAnswers['properties/summary/abstract'] || '',
+			publisher: {
+				identifier: publisherData[0]._id.toString(),
+				name: publisherData[0].publisherDetails.name,
+				logo: publisherData[0].publisherDetails.logo || '',
+				description: publisherData[0].publisherDetails.description || '',
+				contactPoint: publisherData[0].publisherDetails.contactPoint || [],
+				memberOf: publisherData[0].publisherDetails.memberOf,
+				accessRights: publisherData[0].publisherDetails.accessRights || [],
+				deliveryLeadTime: publisherData[0].publisherDetails.deliveryLeadTime || '',
+				accessService: publisherData[0].publisherDetails.accessService || '',
+				accessRequestCost: publisherData[0].publisherDetails.accessRequestCost || '',
+				dataUseLimitation: publisherData[0].publisherDetails.dataUseLimitation || [],
+				dataUseRequirements: publisherData[0].publisherDetails.dataUseRequirements || [],
+			},
+			contactPoint: questionAnswers['properties/summary/contactPoint'] || '',
+			keywords: questionAnswers['properties/summary/keywords'] || [],
+			alternateIdentifiers: questionAnswers['properties/summary/alternateIdentifiers'] || [],
+			doiName: questionAnswers['properties/summary/doiName'] || '',
+		},
+		documentation: {
+			description: questionAnswers['properties/documentation/description'] || '',
+			associatedMedia: questionAnswers['properties/documentation/associatedMedia'] || [],
+			isPartOf: questionAnswers['properties/documentation/isPartOf'] || [],
+		},
+		coverage: {
+			spatial: questionAnswers['properties/coverage/spatial'] || [],
+			typicalAgeRange: questionAnswers['properties/coverage/typicalAgeRange'] || '',
+			physicalSampleAvailability: questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
+			followup: questionAnswers['properties/coverage/followup'] || '',
+			pathway: questionAnswers['properties/coverage/pathway'] || '',
+		},
+		provenance: {
+			origin: {
+				purpose: questionAnswers['properties/provenance/origin/purpose'] || [],
+				source: questionAnswers['properties/provenance/origin/source'] || [],
+				collectionSituation: questionAnswers['properties/provenance/origin/collectionSituation'] || [],
+			},
+			temporal: {
+				accrualPeriodicity: questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
+				distributionReleaseDate: questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
+				startDate: questionAnswers['properties/provenance/temporal/startDate'] || '',
+				endDate: questionAnswers['properties/provenance/temporal/endDate'] || '',
+				timeLag: questionAnswers['properties/provenance/temporal/timeLag'] || '',
+			},
+		},
+		accessibility: {
+			usage: {
+				dataUseLimitation: questionAnswers['properties/accessibility/usage/dataUseLimitation'] || [],
+				dataUseRequirements: questionAnswers['properties/accessibility/usage/dataUseRequirements'] || [],
+				resourceCreator: questionAnswers['properties/accessibility/usage/resourceCreator'] || '',
+				investigations: questionAnswers['properties/accessibility/usage/investigations'] || [],
+				isReferencedBy: questionAnswers['properties/accessibility/usage/isReferencedBy'] || [],
+			},
+			access: {
+				accessRights: questionAnswers['properties/accessibility/access/accessRights'] || [],
+				accessService: questionAnswers['properties/accessibility/access/accessService'] || '',
+				accessRequestCost: questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
+				deliveryLeadTime: questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
+				jurisdiction: questionAnswers['properties/accessibility/access/jurisdiction'] || [],
+				dataProcessor: questionAnswers['properties/accessibility/access/dataProcessor'] || '',
+				dataController: questionAnswers['properties/accessibility/access/dataController'] || '',
+			},
+			formatAndStandards: {
+				vocabularyEncodingScheme: questionAnswers['properties/accessibility/formatAndStandards/vocabularyEncodingScheme'] || [],
+				conformsTo: questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || [],
+				language: questionAnswers['properties/accessibility/formatAndStandards/language'] || [],
+				format: questionAnswers['properties/accessibility/formatAndStandards/format'] || [],
+			},
+		},
+		enrichmentAndLinkage: {
+			qualifiedRelation: questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] || [],
+			derivation: questionAnswers['properties/enrichmentAndLinkage/derivation'] || [],
+			tools: questionAnswers['properties/enrichmentAndLinkage/tools'] || [],
+		},
+		observations: observations,
+	};
+	return datasetv2Object;
+};
+
+const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
+	updatedJSON = flatten(updatedJSON, { safe: true });
+	previousJSON = flatten(previousJSON, { safe: true });
+	let result = {};
+	Object.keys(updatedJSON)
+		.concat(Object.keys(previousJSON))
+		.forEach(key => {
+			if (
+				previousJSON[key] !== updatedJSON[key] &&
+				!_.isArray(updatedJSON[key], previousJSON[key]) &&
+				!_.isObject(updatedJSON[key], previousJSON[key])
+			) {
+				result[key] = { previousAnswer: previousJSON[key], updatedAnswer: updatedJSON[key] };
+			}
+			if (_.isArray(previousJSON[key]) || _.isArray(updatedJSON[key])) {
+				if (!_.isEqual(updatedJSON[key], previousJSON[key])) {
+					result[key] = { previousAnswer: previousJSON[key], updatedAnswer: updatedJSON[key] };
+				}
+			}
+		});
+	delete result['identifier'];
+	delete result['version'];
+	delete result['issued'];
+	delete result['modified'];
+	return unflatten(result);
+};
+
 export default {
 	getUserPermissionsForDataset,
 	populateQuestionAnswers,
@@ -1112,4 +1240,6 @@ export default {
 	buildMetadataQuality,
 	createNotifications,
 	buildBulkUploadObject,
+	buildv2Object,
+	datasetv2ObjectComparison,
 };

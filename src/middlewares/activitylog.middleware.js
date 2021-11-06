@@ -2,6 +2,8 @@ import { isEmpty } from 'lodash';
 
 import { activityLogService } from '../resources/activitylog/dependency';
 import { dataRequestService } from '../resources//datarequest/dependency';
+import { datasetService } from '../resources/dataset/dependency';
+import datasetonboardingUtil from '../resources/dataset/utils/datasetonboarding.util';
 import constants from '../resources/utilities/constants.util';
 
 const validateViewRequest = (req, res, next) => {
@@ -20,16 +22,39 @@ const validateViewRequest = (req, res, next) => {
 const authoriseView = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { versionIds = [] } = req.body;
+	let authorised, userType, accessRecords;
 
-	const { authorised, userType, accessRecords } = await dataRequestService.checkUserAuthForVersions(versionIds, requestingUser);
-	if (!authorised) {
-		return res.status(401).json({
-			success: false,
-			message: 'You are not authorised to perform this action',
+	if (req.body.type === constants.activityLogTypes.DATA_ACCESS_REQUEST) {
+		({ authorised, userType, accessRecords } = await dataRequestService.checkUserAuthForVersions(versionIds, requestingUser));
+		if (!authorised) {
+			return res.status(401).json({
+				success: false,
+				message: 'You are not authorised to perform this action',
+			});
+		}
+
+		req.body.userType = userType;
+		req.body.versions = accessRecords;
+	} else if (req.body.type === constants.activityLogTypes.DATASET) {
+		const datasetVersions = await datasetService.getDatasets({ _id: { $in: versionIds } }, { lean: true });
+		await datasetVersions.forEach(async version => {
+			({ authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(
+				version.datasetv2.identifier,
+				requestingUser,
+				version.datasetv2.summary.publisher.identifier
+			));
+			if (!authorised) {
+				return res.status(401).json({
+					success: false,
+					message: 'You are not authorised to perform this action',
+				});
+			}
 		});
+		req.body.userType = requestingUser.teams.map(team => team.type).includes(constants.userTypes.ADMIN)
+			? constants.userTypes.ADMIN
+			: constants.userTypes.CUSTODIAN;
+		req.body.versions = datasetVersions;
 	}
-	req.body.userType = userType;
-	req.body.accessRecords = accessRecords;
 
 	next();
 };

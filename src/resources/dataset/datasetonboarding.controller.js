@@ -1,3 +1,10 @@
+import axios from 'axios';
+import FormData from 'form-data';
+import moment from 'moment';
+import * as Sentry from '@sentry/node';
+var fs = require('fs');
+import _ from 'lodash';
+
 import { Data } from '../tool/data.model';
 import { PublisherModel } from '../publisher/publisher.model';
 import { filtersService } from '../filters/dependency';
@@ -5,11 +12,7 @@ import constants from '../utilities/constants.util';
 import datasetonboardingUtil from './utils/datasetonboarding.util';
 import { v4 as uuidv4 } from 'uuid';
 import { isEmpty, isNil, escapeRegExp } from 'lodash';
-import axios from 'axios';
-import FormData from 'form-data';
-import moment from 'moment';
-import * as Sentry from '@sentry/node';
-var fs = require('fs');
+import { activityLogService } from '../activitylog/dependency';
 
 module.exports = {
 	//GET api/v1/dataset-onboarding
@@ -203,7 +206,9 @@ module.exports = {
 				data.id = uniqueID;
 				data.datasetid = 'New dataset version';
 				data.name = datasetToCopy.name;
-				data.datasetv2 = publisherObject;
+				data.datasetv2 = datasetToCopy.datasetv2;
+				data.datasetv2.identifier = '';
+				data.datasetv2.version = '';
 				data.type = 'dataset';
 				data.activeflag = 'draft';
 				data.source = 'HDRUK MDC';
@@ -316,14 +321,43 @@ module.exports = {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
+			let dataset = await Data.findOne({ _id: id });
+			dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
+
+			let datasetv2Object = await datasetonboardingUtil.buildv2Object(dataset);
+
 			//update dataset to inreview - constants.datatsetStatuses.INREVIEW
 			let updatedDataset = await Data.findOneAndUpdate(
 				{ _id: id },
-				{ activeflag: constants.datatsetStatuses.INREVIEW, 'timestamps.updated': Date.now(), 'timestamps.submitted': Date.now() }
+				{
+					datasetv2: datasetv2Object,
+					activeflag: constants.datatsetStatuses.INREVIEW,
+					'timestamps.updated': Date.now(),
+					'timestamps.submitted': Date.now(),
+				}
 			);
 
-			//emails / notifications
-			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
+			// emails / notifications
+			//await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
+
+			await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_SUBMITTED, {
+				type: constants.activityLogTypes.DATASET,
+				updatedDataset,
+				user: req.user,
+			});
+
+			if (updatedDataset.datasetVersion !== '1.0.0') {
+				let datasetv2DifferenceObject = datasetonboardingUtil.datasetv2ObjectComparison(datasetv2Object, dataset.datasetv2);
+
+				if (!_.isEmpty(datasetv2DifferenceObject)) {
+					await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_UPDATES_SUBMITTED, {
+						type: constants.activityLogTypes.DATASET,
+						updatedDataset,
+						user: req.user,
+						differences: datasetv2DifferenceObject,
+					});
+				}
+			}
 
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
@@ -355,6 +389,7 @@ module.exports = {
 				}
 
 				let dataset = await Data.findOne({ _id: id });
+
 				if (!dataset) return res.status(404).json({ status: 'error', message: 'Dataset could not be found.' });
 
 				dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
@@ -423,94 +458,7 @@ module.exports = {
 									});
 
 								// Adding to DB
-								let observations = await datasetonboardingUtil.buildObservations(dataset.questionAnswers);
-
-								let datasetv2Object = {
-									identifier: newDatasetVersionId,
-									version: dataset.datasetVersion,
-									issued: moment(Date.now()).format('DD/MM/YYYY'),
-									modified: moment(Date.now()).format('DD/MM/YYYY'),
-									revisions: [],
-									summary: {
-										title: dataset.questionAnswers['properties/summary/title'] || '',
-										abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
-										publisher: {
-											identifier: publisherData[0]._id.toString(),
-											name: publisherData[0].publisherDetails.name,
-											logo: publisherData[0].publisherDetails.logo || '',
-											description: publisherData[0].publisherDetails.description || '',
-											contactPoint: publisherData[0].publisherDetails.contactPoint || [],
-											memberOf: publisherData[0].publisherDetails.memberOf,
-											accessRights: publisherData[0].publisherDetails.accessRights || [],
-											deliveryLeadTime: publisherData[0].publisherDetails.deliveryLeadTime || '',
-											accessService: publisherData[0].publisherDetails.accessService || '',
-											accessRequestCost: publisherData[0].publisherDetails.accessRequestCost || '',
-											dataUseLimitation: publisherData[0].publisherDetails.dataUseLimitation || [],
-											dataUseRequirements: publisherData[0].publisherDetails.dataUseRequirements || [],
-										},
-										contactPoint: dataset.questionAnswers['properties/summary/contactPoint'] || '',
-										keywords: dataset.questionAnswers['properties/summary/keywords'] || [],
-										alternateIdentifiers: dataset.questionAnswers['properties/summary/alternateIdentifiers'] || [],
-										doiName: dataset.questionAnswers['properties/summary/doiName'] || '',
-									},
-									documentation: {
-										description: dataset.questionAnswers['properties/documentation/description'] || '',
-										associatedMedia: dataset.questionAnswers['properties/documentation/associatedMedia'] || [],
-										isPartOf: dataset.questionAnswers['properties/documentation/isPartOf'] || [],
-									},
-									coverage: {
-										spatial: dataset.questionAnswers['properties/coverage/spatial'] || [],
-										typicalAgeRange: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
-										physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
-										followup: dataset.questionAnswers['properties/coverage/followup'] || '',
-										pathway: dataset.questionAnswers['properties/coverage/pathway'] || '',
-									},
-									provenance: {
-										origin: {
-											purpose: dataset.questionAnswers['properties/provenance/origin/purpose'] || [],
-											source: dataset.questionAnswers['properties/provenance/origin/source'] || [],
-											collectionSituation: dataset.questionAnswers['properties/provenance/origin/collectionSituation'] || [],
-										},
-										temporal: {
-											accrualPeriodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
-											distributionReleaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
-											startDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
-											endDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
-											timeLag: dataset.questionAnswers['properties/provenance/temporal/timeLag'] || '',
-										},
-									},
-									accessibility: {
-										usage: {
-											dataUseLimitation: dataset.questionAnswers['properties/accessibility/usage/dataUseLimitation'] || [],
-											dataUseRequirements: dataset.questionAnswers['properties/accessibility/usage/dataUseRequirements'] || [],
-											resourceCreator: dataset.questionAnswers['properties/accessibility/usage/resourceCreator'] || '',
-											investigations: dataset.questionAnswers['properties/accessibility/usage/investigations'] || [],
-											isReferencedBy: dataset.questionAnswers['properties/accessibility/usage/isReferencedBy'] || [],
-										},
-										access: {
-											accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || [],
-											accessService: dataset.questionAnswers['properties/accessibility/access/accessService'] || '',
-											accessRequestCost: dataset.questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
-											deliveryLeadTime: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
-											jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || [],
-											dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
-											dataController: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
-										},
-										formatAndStandards: {
-											vocabularyEncodingScheme:
-												dataset.questionAnswers['properties/accessibility/formatAndStandards/vocabularyEncodingScheme'] || [],
-											conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || [],
-											language: dataset.questionAnswers['properties/accessibility/formatAndStandards/language'] || [],
-											format: dataset.questionAnswers['properties/accessibility/formatAndStandards/format'] || [],
-										},
-									},
-									enrichmentAndLinkage: {
-										qualifiedRelation: dataset.questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] || [],
-										derivation: dataset.questionAnswers['properties/enrichmentAndLinkage/derivation'] || [],
-										tools: dataset.questionAnswers['properties/enrichmentAndLinkage/tools'] || [],
-									},
-									observations: observations,
-								};
+								let datasetv2Object = await datasetonboardingUtil.buildv2Object(dataset, newDatasetVersionId);
 
 								let previousDataset = await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
 								let previousCounter = 0;
@@ -574,8 +522,25 @@ module.exports = {
 
 								filtersService.optimiseFilters('dataset');
 
+								let datasetv2DifferenceObject = datasetonboardingUtil.datasetv2ObjectComparison(datasetv2Object, dataset.datasetv2);
+
+								if (!_.isEmpty(datasetv2DifferenceObject)) {
+									await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_UPDATES_SUBMITTED, {
+										type: constants.activityLogTypes.DATASET,
+										updatedDataset,
+										user: req.user,
+										differences: datasetv2DifferenceObject,
+									});
+								}
+
 								//emails / notifications
 								await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETAPPROVED, updatedDataset);
+
+								await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_APPROVED, {
+									type: constants.activityLogTypes.DATASET,
+									updatedDataset,
+									user: req.user,
+								});
 							})
 							.catch(err => {
 								console.error('Error when trying to create new dataset on the MDC - ' + err.message);
@@ -608,7 +573,13 @@ module.exports = {
 				);
 
 				//emails / notifications
-				await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETREJECTED, updatedDataset);
+				//await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETREJECTED, updatedDataset);
+
+				await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_REJECTED, {
+					type: constants.activityLogTypes.DATASET,
+					updatedDataset,
+					user: req.user,
+				});
 
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'archive') {
@@ -648,10 +619,17 @@ module.exports = {
 						console.error('Error when trying to logout of the MDC - ' + err.message);
 					});
 				}
-				await Data.findOneAndUpdate(
+				let updatedDataset = await Data.findOneAndUpdate(
 					{ _id: id },
 					{ activeflag: constants.datatsetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
 				);
+
+				await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_ARCHIVED, {
+					type: constants.activityLogTypes.DATASET,
+					updatedDataset,
+					user: req.user,
+				});
+
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'unarchive') {
 				let dataset = await Data.findOne({ _id: id }).lean();
@@ -697,7 +675,14 @@ module.exports = {
 
 					flagIs = 'active';
 				}
-				await Data.findOneAndUpdate({ _id: id }, { activeflag: flagIs }); //active or draft
+				const updatedDataset = await Data.findOneAndUpdate({ _id: id }, { activeflag: flagIs }); //active or draft
+
+				await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_UNARCHIVED, {
+					type: constants.activityLogTypes.DATASET,
+					updatedDataset,
+					user: req.user,
+				});
+
 				return res.status(200).json({ status: 'success' });
 			}
 		} catch (err) {
@@ -893,7 +878,7 @@ module.exports = {
 
 			await Data.create(datasetCopy);
 
-			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
+			//await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
 
 			return res.status(200).json({
 				success: true,
