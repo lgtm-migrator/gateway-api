@@ -164,7 +164,6 @@ router.get('/profile/:id', async (req, res) => {
 		let data = [person];
 		return res.json({ success: true, data: data });
 	} catch (err) {
-		console.error(err.message);
 		return res.json({ success: false, error: err.message });
 	}
 });

@@ -106,7 +106,6 @@ export default class AmendmentController extends Controller {
 			// 9. Save changes to database
 			await accessRecord.save(async err => {
 				if (err) {
-					console.error(err.message);
 					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 10. Update json schema and question answers with modifications since original submission and retain previous version requested updates
@@ -247,7 +246,6 @@ export default class AmendmentController extends Controller {
 			// 9. Save changes to database
 			await accessRecord.save(async err => {
 				if (err) {
-					console.error(err.message);
 					return res.status(500).json({ status: 'error', message: err.message });
 				} else {
 					// 10. Send update request notifications

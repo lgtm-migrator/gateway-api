@@ -67,7 +67,6 @@ module.exports = {
 				data: { listOfDatasets },
 			});
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -104,7 +103,6 @@ module.exports = {
 				listOfDatasets,
 			});
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -220,7 +218,6 @@ module.exports = {
 				return res.status(200).json({ success: true, data: { id: data._id } });
 			}
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -268,7 +265,6 @@ module.exports = {
 							},
 							{ new: true }
 						).catch(err => {
-							console.error(err);
 							throw err;
 						});
 
@@ -287,7 +283,6 @@ module.exports = {
 
 						if (title && title.length >= 2) {
 							Data.findByIdAndUpdate({ _id: id }, { name: title, 'timestamps.updated': Date.now() }, { new: true }).catch(err => {
-								console.error(err);
 								throw err;
 							});
 							data.name = title;
@@ -299,7 +294,6 @@ module.exports = {
 				});
 			}
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -329,7 +323,6 @@ module.exports = {
 
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -412,7 +405,7 @@ module.exports = {
 										timeout: 20000,
 									})
 									.catch(err => {
-										console.error('Error when trying to update the version number on the MDC - ' + err.message);
+										process.stdout.write(`Error when trying to update the version number on the MDC - ${err.message}\n`);
 									});
 
 								await axios
@@ -421,7 +414,7 @@ module.exports = {
 										timeout: 20000,
 									})
 									.catch(err => {
-										console.error('Error when trying to finalise the dataset on the MDC - ' + err.message);
+										process.stdout.write(`Error when trying to finalise the dataset on the MDC - ${err.message}\n`);
 									});
 
 								// Adding to DB
@@ -580,15 +573,15 @@ module.exports = {
 								await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETAPPROVED, updatedDataset);
 							})
 							.catch(err => {
-								console.error('Error when trying to create new dataset on the MDC - ' + err.message);
+								process.stdout.write(`Error when trying to create new dataset on the MDC - ${err.message}\n`);
 							});
 					})
 					.catch(err => {
-						console.error('Error when trying to login to MDC - ' + err.message);
+						process.stdout.write(`Error when trying to login to MDC - ${err.message}\n`);
 					});
 
 				await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-					console.error('Error when trying to logout of the MDC - ' + err.message);
+					process.stdout.write(`Error when trying to logout of the MDC - ${err.message}\n`);
 				});
 
 				return res.status(200).json({ status: 'success' });
@@ -621,7 +614,7 @@ module.exports = {
 					let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-						console.error('Error when trying to logout of the MDC - ' + err.message);
+						process.stdout.write(`Error when trying to logout of the MDC - ${err.message}\n`);
 					});
 					const loginDetails = {
 						username: process.env.MDC_Config_HDRUK_username || '',
@@ -639,15 +632,15 @@ module.exports = {
 							await axios
 								.delete(metadataCatalogueLink + `/api/dataModels/${dataset.datasetid}`, { withCredentials: true, timeout: 5000 })
 								.catch(err => {
-									console.error('Error when trying to delete(archive) a dataset - ' + err.message);
+									process.stdout.write(`Error when trying to delete(archive) a dataset - ${err.message}\n`);
 								});
 						})
 						.catch(err => {
-							console.error('Error when trying to login to MDC - ' + err.message);
+							process.stdout.write(`Error when trying to login to MDC - ${err.message}\n`);
 						});
 
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-						console.error('Error when trying to logout of the MDC - ' + err.message);
+						process.stdout.write(`Error when trying to logout of the MDC - ${err.message}\n`);
 					});
 				}
 				await Data.findOneAndUpdate(
@@ -662,7 +655,7 @@ module.exports = {
 					let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-						console.error('Error when trying to logout of the MDC - ' + err.message);
+						process.stdout.write(`Error when trying to logout of the MDC - ${err.message}\n`);
 					});
 					const loginDetails = {
 						username: process.env.MDC_Config_HDRUK_username || '',
@@ -686,15 +679,15 @@ module.exports = {
 									timeout: 5000,
 								})
 								.catch(err => {
-									console.error('Error when trying to update the version number on the MDC - ' + err.message);
+									process.stdout.write(`Error when trying to update the version number on the MDC - ${err.message}\n`);
 								});
 						})
 						.catch(err => {
-							console.error('Error when trying to login to MDC - ' + err.message);
+							process.stdout.write(`Error when trying to login to MDC - ${err.message}\n`);
 						});
 
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-						console.error('Error when trying to logout of the MDC - ' + err.message);
+						process.stdout.write(`Error when trying to logout of the MDC - ${err.message}\n`);
 					});
 
 					flagIs = 'active';
@@ -703,7 +696,7 @@ module.exports = {
 				return res.status(200).json({ status: 'success' });
 			}
 		} catch (err) {
-			console.error(err.message);
+			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({
 				status: 'error',
 				message: 'An error occurred updating the dataset status',
@@ -744,7 +737,6 @@ module.exports = {
 
 			return res.status(200).json({ metaddataQuality });
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -770,7 +762,6 @@ module.exports = {
 				data: draftDatasetName,
 			});
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
@@ -861,7 +852,6 @@ module.exports = {
 			if (readEnv === 'test' || readEnv === 'prod') {
 				Sentry.captureException(err);
 			}
-			console.error(err.message);
 			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
 		}
 	},
@@ -904,7 +894,6 @@ module.exports = {
 				datasetName: dataset.name,
 			});
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},

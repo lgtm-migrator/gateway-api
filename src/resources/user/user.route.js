@@ -164,7 +164,6 @@ router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), utils.ch
 // 			serviceAccount
 // 		});
 // 	} catch (err) {
-// 		console.error(err.message);
 // 		return res.status(500).json(err);
 // 	}
 // });

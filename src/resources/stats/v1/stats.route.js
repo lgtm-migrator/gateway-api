@@ -88,7 +88,6 @@ router.get('', logger.logRequestMiddleware({ logCategory, action: 'Viewed stats'
 		}
 		return result;
 	} catch (err) {
-		console.error(err.message);
 		return res.json({ success: false, error: err.message });
 	}
 });

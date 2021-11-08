@@ -178,7 +178,6 @@ const loginAndSignToken = (req, res, next) => {
 			try {
 				redirectUrl = discourseLogin(queryStringParsed.sso, queryStringParsed.sig, req.user);
 			} catch (err) {
-				console.error(err.message);
 				return res.status(500).send('Error authenticating the user.');
 			}
 		}

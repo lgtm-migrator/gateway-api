@@ -34,12 +34,12 @@ export async function updateExternalDatasetServices(services) {
 						});
 						Sentry.captureException(err);
 					}
-					console.error('Unable to get metadata quality value ' + err.message);
+					process.stdout.write(`Unable to get metadata quality value ${err.message}\n`);
 				});
 
 			for (const pid in phenotypesList.data) {
 				await Data.updateMany({ pid: pid }, { $set: { 'datasetfields.phenotypes': phenotypesList.data[pid] } });
-				console.log(`PID is ${pid} and number of phenotypes is ${phenotypesList.data[pid].length}`);
+				process.stdout.write(`PID is ${pid} and number of phenotypes is ${phenotypesList.data[pid].length}\n`);
 			}
 		} else if (service === 'dataUtility') {
 			const dataUtilityList = await axios
@@ -53,7 +53,7 @@ export async function updateExternalDatasetServices(services) {
 						});
 						Sentry.captureException(err);
 					}
-					console.error('Unable to get data utility ' + err.message);
+					process.stdout.write(`Unable to get data utility ${err.message}\n`);
 				});
 
 			for (const dataUtility of dataUtilityList.data) {
@@ -69,8 +69,6 @@ export async function updateExternalDatasetServices(services) {
 					// save dataset into db
 					await dataset.save();
 				}
-				// log details
-				//  console.log(`DatasetID is ${dataUtility.id} and metadata richness is ${dataUtility.metadata_richness}`);
 			}
 		}
 	}
@@ -92,7 +90,7 @@ export async function importCatalogues(cataloguesToImport, override = false, lim
 		}
 		const isValid = validateCatalogueParams(metadataCatalogues[catalogue]);
 		if (!isValid) {
-			console.error('Catalogue failed to run due to incorrect or incomplete parameters');
+			process.stdout.write(`Catalogue failed to run due to incorrect or incomplete parameters\n`);
 			continue;
 		}
 		const { metadataUrl, dataModelExportRoute, username, password, source, instanceType } = metadataCatalogues[catalogue];
@@ -181,10 +179,10 @@ function initialiseImporter() {
 
 async function importMetadataFromCatalogue(baseUri, dataModelExportRoute, source, { instanceType, credentials, override = false, limit }) {
 	const startCacheTime = Date.now();
-	console.log(
+	process.stdout.write(
 		`Starting metadata import for ${source} on ${instanceType} at ${Date()} with base URI ${baseUri}, override:${override}, limit:${
 			limit || 'all'
-		}`
+		}\n`
 	);
 	datasetsMDCList = await getDataModels(baseUri);
 	if (datasetsMDCList === 'Update failed') return;
@@ -207,13 +205,13 @@ async function importMetadataFromCatalogue(baseUri, dataModelExportRoute, source
 			});
 			Sentry.captureException(err);
 		}
-		console.error(`Unable to complete the metadata import for ${source} ${err.message}`);
+		process.stdout.write(`Unable to complete the metadata import for ${source} ${err.message}\n`);
 	});
 	await logoutCatalogue(baseUri);
 	await archiveMissingDatasets(source);
 
 	const totalCacheTime = ((Date.now() - startCacheTime) / 1000).toFixed(3);
-	console.log(`Run Completed for ${source} at ${Date()} - Run took ${totalCacheTime}s`);
+	process.stdout.write(`Run Completed for ${source} at ${Date()} - Run took ${totalCacheTime}s\n`);
 }
 
 async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, datasetsToImportCount, source, limit) {
@@ -223,7 +221,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 	}
 	for (const datasetMDC of datasetsToImport) {
 		counter++;
-		console.log(`Starting ${counter} of ${datasetsToImportCount} datasets (${datasetMDC.id})`);
+		process.stdout.write(`Starting ${counter} of ${datasetsToImportCount} datasets (${datasetMDC.id})\n`);
 
 		let datasetHDR = await Data.findOne({ datasetid: datasetMDC.id });
 		datasetsMDCIDs.push({ datasetid: datasetMDC.id });
@@ -248,11 +246,11 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 					});
 					Sentry.captureException(err);
 				}
-				console.error('Unable to get metadata JSON ' + err.message);
+				process.stdout.write(`Unable to get metadata JSON ${err.message}\n`);
 			});
 
 		const elapsedTime = ((Date.now() - startImportTime) / 1000).toFixed(3);
-		console.log(`Time taken to import JSON  ${elapsedTime} (${datasetMDC.id})`);
+		process.stdout.write(`Time taken to import JSON  ${elapsedTime} (${datasetMDC.id})\n`);
 
 		const metadataSchemaCall = axios //Paul - Remove and populate gateway side
 			.get(`${baseUri}/api/profiles/uk.ac.hdrukgateway/HdrUkProfilePluginService/schema.org/${datasetMDC.id}`, {
@@ -267,7 +265,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 					});
 					Sentry.captureException(err);
 				}
-				console.error('Unable to get metadata schema ' + err.message);
+				process.stdout.write(`Unable to get metadata schema ${err.message}\n`);
 			});
 
 		const versionLinksCall = axios.get(`${baseUri}/api/catalogueItems/${datasetMDC.id}/semanticLinks`, { timeout: 10000 }).catch(err => {
@@ -279,7 +277,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 				});
 				Sentry.captureException(err);
 			}
-			console.error('Unable to get version links ' + err.message);
+			process.stdout.write(`Unable to get version links ${err.message}\n`);
 		});
 
 		const [metadataSchema, versionLinks] = await axios.all([metadataSchemaCall, versionLinksCall]);
@@ -404,7 +402,7 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 					datasetv2: datasetv2Object,
 				}
 			);
-			console.log(`Dataset Editted (${datasetMDC.id})`);
+			process.stdout.write(`Dataset Editted (${datasetMDC.id})\n`);
 		} else {
 			//Add
 			let uuid = uuidv4();
@@ -488,10 +486,10 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 			data.datasetfields.phenotypes = phenotypes;
 			data.datasetv2 = datasetv2Object;
 			await data.save();
-			console.log(`Dataset Added (${datasetMDC.id})`);
+			process.stdout.write(`Dataset Added (${datasetMDC.id})\n`);
 		}
 
-		console.log(`Finished ${counter} of ${datasetsToImportCount} datasets (${datasetMDC.id})`);
+		process.stdout.write(`Finished ${counter} of ${datasetsToImportCount} datasets (${datasetMDC.id})\n`);
 	}
 }
 
@@ -513,7 +511,7 @@ async function getDataUtilityExport() {
 				});
 				Sentry.captureException(err);
 			}
-			console.error('Unable to get data utility ' + err.message);
+			process.stdout.write(`Unable to get data utility ${err.message}\n`);
 		});
 }
 
@@ -535,7 +533,7 @@ async function getPhenotypesExport() {
 				});
 				Sentry.captureException(err);
 			}
-			console.error('Unable to get metadata quality value ' + err.message);
+			process.stdout.write(`Unable to get metadata quality value ${err.message}\n`);
 		});
 }
 
@@ -557,7 +555,7 @@ async function getMetadataQualityExport() {
 				});
 				Sentry.captureException(err);
 			}
-			console.error('Unable to get metadata quality value ' + err.message);
+			process.stdout.write(`Unable to get metadata quality value ${err.message}\n`);
 		});
 }
 
@@ -611,7 +609,7 @@ async function getDataAccessRequestCustodians() {
 
 async function logoutCatalogue(baseUri) {
 	await axios.post(`${baseUri}/api/authentication/logout`, { withCredentials: true, timeout: 10000 }).catch(err => {
-		console.error(`Error when trying to logout of the MDC - ${err.message}`);
+		process.stdout.write(`Error when trying to logout of the MDC - ${err.message}\n`);
 	});
 }
 

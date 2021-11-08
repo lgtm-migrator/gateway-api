@@ -375,9 +375,9 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 	// Get paged results based on query params
 	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)).catch(err => {
-		console.log(err);
+		process.stdout.write(`${err.message}\n`);
 	});
-	// Return data
+
 	return { data: searchResults };
 }
 
@@ -764,7 +764,7 @@ export function getObjectFilters(searchQueryStart, req, type) {
 				}
 			}
 		} catch (err) {
-			console.error(err.message);
+			process.stdout.write(`${err.message}\n`);
 		}
 	}
 	return searchQuery;

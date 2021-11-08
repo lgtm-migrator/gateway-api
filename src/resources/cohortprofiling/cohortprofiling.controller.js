@@ -34,8 +34,7 @@ export default class CohortProfilingController extends Controller {
 				cohortProfiling,
 			});
 		} catch (err) {
-			// Return error response if something goes wrong
-			console.error(err.message);
+			process.stdout.write(`${err.message}\n`);
 			return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',
@@ -52,7 +51,6 @@ export default class CohortProfilingController extends Controller {
 			// 2. Return Cohort Profiling data
 			return res.status(200).json({ success: true, cohortProfiling });
 		} catch (err) {
-			console.error(err.message);
 			return res.status(500).json({ success: false, message: err.message });
 		}
 	}
@@ -86,7 +84,6 @@ export default class CohortProfilingController extends Controller {
 			// Return Cohort Profiling data
 			return res.status(200).json({ success: true, cohortProfiling });
 		} catch (err) {
-			console.error(err.message);
 			return res.status(500).json({ success: false, message: err.message });
 		}
 	}

@@ -74,7 +74,7 @@ const getUserPermissionsForDataset = async (id, user, publisherId) => {
 
 		return { authorised, userType };
 	} catch (error) {
-		console.error(error);
+		process.stdout.write(`${err.message}\n`);
 		return { authorised: false, userType: '' };
 	}
 };
@@ -333,7 +333,6 @@ const updateDataset = async (dataset, updateObj) => {
 	// 2. If application is in progress, update initial question answers
 	if (activeflag === constants.datatsetStatuses.DRAFT || activeflag === constants.applicationStatuses.INREVIEW) {
 		await Data.findByIdAndUpdate(_id, updateObj, { new: true }).catch(err => {
-			console.error(err);
 			throw err;
 		});
 		return dataset;

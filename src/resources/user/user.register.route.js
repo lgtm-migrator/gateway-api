@@ -105,7 +105,6 @@ router.post('/', async (req, res) => {
 	const [loginErr, token] = await to(login(req, user));
 
 	if (loginErr) {
-		console.error(loginErr);
 		return res.status(500).json({ success: false, data: 'Authentication error!' });
 	}
 

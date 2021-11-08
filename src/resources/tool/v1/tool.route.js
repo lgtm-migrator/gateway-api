@@ -382,7 +382,6 @@ router.get('/:type/tag', passport.authenticate('jwt'), async (req, res) => {
 		// 4. Return projects
 		return res.status(200).json({ success: true, entities });
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json({
 			success: false,
 			message: 'An error occurred searching for tools by tag',

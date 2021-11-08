@@ -32,7 +32,6 @@ const logUserActivity = (user, category, type, context) => {
 			level: Sentry.Severity.Info,
 		});
 	}
-	console.log(`${action}`);
 	// Log date/time
 	// Log action
 	// Log if user was logged in
@@ -48,7 +47,7 @@ const logError = (err, category) => {
 			},
 		});
 	}
-	console.error(`The following error occurred: ${err.message}`);
+	process.stdout.write(`The following error occurred: ${err.message}\n`);
 };
 
 export const logger = {

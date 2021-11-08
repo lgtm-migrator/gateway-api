@@ -32,8 +32,6 @@ export default class ToolController extends Controller {
 				data: tool,
 			});
 		} catch (err) {
-            // Return error response if something goes wrong
-            console.error(err.message);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',
@@ -51,8 +49,6 @@ export default class ToolController extends Controller {
 				data: tools
 			});
 		} catch (err) {
-            // Return error response if something goes wrong
-            console.error(err.message);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',

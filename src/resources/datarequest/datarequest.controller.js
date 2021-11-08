@@ -1300,7 +1300,6 @@ export default class DataRequestController extends Controller {
 			// 8. Return successful response
 			return res.status(200).json({ status: 'success' });
 		} catch (err) {
-			console.error(err.message);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	}

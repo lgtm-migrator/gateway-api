@@ -26,7 +26,7 @@ async function up() {
 				},
 			});
 		} catch (err) {
-			console.error(err);
+			process.stdout.write(`${err.message}\n`);
 		}
 	});
 

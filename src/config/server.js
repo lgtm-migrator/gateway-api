@@ -257,4 +257,4 @@ app.use('/api/v1/search-preferences', require('../resources/searchpreferences/se
 initialiseAuthentication(app);
 
 // launch our backend into a port
-app.listen(API_PORT, () => console.log(`LISTENING ON PORT ${API_PORT}`));
+app.listen(API_PORT, () => process.stdout.write(`LISTENING ON PORT ${API_PORT}\n`));

@@ -51,7 +51,7 @@ const addSubscriptionMember = async (subscriptionId, user, status) => {
 			if (readEnv === 'test' || readEnv === 'prod') {
 				Sentry.captureException(err);
 			}
-			console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
+			process.stdout.write(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}\n`);
 		});
 	}
 };
@@ -119,7 +119,7 @@ const updateSubscriptionMembers = async (subscriptionId, members) => {
 				if (readEnv === 'test' || readEnv === 'prod') {
 					Sentry.captureException(err);
 				}
-				console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
+				process.stdout.write(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}\n`);
 			});
 		}
 	}
@@ -149,7 +149,7 @@ const syncSubscriptionMembers = async subscriptionId => {
 			if (readEnv === 'test' || readEnv === 'prod') {
 				Sentry.captureException(err);
 			}
-			console.error(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}`);
+			process.stdout.write(`Message: ${err.message} Errors: ${JSON.stringify(err.errors)}\n`);
 		});
 		const memberCount = subscribedCount + unsubscribedCount;
 		// 3. Batch update database to sync MailChimp to reflect users unsubscribed/subscribed externally

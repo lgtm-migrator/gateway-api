@@ -35,7 +35,6 @@ router.post('/sync', async (req, res) => {
 		if (readEnv === 'test' || readEnv === 'prod') {
 			Sentry.captureException(err);
 		}
-		console.error(err.message);
 		return res.status(500).json({ success: false, message: 'Sync failed' });
 	}
 });

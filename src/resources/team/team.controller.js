@@ -33,7 +33,6 @@ const getTeamById = async (req, res) => {
 		// 4. Return team
 		return res.status(200).json({ success: true, team });
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json(err.message);
 	}
 };
@@ -67,7 +66,6 @@ const getTeamMembers = async (req, res) => {
 		// 6. Return team members
 		return res.status(200).json({ success: true, members: users });
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json(err.message);
 	}
 };
@@ -146,7 +144,6 @@ const addTeamMembers = async (req, res) => {
 		// 9. Save members handling error callback if validation fails
 		team.save(async err => {
 			if (err) {
-				console.error(err.message);
 				return res.status(400).json({
 					success: false,
 					message: err.message,
@@ -173,7 +170,6 @@ const addTeamMembers = async (req, res) => {
 			}
 		});
 	} catch (err) {
-		console.error(err.message);
 		return res.status(400).json({
 			success: false,
 			message: 'You must supply a valid team identifier',
@@ -226,7 +222,6 @@ const getTeamNotifications = async (req, res) => {
 		// 8. return 200 success
 		return res.status(200).json(notifications);
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json({
 			success: false,
 			message: 'An error occurred retrieving team notifications',
@@ -435,7 +430,6 @@ const updateNotifications = async (req, res) => {
 		// 13. return 201 with new team
 		return res.status(201).json(team);
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json({
 			success: false,
 			message: 'An error occurred updating team notifications',
@@ -463,11 +457,9 @@ const updateNotificationMessages = async (req, res) => {
 				return res.status(201).json();
 			})
 			.catch(err => {
-				console.log(err);
 				res.status(500).json({ success: false, message: err.message });
 			});
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json({
 			success: false,
 			message: 'An error occurred updating notification messages',
@@ -529,7 +521,6 @@ const deleteTeamMember = async (req, res) => {
 		team.members = updatedMembers;
 		team.save(function (err) {
 			if (err) {
-				console.error(err.message);
 				return res.status(400).json({
 					success: false,
 					message: err.message,
@@ -545,7 +536,6 @@ const deleteTeamMember = async (req, res) => {
 			}
 		});
 	} catch (err) {
-		console.error(err.message);
 		res.status(500).json({ status: 'error', message: err.message });
 	}
 };
@@ -586,7 +576,6 @@ const getTeamsList = async (req, res) => {
 		// 4. Return team
 		return res.status(200).json({ success: true, teams });
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json(err.message);
 	}
 };
@@ -659,23 +648,23 @@ const addTeam = async (req, res) => {
 								timeout: 60000,
 							})
 							.then(async res => {
-								console.log(`public flag res: ${res}`);
+								process.stdout.write(`public flag res: ${res}\n`);
 							})
 							.catch(err => {
-								console.error('Error when making folder public on the MDC - ' + err.message);
+								process.stdout.write(`Error when making folder public on the MDC - ${err.message}\n`);
 							});
 					})
 					.catch(err => {
-						console.error('Error when trying to create new folder on the MDC - ' + err.message);
+						process.stdout.write(`Error when trying to create new folder on the MDC - ${err.message}\n`);
 					});
 			})
 			.catch(err => {
-				console.error('Error when trying to login to MDC - ' + err.message);
+				process.stdout.write(`Error when trying to login to MDC - ${err.message}\n`);
 			});
 
 		// 7. Log out of MDC
 		await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-			console.error('Error when trying to logout of the MDC - ' + err.message);
+			process.stdout.write(`Error when trying to logout of the MDC - ${err.message}\n`);
 		});
 
 		// 8. If a MDC folder with the name already exists return unsuccessful
@@ -719,10 +708,9 @@ const addTeam = async (req, res) => {
 
 		return res.status(200).json({ success: true });
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json({
 			success: false,
-			message: 'Error',
+			message: err.message,
 		});
 	}
 };
@@ -839,7 +827,7 @@ const editTeam = async (req, res) => {
 											}
 										)
 										.catch(err => {
-											console.error('Error when trying to update metdata on the MDC - ' + err.message);
+											process.stdout.write(`Error when trying to update metdata on the MDC - ${err.message}\n`);
 										});
 								}
 
@@ -855,7 +843,7 @@ const editTeam = async (req, res) => {
 											}
 										)
 										.catch(err => {
-											console.error('Error when trying to update metdata on the MDC - ' + err.message);
+											process.stdout.write(`Error when trying to update metdata on the MDC - ${err.message}\n`);
 										});
 								}
 
@@ -871,22 +859,22 @@ const editTeam = async (req, res) => {
 											}
 										)
 										.catch(err => {
-											console.error('Error when trying to update metdata on the MDC - ' + err.message);
+											process.stdout.write(`Error when trying to update metdata on the MDC - ${err.message}\n`);
 										});
 								}
 							})
 							.catch(err => {
-								console.error('Error when trying to get the metdata from the MDC - ' + err.message);
+								process.stdout.write(`Error when trying to get the metdata from the MDC - ${err.message}\n`);
 							});
 					}
 				})
 				.catch(err => {
-					console.error('Error when trying to login to MDC - ' + err.message);
+					process.stdout.write(`Error when trying to login to MDC - ${err.message}\n`);
 				});
 
 			// 12. Log out of MDC
 			await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
-				console.error('Error when trying to logout of the MDC - ' + err.message);
+				process.stdout.write(`Error when trying to logout of the MDC - ${err.message}\n`);
 			});
 
 			//13. Update datasets if name or member change
@@ -912,7 +900,6 @@ const editTeam = async (req, res) => {
 
 		return res.status(200).json({ success: true });
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json(err.message);
 	}
 };

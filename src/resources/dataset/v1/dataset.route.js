@@ -48,7 +48,7 @@ router.post('/', async (req, res) => {
 		if (readEnv === 'test' || readEnv === 'prod') {
 			Sentry.captureException(err);
 		}
-		console.error(err.message);
+		process.stdout.write(`${err.message}\n`);
 		return res.status(500).json({ success: false, message: 'Caching failed' });
 	}
 });
@@ -80,7 +80,7 @@ router.post('/updateServices', async (req, res) => {
 		if (readEnv === 'test' || readEnv === 'prod') {
 			Sentry.captureException(err);
 		}
-		console.error(err.message);
+		process.stdout.write(`${err.message}\n`);
 		return res.status(500).json({ success: false, message: 'Services update failed' });
 	}
 });

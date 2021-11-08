@@ -53,6 +53,6 @@ async function archiveOtherVersions(id, dataSetId, status) {
 			);
 		}
 	} catch (err) {
-		console.error(err.message);
+		process.stdout.write(`${err.message}\n`);
 	}
 }

@@ -319,7 +319,6 @@ const setStatus = async req => {
 
 			resolve(id);
 		} catch (err) {
-			console.error(err.message);
 			reject(new Error(err));
 		}
 	});

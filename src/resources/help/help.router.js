@@ -20,7 +20,6 @@ router.get('/:category', async (req, res) => {
 		// 4. Return help data in response
 		return res.status(200).json({ success: true, help });
 	} catch (err) {
-		console.error(err.message);
 		return res.status(500).json({
 			success: false,
 			message: 'An error occurred searching for help data',
