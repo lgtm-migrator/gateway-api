@@ -27,8 +27,6 @@ export default class DatasetController extends Controller {
 				...dataset
 			});
 		} catch (err) {
-            // Return error response if something goes wrong
-            process.stdout.write(`${err.message}\n`);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',
@@ -47,8 +45,6 @@ export default class DatasetController extends Controller {
 				datasets
 			});
 		} catch (err) {
-            // Return error response if something goes wrong
-            process.stdout.write(`${err.message}\n`);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',

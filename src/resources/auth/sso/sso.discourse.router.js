@@ -19,7 +19,6 @@ router.get('/', function (req, res, next) {
 				try {
 					redirectUrl = discourseLogin(req.query.sso, req.query.sig, req.user);
 				} catch (err) {
-					process.stdout.write(`${err.message}\n`);
 					return res.status(500).send('Error authenticating the user.');
 				}
 			}

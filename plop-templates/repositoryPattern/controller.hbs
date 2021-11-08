@@ -36,8 +36,6 @@ export default class {{capitalise entityName}}Controller extends Controller {
 				...{{entityName}}
 			});
 		} catch (err) {
-            // Return error response if something goes wrong
-            process.stdout.write(`${err.message}\n`);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',

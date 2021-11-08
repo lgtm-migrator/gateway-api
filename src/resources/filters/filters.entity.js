@@ -11,7 +11,6 @@ export default class FiltersClass extends Entity {
 
 	mapDto() {
 		if (!this.id) {
-			process.stdout.write(`Failed to load filters\n`);
 			return;
 		}
 		// 1. the data tree we want to update

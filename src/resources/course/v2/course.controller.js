@@ -32,8 +32,6 @@ export default class CourseController extends Controller {
 				data: course,
 			});
 		} catch (err) {
-            // Return error response if something goes wrong
-            process.stdout.write(`${err.message}\n`);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',
@@ -51,8 +49,6 @@ export default class CourseController extends Controller {
 				data: courses
 			});
 		} catch (err) {
-            // Return error response if something goes wrong
-            process.stdout.write(`${err.message}\n`);
             return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',

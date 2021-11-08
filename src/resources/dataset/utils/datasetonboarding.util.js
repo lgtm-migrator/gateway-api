@@ -74,7 +74,6 @@ const getUserPermissionsForDataset = async (id, user, publisherId) => {
 
 		return { authorised, userType };
 	} catch (error) {
-		process.stdout.write(`${err.message}\n`);
 		return { authorised: false, userType: '' };
 	}
 };

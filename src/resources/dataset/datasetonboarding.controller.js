@@ -696,7 +696,6 @@ module.exports = {
 				return res.status(200).json({ status: 'success' });
 			}
 		} catch (err) {
-			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({
 				status: 'error',
 				message: 'An error occurred updating the dataset status',

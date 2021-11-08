@@ -60,7 +60,6 @@ const getUserPermissionsForApplication = (application, userId, _id) => {
 		}
 		return { authorised, userType };
 	} catch (err) {
-		process.stdout.write(`${err.message}\n`);
 		return { authorised: false, userType: '' };
 	}
 };

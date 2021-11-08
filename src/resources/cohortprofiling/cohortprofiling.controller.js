@@ -34,7 +34,6 @@ export default class CohortProfilingController extends Controller {
 				cohortProfiling,
 			});
 		} catch (err) {
-			process.stdout.write(`${err.message}\n`);
 			return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',
