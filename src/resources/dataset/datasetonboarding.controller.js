@@ -338,7 +338,7 @@ module.exports = {
 			);
 
 			// emails / notifications
-			//await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
+			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
 
 			await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_SUBMITTED, {
 				type: constants.activityLogTypes.DATASET,
