@@ -299,10 +299,5 @@ router.post(
 	(req, res) => dataRequestController.createAmendment(req, res)
 );
 
-// @route   GET api/v1/data-access-request/publisher/:publisher
-// @desc    GET all team data requests
-// @access  Private
-router.get('/publisher/:publisher', passport.authenticate('jwt'), datarequestController.getAccessRequestsByTeam);
-
 module.exports = router;
 
