@@ -331,20 +331,20 @@ module.exports = {
 				{ _id: id },
 				{
 					datasetv2: datasetv2Object,
-					activeflag: constants.datatsetStatuses.INREVIEW,
+					activeflag: constants.datatsetStatuses.DRAFT,
 					'timestamps.updated': Date.now(),
 					'timestamps.submitted': Date.now(),
 				}
 			);
 
 			// emails / notifications
-			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
+			//await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
 
-			await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_SUBMITTED, {
-				type: constants.activityLogTypes.DATASET,
-				updatedDataset,
-				user: req.user,
-			});
+			// await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_SUBMITTED, {
+			// 	type: constants.activityLogTypes.DATASET,
+			// 	updatedDataset,
+			// 	user: req.user,
+			// });
 
 			if (updatedDataset.datasetVersion !== '1.0.0') {
 				let datasetv2DifferenceObject = datasetonboardingUtil.datasetv2ObjectComparison(datasetv2Object, dataset.datasetv2);

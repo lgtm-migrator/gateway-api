@@ -1201,30 +1201,75 @@ const buildv2Object = async (dataset, newDatasetVersionId = '') => {
 };
 
 const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
-	updatedJSON = flatten(updatedJSON, { safe: true });
-	previousJSON = flatten(previousJSON, { safe: true });
-	let result = {};
-	Object.keys(updatedJSON)
-		.concat(Object.keys(previousJSON))
-		.forEach(key => {
-			if (
-				previousJSON[key] !== updatedJSON[key] &&
-				!_.isArray(updatedJSON[key], previousJSON[key]) &&
-				!_.isObject(updatedJSON[key], previousJSON[key])
-			) {
-				result[key] = { previousAnswer: previousJSON[key], updatedAnswer: updatedJSON[key] };
+	updatedJSON = flatten(updatedJSON, { safe: true, delimiter: '/' });
+	previousJSON = flatten(previousJSON, { safe: true, delimiter: '/' });
+
+	const unusedKeys = ['identifier', 'version', 'issued', 'modified'];
+	unusedKeys.forEach(key => {
+		delete updatedJSON[key];
+		delete previousJSON[key];
+	});
+
+	let result = [];
+	const datasetv2Keys = [...new Set(Object.keys(updatedJSON).concat(Object.keys(previousJSON)))];
+	datasetv2Keys.forEach(key => {
+		if (
+			previousJSON[key] !== updatedJSON[key] &&
+			!_.isArray(updatedJSON[key], previousJSON[key]) &&
+			!_.isObject(updatedJSON[key], previousJSON[key]) &&
+			key !== 'observations'
+		) {
+			let arrayObject = {};
+			arrayObject[key] = { previousAnswer: previousJSON[key], updatedAnswer: updatedJSON[key] };
+			result.push(arrayObject);
+		}
+		if ((_.isArray(previousJSON[key]) || _.isArray(updatedJSON[key])) && key !== 'observations') {
+			if (!_.isEqual(updatedJSON[key], previousJSON[key])) {
+				let arrayObject = {};
+				arrayObject[key] = { previousAnswer: previousJSON[key].join(', '), updatedAnswer: updatedJSON[key].join(', ') };
+				result.push(arrayObject);
 			}
-			if (_.isArray(previousJSON[key]) || _.isArray(updatedJSON[key])) {
-				if (!_.isEqual(updatedJSON[key], previousJSON[key])) {
-					result[key] = { previousAnswer: previousJSON[key], updatedAnswer: updatedJSON[key] };
-				}
+		}
+	});
+
+	const observationKeys = ['observedNode', 'measuredValue', 'disambiguatingDescription', 'observationDate', 'measuredProperty'];
+
+	const maxObservationLength = Math.max(previousJSON['observations'].length, updatedJSON['observations'].length);
+	let resultObservations = {};
+	for (let i = 0; i < maxObservationLength; i++) {
+		let newKeyName = 'observations/' + (i + 1).toString() + '/';
+		resultObservations[newKeyName] = {};
+		if (updatedJSON['observations'][i] === undefined) {
+			updatedJSON['observations'][i] = {};
+			observationKeys.forEach(key => {
+				updatedJSON['observations'][i][key] = '';
+			});
+		}
+
+		if (previousJSON['observations'][i] === undefined) {
+			previousJSON['observations'][i] = {};
+			observationKeys.forEach(key => {
+				previousJSON['observations'][i][key] = '';
+			});
+		}
+
+		observationKeys.forEach(key => {
+			if (!_.isEqual(updatedJSON['observations'][i][key], previousJSON['observations'][i][key])) {
+				resultObservations[newKeyName + key] = {
+					previousAnswer: previousJSON['observations'][i][key],
+					updatedAnswer: updatedJSON['observations'][i][key],
+				};
 			}
 		});
-	delete result['identifier'];
-	delete result['version'];
-	delete result['issued'];
-	delete result['modified'];
-	return unflatten(result);
+		if (_.isEmpty(resultObservations[newKeyName])) delete resultObservations[newKeyName];
+	}
+
+	Object.keys(resultObservations).forEach(key => {
+		let arrayObject = {};
+		arrayObject[key] = resultObservations[key];
+		result.push(arrayObject);
+	});
+	return result;
 };
 
 export default {

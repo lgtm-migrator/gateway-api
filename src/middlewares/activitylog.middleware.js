@@ -38,25 +38,27 @@ const authoriseView = async (req, res, next) => {
 	} else if (req.body.type === constants.activityLogTypes.DATASET) {
 		try {
 			const datasetVersions = await datasetService.getDatasets({ _id: { $in: versionIds } }, { lean: true });
+			let permissionsArray = [];
 			await datasetVersions.forEach(async version => {
 				({ authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(
 					version.datasetv2.identifier,
 					requestingUser,
 					version.datasetv2.summary.publisher.identifier
 				));
-				if (!authorised) {
-					return res.status(401).json({
-						success: false,
-						message: 'You are not authorised to perform this action',
-					});
-				}
+				permissionsArray.push(authorised);
 			});
+
+			if (!permissionsArray.includes(true)) {
+				return res.status(401).json({
+					success: false,
+					message: 'You are not authorised to perform this action',
+				});
+			}
 			req.body.userType = requestingUser.teams.map(team => team.type).includes(constants.userTypes.ADMIN)
 				? constants.userTypes.ADMIN
 				: constants.userTypes.CUSTODIAN;
 			req.body.versions = datasetVersions;
 		} catch (error) {
-			console.log('Error authenticating the user against submitted dataset version IDs - ', error);
 			return res.status(401).json({
 				success: false,
 				message: 'Error authenticating the user against submitted dataset version IDs. Please check the submitted dataset versionIds',
