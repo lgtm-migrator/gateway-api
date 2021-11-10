@@ -116,7 +116,6 @@ export default class DatasetService {
 	}
 
 	getDatasetsByName(name) {
-		let query = {};
 		return this.datasetRepository.getDataset({ name, fields: 'pid' }, { lean: true });
 	}
 }
