@@ -29,9 +29,19 @@ export default class DataUseRegisterController extends Controller {
 					message: 'You must provide a dataUseRegister identifier',
 				});
 			}
+
 			// Find the dataUseRegister
-			const options = { lean: true, populate: { path: 'gatewayApplicants', select: 'id firstname lastname' } };
+			const options = {
+				lean: true,
+				populate: [
+					{ path: 'gatewayApplicants', select: 'id firstname lastname' },
+					{ path: 'gatewayDatasetsInfo', select: 'name pid' },
+					{ path: 'gatewayOutputsToolsInfo', select: 'name id' },
+					{ path: 'gatewayOutputsPapersInfo', select: 'name id' },
+				],
+			};
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, req.query, options);
+
 			// Reverse look up
 			var query = Data.aggregate([
 				{ $match: { id: parseInt(req.params.id) } },
@@ -50,7 +60,6 @@ export default class DataUseRegisterController extends Controller {
 							pid: '$pid',
 						},
 						pipeline: [
-							//{ $match: { $expr: { $in: ['$gatewayDatasets', '$$pid'] } } },
 							{
 								$match: {
 									$expr: {
@@ -59,36 +68,10 @@ export default class DataUseRegisterController extends Controller {
 								},
 							},
 							{ $project: { pid: 1, name: 1 } },
-
-							/* {
-								$match: {
-									$expr: {
-										$and: [
-											{
-												$eq: ['$relatedObjects.pid', '$$pid'],
-											},
-											{
-												$eq: ['$activeflag', 'active'],
-											},
-										],
-									},
-								},
-							},
-							{ $group: { _id: null, count: { $sum: 1 } } },
-	 */
 						],
 						as: 'gatewayDatasets2',
 					},
 				},
-
-				/* {
-					$lookup: {
-						from: 'tools',
-						localField: 'gatewayDatasets',
-						foreignField: 'pid',
-						as: 'gatewayDatasets',
-					},
-				}, */
 			]);
 			query.exec((err, data) => {
 				if (data.length > 0) {

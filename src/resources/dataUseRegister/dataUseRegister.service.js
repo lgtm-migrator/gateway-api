@@ -148,6 +148,16 @@ export default class DataUseRegisterService {
 						})
 			);
 
+			const { gatewayOutputsTools, gatewayOutputsPapers, nonGatewayOutputs } = await dataUseRegisterUtil.getLinkedOutputs(
+				obj.researchOutputs &&
+					obj.researchOutputs
+						.toString()
+						.split(',')
+						.map(el => {
+							if (!isEmpty(el)) return el.trim();
+						})
+			);
+
 			const { projectIdText, projectTitle, organisationName } = obj;
 			const datasetTitles = [...linkedDatasets.map(dataset => dataset.name), ...namedDatasets];
 
@@ -170,6 +180,9 @@ export default class DataUseRegisterService {
 				namedDatasets,
 				gatewayApplicants,
 				nonGatewayApplicants,
+				gatewayOutputsTools,
+				gatewayOutputsPapers,
+				nonGatewayOutputs,
 				isDuplicated: exists,
 			});
 		}

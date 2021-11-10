@@ -18,9 +18,8 @@ const datasetLimiter = rateLimit({
 
 router.post('/', async (req, res) => {
 	try {
-		filtersService.optimiseFilters('dataUseRegister');
 		// Check to see if header is in json format
-		/* let parsedBody = {};
+		let parsedBody = {};
 		if (req.header('content-type') === 'application/json') {
 			parsedBody = req.body;
 		} else {
@@ -40,7 +39,7 @@ router.post('/', async (req, res) => {
 		importCatalogues(catalogues, override, limit).then(() => {
 			filtersService.optimiseFilters('dataset');
 			saveUptime();
-		}); */
+		});
 		// Return response indicating job has started (do not await async import)
 		return res.status(200).json({ success: true, message: 'Caching started' });
 	} catch (err) {

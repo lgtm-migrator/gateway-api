@@ -17,4 +17,9 @@ export default class PaperRepository extends Repository {
 		const options = { lean: true };
 		return this.find(query, options);
 	}
+
+	async getPapersByIds(paperIds) {
+		const options = { lean: true };
+		return this.find({ id: { $in: paperIds } }, options);
+	}
 }

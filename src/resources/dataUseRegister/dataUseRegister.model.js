@@ -66,7 +66,9 @@ const dataUseRegisterSchema = new Schema(
 		accessDate: Date, //Release/Access Date
 		accessType: String, //TRE Or Any Other Specified Location
 		privacyEnhancements: String, //How Has Data Been Processed To Enhance Privacy
-		researchOutputs: [{ type: String }], //Link To Research Outputs
+		gatewayOutputsTools: [{ type: String }], //Link To Gateway Tool Research Outputs
+		gatewayOutputsPapers: [{ type: String }], //Link To Gateway Paper Research Outputs
+		nonGatewayOutputs: [{ type: String }], //Link To NonGateway Research Outputs
 		rejectionReason: String, //Reason For Rejecting A Data Use Register
 	},
 	{
@@ -85,6 +87,25 @@ dataUseRegisterSchema.virtual('publisherInfo', {
 	foreignField: '_id',
 	localField: 'publisher',
 	justOne: true,
+});
+
+dataUseRegisterSchema.virtual('gatewayDatasetsInfo', {
+	ref: 'Data',
+	foreignField: 'pid',
+	localField: 'gatewayDatasets',
+	options: { sort: { createdAt: -1 }, limit: 1 },
+});
+
+dataUseRegisterSchema.virtual('gatewayOutputsToolsInfo', {
+	ref: 'Data',
+	foreignField: 'id',
+	localField: 'gatewayOutputsTools',
+});
+
+dataUseRegisterSchema.virtual('gatewayOutputsPapersInfo', {
+	ref: 'Data',
+	foreignField: 'id',
+	localField: 'gatewayOutputsPapers',
 });
 
 export const DataUseRegister = model('DataUseRegister', dataUseRegisterSchema);

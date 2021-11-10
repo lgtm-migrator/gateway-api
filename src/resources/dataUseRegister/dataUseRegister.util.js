@@ -2,6 +2,8 @@ import moment from 'moment';
 import { isEmpty } from 'lodash';
 import DataUseRegister from './dataUseRegister.entity';
 import { getUsersByIds } from '../user/user.repository';
+import { toolService } from '../tool/v2/dependency';
+import { paperService } from '../paper/dependency';
 import { datasetService } from '../dataset/dependency';
 
 /**
@@ -41,21 +43,27 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 					})
 		);
 
+		const { gatewayOutputsTools, gatewayOutputsPapers, nonGatewayOutputs } = await getLinkedOutputs(
+			obj.researchOutputs &&
+				obj.researchOutputs
+					.toString()
+					.split(',')
+					.map(el => {
+						if (!isEmpty(el)) return el.trim();
+					})
+		);
+
 		// Create related objects
-		const relatedObjects = buildRelatedDatasets(creatorUser, linkedDatasets);
+		let relatedObjects = [
+			...buildRelatedObjects(creatorUser, 'dataset', linkedDatasets),
+			...buildRelatedObjects(creatorUser, 'tool', gatewayOutputsTools),
+			...buildRelatedObjects(creatorUser, 'paper', gatewayOutputsPapers),
+		];
 
 		// Handle comma separated fields
 		const fundersAndSponsors =
 			obj.fundersAndSponsors &&
 			obj.fundersAndSponsors
-				.toString()
-				.split(',')
-				.map(el => {
-					if (!isEmpty(el)) return el.trim();
-				});
-		const researchOutputs =
-			obj.researchOutputs &&
-			obj.researchOutputs
 				.toString()
 				.split(',')
 				.map(el => {
@@ -108,11 +116,12 @@ const buildDataUseRegisters = async (creatorUser, teamId, dataUses = []) => {
 				...(!isEmpty(datasetTitles) && { datasetTitles }),
 				...(!isEmpty(linkedDatasets) && { gatewayDatasets: linkedDatasets.map(dataset => dataset.pid) }),
 				...(!isEmpty(namedDatasets) && { nonGatewayDatasets: namedDatasets }),
-
 				...(!isEmpty(gatewayApplicants) && { gatewayApplicants: gatewayApplicants.map(gatewayApplicant => gatewayApplicant._id) }),
 				...(!isEmpty(nonGatewayApplicants) && { nonGatewayApplicants }),
 				...(!isEmpty(fundersAndSponsors) && { fundersAndSponsors }),
-				...(!isEmpty(researchOutputs) && { researchOutputs }),
+				...(!isEmpty(gatewayOutputsTools) && { gatewayOutputsTools: gatewayOutputsTools.map(tool => tool.id) }),
+				...(!isEmpty(gatewayOutputsPapers) && { gatewayOutputsPapers: gatewayOutputsPapers.map(paper => paper.id) }),
+				...(!isEmpty(nonGatewayOutputs) && { nonGatewayOutputs: nonGatewayOutputs }),
 				...(!isEmpty(otherApprovalCommittees) && { otherApprovalCommittees }),
 				...(!isEmpty(relatedObjects) && { relatedObjects }),
 				activeflag: 'inReview',
@@ -159,7 +168,7 @@ const getLinkedDatasets = async (datasetNames = []) => {
 	const linkedDatasets = isEmpty(unverifiedDatasetPids)
 		? []
 		: (await datasetService.getDatasetsByPids(unverifiedDatasetPids)).map(dataset => {
-				return { datasetid: dataset.datasetid, name: dataset.name, pid: dataset.pid };
+				return { id: dataset.datasetid, name: dataset.name, pid: dataset.pid };
 		  });
 
 	return { linkedDatasets, namedDatasets };
@@ -198,28 +207,74 @@ const getLinkedApplicants = async (applicantNames = []) => {
 };
 
 /**
- * Build Related Datasets
+ * Get Linked Outputs
  *
- * @desc    Accepts an array of datasets and outputs an array of related objects which can be assigned to an entity to show the relationship to the datasets.
- * 			Related objects contain the 'objectId' (dataset version identifier), 'pid', 'objectType' (dataset), 'updated' date and 'user' that created the linkage.
- * @param 	{Object} 			creatorUser 	A user object to allow the assignment of their name to the creator of the linkage
- * @param 	{Array<Object>} 	datasets 	    An array of dataset objects containing the necessary properties to assemble a related object record reference
- * @returns {Array<Object>}						An array containing the assembled related objects relative to the datasets provided
+ * @desc    Accepts a comma separated string containing tools or papers which can be in the form of text based names or URLs belonging to the Gateway which resolve to a users profile page, or a mix of both.
+ * 			The function separates URLs and uses regex to locate a suspected user ID to use in a search against the Gateway database.  If a match is found, the entry is considered a Gateway tool or paper.
+ * 			Entries which cannot be matched are returned as non Gateway tools or papers.  Failed attempts at adding URLs which do not resolve are excluded.
+ * @param 	{String} 	outputs 	    	A comma separated string representation of the tools or papers names to attempt to find and link to existing Gateway tools or papers
+ * @returns {Object}							An object containing Gateway tools or papers and non Gateway tools or papers in separate arrays
  */
-const buildRelatedDatasets = (creatorUser, datasets = [], manualUpload = true) => {
+const getLinkedOutputs = async (outputs = []) => {
+	const unverifiedOutputsToolIds = [],
+		unverifiedOutputsPaperIds = [],
+		nonGatewayOutputs = [];
+	const validLinkRegexpTool = new RegExp(`^${process.env.homeURL}\/tool\/(\\d+)\/?$`, 'i');
+	const validLinkRegexpPaper = new RegExp(`^${process.env.homeURL}\/paper\/(\\d+)\/?$`, 'i');
+
+	for (const output of outputs) {
+		const [, toolId] = validLinkRegexpTool.exec(output) || [];
+		if (toolId) {
+			unverifiedOutputsToolIds.push(toolId);
+		} else {
+			const [, paperId] = validLinkRegexpPaper.exec(output) || [];
+			if (paperId) {
+				unverifiedOutputsPaperIds.push(paperId);
+			} else {
+				nonGatewayOutputs.push(output);
+			}
+		}
+	}
+
+	const gatewayOutputsTools = isEmpty(unverifiedOutputsToolIds)
+		? []
+		: (await toolService.getToolsByIds(unverifiedOutputsToolIds)).map(tool => {
+				return { id: tool.id, name: tool.name };
+		  });
+
+	const gatewayOutputsPapers = isEmpty(unverifiedOutputsPaperIds)
+		? []
+		: (await paperService.getPapersByIds(unverifiedOutputsPaperIds)).map(paper => {
+				return { id: paper.id, name: paper.name };
+		  });
+
+	return { gatewayOutputsTools, gatewayOutputsPapers, nonGatewayOutputs };
+};
+
+/**
+ * Build Related Objects for datause
+ *
+ * @desc    Accepts an array of objects to relate and outputs an array of related objects which can be assigned to an entity to show the relationship to the object.
+ * 			Related objects contain the 'objectId' (object identifier), 'pid', 'objectType' (dataset), 'updated' date and 'user' that created the linkage.
+ * @param 	{Object} 			creatorUser 	A user object to allow the assignment of their name to the creator of the linkage
+ * @param	{String}			type			The type of object that is being passed in
+ * @param 	{Array<Object>} 	objects 	    An array of objects containing the necessary properties to assemble a related object record reference
+
+ */
+const buildRelatedObjects = (creatorUser, type, objects = [], manualUpload = true) => {
 	const { firstname, lastname } = creatorUser;
-	return datasets.map(dataset => {
-		const { datasetid: objectId, pid } = dataset;
+	return objects.map(object => {
+		const { id: objectId, pid } = object;
 		return {
 			objectId,
 			pid,
-			objectType: 'dataset',
+			objectType: type,
 			user: `${firstname} ${lastname}`,
-			updated: Date.now(),
+			updated: moment().format('DD MMM YYYY'),
 			isLocked: true,
 			reason: manualUpload
-				? 'This dataset was added automatically during the manual upload of this data use register'
-				: 'This dataset was added automatically from an approved data access request',
+				? `This ${type} was added automatically during the manual upload of this data use register`
+				: `This ${type} was added automatically from an approved data access request`,
 		};
 	});
 };
@@ -270,7 +325,8 @@ export default {
 	buildDataUseRegisters,
 	getLinkedDatasets,
 	getLinkedApplicants,
-	buildRelatedDatasets,
+	getLinkedOutputs,
+	buildRelatedObjects,
 	extractFormApplicants,
 	extractFundersAndSponsors,
 };
