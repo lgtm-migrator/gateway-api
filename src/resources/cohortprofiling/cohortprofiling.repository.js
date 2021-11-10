@@ -1,6 +1,6 @@
 import Repository from '../base/repository';
 import { CohortProfiling } from './cohortprofiling.model';
-import { isEmpty, isNil, escapeRegExp } from 'lodash';
+import { isEmpty, escapeRegExp } from 'lodash';
 
 export default class CohortProfilingRepository extends Repository {
 	constructor() {
