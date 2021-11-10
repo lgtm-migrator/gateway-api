@@ -1,0 +1,350 @@
+export const profilingOutputExpected = [
+	{
+		name: 'dbo.Event',
+		dataElements: [
+			{
+				field: 'PracticeID',
+				type: 'varchar',
+
+				length: 6,
+				rows: 1000,
+				frequencies: [
+					{
+						_id: false,
+						value: 'test1',
+						frequency: 28,
+						frequencyAsPercentage: 0.46667,
+					},
+					{
+						_id: false,
+						value: 'test2',
+						frequency: 32,
+						frequencyAsPercentage: 0.53333,
+					},
+				],
+				completeness: 0.06,
+			},
+			{
+				field: 'PseudoID',
+				type: 'int',
+
+				length: 6,
+
+				rows: 20000,
+				frequencies: [
+					{
+						_id: false,
+						value: '101',
+						frequency: 33,
+						frequencyAsPercentage: 0.00166,
+					},
+					{
+						_id: false,
+						value: '102',
+						frequency: 10000,
+						frequencyAsPercentage: 0.50393,
+					},
+					{
+						_id: false,
+						value: '103',
+						frequency: 4811,
+						frequencyAsPercentage: 0.24244,
+					},
+					{
+						_id: false,
+						value: '104',
+						frequency: 5000,
+						frequencyAsPercentage: 0.25197,
+					},
+				],
+				completeness: 0.9922,
+			},
+		],
+	},
+	{
+		name: 'dbo.Medical',
+		dataElements: [
+			{
+				field: 'TestID3',
+				type: 'date',
+				length: 10,
+				rows: 30000,
+				frequencies: [
+					{
+						_id: false,
+						value: '1986-10-01',
+						frequency: 175,
+						frequencyAsPercentage: 0.04017,
+					},
+					{
+						_id: false,
+						value: '1983-05-01',
+						frequency: 172,
+						frequencyAsPercentage: 0.03949,
+					},
+					{
+						_id: false,
+						value: '1981-01-01',
+						frequency: 169,
+						frequencyAsPercentage: 0.0388,
+					},
+					{
+						_id: false,
+						value: '1986-01-01',
+						frequency: 167,
+						frequencyAsPercentage: 0.03834,
+					},
+					{
+						_id: false,
+						value: '1986-09-01',
+						frequency: 166,
+						frequencyAsPercentage: 0.03811,
+					},
+					{
+						_id: false,
+						value: '1980-04-01',
+						frequency: 164,
+						frequencyAsPercentage: 0.03765,
+					},
+					{
+						_id: false,
+						value: '1990-03-01',
+						frequency: 163,
+						frequencyAsPercentage: 0.03742,
+					},
+					{
+						_id: false,
+						value: '1982-08-01',
+						frequency: 163,
+						frequencyAsPercentage: 0.03742,
+					},
+					{
+						_id: false,
+						value: '1988-07-01',
+						frequency: 162,
+						frequencyAsPercentage: 0.03719,
+					},
+					{
+						_id: false,
+						value: '1980-10-01',
+						frequency: 162,
+						frequencyAsPercentage: 0.03719,
+					},
+					{
+						_id: false,
+						value: '1981-03-01',
+						frequency: 161,
+						frequencyAsPercentage: 0.03696,
+					},
+					{
+						_id: false,
+						value: '1990-01-01',
+						frequency: 160,
+						frequencyAsPercentage: 0.03673,
+					},
+					{
+						_id: false,
+						value: '1984-08-01',
+						frequency: 160,
+						frequencyAsPercentage: 0.03673,
+					},
+					{
+						_id: false,
+						value: '1986-07-01',
+						frequency: 160,
+						frequencyAsPercentage: 0.03673,
+					},
+					{
+						_id: false,
+						value: '1980-12-01',
+						frequency: 159,
+						frequencyAsPercentage: 0.0365,
+					},
+					{
+						_id: false,
+						value: '1973-05-01',
+						frequency: 159,
+						frequencyAsPercentage: 0.0365,
+					},
+					{
+						_id: false,
+						value: '1987-04-01',
+						frequency: 159,
+						frequencyAsPercentage: 0.0365,
+					},
+					{
+						_id: false,
+						value: '1982-10-01',
+						frequency: 159,
+						frequencyAsPercentage: 0.0365,
+					},
+					{
+						_id: false,
+						value: '1987-08-01',
+						frequency: 158,
+						frequencyAsPercentage: 0.03627,
+					},
+					{
+						_id: false,
+						value: '1981-09-01',
+						frequency: 158,
+						frequencyAsPercentage: 0.03627,
+					},
+					{
+						_id: false,
+						value: '1985-09-01',
+						frequency: 158,
+						frequencyAsPercentage: 0.03627,
+					},
+					{
+						_id: false,
+						value: '1982-09-01',
+						frequency: 158,
+						frequencyAsPercentage: 0.03627,
+					},
+					{
+						_id: false,
+						value: '1981-05-01',
+						frequency: 158,
+						frequencyAsPercentage: 0.03627,
+					},
+					{
+						_id: false,
+						value: '1988-09-01',
+						frequency: 157,
+						frequencyAsPercentage: 0.03604,
+					},
+					{
+						_id: false,
+						value: '1985-06-01',
+						frequency: 157,
+						frequencyAsPercentage: 0.03604,
+					},
+					{
+						_id: false,
+						value: '1985-07-01',
+						frequency: 157,
+						frequencyAsPercentage: 0.03604,
+					},
+					{
+						_id: false,
+						value: '1981-10-02',
+						frequency: 155,
+						frequencyAsPercentage: 0.03558,
+					},
+					{
+						_id: false,
+						value: '1981-10-01',
+						frequency: 0,
+						frequencyAsPercentage: 0,
+					},
+				],
+				completeness: 0.1452,
+			},
+		],
+	},
+];
+
+export const profilingDataInputMock = {
+	pid: '8714975a-78c7-4bff-be49-17a485c76b18',
+	dataClasses: [
+		{
+			name: 'dbo.Event',
+			dataElements: [
+				{
+					field: 'PracticeID',
+					type: 'varchar',
+					length: 6,
+					rows: 1000,
+					frequencies: {
+						test1: 28.0,
+						test2: 32,
+					},
+				},
+				{
+					field: 'PseudoID',
+					type: 'int',
+					length: 6,
+					rows: 20000,
+					frequencies: {
+						101: 33,
+						102: 10000,
+						103: 4811,
+						104: 5000,
+						null: null,
+					},
+				},
+				{
+					field: 'TestID',
+					type: 'varchar',
+					length: 6,
+					rows: 20000,
+					frequencies: {
+						test: null,
+						null: null,
+					},
+				},
+				{
+					field: 'TestID2',
+					type: 'varchar',
+					length: 6,
+					rows: 20000,
+					frequencies: {},
+				},
+			],
+		},
+		{
+			name: 'dbo.Disappear',
+			dataElements: [
+				{
+					field: 'TestID2',
+					type: 'varchar',
+					length: 6,
+					rows: 20000,
+					frequencies: {},
+				},
+			],
+		},
+		{
+			name: 'dbo.Medical',
+			dataElements: [
+				{
+					field: 'TestID3',
+					type: 'date',
+					length: 10,
+					rows: 30000,
+					frequencies: {
+						'1986-10-01': 175,
+						'1983-05-01': 172,
+						'1981-01-01': 169,
+						'1986-01-01': 167,
+						'1986-09-01': 166,
+						'1980-04-01': 164,
+						'1990-03-01': 163,
+						'1982-08-01': 163,
+						'1988-07-01': 162,
+						'1980-10-01': 162,
+						'1981-03-01': 161,
+						'1990-01-01': 160,
+						'1984-08-01': 160,
+						'1986-07-01': 160,
+						'1980-12-01': 159,
+						'1973-05-01': 159,
+						'1987-04-01': 159,
+						'1982-10-01': 159,
+						'1987-08-01': 158,
+						'1981-09-01': 158,
+						'1985-09-01': 158,
+						'1982-09-01': 158,
+						'1981-05-01': 158,
+						'1988-09-01': 157,
+						'1985-06-01': 157,
+						'1985-07-01': 157,
+						'1981-10-02': 155,
+						'1981-10-01': 0,
+					},
+				},
+			],
+		},
+	],
+};
