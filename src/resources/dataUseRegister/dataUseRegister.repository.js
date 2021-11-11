@@ -52,20 +52,12 @@ export default class DataUseRegisterRepository extends Repository {
 							},
 							{ $project: { pid: 1, name: 1 } },
 						],
-						as: 'gatewayDatasets',
+						as: 'gatewayDatasetsInfo',
 					},
 				},
 				{
 					$addFields: {
-						publisherDetails: {
-							$map: {
-								input: '$publisherDetails',
-								as: 'row',
-								in: {
-									name: '$$row.name',
-								},
-							},
-						},
+						publisherInfo: { name: '$publisherDetails.name' },
 					},
 				},
 				{ $match: { $and: [...query['$and']] } },

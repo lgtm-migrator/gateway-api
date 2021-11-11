@@ -3,8 +3,6 @@
 import express from 'express';
 import Provider from 'oidc-provider';
 import swaggerUi from 'swagger-ui-express';
-import YAML from 'yamljs';
-const swaggerDocument = YAML.load('./swagger.yaml');
 import cors from 'cors';
 import logger from 'morgan';
 import passport from 'passport';
@@ -20,26 +18,29 @@ require('dotenv').config();
 
 var app = express();
 
-Sentry.init({
-	dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
-	environment: helper.getEnvironment(),
-	integrations: [
-		// enable HTTP calls tracing
-		new Sentry.Integrations.Http({ tracing: true }),
-		// enable Express.js middleware tracing
-		new Tracing.Integrations.Express({
-			// trace all requests to the default router
-			app,
-		}),
-	],
-	tracesSampleRate: 1.0,
-});
-// RequestHandler creates a separate execution context using domains, so that every
-// transaction/span/breadcrumb is attached to its own Hub instance
-app.use(Sentry.Handlers.requestHandler());
-// TracingHandler creates a trace for every incoming request
-app.use(Sentry.Handlers.tracingHandler());
-app.use(Sentry.Handlers.errorHandler());
+const readEnv = process.env.ENV || 'prod';
+if (readEnv === 'test' || readEnv === 'prod') {
+	Sentry.init({
+		dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
+		environment: helper.getEnvironment(),
+		integrations: [
+			// enable HTTP calls tracing
+			new Sentry.Integrations.Http({ tracing: true }),
+			// enable Express.js middleware tracing
+			new Tracing.Integrations.Express({
+				// trace all requests to the default router
+				app,
+			}),
+		],
+		tracesSampleRate: 1.0,
+	});
+	// RequestHandler creates a separate execution context using domains, so that every
+	// transaction/span/breadcrumb is attached to its own Hub instance
+	app.use(Sentry.Handlers.requestHandler());
+	// TracingHandler creates a trace for every incoming request
+	app.use(Sentry.Handlers.tracingHandler());
+	app.use(Sentry.Handlers.errorHandler());
+}
 
 const Account = require('./account');
 const configuration = require('./configuration');
@@ -180,7 +181,7 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 
 app.use('/api/v1/openid', oidc.callback);
 app.use('/api', router);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(require('../../docs/index.docs')));
 
 app.use('/oauth', require('../resources/auth/oauth.route'));
 app.use('/api/v1/auth/sso/discourse', require('../resources/auth/sso/sso.discourse.router'));

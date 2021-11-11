@@ -6,6 +6,7 @@ import constants from '../utilities/constants.util';
 import * as Sentry from '@sentry/node';
 
 const sgMail = require('@sendgrid/mail');
+const readEnv = process.env.ENV || 'prod';
 let parent, qsId;
 let questionList = [];
 let excludedQuestionSetIds = ['addRepeatableSection', 'removeRepeatableSection'];
@@ -2453,7 +2454,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 
 		// 4. Send email using SendGrid
 		await sgMail.send(msg, false, err => {
-			if (err) {
+			if (err && (readEnv === 'test' || readEnv === 'prod')) {
 				Sentry.addBreadcrumb({
 					category: 'SendGrid',
 					message: 'Sending email failed',
@@ -2476,7 +2477,7 @@ const _sendIntroEmail = msg => {
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 	// 2. Send email using SendGrid
 	sgMail.send(msg, false, err => {
-		if (err) {
+		if (err && (readEnv === 'test' || readEnv === 'prod')) {
 			Sentry.addBreadcrumb({
 				category: 'SendGrid',
 				message: 'Sending email failed - Intro',

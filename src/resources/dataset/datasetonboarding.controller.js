@@ -11,6 +11,8 @@ import moment from 'moment';
 import * as Sentry from '@sentry/node';
 var fs = require('fs');
 
+const readEnv = process.env.ENV || 'prod';
+
 module.exports = {
 	//GET api/v1/dataset-onboarding
 	getDatasetsByPublisher: async (req, res) => {
@@ -841,7 +843,7 @@ module.exports = {
 						data.type = 'dataset';
 						data.activeflag = 'draft';
 						data.source = 'HDRUK MDC';
-						data.is5Safes = dataset.publisher.allowAccessRequestManagement;
+						data.is5Safes = dataset.publisher.uses5Safes;
 						data.timestamps.created = Date.now();
 						data.timestamps.updated = Date.now();
 						data.questionAnswers = JSON.stringify(dataset.questionAnswers);
@@ -856,7 +858,9 @@ module.exports = {
 				return res.status(400).json({ success: false, message: 'No metadata found' });
 			}
 		} catch (err) {
-			Sentry.captureException(err);
+			if (readEnv === 'test' || readEnv === 'prod') {
+				Sentry.captureException(err);
+			}
 			console.error(err.message);
 			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
 		}

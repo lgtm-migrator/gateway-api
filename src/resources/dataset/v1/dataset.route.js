@@ -5,6 +5,7 @@ import { getAllTools } from '../../tool/data.repository';
 import { isEmpty, isNil } from 'lodash';
 import escape from 'escape-html';
 import { Course } from '../../course/course.model';
+import { DataUseRegister } from '../../dataUseRegister/dataUseRegister.model';
 import { filtersService } from '../../filters/dependency';
 import * as Sentry from '@sentry/node';
 const router = express.Router();
@@ -15,6 +16,8 @@ const datasetLimiter = rateLimit({
 	max: 10, // start blocking after 10 requests
 	message: 'Too many calls have been made to this api from this IP, please try again after an hour',
 });
+
+const readEnv = process.env.ENV || 'prod';
 
 router.post('/', async (req, res) => {
 	try {
@@ -43,7 +46,9 @@ router.post('/', async (req, res) => {
 		// Return response indicating job has started (do not await async import)
 		return res.status(200).json({ success: true, message: 'Caching started' });
 	} catch (err) {
-		Sentry.captureException(err);
+		if (readEnv === 'test' || readEnv === 'prod') {
+			Sentry.captureException(err);
+		}
 		console.error(err.message);
 		return res.status(500).json({ success: false, message: 'Caching failed' });
 	}
@@ -73,7 +78,9 @@ router.post('/updateServices', async (req, res) => {
 
 		return res.status(200).json({ success: true, message: 'Services Update started' });
 	} catch (err) {
-		Sentry.captureException(err);
+		if (readEnv === 'test' || readEnv === 'prod') {
+			Sentry.captureException(err);
+		}
 		console.error(err.message);
 		return res.status(500).json({ success: false, message: 'Services update failed' });
 	}
@@ -175,7 +182,23 @@ router.get('/:datasetID', async (req, res) => {
 		activeflag: 'active',
 	});
 
-	relatedData = [...relatedData, ...relatedDataFromCourses];
+	let relatedDataFromDatauses = await DataUseRegister.find({
+		relatedObjects: {
+			$elemMatch: {
+				$or: [
+					{
+						objectId: { $in: dataVersionsArray },
+					},
+					{
+						pid: pid,
+					},
+				],
+			},
+		},
+		activeflag: 'active',
+	});
+
+	relatedData = [...relatedData, ...relatedDataFromCourses, ...relatedDataFromDatauses];
 
 	relatedData.forEach(dat => {
 		dat.relatedObjects.forEach(relatedObject => {
