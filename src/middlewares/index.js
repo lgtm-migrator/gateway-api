@@ -1,5 +1,19 @@
-import { checkIDMiddleware } from './checkIDMiddleware'
+import { checkIDMiddleware } from './checkIDMiddleware';
+import {
+	validateViewRequest,
+	authoriseView,
+	authoriseCreate,
+	validateCreateRequest,
+	validateDeleteRequest,
+	authoriseDelete,
+} from './activitylog.middleware';
 
 export {
-    checkIDMiddleware
-}
+	checkIDMiddleware,
+	validateViewRequest,
+	authoriseView,
+	authoriseCreate,
+	validateCreateRequest,
+	validateDeleteRequest,
+	authoriseDelete,
+};

@@ -24,19 +24,19 @@ const authoriseView = async (req, res, next) => {
 	const { versionIds = [] } = req.body;
 	let authorised, userType, accessRecords;
 
-	if (req.body.type === constants.activityLogTypes.DATA_ACCESS_REQUEST) {
-		({ authorised, userType, accessRecords } = await dataRequestService.checkUserAuthForVersions(versionIds, requestingUser));
-		if (!authorised) {
-			return res.status(401).json({
-				success: false,
-				message: 'You are not authorised to perform this action',
-			});
-		}
+	try {
+		if (req.body.type === constants.activityLogTypes.DATA_ACCESS_REQUEST) {
+			({ authorised, userType, accessRecords } = await dataRequestService.checkUserAuthForVersions(versionIds, requestingUser));
+			if (!authorised) {
+				return res.status(401).json({
+					success: false,
+					message: 'You are not authorised to perform this action',
+				});
+			}
 
-		req.body.userType = userType;
-		req.body.versions = accessRecords;
-	} else if (req.body.type === constants.activityLogTypes.DATASET) {
-		try {
+			req.body.userType = userType;
+			req.body.versions = accessRecords;
+		} else if (req.body.type === constants.activityLogTypes.DATASET) {
 			const datasetVersions = await datasetService.getDatasets({ _id: { $in: versionIds } }, { lean: true });
 			let permissionsArray = [];
 			await datasetVersions.forEach(async version => {
@@ -58,12 +58,12 @@ const authoriseView = async (req, res, next) => {
 				? constants.userTypes.ADMIN
 				: constants.userTypes.CUSTODIAN;
 			req.body.versions = datasetVersions;
-		} catch (error) {
-			return res.status(401).json({
-				success: false,
-				message: 'Error authenticating the user against submitted dataset version IDs. Please check the submitted dataset versionIds',
-			});
 		}
+	} catch (error) {
+		return res.status(401).json({
+			success: false,
+			message: 'Error authenticating the user against submitted versionIds. Please check the submitted dataset versionIds',
+		});
 	}
 
 	next();
@@ -164,11 +164,4 @@ const authoriseDelete = async (req, res, next) => {
 	next();
 };
 
-export default {
-	validateViewRequest,
-	authoriseView,
-	authoriseCreate,
-	validateCreateRequest,
-	validateDeleteRequest,
-	authoriseDelete,
-};
+export { validateViewRequest, authoriseView, authoriseCreate, validateCreateRequest, validateDeleteRequest, authoriseDelete };

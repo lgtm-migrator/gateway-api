@@ -11,7 +11,7 @@ import randomstring from 'randomstring';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 var fs = require('fs');
-import { flatten, unflatten } from 'flat';
+import { flatten } from 'flat';
 
 /**
  * Checks to see if the user has the correct permissions to access the dataset
@@ -1204,6 +1204,7 @@ const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
 	updatedJSON = flatten(updatedJSON, { safe: true, delimiter: '/' });
 	previousJSON = flatten(previousJSON, { safe: true, delimiter: '/' });
 
+	// Remove fields which change automatically between datasets
 	const unusedKeys = ['identifier', 'version', 'issued', 'modified'];
 	unusedKeys.forEach(key => {
 		delete updatedJSON[key];
@@ -1232,13 +1233,14 @@ const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
 		}
 	});
 
+	// Compute diff of 'observations' separately, which can be an array of objects
 	const observationKeys = ['observedNode', 'measuredValue', 'disambiguatingDescription', 'observationDate', 'measuredProperty'];
 
 	const maxObservationLength = Math.max(previousJSON['observations'].length, updatedJSON['observations'].length);
 	let resultObservations = {};
 	for (let i = 0; i < maxObservationLength; i++) {
-		let newKeyName = 'observations/' + (i + 1).toString() + '/';
-		resultObservations[newKeyName] = {};
+		let observationNumberKey = 'observations/' + (i + 1).toString() + '/';
+		resultObservations[observationNumberKey] = {};
 		if (updatedJSON['observations'][i] === undefined) {
 			updatedJSON['observations'][i] = {};
 			observationKeys.forEach(key => {
@@ -1254,21 +1256,25 @@ const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
 		}
 
 		observationKeys.forEach(key => {
+			if (updatedJSON['observations'][i][key] === undefined) updatedJSON['observations'][i][key] = '';
+			if (previousJSON['observations'][i][key] === undefined) previousJSON['observations'][i][key] = '';
 			if (!_.isEqual(updatedJSON['observations'][i][key], previousJSON['observations'][i][key])) {
-				resultObservations[newKeyName + key] = {
+				resultObservations[observationNumberKey + key] = {
 					previousAnswer: previousJSON['observations'][i][key],
 					updatedAnswer: updatedJSON['observations'][i][key],
 				};
 			}
 		});
-		if (_.isEmpty(resultObservations[newKeyName])) delete resultObservations[newKeyName];
+		if (_.isEmpty(resultObservations[observationNumberKey])) delete resultObservations[observationNumberKey];
 	}
 
+	// Append observation diff to previous result array
 	Object.keys(resultObservations).forEach(key => {
 		let arrayObject = {};
 		arrayObject[key] = resultObservations[key];
 		result.push(arrayObject);
 	});
+
 	return result;
 };
 

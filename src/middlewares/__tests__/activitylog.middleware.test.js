@@ -1,6 +1,6 @@
 import sinon from 'sinon';
 
-import activitylogMiddleware from '../activitylog.middleware';
+import { validateViewRequest, authoriseView } from '../activitylog.middleware';
 import { datasetService } from '../../resources/dataset/dependency';
 import { UserModel } from '../../resources/user/user.model';
 
@@ -33,7 +33,7 @@ describe('Testing the ActivityLog middleware', () => {
 			req.body = { versionIds: [], type: 'dataset' };
 			const nextFunction = jest.fn();
 
-			activitylogMiddleware.validateViewRequest(req, res, nextFunction);
+			validateViewRequest(req, res, nextFunction);
 
 			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.json).toHaveBeenCalledWith(expectedResponse);
@@ -46,7 +46,7 @@ describe('Testing the ActivityLog middleware', () => {
 			req.body = { versionIds: [123, 456], type: 'notARealType' };
 			const nextFunction = jest.fn();
 
-			activitylogMiddleware.validateViewRequest(req, res, nextFunction);
+			validateViewRequest(req, res, nextFunction);
 
 			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.json).toHaveBeenCalledWith(expectedResponse);
@@ -59,7 +59,7 @@ describe('Testing the ActivityLog middleware', () => {
 			req.body = { versionIds: [123, 456], type: 'dataset' };
 			const nextFunction = jest.fn();
 
-			activitylogMiddleware.validateViewRequest(req, res, nextFunction);
+			validateViewRequest(req, res, nextFunction);
 
 			expect(nextFunction.mock.calls.length).toBe(1);
 		});
@@ -99,7 +99,7 @@ describe('Testing the ActivityLog middleware', () => {
 				},
 			]);
 
-			await activitylogMiddleware.authoriseView(req, res, nextFunction);
+			await authoriseView(req, res, nextFunction);
 
 			expect(versionsStub.calledOnce).toBe(true);
 			expect(res.status).toHaveBeenCalledWith(401);
@@ -147,7 +147,7 @@ describe('Testing the ActivityLog middleware', () => {
 				},
 			]);
 
-			await activitylogMiddleware.authoriseView(req, res, nextFunction);
+			await authoriseView(req, res, nextFunction);
 
 			expect(versionsStub.calledOnce).toBe(true);
 			expect(nextFunction.mock.calls.length).toBe(1);
@@ -161,7 +161,7 @@ describe('Testing the ActivityLog middleware', () => {
 
 			let versionsStub = sinon.stub(datasetService, 'getDatasets').throws();
 
-			let badCall = await activitylogMiddleware.authoriseView(req, res, nextFunction);
+			let badCall = await authoriseView(req, res, nextFunction);
 
 			try {
 				badCall();

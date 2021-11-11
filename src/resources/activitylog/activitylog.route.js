@@ -1,7 +1,14 @@
 import express from 'express';
 import passport from 'passport';
 
-import ActivityLogMiddleware from '../../middlewares/activitylog.middleware';
+import {
+	validateViewRequest,
+	authoriseView,
+	authoriseCreate,
+	validateCreateRequest,
+	validateDeleteRequest,
+	authoriseDelete,
+} from '../../middlewares/index';
 import ActivityLogController from './activitylog.controller';
 import { activityLogService } from './dependency';
 import { logger } from '../utilities/logger';
@@ -16,8 +23,8 @@ const logCategory = 'Activity Log';
 router.post(
 	'/',
 	passport.authenticate('jwt'),
-	ActivityLogMiddleware.validateViewRequest,
-	ActivityLogMiddleware.authoriseView,
+	validateViewRequest,
+	authoriseView,
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed activity logs' }),
 	(req, res) => activityLogController.searchLogs(req, res)
 );
@@ -28,8 +35,8 @@ router.post(
 router.post(
 	'/:type',
 	passport.authenticate('jwt'),
-	ActivityLogMiddleware.validateCreateRequest,
-	ActivityLogMiddleware.authoriseCreate,
+	validateCreateRequest,
+	authoriseCreate,
 	logger.logRequestMiddleware({ logCategory, action: 'Created manual event' }),
 	(req, res) => activityLogController.createLog(req, res)
 );
@@ -40,8 +47,8 @@ router.post(
 router.delete(
 	'/:type/:id',
 	passport.authenticate('jwt'),
-	ActivityLogMiddleware.validateDeleteRequest,
-	ActivityLogMiddleware.authoriseDelete,
+	validateDeleteRequest,
+	authoriseDelete,
 	logger.logRequestMiddleware({ logCategory, action: 'Deleted manual event' }),
 	(req, res) => activityLogController.deleteLog(req, res)
 );
