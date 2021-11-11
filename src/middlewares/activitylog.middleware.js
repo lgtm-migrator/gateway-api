@@ -149,7 +149,7 @@ const authoriseDelete = async (req, res, next) => {
 			message: 'You are not authorised to perform this action',
 		});
 	}
-	if (log.eventType !== constants.activityLogEvents.MANUAL_EVENT) {
+	if (log.eventType !== constants.activityLogEvents.data_access_request.MANUAL_EVENT) {
 		return res.status(400).json({
 			success: false,
 			message: 'You cannot delete a system generated log entry',
