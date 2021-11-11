@@ -163,7 +163,7 @@ module.exports = {
 
 			// 20. Update activity log if there is a linked DAR
 			if (topicObj.linkedDataAccessApplication) {
-				activityLogService.logActivity(constants.activityLogEvents.PRESUBMISSION_MESSAGE, {
+				activityLogService.logActivity(constants.activityLogEvents.data_access_request.PRESUBMISSION_MESSAGE, {
 					messages: [messageObj],
 					applicationId: topicObj.linkedDataAccessApplication,
 					publisher: publisher.name,
