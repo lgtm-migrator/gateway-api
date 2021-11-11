@@ -210,6 +210,14 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					totalResultCount: 1,
 					numberOfDatasets: 1,
 					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+					uploaders: 1,
+				},
+			},
+			{
+				$addFields: {
+					myEntity: {
+						$in: [authorID, '$uploaders'],
+					},
 				},
 			},
 		];
@@ -873,6 +881,9 @@ export function getMyObjectsCount(type, searchAll, searchQuery, authorID) {
 	if (type === 'course') {
 		collection = Course;
 		newSearchQuery['$and'].push({ creator: authorID });
+	} else if (type === 'cohort') {
+		collection = Cohort;
+		newSearchQuery['$and'].push({ uploaders: authorID, publicflag: true });
 	} else {
 		newSearchQuery['$and'].push({ authors: authorID });
 	}

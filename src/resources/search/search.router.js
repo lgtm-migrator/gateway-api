@@ -132,7 +132,9 @@ router.get('/', async (req, res) => {
 				getObjectFilters(searchQuery, req, 'cohort'),
 				req.query.cohortIndex || 0,
 				req.query.maxResults || 40,
-				req.query.cohortSort || ''
+				req.query.cohortSort || '',
+				authorID,
+				req.query.form
 			),
 		]);
 	} else {
@@ -176,6 +178,7 @@ router.get('/', async (req, res) => {
 			getMyObjectsCount('project', searchAll, getObjectFilters(searchQuery, req, 'project'), authorID),
 			getMyObjectsCount('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), authorID),
 			getMyObjectsCount('course', searchAll, getObjectFilters(searchQuery, req, 'course'), authorID),
+			getMyObjectsCount('cohort', searchAll, getObjectFilters(searchQuery, req, 'cohort'), authorID),
 		]);
 
 		myEntitiesSummary = {
@@ -183,6 +186,7 @@ router.get('/', async (req, res) => {
 			myProjectsCount: summaryMyEntityCounts[1][0] != undefined ? summaryMyEntityCounts[1][0].count : 0,
 			myPapersCount: summaryMyEntityCounts[2][0] != undefined ? summaryMyEntityCounts[2][0].count : 0,
 			myCoursesCount: summaryMyEntityCounts[3][0] != undefined ? summaryMyEntityCounts[3][0].count : 0,
+			myCohortsCount: summaryMyEntityCounts[4][0] != undefined ? summaryMyEntityCounts[4][0].count : 0,
 		};
 	}
 
