@@ -573,7 +573,7 @@ module.exports = {
 				);
 
 				//emails / notifications
-				//await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETREJECTED, updatedDataset);
+				await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETREJECTED, updatedDataset);
 
 				await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_REJECTED, {
 					type: constants.activityLogTypes.DATASET,
@@ -878,7 +878,7 @@ module.exports = {
 
 			await Data.create(datasetCopy);
 
-			//await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
+			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
 
 			return res.status(200).json({
 				success: true,
