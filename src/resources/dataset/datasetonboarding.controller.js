@@ -30,7 +30,7 @@ module.exports = {
 			if (publisherID === 'admin') {
 				// get all datasets in review for admin
 				query = {
-					activeflag: 'inReview',
+					activeflag: { $in: ['active', 'inReview', 'draft', 'rejected', 'archive'] },
 					type: 'dataset',
 				};
 			} else {
@@ -50,7 +50,7 @@ module.exports = {
 				.lean();
 
 			//Loop through the list of datasets and attach the list of versions to them
-			const listOfDatasets = datasets.reduce((arr, dataset) => {
+			let listOfDatasets = datasets.reduce((arr, dataset) => {
 				dataset.listOfVersions = [];
 				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
 				if (datasetIdx === -1) {
@@ -62,6 +62,10 @@ module.exports = {
 				}
 				return arr;
 			}, []);
+
+			if (publisherID === 'admin') {
+				listOfDatasets = listOfDatasets.filter(dataset => dataset.activeflag === 'inReview');
+			}
 
 			return res.status(200).json({
 				success: true,
