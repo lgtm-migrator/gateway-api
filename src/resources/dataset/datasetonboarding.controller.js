@@ -60,12 +60,11 @@ module.exports = {
 					const versionDetails = { _id, datasetVersion, activeflag };
 					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
 				}
+				if (publisherID === constants.userTypes.ADMIN) {
+					arr = arr.filter(dataset => dataset.activeflag === constants.applicationStatuses.INREVIEW);
+				}
 				return arr;
 			}, []);
-
-			if (publisherID === constants.userTypes.ADMIN) {
-				listOfDatasets = listOfDatasets.filter(dataset => dataset.activeflag === 'inReview');
-			}
 
 			return res.status(200).json({
 				success: true,
