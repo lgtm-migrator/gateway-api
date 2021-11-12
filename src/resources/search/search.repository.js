@@ -419,7 +419,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		if (type === 'dataset') {
 			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
-		} else if (type === 'paper') {
+		} else if (type === 'paper' && !form) {
 			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
 			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
 		} else {
