@@ -27,10 +27,10 @@ module.exports = {
 
 			//Build query, if the publisherId is admin then only return the inReview datasets
 			let query = {};
-			if (publisherID === 'admin') {
+			if (publisherID === constants.userTypes.ADMIN) {
 				// get all datasets in review for admin
 				query = {
-					activeflag: 'inReview',
+					activeflag: { $in: ['active', 'inReview', 'draft', 'rejected', 'archive'] },
 					type: 'dataset',
 				};
 			} else {
@@ -59,6 +59,9 @@ module.exports = {
 					const { _id, datasetVersion, activeflag } = dataset;
 					const versionDetails = { _id, datasetVersion, activeflag };
 					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
+				}
+				if (publisherID === constants.userTypes.ADMIN) {
+					arr = arr.filter(dataset => dataset.activeflag === constants.applicationStatuses.INREVIEW);
 				}
 				return arr;
 			}, []);
