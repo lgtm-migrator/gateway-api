@@ -50,7 +50,7 @@ module.exports = {
 				.lean();
 
 			//Loop through the list of datasets and attach the list of versions to them
-			let listOfDatasets = datasets.reduce((arr, dataset) => {
+			const listOfDatasets = datasets.reduce((arr, dataset) => {
 				dataset.listOfVersions = [];
 				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
 				if (datasetIdx === -1) {
