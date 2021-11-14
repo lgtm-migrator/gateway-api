@@ -179,6 +179,11 @@ export default class DataUseRegisterController extends Controller {
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, {}, options);
 			const updateObj = this.dataUseRegisterService.buildUpdateObject(dataUseRegister, req.body);
 
+			if (isEmpty(updateObj)) {
+				return res.status(200).json({
+					success: true,
+				});
+			}
 			this.dataUseRegisterService.updateDataUseRegister(dataUseRegister._id, updateObj).catch(err => {
 				logger.logError(err, logCategory);
 			});

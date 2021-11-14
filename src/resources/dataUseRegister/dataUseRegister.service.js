@@ -370,6 +370,24 @@ export default class DataUseRegisterService {
 			nonGatewayOutputs,
 		} = dataUseRegisterPayload;
 
+		const fundersAndSponsorsList =
+			fundersAndSponsors &&
+			fundersAndSponsors
+				.toString()
+				.split(',')
+				.map(el => {
+					if (!isEmpty(el)) return el.trim();
+				});
+
+		const otherApprovalCommitteesList =
+			otherApprovalCommittees &&
+			otherApprovalCommittees
+				.toString()
+				.split(',')
+				.map(el => {
+					if (!isEmpty(el)) return el.trim();
+				});
+
 		if (!isUndefined(activeflag) && !isEqual(activeflag, dataUseRegister.activeflag)) updateObj.activeflag = activeflag;
 		if (!isUndefined(rejectionReason) && !isEqual(rejectionReason, dataUseRegister.rejectionReason))
 			updateObj.rejectionReason = rejectionReason;
@@ -396,8 +414,8 @@ export default class DataUseRegisterService {
 		if (!isUndefined(nonGatewayApplicants) && !isEqual(nonGatewayApplicants, dataUseRegister.nonGatewayApplicants))
 			updateObj.nonGatewayApplicants = nonGatewayApplicants;
 		if (!isUndefined(applicantId) && !isEqual(applicantId, dataUseRegister.applicantId)) updateObj.applicantId = applicantId;
-		if (!isUndefined(fundersAndSponsors) && !isEqual(fundersAndSponsors, dataUseRegister.fundersAndSponsors))
-			updateObj.fundersAndSponsors = fundersAndSponsors;
+		if (!isUndefined(fundersAndSponsorsList) && !isEqual(fundersAndSponsorsList, dataUseRegister.fundersAndSponsors))
+			updateObj.fundersAndSponsors = fundersAndSponsorsList;
 		if (!isUndefined(accreditedResearcherStatus) && !isEqual(accreditedResearcherStatus, dataUseRegister.accreditedResearcherStatus))
 			updateObj.accreditedResearcherStatus = accreditedResearcherStatus;
 		if (!isUndefined(sublicenceArrangements) && !isEqual(sublicenceArrangements, dataUseRegister.sublicenceArrangements))
@@ -409,13 +427,23 @@ export default class DataUseRegisterService {
 			updateObj.requestCategoryType = requestCategoryType;
 		if (!isUndefined(technicalSummary) && !isEqual(technicalSummary, dataUseRegister.technicalSummary))
 			updateObj.technicalSummary = technicalSummary;
-		if (!isUndefined(otherApprovalCommittees) && !isEqual(otherApprovalCommittees, dataUseRegister.otherApprovalCommittees))
-			updateObj.otherApprovalCommittees = otherApprovalCommittees;
-		if (!isUndefined(projectStartDate) && !isEqual(projectStartDate, dataUseRegister.projectStartDate))
-			updateObj.projectStartDate = projectStartDate;
-		if (!isUndefined(projectEndDate) && !isEqual(projectEndDate, dataUseRegister.projectEndDate)) updateObj.projectEndDate = projectEndDate;
-		if (!isUndefined(latestApprovalDate) && !isEqual(latestApprovalDate, dataUseRegister.latestApprovalDate))
-			updateObj.latestApprovalDate = latestApprovalDate;
+		if (!isUndefined(otherApprovalCommitteesList) && !isEqual(otherApprovalCommitteesList, dataUseRegister.otherApprovalCommittees))
+			updateObj.otherApprovalCommittees = otherApprovalCommitteesList;
+		if (
+			!isUndefined(projectStartDate) &&
+			!isEqual(moment(projectStartDate).format('YYYY-MM-DD'), moment(dataUseRegister.projectStartDate).format('YYYY-MM-DD'))
+		)
+			updateObj.projectStartDate = moment(projectStartDate, 'YYYY-MM-DD');
+		if (
+			!isUndefined(projectEndDate) &&
+			!isEqual(moment(projectEndDate).format('YYYY-MM-DD'), moment(dataUseRegister.projectEndDate).format('YYYY-MM-DD'))
+		)
+			updateObj.projectEndDate = moment(projectEndDate, 'YYYY-MM-DD');
+		if (
+			!isUndefined(latestApprovalDate) &&
+			!isEqual(moment(latestApprovalDate).format('YYYY-MM-DD'), moment(dataUseRegister.latestApprovalDate).format('YYYY-MM-DD'))
+		)
+			updateObj.projectStartDate = moment(latestApprovalDate, 'YYYY-MM-DD');
 		if (!isUndefined(dataSensitivityLevel) && !isEqual(dataSensitivityLevel, dataUseRegister.dataSensitivityLevel))
 			updateObj.dataSensitivityLevel = dataSensitivityLevel;
 		if (!isUndefined(legalBasisForDataArticle6) && !isEqual(legalBasisForDataArticle6, dataUseRegister.legalBasisForDataArticle6))
@@ -432,7 +460,11 @@ export default class DataUseRegisterService {
 			updateObj.datasetLinkageDescription = datasetLinkageDescription;
 		if (!isUndefined(confidentialDataDescription) && !isEqual(confidentialDataDescription, dataUseRegister.confidentialDataDescription))
 			updateObj.confidentialDataDescription = confidentialDataDescription;
-		if (!isUndefined(accessDate) && !isEqual(accessDate, dataUseRegister.accessDate)) updateObj.accessDate = accessDate;
+		if (
+			!isUndefined(accessDate) &&
+			!isEqual(moment(accessDate).format('YYYY-MM-DD'), moment(dataUseRegister.accessDate).format('YYYY-MM-DD'))
+		)
+			updateObj.accessDate = moment(accessDate, 'YYYY-MM-DD');
 		if (!isUndefined(accessType) && !isEqual(accessType, dataUseRegister.accessType)) updateObj.accessType = accessType;
 		if (!isUndefined(privacyEnhancements) && !isEqual(privacyEnhancements, dataUseRegister.privacyEnhancements))
 			updateObj.privacyEnhancements = privacyEnhancements;
