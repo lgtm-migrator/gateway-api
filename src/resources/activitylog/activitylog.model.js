@@ -7,13 +7,13 @@ const ActivityLogSchema = new Schema({
 	userTypes: [],
 	timestamp: { type: Date, required: true },
 	user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-	versionId: { type: Schema.Types.ObjectId, required: true },
-	version: { type: String, required: true },
+	versionId: { type: Schema.Types.ObjectId },
+	version: { type: String },
 	plainText: { type: String, required: true },
 	detailedText: String,
 	html: { type: String, required: true },
 	detailedHtml: String,
-	isPresubmission: Boolean
+	isPresubmission: Boolean,
 });
 
 export const ActivityLog = model('ActivityLog', ActivityLogSchema);

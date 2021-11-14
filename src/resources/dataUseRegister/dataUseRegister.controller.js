@@ -9,13 +9,15 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import { getObjectFilters } from '../search/search.repository';
 
 import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
+import { isEmpty } from 'lodash';
 
 const logCategory = 'dataUseRegister';
 
 export default class DataUseRegisterController extends Controller {
-	constructor(dataUseRegisterService) {
+	constructor(dataUseRegisterService, activityLogService) {
 		super(dataUseRegisterService);
 		this.dataUseRegisterService = dataUseRegisterService;
+		this.activityLogService = activityLogService;
 	}
 
 	async getDataUseRegister(req, res) {
@@ -172,21 +174,24 @@ export default class DataUseRegisterController extends Controller {
 	async updateDataUseRegister(req, res) {
 		try {
 			const id = req.params.id;
-			const { activeflag, rejectionReason } = req.body;
 			const requestingUser = req.user;
-
 			const options = { lean: true, populate: 'user' };
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, {}, options);
+			const updateObj = this.dataUseRegisterService.buildUpdateObject(dataUseRegister, req.body);
 
-			this.dataUseRegisterService.updateDataUseRegister(dataUseRegister._id, req.body).catch(err => {
+			this.dataUseRegisterService.updateDataUseRegister(dataUseRegister._id, updateObj).catch(err => {
 				logger.logError(err, logCategory);
 			});
 
 			const isDataUseRegisterApproved =
-				activeflag === constants.dataUseRegisterStatus.ACTIVE && dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW;
+				updateObj.activeflag &&
+				updateObj.activeflag === constants.dataUseRegisterStatus.ACTIVE &&
+				dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW;
 
 			const isDataUseRegisterRejected =
-				activeflag === constants.dataUseRegisterStatus.REJECTED && dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW;
+				updateObj.activeflag &&
+				updateObj.activeflag === constants.dataUseRegisterStatus.REJECTED &&
+				dataUseRegister.activeflag === constants.dataUseRegisterStatus.INREVIEW;
 
 			// Send notifications
 			if (isDataUseRegisterApproved) {
@@ -194,10 +199,18 @@ export default class DataUseRegisterController extends Controller {
 			} else if (isDataUseRegisterRejected) {
 				await this.createNotifications(
 					constants.dataUseRegisterNotifications.DATAUSEREJECTED,
-					{ rejectionReason },
+					{ rejectoionReason: updateObj.rejectionReason },
 					dataUseRegister,
 					requestingUser
 				);
+			}
+
+			if (!isEmpty(updateObj)) {
+				await this.activityLogService.logActivity(constants.activityLogEvents.DATA_USE_REGISTER_UPDATED, {
+					dataUseRegister,
+					updateObj,
+					user: requestingUser,
+				});
 			}
 
 			// Return success

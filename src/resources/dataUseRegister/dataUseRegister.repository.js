@@ -82,9 +82,8 @@ export default class DataUseRegisterRepository extends Repository {
 	}
 
 	async updateDataUseRegister(id, body) {
-		body.updatedon = Date.now();
-		body.lastActivity = Date.now();
-		const updatedBody = await this.update(id, body);
+		const updateObject = { ...body, updatedon: Date.now(), lastActivity: Date.now() };
+		const updatedBody = await this.update(id, updateObject);
 		filtersService.optimiseFilters('dataUseRegister');
 		return updatedBody;
 	}

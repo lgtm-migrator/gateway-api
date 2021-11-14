@@ -2,13 +2,14 @@ import express from 'express';
 import DataUseRegisterController from './dataUseRegister.controller';
 
 import { dataUseRegisterService } from './dependency';
+import { activityLogService } from '../activitylog/dependency';
 import { logger } from '../utilities/logger';
 import passport from 'passport';
 import constants from './../utilities/constants.util';
-import { isEmpty, isNull } from 'lodash';
+import { isEmpty, isNull, isEqual } from 'lodash';
 
 const router = express.Router();
-const dataUseRegisterController = new DataUseRegisterController(dataUseRegisterService);
+const dataUseRegisterController = new DataUseRegisterController(dataUseRegisterService, activityLogService);
 const logCategory = 'dataUseRegister';
 
 function isUserMemberOfTeam(user, teamId) {
@@ -102,6 +103,7 @@ const authorizeView = async (req, res, next) => {
 const authorizeUpdate = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { id } = req.params;
+	const { projectId, projectIdText, datasetTitles, datasetIds, datasetPids } = req.body;
 
 	const dataUseRegister = await dataUseRegisterService.getDataUseRegister(id);
 
@@ -119,6 +121,24 @@ const authorizeUpdate = async (req, res, next) => {
 			success: false,
 			message: 'You are not authorised to perform this action',
 		});
+	}
+
+	if (!dataUseRegister.manualUpload) {
+		if (!isEqual(projectId, dataUseRegister.projectId) || !isEqual(projectIdText, dataUseRegister.projectId))
+			return res.status(401).json({
+				success: false,
+				message: 'You are not authorised to update the project ID of an automatic data use register',
+			});
+
+		if (
+			!isEqual(datasetTitles, dataUseRegister.datasetTitles) ||
+			!isEqual(datasetIds, dataUseRegister.datasetIds) ||
+			!isEqual(datasetPids, dataUseRegister.datasetPids)
+		)
+			return res.status(401).json({
+				success: false,
+				message: 'You are not authorised to update the datasets of an automatic data use register',
+			});
 	}
 
 	next();
