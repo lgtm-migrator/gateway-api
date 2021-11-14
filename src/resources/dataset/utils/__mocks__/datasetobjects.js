@@ -78,14 +78,14 @@ export const datasetv2ObjectMock = {
 		usage: {
 			dataUseLimitation: [],
 			dataUseRequirements: [],
-			resourceCreator: '',
+			resourceCreator: [],
 			investigations: [],
 			isReferencedBy: [],
 		},
 		access: {
 			accessRights: ['http://www.google.com'],
 			accessService: '',
-			accessRequestCost: '',
+			accessRequestCost: [],
 			deliveryLeadTime: '',
 			jurisdiction: ['GB-GB'],
 			dataProcessor: '',

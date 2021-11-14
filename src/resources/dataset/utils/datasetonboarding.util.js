@@ -1170,14 +1170,14 @@ const buildv2Object = async (dataset, newDatasetVersionId = '') => {
 			usage: {
 				dataUseLimitation: questionAnswers['properties/accessibility/usage/dataUseLimitation'] || [],
 				dataUseRequirements: questionAnswers['properties/accessibility/usage/dataUseRequirements'] || [],
-				resourceCreator: questionAnswers['properties/accessibility/usage/resourceCreator'] || '',
+				resourceCreator: questionAnswers['properties/accessibility/usage/resourceCreator'] || [],
 				investigations: questionAnswers['properties/accessibility/usage/investigations'] || [],
 				isReferencedBy: questionAnswers['properties/accessibility/usage/isReferencedBy'] || [],
 			},
 			access: {
 				accessRights: questionAnswers['properties/accessibility/access/accessRights'] || [],
 				accessService: questionAnswers['properties/accessibility/access/accessService'] || '',
-				accessRequestCost: questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
+				accessRequestCost: questionAnswers['properties/accessibility/access/accessRequestCost'] || [],
 				deliveryLeadTime: questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
 				jurisdiction: questionAnswers['properties/accessibility/access/jurisdiction'] || [],
 				dataProcessor: questionAnswers['properties/accessibility/access/dataProcessor'] || '',
@@ -1225,9 +1225,14 @@ const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
 			result.push(arrayObject);
 		}
 		if ((_.isArray(previousJSON[key]) || _.isArray(updatedJSON[key])) && key !== 'observations') {
-			if (!_.isEqual(updatedJSON[key], previousJSON[key])) {
+			let previousAnswer = _.isArray(previousJSON[key]) ? previousJSON[key].join(', ') : previousJSON[key];
+			let updatedAnswer = _.isArray(updatedJSON[key]) ? updatedJSON[key].join(', ') : updatedJSON[key];
+			if (!_.isEqual(updatedAnswer, previousAnswer)) {
 				let arrayObject = {};
-				arrayObject[key] = { previousAnswer: previousJSON[key].join(', '), updatedAnswer: updatedJSON[key].join(', ') };
+				arrayObject[key] = {
+					previousAnswer: previousAnswer,
+					updatedAnswer: updatedAnswer,
+				};
 				result.push(arrayObject);
 			}
 		}
