@@ -265,7 +265,15 @@ export default class DataUseRegisterController extends Controller {
 
 			searchQuery = getObjectFilters(searchQuery, req, 'dataUseRegister');
 
-			const result = await DataUseRegister.aggregate([{ $match: searchQuery }]);
+			const result = await DataUseRegister.find(searchQuery)
+				.populate([
+					{ path: 'publisher' },
+					{ path: 'gatewayApplicants' },
+					{ path: 'gatewayOutputsToolsInfo' },
+					{ path: 'gatewayOutputsPapersInfo' },
+					{ path: 'publisherInfo' },
+				])
+				.lean();
 
 			return res.status(200).json({ success: true, result });
 		} catch (err) {

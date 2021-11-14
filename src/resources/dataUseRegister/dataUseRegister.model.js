@@ -89,6 +89,13 @@ dataUseRegisterSchema.virtual('publisherInfo', {
 	justOne: true,
 });
 
+dataUseRegisterSchema.virtual('publisherDetails', {
+	ref: 'Publisher',
+	foreignField: '_id',
+	localField: 'publisher',
+	justOne: true,
+});
+
 dataUseRegisterSchema.virtual('gatewayDatasetsInfo', {
 	ref: 'Data',
 	foreignField: 'pid',
