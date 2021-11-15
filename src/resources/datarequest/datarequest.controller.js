@@ -16,6 +16,7 @@ import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
 import i18next from '../internationalization/i18next';
 import { PublisherModel } from '../publisher/publisher.model';
+import { DataRequestModel } from './datarequest.model';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -53,10 +54,13 @@ export default class DataRequestController extends Controller {
 				found = members.some(el => el.memberid.toString() === _id.toString());
 			}
 
-			if (!found) return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
+			if (!found) 
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 
 			//Check if current use is a manager
 			let isManager = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, publisher.team, _id);
+			if (!isManager) 
+				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 
 			const query = {publisher: req.params.publisher, applicationStatus: {$not: {$in: ["inProgress"]}} }
 			const dars = await DataRequestModel.find(query) 
