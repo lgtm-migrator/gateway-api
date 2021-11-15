@@ -35,18 +35,6 @@ describe('DatasetController', function () {
 			expect(json.calledWith({ success: true, ...stubValue })).toBe(true);
 		});
 
-		it('should return a bad request response if no dataset id is provided', async function () {
-			req = { params: {} };
-
-			const serviceStub = sinon.stub(datasetService, 'getDataset').returns({});
-			datasetController = new DatasetController(datasetService);
-			await datasetController.getDataset(req, res);
-
-			expect(serviceStub.notCalled).toBe(true);
-			expect(status.calledWith(400)).toBe(true);
-			expect(json.calledWith({ success: false, message: 'You must provide a dataset identifier' })).toBe(true);
-		});
-
 		it('should return a not found response if no dataset could be found for the id provided', async function () {
 			req = { params: { id: faker.random.number({ min: 1, max: 999999999 }) } };
 
@@ -75,7 +63,7 @@ describe('DatasetController', function () {
 
 	describe('getDatasets', function () {
 		let req, res, status, json, datasetService, datasetController;
-        req = { params: {} };
+		req = { params: {} };
 
 		beforeEach(() => {
 			status = sinon.stub();
