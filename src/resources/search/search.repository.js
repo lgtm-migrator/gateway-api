@@ -210,6 +210,14 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					totalResultCount: 1,
 					numberOfDatasets: 1,
 					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+					uploaders: 1,
+				},
+			},
+			{
+				$addFields: {
+					myEntity: {
+						$in: [authorID, '$uploaders'],
+					},
 				},
 			},
 		];
@@ -412,8 +420,15 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
 		} else if (type === 'paper') {
-			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
-			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
+			if (form && searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, journalYear: -1, latestUpdate: -1 } });
+			} else if (form && !searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, journalYear: -1, score: { $meta: 'textScore' } } });
+			} else if (!form && searchAll) {
+				queryObject.push({ $sort: { journalYear: -1, latestUpdate: -1 } });
+			} else if (!form && !searchAll) {
+				queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
+			}
 		} else {
 			if (form === 'true' && searchAll) {
 				queryObject.push({ $sort: { myEntity: -1, latestUpdate: -1 } });
@@ -873,6 +888,9 @@ export function getMyObjectsCount(type, searchAll, searchQuery, authorID) {
 	if (type === 'course') {
 		collection = Course;
 		newSearchQuery['$and'].push({ creator: authorID });
+	} else if (type === 'cohort') {
+		collection = Cohort;
+		newSearchQuery['$and'].push({ uploaders: authorID, publicflag: true });
 	} else {
 		newSearchQuery['$and'].push({ authors: authorID });
 	}
