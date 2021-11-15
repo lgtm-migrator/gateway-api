@@ -173,7 +173,6 @@ export default class DataUseRegisterController extends Controller {
 		try {
 			const id = req.params.id;
 			const { activeflag, rejectionReason } = req.body;
-			const requestingUser = req.user;
 
 			const options = { lean: true, populate: 'user' };
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, {}, options);
@@ -190,14 +189,9 @@ export default class DataUseRegisterController extends Controller {
 
 			// Send notifications
 			if (isDataUseRegisterApproved) {
-				await this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister, requestingUser);
+				await this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEAPPROVED, {}, dataUseRegister);
 			} else if (isDataUseRegisterRejected) {
-				await this.createNotifications(
-					constants.dataUseRegisterNotifications.DATAUSEREJECTED,
-					{ rejectionReason },
-					dataUseRegister,
-					requestingUser
-				);
+				await this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEREJECTED, { rejectionReason }, dataUseRegister);
 			}
 
 			// Return success
@@ -255,7 +249,7 @@ export default class DataUseRegisterController extends Controller {
 		try {
 			let searchString = req.query.search || '';
 
-			if (searchString.includes('-') && !searchString.includes('"')) {
+			if (typeof searchString === 'string' && searchString.includes('-') && !searchString.includes('"')) {
 				const regex = /(?=\S*[-])([a-zA-Z'-]+)/g;
 				searchString = searchString.replace(regex, '"$1"');
 			}
@@ -286,8 +280,7 @@ export default class DataUseRegisterController extends Controller {
 		}
 	}
 
-	async createNotifications(type, context, dataUseRegister, requestingUser) {
-		const { teams } = requestingUser;
+	async createNotifications(type, context, dataUseRegister) {
 		const { rejectionReason } = context;
 		const { id, projectTitle, user: uploader } = dataUseRegister;
 
