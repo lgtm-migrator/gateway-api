@@ -489,7 +489,7 @@ export default class DataRequestService {
 		}
 		accessRecord.applicationStatus = constants.applicationStatuses.SUBMITTED;
 		// 2. Check if workflow/5 Safes based application, set final status date if status will never change again
-		if (has(accessRecord.toObject(), 'publisherObj') && accessRecord.publisherObj != null) {
+		if (has(accessRecord.toObject(), 'publisherObj') {
 			if (!accessRecord.publisherObj.workflowEnabled) {
 				accessRecord.dateFinalStatus = new Date();
 				accessRecord.workflowEnabled = false;
