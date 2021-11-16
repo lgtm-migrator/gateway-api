@@ -302,7 +302,7 @@ router.post(
 // @route   GET api/v1/data-access-request/publisher/:publisher
 // @desc    GET all team data requests
 // @access  Private
-router.get('/publisher/:publisher', passport.authenticate('jwt'), datarequestController.getAccessRequestsByTeam);
+router.get('/publisher/:publisher', passport.authenticate('jwt'), dataRequestController.getAccessRequestsByTeam);
 
 module.exports = router;
 
