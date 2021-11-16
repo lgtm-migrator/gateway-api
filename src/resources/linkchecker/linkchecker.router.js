@@ -8,6 +8,7 @@ import _ from 'lodash';
 const sgMail = require('@sendgrid/mail');
 
 const hdrukEmail = `enquiry@healthdatagateway.org`;
+const readEnv = process.env.ENV || 'prod';
 
 const axios = require('axios');
 const router = express.Router();
@@ -111,7 +112,7 @@ router.post('/', async (req, res) => {
 				};
 
 				await sgMail.send(msg, false, err => {
-					if (err) {
+					if (err && (readEnv === 'test' || readEnv === 'prod')) {
 						Sentry.addBreadcrumb({
 							category: 'SendGrid',
 							message: 'Sending email failed',

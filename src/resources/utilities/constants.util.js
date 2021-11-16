@@ -15,6 +15,11 @@ const _activityLogNotifications = Object.freeze({
 	MANUALEVENTREMOVED: 'manualEventRemoved',
 });
 
+const _dataUseRegisterNotifications = Object.freeze({
+	DATAUSEAPPROVED: 'dataUseApproved',
+	DATAUSEREJECTED: 'dataUseRejected',
+});
+
 const _teamNotificationTypes = Object.freeze({
 	DATAACCESSREQUEST: 'dataAccessRequest',
 	METADATAONBOARDING: 'metaDataOnboarding',
@@ -216,6 +221,7 @@ const _roleTypes = {
 	REVIEWER: 'reviewer',
 	METADATA_EDITOR: 'metadata_editor',
 	ADMIN_DATASET: 'admin_dataset',
+	ADMIN_DATA_USE: 'admin_data_use',
 };
 
 // </Team related enums>
@@ -248,8 +254,14 @@ const _logTypes = {
 	USER: 'User',
 };
 
-// Activity log related enums
+const _dataUseRegisterStatus = {
+	ACTIVE: 'active',
+	INREVIEW: 'inReview',
+	REJECTED: 'rejected',
+	ARCHIVED: 'archived',
+};
 
+// Activity log related enums
 const _activityLogEvents = {
 	data_access_request: {
 		APPLICATION_SUBMITTED: 'applicationSubmitted',
@@ -323,4 +335,6 @@ export default {
 	systemGeneratedUser: _systemGeneratedUser,
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
+	dataUseRegisterStatus: _dataUseRegisterStatus,
+	dataUseRegisterNotifications: _dataUseRegisterNotifications,
 };
