@@ -1,5 +1,4 @@
-import { checkIDMiddleware } from './checkIDMiddleware'
+import { checkIDMiddleware } from './checkIDMiddleware';
+import { authoriseUserForPublisher } from './datasetonboarding.middleware';
 
-export {
-    checkIDMiddleware
-}
+export { checkIDMiddleware, authoriseUserForPublisher };
