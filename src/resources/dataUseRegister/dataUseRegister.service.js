@@ -234,7 +234,11 @@ export default class DataUseRegisterService {
 			[...authors, mainApplicant],
 			questionAnswers
 		);
-		const relatedDatasets = dataUseRegisterUtil.buildRelatedDatasets(creatorUser, datasets, false);
+		const { linkedDatasets = [], namedDatasets = [] } = await dataUseRegisterUtil.getLinkedDatasets([
+			...datasets.map(dataset => dataset.name),
+		]);
+		const datasetTitles = [...linkedDatasets.map(dataset => dataset.name), ...namedDatasets];
+		const relatedDatasets = dataUseRegisterUtil.buildRelatedObjects(creatorUser, 'dataset', datasets, false);
 		const relatedApplications = await this.buildRelatedDataUseRegisters(creatorUser, versionTree, applicationId);
 		const datasetLinkageDescription = `${datasetLinkageDetails.toString().trim()} ${datasetLinkageRiskMitigation.toString().trim()}`;
 		const requestFrequency = dataRefreshRequired === 'Yes' ? 'Recurring' : dataRefreshRequired === 'No' ? 'One-off' : '';
@@ -247,7 +251,7 @@ export default class DataUseRegisterService {
 			publisher,
 			projectIdText: projectId,
 			projectId: applicationId,
-			applicantId: applicantId.trim(),
+			applicantId: applicantId ? applicantId.trim() : '',
 			accreditedResearcherStatus: isNil(accreditedResearcherStatus) ? 'Unknown' : accreditedResearcherStatus.toString().trim(),
 			...(projectTitle && { projectTitle: projectTitle.toString().trim() }),
 			...(organisationName && { organisationName: organisationName.toString().trim() }),
@@ -263,15 +267,15 @@ export default class DataUseRegisterService {
 			...(projectStartDate.isValid() && { projectStartDate }),
 			...(projectEndDate.isValid() && { projectEndDate }),
 			...(latestApprovalDate.isValid() && { latestApprovalDate }),
-			datasetTitles: [...datasets.map(dataset => dataset.name)],
-			datasetIds: [...datasets.map(dataset => dataset.datasetid)],
-			datasetPids: [...datasets.map(dataset => dataset.pid)],
+			...(!isEmpty(datasetTitles) && { datasetTitles }),
+			...(!isEmpty(linkedDatasets) && { gatewayDatasets: linkedDatasets.map(dataset => dataset.pid) }),
+			...(!isEmpty(namedDatasets) && { nonGatewayDatasets: namedDatasets }),
 			keywords: isNil(keywords) || isEmpty(keywords) ? [] : keywords.split(' ').slice(0, 6),
 			fundersAndSponsors,
 			gatewayApplicants,
 			nonGatewayApplicants,
 			relatedObjects: [...relatedDatasets, ...relatedApplications],
-			activeflag: 'inReview',
+			activeflag: 'active',
 			user: creatorUser._id,
 			userName: `${creatorUser.firstname} ${creatorUser.lastname}`,
 			updatedon: Date.now(),
@@ -414,7 +418,7 @@ export default class DataUseRegisterService {
 		if (!isUndefined(nonGatewayApplicants) && !isEqual(nonGatewayApplicants, dataUseRegister.nonGatewayApplicants))
 			updateObj.nonGatewayApplicants = nonGatewayApplicants;
 		if (!isUndefined(applicantId) && !isEqual(applicantId, dataUseRegister.applicantId)) updateObj.applicantId = applicantId;
-		if (!isUndefined(fundersAndSponsorsList) && !isEqual(fundersAndSponsorsList, dataUseRegister.fundersAndSponsors))
+		if (!isEmpty(fundersAndSponsorsList) && !isEqual(fundersAndSponsorsList, dataUseRegister.fundersAndSponsors))
 			updateObj.fundersAndSponsors = fundersAndSponsorsList;
 		if (!isUndefined(accreditedResearcherStatus) && !isEqual(accreditedResearcherStatus, dataUseRegister.accreditedResearcherStatus))
 			updateObj.accreditedResearcherStatus = accreditedResearcherStatus;
@@ -427,20 +431,20 @@ export default class DataUseRegisterService {
 			updateObj.requestCategoryType = requestCategoryType;
 		if (!isUndefined(technicalSummary) && !isEqual(technicalSummary, dataUseRegister.technicalSummary))
 			updateObj.technicalSummary = technicalSummary;
-		if (!isUndefined(otherApprovalCommitteesList) && !isEqual(otherApprovalCommitteesList, dataUseRegister.otherApprovalCommittees))
+		if (!isEmpty(otherApprovalCommitteesList) && !isEqual(otherApprovalCommitteesList, dataUseRegister.otherApprovalCommittees))
 			updateObj.otherApprovalCommittees = otherApprovalCommitteesList;
 		if (
-			!isUndefined(projectStartDate) &&
+			!isEmpty(projectStartDate) &&
 			!isEqual(moment(projectStartDate).format('YYYY-MM-DD'), moment(dataUseRegister.projectStartDate).format('YYYY-MM-DD'))
 		)
 			updateObj.projectStartDate = moment(projectStartDate, 'YYYY-MM-DD');
 		if (
-			!isUndefined(projectEndDate) &&
+			!isEmpty(projectEndDate) &&
 			!isEqual(moment(projectEndDate).format('YYYY-MM-DD'), moment(dataUseRegister.projectEndDate).format('YYYY-MM-DD'))
 		)
 			updateObj.projectEndDate = moment(projectEndDate, 'YYYY-MM-DD');
 		if (
-			!isUndefined(latestApprovalDate) &&
+			!isEmpty(latestApprovalDate) &&
 			!isEqual(moment(latestApprovalDate).format('YYYY-MM-DD'), moment(dataUseRegister.latestApprovalDate).format('YYYY-MM-DD'))
 		)
 			updateObj.projectStartDate = moment(latestApprovalDate, 'YYYY-MM-DD');
@@ -460,10 +464,7 @@ export default class DataUseRegisterService {
 			updateObj.datasetLinkageDescription = datasetLinkageDescription;
 		if (!isUndefined(confidentialDataDescription) && !isEqual(confidentialDataDescription, dataUseRegister.confidentialDataDescription))
 			updateObj.confidentialDataDescription = confidentialDataDescription;
-		if (
-			!isUndefined(accessDate) &&
-			!isEqual(moment(accessDate).format('YYYY-MM-DD'), moment(dataUseRegister.accessDate).format('YYYY-MM-DD'))
-		)
+		if (!isEmpty(accessDate) && !isEqual(moment(accessDate).format('YYYY-MM-DD'), moment(dataUseRegister.accessDate).format('YYYY-MM-DD')))
 			updateObj.accessDate = moment(accessDate, 'YYYY-MM-DD');
 		if (!isUndefined(accessType) && !isEqual(accessType, dataUseRegister.accessType)) updateObj.accessType = accessType;
 		if (!isUndefined(privacyEnhancements) && !isEqual(privacyEnhancements, dataUseRegister.privacyEnhancements))

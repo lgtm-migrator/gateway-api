@@ -103,7 +103,7 @@ const authorizeView = async (req, res, next) => {
 const authorizeUpdate = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { id } = req.params;
-	const { projectId, projectIdText, datasetTitles, datasetIds, datasetPids } = req.body;
+	const { projectIdText, datasetTitles } = req.body;
 
 	const dataUseRegister = await dataUseRegisterService.getDataUseRegister(id);
 
@@ -115,7 +115,7 @@ const authorizeUpdate = async (req, res, next) => {
 	}
 
 	const { publisher } = dataUseRegister;
-	const authorised = isUserMemberOfTeam(requestingUser, publisher._id) || isUserDataUseAdmin(requestingUser);
+	const authorised = isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, publisher._id);
 	if (!authorised) {
 		return res.status(401).json({
 			success: false,
@@ -124,17 +124,13 @@ const authorizeUpdate = async (req, res, next) => {
 	}
 
 	if (!dataUseRegister.manualUpload) {
-		if (!isEqual(projectId, dataUseRegister.projectId) || !isEqual(projectIdText, dataUseRegister.projectId))
+		if (!isEqual(projectIdText, dataUseRegister.projectIdText))
 			return res.status(401).json({
 				success: false,
 				message: 'You are not authorised to update the project ID of an automatic data use register',
 			});
 
-		if (
-			!isEqual(datasetTitles, dataUseRegister.datasetTitles) ||
-			!isEqual(datasetIds, dataUseRegister.datasetIds) ||
-			!isEqual(datasetPids, dataUseRegister.datasetPids)
-		)
+		if (!isEqual(datasetTitles, dataUseRegister.datasetTitles))
 			return res.status(401).json({
 				success: false,
 				message: 'You are not authorised to update the datasets of an automatic data use register',
