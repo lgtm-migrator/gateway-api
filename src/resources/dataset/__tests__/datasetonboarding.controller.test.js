@@ -1,6 +1,7 @@
 import dbHandler from '../../../config/in-memory-db';
 import { getDatasetsByPublisher } from '../datasetonboarding.controller';
 import { datasetSearchStub } from '../__mocks__/datasets';
+import constants from '../../utilities/constants.util';
 
 beforeAll(async () => {
 	await dbHandler.connect();
@@ -22,8 +23,8 @@ describe('Dataset onboarding controller', () => {
 		return res;
 	};
 	describe('getDatasetsByPublisher', () => {
-		describe('An admin team user', () => {
-			it('Should return the correct number of inReview datasets', async () => {
+		describe('As an admin team user', () => {
+			it('A search for inReview datasets should only return inReview datasets', async () => {
 				let req = mockedRequest();
 				let res = mockedResponse();
 
@@ -43,7 +44,9 @@ describe('Dataset onboarding controller', () => {
 
 				const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
 
-				expect(formattedDatasets.length).toEqual(3);
+				formattedDatasets.forEach(dataset => {
+					expect(dataset.activeflag).toEqual('inReview');
+				});
 			});
 
 			it('Should return the correct number of inReview datasets with a search parameter', async () => {
@@ -69,50 +72,11 @@ describe('Dataset onboarding controller', () => {
 				expect(formattedDatasets.length).toEqual(1);
 			});
 		});
-		describe('A publisher team user', () => {
+		describe('As a publisher team user', () => {
 			const statuses = ['active', 'inReview', 'draft', 'rejected', 'archive'];
-			const sortOptions = [
-				'recentActivityAsc',
-				'recentActivityDesc',
-				'alphabeticAsc',
-				'alphabeticDesc',
-				'recentlyPublishedAsc',
-				'recentlyPublishedDesc',
-				'metadataQualityAsc',
-				'metadataQualityDesc',
-			];
+			const sortOptions = constants.datasetSortOptions;
 
-			test.each(statuses)(
-				'Each should return the correct number of datasets for different statuses for a given publisher',
-				async status => {
-					let res = mockedResponse();
-					let req = mockedRequest();
-
-					req.params = {
-						publisherID: 'TestPublisher',
-					};
-
-					req.query = {
-						search: '',
-						datasetIndex: 0,
-						maxResults: 10,
-						datasetSort: 'recentActivityAsc',
-						status: status,
-					};
-
-					const response = await getDatasetsByPublisher(req, res);
-
-					const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
-
-					if (status === 'active' || status === 'draft' || status === 'archive') {
-						expect(formattedDatasets.length).toEqual(1);
-					} else {
-						expect(formattedDatasets.length).toEqual(2);
-					}
-				}
-			);
-
-			test.each(sortOptions)('Each response should be correctly formatted', async sortOption => {
+			test.each(statuses)('Each status should only return datasets with the supplied status', async status => {
 				let res = mockedResponse();
 				let req = mockedRequest();
 
@@ -124,7 +88,32 @@ describe('Dataset onboarding controller', () => {
 					search: '',
 					datasetIndex: 0,
 					maxResults: 10,
-					datasetSort: sortOption,
+					datasetSort: 'recentActivityAsc',
+					status: status,
+				};
+
+				const response = await getDatasetsByPublisher(req, res);
+
+				const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
+
+				formattedDatasets.forEach(dataset => {
+					expect(dataset.activeflag).toEqual(status);
+				});
+			});
+
+			test.each(Object.keys(sortOptions))('Each sort option should lead to correctly sorted results', async sortOption => {
+				let res = mockedResponse();
+				let req = mockedRequest();
+
+				req.params = {
+					publisherID: 'TestPublisher',
+				};
+
+				req.query = {
+					search: '',
+					datasetIndex: 0,
+					maxResults: 10,
+					datasetSort: sortOptions[sortOption],
 					status: 'inReview',
 				};
 
@@ -132,7 +121,40 @@ describe('Dataset onboarding controller', () => {
 
 				const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
 
-				expect(formattedDatasets.length).toEqual(2);
+				if (sortOption.key === 'recentActivityAsc') {
+					let arr = formattedDatasets.map(dataset => dataset.timestamps.updated);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+				if (sortOption === 'recentActivityDesc') {
+					let arr = formattedDatasets.map(dataset => dataset.timestamps.updated);
+					expect(arr[0]).toBeGreaterThan(arr[1]);
+				}
+				if (sortOption === 'alphabeticAsc') {
+					let arr = formattedDatasets.map(dataset => dataset.name);
+					expect(arr[0]).toEqual('A test1 v2');
+					expect(arr[1]).toEqual('B test2 v1');
+				}
+				if (sortOption === 'alphabeticDesc') {
+					let arr = formattedDatasets.map(dataset => dataset.name);
+					expect(arr[1]).toEqual('A test1 v2');
+					expect(arr[0]).toEqual('B test2 v1');
+				}
+				if (sortOption === 'recentlyPublishedAsc') {
+					let arr = formattedDatasets.map(dataset => dataset.timestamps.created);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+				if (sortOption === 'recentlyPublishedDesc') {
+					let arr = formattedDatasets.map(dataset => dataset.timestamps.created);
+					expect(arr[0]).toBeGreaterThan(arr[1]);
+				}
+				if (sortOption === 'metadataQualityAsc') {
+					let arr = formattedDatasets.map(dataset => dataset.percentageCompleted.summary);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+				if (sortOption === 'metadataQualityDesc') {
+					let arr = formattedDatasets.map(dataset => dataset.percentageCompleted.summary);
+					expect(arr[0]).toBeGreaterThan(arr[1]);
+				}
 			});
 		});
 	});

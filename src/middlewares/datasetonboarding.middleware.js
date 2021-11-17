@@ -19,17 +19,7 @@ const authoriseUserForPublisher = (req, res, next) => {
 };
 
 const validateSearchParameters = (req, res, next) => {
-	const sortOptions = {
-		recentActivityAsc: { 'timestamps.updated': 1 },
-		recentActivityDesc: { 'timestamps.updated': -1 },
-		alphabeticAsc: { name: 1 },
-		alphabeticDesc: { name: -1 },
-		recentlyPublishedAsc: { 'timestamps.created': 1 },
-		recentlyPublishedDesc: { 'timestamps.created': -1 },
-		metadataQualityAsc: { 'percentageComplete.summary': 1 },
-		metadataQualityDesc: { 'percentageComplete.summary': -1 },
-	};
-
+	const sortOptions = constants.datasetSortOptions;
 	const datasetStatuses = ['active', 'inReview', 'draft', 'rejected', 'archive'];
 
 	let {
@@ -39,14 +29,14 @@ const validateSearchParameters = (req, res, next) => {
 	if (!(datasetSort in sortOptions)) {
 		return res.status(500).json({
 			success: false,
-			message: `The sort parameter must be one of ${Object.keys(sortOptions).join(', ')}`,
+			message: `The sort parameter must be one of [${Object.keys(sortOptions).join(', ')}]`,
 		});
 	}
 
-	if (!datasetStatuses.includes(status)) {
+	if (!status || !datasetStatuses.includes(status)) {
 		return res.status(500).json({
 			success: false,
-			message: `The status parameter must be one of ${datasetStatuses.join(', ')}`,
+			message: `A status parameter must be given and be one of [${datasetStatuses.join(', ')}]`,
 		});
 	}
 

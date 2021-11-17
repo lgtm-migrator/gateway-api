@@ -1,7 +1,8 @@
 import { authoriseUserForPublisher, validateSearchParameters } from '../datasetonboarding.middleware';
 import { UserModel } from '../../resources/user/user.model';
+import constants from '../../resources/utilities/constants.util';
 
-describe('Testing the ActivityLog middleware', () => {
+describe('Testing the datasetonboarding middleware', () => {
 	const mockedRequest = () => {
 		const req = {};
 		return req;
@@ -121,16 +122,7 @@ describe('Testing the ActivityLog middleware', () => {
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
 
-			const sortOptions = [
-				'recentActivityAsc',
-				'recentActivityDesc',
-				'alphabeticAsc',
-				'alphabeticDesc',
-				'recentlyPublishedAsc',
-				'recentlyPublishedDesc',
-				'metadataQualityAsc',
-				'metadataQualityDesc',
-			];
+			const sortOptions = Object.keys(constants.datasetSortOptions);
 
 			sortOptions.forEach(sortOption => {
 				req.query = {
@@ -197,6 +189,24 @@ describe('Testing the ActivityLog middleware', () => {
 				maxResults: 10,
 				datasetSort: 'recentActivityAsc',
 				status: 'unallowedStatusOption',
+			};
+
+			validateSearchParameters(req, res, nextFunction);
+
+			expect(res.status).toHaveBeenCalledWith(500);
+			expect(nextFunction.mock.calls.length).toBe(0);
+		});
+
+		it('Should return a 500 error for a missing status parameter', () => {
+			let req = mockedRequest();
+			let res = mockedResponse();
+			const nextFunction = jest.fn();
+
+			req.query = {
+				search: '',
+				datasetIndex: 0,
+				maxResults: 10,
+				datasetSort: 'recentActivityAsc',
 			};
 
 			validateSearchParameters(req, res, nextFunction);

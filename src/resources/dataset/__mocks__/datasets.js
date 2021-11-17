@@ -270,9 +270,9 @@ export const datasetSearchStub = [
 	{
 		_id: ObjectID('615aee882414847722e46ac1'),
 		timestamps: {
-			created: '2021-10-04T12:07:36.378Z',
-			updated: '2021-10-04T12:08:20.804Z',
-			submitted: '2021-10-04T12:08:20.804Z',
+			created: 456,
+			updated: 456,
+			submitted: 456,
 		},
 		pid: 'pid1',
 		datasetVersion: '1.0.0',
@@ -287,30 +287,30 @@ export const datasetSearchStub = [
 	{
 		_id: ObjectID('615aee882414847722e46ac2'),
 		timestamps: {
-			created: '2021-10-05T12:07:36.378Z',
-			updated: '2021-10-05T12:08:20.804Z',
-			submitted: '2021-10-05T12:08:20.804Z',
+			created: 123,
+			updated: 123,
+			submitted: 123,
 		},
 		pid: 'pid1',
 		datasetVersion: '2.0.0',
-		name: 'test1 v2',
+		name: 'A test1 v2',
 		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract2' } },
 		activeflag: 'inReview',
 		percentageCompleted: {
-			summary: 80,
+			summary: 60,
 		},
 		type: 'dataset',
 	},
 	{
 		_id: ObjectID('615aee882414847722e46ac3'),
 		timestamps: {
-			created: '2021-10-05T12:07:36.378Z',
-			updated: '2021-10-05T12:08:20.804Z',
-			submitted: '2021-10-05T12:08:20.804Z',
+			created: 456,
+			updated: 456,
+			submitted: 456,
 		},
 		pid: 'pid2',
 		datasetVersion: '1.0.0',
-		name: 'test2 v1',
+		name: 'B test2 v1',
 		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract3' } },
 		activeflag: 'inReview',
 		percentageCompleted: {
@@ -321,9 +321,9 @@ export const datasetSearchStub = [
 	{
 		_id: ObjectID('615aee882414847722e46ac4'),
 		timestamps: {
-			created: '2021-10-05T12:07:36.378Z',
-			updated: '2021-10-05T12:08:20.804Z',
-			submitted: '2021-10-05T12:08:20.804Z',
+			created: 456,
+			updated: 456,
+			submitted: 456,
 		},
 		pid: 'pid3',
 		datasetVersion: '1.0.0',
@@ -338,9 +338,9 @@ export const datasetSearchStub = [
 	{
 		_id: ObjectID('615aee882414847722e46ac5'),
 		timestamps: {
-			created: '2021-10-05T12:07:36.378Z',
-			updated: '2021-10-05T12:08:20.804Z',
-			submitted: '2021-10-05T12:08:20.804Z',
+			created: 456,
+			updated: 456,
+			submitted: 456,
 		},
 		pid: 'pid4',
 		datasetVersion: '1.0.0',
@@ -355,9 +355,9 @@ export const datasetSearchStub = [
 	{
 		_id: ObjectID('615aee882414847722e46ac6'),
 		timestamps: {
-			created: '2021-10-05T12:07:36.378Z',
-			updated: '2021-10-05T12:08:20.804Z',
-			submitted: '2021-10-05T12:08:20.804Z',
+			created: 456,
+			updated: 456,
+			submitted: 456,
 		},
 		pid: 'pid5',
 		datasetVersion: '1.0.0',
@@ -372,9 +372,9 @@ export const datasetSearchStub = [
 	{
 		_id: ObjectID('615aee882414847722e46ac7'),
 		timestamps: {
-			created: '2021-10-05T12:07:36.378Z',
-			updated: '2021-10-05T12:08:20.804Z',
-			submitted: '2021-10-05T12:08:20.804Z',
+			created: 456,
+			updated: 456,
+			submitted: 456,
 		},
 		pid: 'pid6',
 		datasetVersion: '1.0.0',
@@ -389,9 +389,9 @@ export const datasetSearchStub = [
 	{
 		_id: ObjectID('615aee882414847722e46ac8'),
 		timestamps: {
-			created: '2021-10-05T12:07:36.378Z',
-			updated: '2021-10-05T12:08:20.804Z',
-			submitted: '2021-10-05T12:08:20.804Z',
+			created: 456,
+			updated: 456,
+			submitted: 456,
 		},
 		pid: 'pid7',
 		datasetVersion: '1.0.0',

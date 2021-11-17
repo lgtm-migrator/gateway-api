@@ -294,6 +294,17 @@ const _systemGeneratedUser = {
 	LASTNAME: 'Generated',
 };
 
+const _datasetSortOptions = {
+	recentActivityAsc: { 'timestamps.updated': 1 },
+	recentActivityDesc: { 'timestamps.updated': -1 },
+	alphabeticAsc: { name: 1 },
+	alphabeticDesc: { name: -1 },
+	recentlyPublishedAsc: { 'timestamps.created': 1 },
+	recentlyPublishedDesc: { 'timestamps.created': -1 },
+	metadataQualityAsc: { 'percentageCompleted.summary': 1 },
+	metadataQualityDesc: { 'percentageCompleted.summary': -1 },
+};
+
 export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
@@ -323,4 +334,5 @@ export default {
 	systemGeneratedUser: _systemGeneratedUser,
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
+	datasetSortOptions: _datasetSortOptions,
 };
