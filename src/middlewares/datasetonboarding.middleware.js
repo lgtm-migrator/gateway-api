@@ -20,13 +20,15 @@ const authoriseUserForPublisher = (req, res, next) => {
 
 const validateSearchParameters = (req, res, next) => {
 	const sortOptions = {
-		recentActivity: { 'timestamps.updated': -1 },
-		alphabeticAZ: { name: 1 },
-		alphabeticZA: { name: -1 },
-		recentlyPublished: { 'timestamps.created': -1 },
-		metadataQuality: { 'percentageComplete.summary': -1 },
+		recentActivityAsc: { 'timestamps.updated': 1 },
+		recentActivityDesc: { 'timestamps.updated': -1 },
+		alphabeticAsc: { name: 1 },
+		alphabeticDesc: { name: -1 },
+		recentlyPublishedAsc: { 'timestamps.created': 1 },
+		recentlyPublishedDesc: { 'timestamps.created': -1 },
+		metadataQualityAsc: { 'percentageComplete.summary': 1 },
+		metadataQualityDesc: { 'percentageComplete.summary': -1 },
 	};
-
 	const datasetStatuses = ['active', 'inReview', 'draft', 'rejected', 'archive'];
 
 	let {
