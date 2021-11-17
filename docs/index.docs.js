@@ -12,6 +12,7 @@ import paper from './resources/paper.docs';
 import tool from './resources/tool.docs';
 import course from './resources/course.docs';
 import collection from './resources/collections.docs';
+import activitylog from './resources/activitylog.docs';
 
 import collectionsSchema from './schemas/collections.schema';
 
@@ -63,6 +64,7 @@ module.exports = {
 		...tool,
 		...course,
 		...collection,
+		...activitylog,
 	},
 	components: {
 		securitySchemes: {
