@@ -29,6 +29,7 @@ const validateSearchParameters = (req, res, next) => {
 		metadataQualityAsc: { 'percentageComplete.summary': 1 },
 		metadataQualityDesc: { 'percentageComplete.summary': -1 },
 	};
+
 	const datasetStatuses = ['active', 'inReview', 'draft', 'rejected', 'archive'];
 
 	let {
