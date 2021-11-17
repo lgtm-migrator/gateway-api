@@ -1,3 +1,4 @@
+import { compileSchema } from 'ajv/dist/compile';
 import constants from '../resources/utilities/constants.util';
 
 const authoriseUserForPublisher = (req, res, next) => {
@@ -51,7 +52,7 @@ const validateSearchParameters = (req, res, next) => {
 	}
 
 	req.query = {
-		search: search.replace(/[-"@.*+?^${}()|[\]\\]/g, ''),
+		search: search.replace(/[-"@.*+/?^${}()|[\]\\]/g, ''),
 		datasetIndex: parseInt(datasetIndex),
 		maxResults: parseInt(maxResults),
 		datasetSort: sortOptions[datasetSort],
