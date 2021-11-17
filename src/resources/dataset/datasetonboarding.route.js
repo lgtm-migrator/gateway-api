@@ -5,7 +5,7 @@ const upload = multer();
 const router = express.Router();
 
 const datasetOnboardingController = require('./datasetonboarding.controller');
-import { authoriseUserForPublisher } from '../../middlewares/index';
+import { authoriseUserForPublisher, validateSearchParameters } from '../../middlewares/index';
 
 // @route   PUT api/v1/dataset-onboarding/checkUniqueTitle
 // @desc    PUT Update the status of a dataset
@@ -29,6 +29,7 @@ router.get(
 	'/publisher/:publisherID',
 	passport.authenticate('jwt'),
 	authoriseUserForPublisher,
+	validateSearchParameters,
 	datasetOnboardingController.getDatasetsByPublisher
 );
 

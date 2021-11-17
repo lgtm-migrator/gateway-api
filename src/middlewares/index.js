@@ -1,4 +1,4 @@
 import { checkIDMiddleware } from './checkIDMiddleware';
-import { authoriseUserForPublisher } from './datasetonboarding.middleware';
+import { authoriseUserForPublisher, validateSearchParameters } from './datasetonboarding.middleware';
 
-export { checkIDMiddleware, authoriseUserForPublisher };
+export { checkIDMiddleware, authoriseUserForPublisher, validateSearchParameters };

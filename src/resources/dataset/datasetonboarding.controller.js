@@ -14,51 +14,47 @@ var fs = require('fs');
 const readEnv = process.env.ENV || 'prod';
 
 module.exports = {
-	//GET api/v1/dataset-onboarding
 	getDatasetsByPublisher: async (req, res) => {
 		try {
 			let {
 				params: { publisherID },
+				query: { search, datasetIndex, maxResults, datasetSort, status },
 			} = req;
 
-			//If not publihserID found then return error
-			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Publisher ID could not be found.' });
+			let searchQuery = {
+				activeflag: status,
+				type: 'dataset',
+				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
+			};
 
-			//Build query, if the publisherId is admin then only return the inReview datasets
-			let query = {};
-			if (publisherID === 'admin') {
-				// get all datasets in review for admin
-				query = {
-					activeflag: 'inReview',
-					type: 'dataset',
-				};
-			} else {
-				// get all pids for publisherID
-				query = {
-					'datasetv2.summary.publisher.identifier': publisherID,
-					type: 'dataset',
-					activeflag: { $in: ['active', 'inReview', 'draft', 'rejected', 'archive'] },
-				};
-			}
+			if (search.length > 0)
+				searchQuery['$or'] = [
+					{ name: { $regex: search, $options: 'i' } },
+					{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
+					{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
+				];
 
-			const datasets = await Data.find(query)
+			const datasets = await Data.find(searchQuery)
 				.select(
 					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name'
 				)
+				.skip(datasetIndex)
+				.limit(maxResults)
+				.sort(datasetSort)
+				.lean();
+
+			const versionHistories = await Data.find({
+				pid: { $in: datasets.map(dataset => dataset.pid) },
+				_id: { $nin: datasets.map(dataset => dataset._id) },
+				activeflag: { $in: ['active', 'inReview', 'rejected', 'archive'] },
+			})
+				.select('_id pid datasetVersion activeflag')
 				.sort({ 'timestamps.updated': -1 })
 				.lean();
 
-			//Loop through the list of datasets and attach the list of versions to them
-			const listOfDatasets = datasets.reduce((arr, dataset) => {
-				dataset.listOfVersions = [];
-				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
-				if (datasetIdx === -1) {
-					arr = [...arr, dataset];
-				} else {
-					const { _id, datasetVersion, activeflag } = dataset;
-					const versionDetails = { _id, datasetVersion, activeflag };
-					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
-				}
+			let listOfDatasets = datasets.reduce((arr, dataset) => {
+				dataset.listOfVersions = versionHistories.filter(version => version.pid === dataset.pid);
+				arr.push(dataset);
 				return arr;
 			}, []);
 
@@ -67,7 +63,7 @@ module.exports = {
 				data: { listOfDatasets },
 			});
 		} catch (err) {
-			console.error(err.message);
+			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},
