@@ -46,7 +46,10 @@ module.exports = {
 			const versionHistories = await Data.find({
 				pid: { $in: datasets.map(dataset => dataset.pid) },
 				_id: { $nin: datasets.map(dataset => dataset._id) },
-				activeflag: { $in: ['active', 'inReview', 'rejected', 'archive'] },
+				activeflag:
+					publisherID === constants.teamTypes.ADMIN
+						? { $in: ['active', 'inReview', 'rejected', 'archive'] }
+						: { $in: ['active', 'inReview', 'draft', 'rejected', 'archive'] },
 			})
 				.select('_id pid datasetVersion activeflag')
 				.sort({ 'timestamps.updated': -1 })
