@@ -43,6 +43,10 @@ const PublisherSchema = new Schema(
 		gridAcId: String,
 		allowAccessRequestManagement: { type: Boolean, default: false },
 		uses5Safes: { type: Boolean, default: false },
+		wordTemplate: {
+			type: String,
+			default: '',
+		},
 	},
 	{
 		toJSON: { virtuals: true },
