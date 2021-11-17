@@ -1,4 +1,3 @@
-import { compileSchema } from 'ajv/dist/compile';
 import constants from '../resources/utilities/constants.util';
 
 const authoriseUserForPublisher = (req, res, next) => {

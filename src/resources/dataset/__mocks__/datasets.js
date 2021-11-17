@@ -1,3 +1,5 @@
+import { ObjectID } from 'mongodb';
+
 export const datasetsStub = [
 	{
 		id: 675584862177848,
@@ -261,5 +263,144 @@ export const v2DatasetsStub = [
 			structuralMetadataCount: {},
 			dataClasses: [],
 		},
+	},
+];
+
+export const datasetSearchStub = [
+	{
+		_id: ObjectID('615aee882414847722e46ac1'),
+		timestamps: {
+			created: '2021-10-04T12:07:36.378Z',
+			updated: '2021-10-04T12:08:20.804Z',
+			submitted: '2021-10-04T12:08:20.804Z',
+		},
+		pid: 'pid1',
+		datasetVersion: '1.0.0',
+		name: 'test1 v1',
+		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract1' } },
+		activeflag: 'rejected',
+		percentageCompleted: {
+			summary: 80,
+		},
+		type: 'dataset',
+	},
+	{
+		_id: ObjectID('615aee882414847722e46ac2'),
+		timestamps: {
+			created: '2021-10-05T12:07:36.378Z',
+			updated: '2021-10-05T12:08:20.804Z',
+			submitted: '2021-10-05T12:08:20.804Z',
+		},
+		pid: 'pid1',
+		datasetVersion: '2.0.0',
+		name: 'test1 v2',
+		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract2' } },
+		activeflag: 'inReview',
+		percentageCompleted: {
+			summary: 80,
+		},
+		type: 'dataset',
+	},
+	{
+		_id: ObjectID('615aee882414847722e46ac3'),
+		timestamps: {
+			created: '2021-10-05T12:07:36.378Z',
+			updated: '2021-10-05T12:08:20.804Z',
+			submitted: '2021-10-05T12:08:20.804Z',
+		},
+		pid: 'pid2',
+		datasetVersion: '1.0.0',
+		name: 'test2 v1',
+		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract3' } },
+		activeflag: 'inReview',
+		percentageCompleted: {
+			summary: 80,
+		},
+		type: 'dataset',
+	},
+	{
+		_id: ObjectID('615aee882414847722e46ac4'),
+		timestamps: {
+			created: '2021-10-05T12:07:36.378Z',
+			updated: '2021-10-05T12:08:20.804Z',
+			submitted: '2021-10-05T12:08:20.804Z',
+		},
+		pid: 'pid3',
+		datasetVersion: '1.0.0',
+		name: 'test3 v1',
+		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract4' } },
+		activeflag: 'draft',
+		percentageCompleted: {
+			summary: 80,
+		},
+		type: 'dataset',
+	},
+	{
+		_id: ObjectID('615aee882414847722e46ac5'),
+		timestamps: {
+			created: '2021-10-05T12:07:36.378Z',
+			updated: '2021-10-05T12:08:20.804Z',
+			submitted: '2021-10-05T12:08:20.804Z',
+		},
+		pid: 'pid4',
+		datasetVersion: '1.0.0',
+		name: 'test4 v1',
+		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract5' } },
+		activeflag: 'active',
+		percentageCompleted: {
+			summary: 80,
+		},
+		type: 'dataset',
+	},
+	{
+		_id: ObjectID('615aee882414847722e46ac6'),
+		timestamps: {
+			created: '2021-10-05T12:07:36.378Z',
+			updated: '2021-10-05T12:08:20.804Z',
+			submitted: '2021-10-05T12:08:20.804Z',
+		},
+		pid: 'pid5',
+		datasetVersion: '1.0.0',
+		name: 'test5 v1',
+		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract6' } },
+		activeflag: 'rejected',
+		percentageCompleted: {
+			summary: 80,
+		},
+		type: 'dataset',
+	},
+	{
+		_id: ObjectID('615aee882414847722e46ac7'),
+		timestamps: {
+			created: '2021-10-05T12:07:36.378Z',
+			updated: '2021-10-05T12:08:20.804Z',
+			submitted: '2021-10-05T12:08:20.804Z',
+		},
+		pid: 'pid6',
+		datasetVersion: '1.0.0',
+		name: 'test6 v1',
+		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract7' } },
+		activeflag: 'archive',
+		percentageCompleted: {
+			summary: 80,
+		},
+		type: 'dataset',
+	},
+	{
+		_id: ObjectID('615aee882414847722e46ac8'),
+		timestamps: {
+			created: '2021-10-05T12:07:36.378Z',
+			updated: '2021-10-05T12:08:20.804Z',
+			submitted: '2021-10-05T12:08:20.804Z',
+		},
+		pid: 'pid7',
+		datasetVersion: '1.0.0',
+		name: 'test2 v1',
+		datasetv2: { summary: { publisher: { identifier: 'AnotherTestPublisher' }, abstract: 'abstract8' } },
+		activeflag: 'inReview',
+		percentageCompleted: {
+			summary: 80,
+		},
+		type: 'dataset',
 	},
 ];
