@@ -16,10 +16,10 @@ export default class ActivityLogController extends Controller {
 	async searchLogs(req, res) {
 		try {
 			// Extract required log params
-			const { versionIds = [], type = '', userType, accessRecords } = req.body;
+			const { versionIds = [], type = '', userType, versions } = req.body;
 
 			// Find the logs
-			const logs = await this.activityLogService.searchLogs(versionIds, type, userType, accessRecords);
+			const logs = await this.activityLogService.searchLogs(versionIds, type, userType, versions);
 
 			// Return the logs
 			return res.status(200).json({
@@ -42,7 +42,7 @@ export default class ActivityLogController extends Controller {
 			const { versionId, description, timestamp, type, userType, accessRecord, versionTitle } = req.body;
 
 			// Create new event log
-			await this.activityLogService.logActivity(constants.activityLogEvents.MANUAL_EVENT, {
+			await this.activityLogService.logActivity(constants.activityLogEvents.data_access_request.MANUAL_EVENT, {
 				versionId,
 				versionTitle,
 				description,
@@ -52,7 +52,12 @@ export default class ActivityLogController extends Controller {
 			});
 
 			// Send notifications
-			await this.createNotifications(constants.activityLogNotifications.MANUALEVENTADDED, { description, timestamp }, accessRecord, req.user);
+			await this.createNotifications(
+				constants.activityLogNotifications.MANUALEVENTADDED,
+				{ description, timestamp },
+				accessRecord,
+				req.user
+			);
 
 			// Get logs for version that was updated
 			const [affectedVersion] = await this.activityLogService.searchLogs([versionId], type, userType, [accessRecord], false);
@@ -85,7 +90,12 @@ export default class ActivityLogController extends Controller {
 			await this.activityLogService.deleteLog(id);
 
 			// Send notifications
-			await this.createNotifications(constants.activityLogNotifications.MANUALEVENTREMOVED, { description: log.plainText, timestamp: log.timestamp }, accessRecord, req.user);
+			await this.createNotifications(
+				constants.activityLogNotifications.MANUALEVENTREMOVED,
+				{ description: log.plainText, timestamp: log.timestamp },
+				accessRecord,
+				req.user
+			);
 
 			// Get logs for version that was updated
 			const [affectedVersion] = await this.activityLogService.searchLogs([versionId], type, userType, [accessRecord], false);
@@ -119,7 +129,9 @@ export default class ActivityLogController extends Controller {
 				// Create in-app notifications
 				await notificationBuilder.triggerNotificationMessage(
 					teamMembersIds,
-					`${user.firstname} ${user.lastname} (${publisher}) has added an event to the activity log of '${projectName || `No project name set`}' data access request application`,
+					`${user.firstname} ${user.lastname} (${publisher}) has added an event to the activity log of '${
+						projectName || `No project name set`
+					}' data access request application`,
 					'data access request log updated',
 					_id,
 					publisher
@@ -150,7 +162,9 @@ export default class ActivityLogController extends Controller {
 				// Create in-app notifications
 				await notificationBuilder.triggerNotificationMessage(
 					teamMembersIds,
-					`${user.firstname} ${user.lastname} (${publisher}) has deleted an event from the activity log of '${projectName || `No project name set`}' data access request application`,
+					`${user.firstname} ${user.lastname} (${publisher}) has deleted an event from the activity log of '${
+						projectName || `No project name set`
+					}' data access request application`,
 					'data access request log updated',
 					_id,
 					publisher

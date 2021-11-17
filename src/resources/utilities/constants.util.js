@@ -251,31 +251,42 @@ const _logTypes = {
 // Activity log related enums
 
 const _activityLogEvents = {
-	APPLICATION_SUBMITTED: 'applicationSubmitted',
-	REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
-	UPDATES_SUBMITTED: 'updatesSubmitted',
-	AMENDMENT_SUBMITTED: 'amendmentSubmitted',
-	APPLICATION_APPROVED: 'applicationApproved',
-	APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
-	APPLICATION_REJECTED: 'applicationRejected',
-	COLLABORATOR_ADDEDD: 'collaboratorAdded',
-	COLLABORATOR_REMOVED: 'collaboratorRemoved',
-	PRESUBMISSION_MESSAGE: 'presubmissionMessage',
-	UPDATE_REQUESTED: 'updateRequested',
-	UPDATE_SUBMITTED: 'updateSubmitted',
-	WORKFLOW_ASSIGNED: 'workflowAssigned',
-	REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
-	RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
-	RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
-	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
-	DEADLINE_PASSED: 'deadlinePassed',
-	MANUAL_EVENT: 'manualEvent',
-	CONTEXTUAL_MESSAGE: 'contextualMessage',
-	NOTE: 'note',
+	data_access_request: {
+		APPLICATION_SUBMITTED: 'applicationSubmitted',
+		REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
+		UPDATES_SUBMITTED: 'updatesSubmitted',
+		AMENDMENT_SUBMITTED: 'amendmentSubmitted',
+		APPLICATION_APPROVED: 'applicationApproved',
+		APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
+		APPLICATION_REJECTED: 'applicationRejected',
+		COLLABORATOR_ADDEDD: 'collaboratorAdded',
+		COLLABORATOR_REMOVED: 'collaboratorRemoved',
+		PRESUBMISSION_MESSAGE: 'presubmissionMessage',
+		UPDATE_REQUESTED: 'updateRequested',
+		UPDATE_SUBMITTED: 'updateSubmitted',
+		WORKFLOW_ASSIGNED: 'workflowAssigned',
+		REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
+		RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
+		RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
+		FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
+		DEADLINE_PASSED: 'deadlinePassed',
+		MANUAL_EVENT: 'manualEvent',
+		CONTEXTUAL_MESSAGE: 'contextualMessage',
+		NOTE: 'note',
+	},
+	dataset: {
+		DATASET_VERSION_SUBMITTED: 'newDatasetVersionSubmitted',
+		DATASET_VERSION_APPROVED: 'datasetVersionApproved',
+		DATASET_VERSION_REJECTED: 'datasetVersionRejected',
+		DATASET_VERSION_ARCHIVED: 'datasetVersionArchived',
+		DATASET_VERSION_UNARCHIVED: 'datasetVersionUnarchived',
+		DATASET_UPDATES_SUBMITTED: 'datasetUpdatesSubmitted',
+	},
 };
 
 const _activityLogTypes = {
 	DATA_ACCESS_REQUEST: 'data_request',
+	DATASET: 'dataset',
 };
 
 const _systemGeneratedUser = {
