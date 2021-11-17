@@ -14,6 +14,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { isEmpty, isNil, escapeRegExp } from 'lodash';
 import { activityLogService } from '../activitylog/dependency';
 
+const readEnv = process.env.ENV || 'prod';
+
 module.exports = {
 	//GET api/v1/dataset-onboarding
 	getDatasetsByPublisher: async (req, res) => {
@@ -844,7 +846,9 @@ module.exports = {
 				return res.status(400).json({ success: false, message: 'No metadata found' });
 			}
 		} catch (err) {
-			Sentry.captureException(err);
+			if (readEnv === 'test' || readEnv === 'prod') {
+				Sentry.captureException(err);
+			}
 			console.error(err.message);
 			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
 		}
