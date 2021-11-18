@@ -156,6 +156,34 @@ describe('Dataset onboarding controller', () => {
 					expect(arr[0]).toBeGreaterThan(arr[1]);
 				}
 			});
+
+			it('Should return the correct counts', async () => {
+				let req = mockedRequest();
+				let res = mockedResponse();
+
+				req.params = {
+					publisherID: 'admin',
+				};
+
+				req.query = {
+					search: '',
+					datasetIndex: 0,
+					maxResults: 10,
+					datasetSort: 'recentActivityAsc',
+					status: 'inReview',
+				};
+
+				let expectedCounts = {};
+				statuses.forEach(status => {
+					expectedCounts[status] = datasetSearchStub.filter(dataset => dataset.activeflag === status).length;
+				});
+
+				const response = await getDatasetsByPublisher(req, res);
+
+				const counts = response.json.mock.calls[0][0].data.counts;
+
+				expect(counts).toEqual(expectedCounts);
+			});
 		});
 	});
 });

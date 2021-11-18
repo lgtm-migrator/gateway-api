@@ -46,6 +46,31 @@ module.exports = {
 				.sort(datasetSort)
 				.lean();
 
+			const aggregateCounts = await Data.aggregate([
+				{
+					$match: {
+						...searchQuery,
+						activeflag: {
+							$in: ['active', 'inReview', 'draft', 'rejected', 'archive'],
+						},
+					},
+				},
+				{ $group: { _id: '$activeflag', count: { $sum: 1 } } },
+				{ $project: { _id: 0, activeflag: '$_id', count: 1 } },
+			]);
+
+			let counts = {
+				inReview: 0,
+				active: 0,
+				rejected: 0,
+				draft: 0,
+				archive: 0,
+			};
+
+			aggregateCounts.forEach(status => {
+				counts[status.activeflag] = status.count;
+			});
+
 			const versionHistories = await Data.find({
 				pid: { $in: datasets.map(dataset => dataset.pid) },
 				_id: { $nin: datasets.map(dataset => dataset._id) },
@@ -66,7 +91,7 @@ module.exports = {
 
 			return res.status(200).json({
 				success: true,
-				data: { listOfDatasets },
+				data: { counts, listOfDatasets },
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
