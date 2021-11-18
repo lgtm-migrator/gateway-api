@@ -104,6 +104,10 @@ describe('Testing the datasetonboarding middleware', () => {
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
 
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
+
 			req.query = {
 				search: '',
 				datasetIndex: 0,
@@ -125,6 +129,10 @@ describe('Testing the datasetonboarding middleware', () => {
 			const sortOptions = Object.keys(constants.datasetSortOptions);
 
 			sortOptions.forEach(sortOption => {
+				req.params = {
+					publisherID: 'fakeTeam',
+				};
+
 				req.query = {
 					search: '',
 					datasetIndex: 0,
@@ -146,6 +154,10 @@ describe('Testing the datasetonboarding middleware', () => {
 			const statuses = ['active', 'inReview', 'draft', 'rejected', 'archive'];
 
 			statuses.forEach(status => {
+				req.params = {
+					publisherID: 'fakeTeam',
+				};
+
 				req.query = {
 					search: '',
 					datasetIndex: 0,
@@ -159,10 +171,43 @@ describe('Testing the datasetonboarding middleware', () => {
 			expect(nextFunction.mock.calls.length).toBe(statuses.length);
 		});
 
+		it('Should return a 401 if and admin team member provides a status which is not "inReview"', () => {
+			let req = mockedRequest();
+			let res = mockedResponse();
+			const nextFunction = jest.fn();
+
+			const expectedResponse = {
+				success: false,
+				message: 'Only inReview datasets can be accessed by the admin team',
+			};
+
+			req.params = {
+				publisherID: 'admin',
+			};
+
+			req.query = {
+				search: '',
+				datasetIndex: 0,
+				maxResults: 10,
+				datasetSort: 'recentActivityAsc',
+				status: 'active',
+			};
+
+			validateSearchParameters(req, res, nextFunction);
+
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
+			expect(nextFunction.mock.calls.length).toBe(0);
+		});
+
 		it('Should return a 500 error for an unallowed sort option', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
+
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
 
 			req.query = {
 				search: '',
@@ -183,6 +228,10 @@ describe('Testing the datasetonboarding middleware', () => {
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
 
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
+
 			req.query = {
 				search: '',
 				datasetIndex: 0,
@@ -202,6 +251,10 @@ describe('Testing the datasetonboarding middleware', () => {
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
 
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
+
 			req.query = {
 				search: '',
 				datasetIndex: 0,
@@ -219,6 +272,10 @@ describe('Testing the datasetonboarding middleware', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
+
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
 
 			req.query = {
 				search: 'unallowed-/?@"{}()characters',

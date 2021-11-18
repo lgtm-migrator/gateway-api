@@ -40,6 +40,13 @@ const validateSearchParameters = (req, res, next) => {
 		});
 	}
 
+	if (req.params.publisherID === constants.teamTypes.ADMIN && status !== 'inReview') {
+		return res.status(401).json({
+			success: false,
+			message: 'Only inReview datasets can be accessed by the admin team',
+		});
+	}
+
 	req.query = {
 		search: search.replace(/[-"@.*+/?^${}()|[\]\\]/g, ''),
 		datasetIndex: parseInt(datasetIndex),

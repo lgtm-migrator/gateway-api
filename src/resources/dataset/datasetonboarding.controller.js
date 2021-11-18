@@ -48,10 +48,7 @@ module.exports = {
 
 			let counts = {
 				inReview: 0,
-				active: 0,
-				rejected: 0,
-				draft: 0,
-				archive: 0,
+				...(publisherID !== constants.teamTypes.ADMIN && { active: 0, rejected: 0, draft: 0, archive: 0 }),
 			};
 
 			(
@@ -60,7 +57,7 @@ module.exports = {
 						$match: {
 							...searchQuery,
 							activeflag: {
-								$in: ['active', 'inReview', 'draft', 'rejected', 'archive'],
+								$in: publisherID !== constants.teamTypes.ADMIN ? ['active', 'inReview', 'draft', 'rejected', 'archive'] : ['inReview'],
 							},
 						},
 					},

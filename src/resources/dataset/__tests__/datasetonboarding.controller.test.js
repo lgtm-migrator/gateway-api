@@ -162,7 +162,7 @@ describe('Dataset onboarding controller', () => {
 				let res = mockedResponse();
 
 				req.params = {
-					publisherID: 'admin',
+					publisherID: 'TestPublisher',
 				};
 
 				req.query = {
@@ -175,7 +175,9 @@ describe('Dataset onboarding controller', () => {
 
 				let expectedCounts = {};
 				statuses.forEach(status => {
-					expectedCounts[status] = datasetSearchStub.filter(dataset => dataset.activeflag === status).length;
+					expectedCounts[status] = datasetSearchStub.filter(
+						dataset => dataset.activeflag === status && dataset.datasetv2.summary.publisher.identifier === 'TestPublisher'
+					).length;
 				});
 
 				const response = await getDatasetsByPublisher(req, res);
