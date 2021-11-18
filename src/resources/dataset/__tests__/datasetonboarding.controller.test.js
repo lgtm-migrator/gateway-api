@@ -186,6 +186,32 @@ describe('Dataset onboarding controller', () => {
 
 				expect(counts).toEqual(expectedCounts);
 			});
+
+			it('Should return all dataset activeflag types if no status parameter is supplied', async () => {
+				let req = mockedRequest();
+				let res = mockedResponse();
+
+				req.params = {
+					publisherID: 'TestPublisher',
+				};
+
+				req.query = {
+					search: '',
+					datasetIndex: 0,
+					maxResults: 10,
+					datasetSort: 'recentActivityAsc',
+				};
+
+				const expectedResponse = datasetSearchStub
+					.filter(dataset => dataset.datasetv2.summary.publisher.identifier === 'TestPublisher')
+					.map(dataset => dataset.activeflag);
+
+				const response = await getDatasetsByPublisher(req, res);
+
+				const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
+
+				expect(formattedDatasets.map(dataset => dataset.activeflag)).toEqual(expectedResponse);
+			});
 		});
 	});
 });

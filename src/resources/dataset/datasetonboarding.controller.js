@@ -25,7 +25,11 @@ module.exports = {
 			} = req;
 
 			let searchQuery = {
-				activeflag: status,
+				activeflag: status
+					? status
+					: {
+							$in: ['active', 'inReview', 'draft', 'rejected', 'archive'],
+					  },
 				type: 'dataset',
 				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
 			};

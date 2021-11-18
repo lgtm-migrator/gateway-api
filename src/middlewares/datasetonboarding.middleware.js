@@ -23,27 +23,30 @@ const validateSearchParameters = (req, res, next) => {
 	const datasetStatuses = ['active', 'inReview', 'draft', 'rejected', 'archive'];
 
 	let {
-		query: { search = '', datasetIndex = 0, maxResults = 10, datasetSort = 'recentActivity', status },
+		query: { search = '', datasetIndex, maxResults, datasetSort = 'recentActivityDesc', status },
 	} = req;
+
+	if (req.params.publisherID === constants.teamTypes.ADMIN) {
+		if (!status) status = 'inReview';
+		if (status !== 'inReview') {
+			return res.status(401).json({
+				success: false,
+				message: 'Only inReview datasets can be accessed by the admin team',
+			});
+		}
+	} else {
+		if (status && !datasetStatuses.includes(status)) {
+			return res.status(500).json({
+				success: false,
+				message: `The status parameter must be one of [${datasetStatuses.join(', ')}]`,
+			});
+		}
+	}
 
 	if (!(datasetSort in sortOptions)) {
 		return res.status(500).json({
 			success: false,
 			message: `The sort parameter must be one of [${Object.keys(sortOptions).join(', ')}]`,
-		});
-	}
-
-	if (!status || !datasetStatuses.includes(status)) {
-		return res.status(500).json({
-			success: false,
-			message: `A status parameter must be given and be one of [${datasetStatuses.join(', ')}]`,
-		});
-	}
-
-	if (req.params.publisherID === constants.teamTypes.ADMIN && status !== 'inReview') {
-		return res.status(401).json({
-			success: false,
-			message: 'Only inReview datasets can be accessed by the admin team',
 		});
 	}
 

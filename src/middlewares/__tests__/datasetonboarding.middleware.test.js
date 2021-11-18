@@ -246,7 +246,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			expect(nextFunction.mock.calls.length).toBe(0);
 		});
 
-		it('Should return a 500 error for a missing status parameter', () => {
+		it('Should return a 500 error for an unallowed status parameter', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
@@ -260,6 +260,7 @@ describe('Testing the datasetonboarding middleware', () => {
 				datasetIndex: 0,
 				maxResults: 10,
 				datasetSort: 'recentActivityAsc',
+				status: 'notARealStatus',
 			};
 
 			validateSearchParameters(req, res, nextFunction);
