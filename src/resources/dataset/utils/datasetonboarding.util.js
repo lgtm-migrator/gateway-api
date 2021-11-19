@@ -1283,68 +1283,73 @@ const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
 	return result;
 };
 
-const datasetSortingHelper = async (datasets, sortOption) => {
-	switch (sortOption) {
-		case 'recentActivityAsc':
-			return datasets.sort((a, b) => {
-				return Date.parse(a.timestamps.updated) - Date.parse(b.timestamps.updated);
-			});
-		case 'recentActivityDesc':
-			return datasets.sort((a, b) => {
-				return Date.parse(b.timestamps.updated) - Date.parse(a.timestamps.updated);
-			});
-		case 'alphabeticAsc':
-			return datasets.sort((a, b) => {
-				if (a.name < b.name) {
-					return -1;
-				}
-				if (a.name > b.name) {
-					return 1;
-				}
-				return 0;
-			});
-		case 'alphabeticDesc':
-			return datasets.sort((a, b) => {
-				if (a.name > b.name) {
-					return -1;
-				}
-				if (a.name < b.name) {
-					return 1;
-				}
-				return 0;
-			});
-		case 'recentlyPublishedAsc':
-			return datasets.sort((a, b) => {
-				return Date.parse(a.timestamps.created) - Date.parse(b.timestamps.created);
-			});
-		case 'recentlyPublishedDesc':
-			return datasets.sort((a, b) => {
-				return Date.parse(a.timestamps.created) - Date.parse(b.timestamps.created);
-			});
-		case 'metadataQualityAsc':
-			datasets = datasets.map(dataset => {
-				if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
-				return dataset;
-			});
-			datasets = datasets.sort((a, b) => {
-				return a.percentageCompleted.summary - b.percentageCompleted.summary;
-			});
-			return datasets.map(dataset => {
-				if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
-				return dataset;
-			});
-		case 'metadataQualityDesc':
-			datasets = datasets.map(dataset => {
-				if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
-				return dataset;
-			});
-			datasets = datasets.sort((a, b) => {
-				return b.percentageCompleted.summary - a.percentageCompleted.summary;
-			});
-			return datasets.map(dataset => {
-				if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
-				return dataset;
-			});
+const datasetSortingHelper = (datasets, sortOption) => {
+	try {
+		switch (sortOption) {
+			case 'recentActivityAsc':
+				return datasets.sort((a, b) => {
+					return Date.parse(a.timestamps.updated) - Date.parse(b.timestamps.updated);
+				});
+			case 'recentActivityDesc':
+				return datasets.sort((a, b) => {
+					return Date.parse(b.timestamps.updated) - Date.parse(a.timestamps.updated);
+				});
+			case 'alphabeticAsc':
+				return datasets.sort((a, b) => {
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
+					return 0;
+				});
+			case 'alphabeticDesc':
+				return datasets.sort((a, b) => {
+					if (a.name > b.name) {
+						return -1;
+					}
+					if (a.name < b.name) {
+						return 1;
+					}
+					return 0;
+				});
+			case 'recentlyPublishedAsc':
+				return datasets.sort((a, b) => {
+					return Date.parse(a.timestamps.created) - Date.parse(b.timestamps.created);
+				});
+			case 'recentlyPublishedDesc':
+				return datasets.sort((a, b) => {
+					return Date.parse(a.timestamps.created) - Date.parse(b.timestamps.created);
+				});
+			case 'metadataQualityAsc':
+				datasets = datasets.map(dataset => {
+					if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
+					return dataset;
+				});
+				datasets = datasets.sort((a, b) => {
+					return a.percentageCompleted.summary - b.percentageCompleted.summary;
+				});
+				return datasets.map(dataset => {
+					if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
+					return dataset;
+				});
+			case 'metadataQualityDesc':
+				datasets = datasets.map(dataset => {
+					if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
+					return dataset;
+				});
+				datasets = datasets.sort((a, b) => {
+					return b.percentageCompleted.summary - a.percentageCompleted.summary;
+				});
+				return datasets.map(dataset => {
+					if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
+					return dataset;
+				});
+		}
+	} catch (err) {
+		process.stdout.write(`${err.message}\n`);
+		return datasets;
 	}
 };
 
