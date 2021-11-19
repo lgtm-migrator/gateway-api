@@ -20,10 +20,10 @@ const authoriseUserForPublisher = (req, res, next) => {
 
 const validateSearchParameters = (req, res, next) => {
 	const sortOptions = constants.datasetSortOptions;
-	const datasetStatuses = ['active', 'inReview', 'draft', 'rejected', 'archive'];
+	const datasetStatuses = Object.values(constants.datatsetStatuses);
 
 	let {
-		query: { search = '', datasetIndex, maxResults, datasetSort = 'recentActivityDesc', status },
+		query: { search = '', datasetIndex = 0, maxResults, datasetSort = 'recentActivityDesc', status },
 	} = req;
 
 	if (req.params.publisherID === constants.teamTypes.ADMIN) {
@@ -43,10 +43,10 @@ const validateSearchParameters = (req, res, next) => {
 		}
 	}
 
-	if (!(datasetSort in sortOptions)) {
+	if (!sortOptions.includes(datasetSort)) {
 		return res.status(500).json({
 			success: false,
-			message: `The sort parameter must be one of [${Object.keys(sortOptions).join(', ')}]`,
+			message: `The sort parameter must be one of [${sortOptions.join(', ')}]`,
 		});
 	}
 
@@ -54,7 +54,7 @@ const validateSearchParameters = (req, res, next) => {
 		search: search.replace(/[-"@.*+/?^${}()|[\]\\]/g, ''),
 		datasetIndex: parseInt(datasetIndex),
 		maxResults: parseInt(maxResults),
-		datasetSort: sortOptions[datasetSort],
+		datasetSort: datasetSort,
 		status: status,
 	};
 

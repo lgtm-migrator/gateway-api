@@ -126,7 +126,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
 
-			const sortOptions = Object.keys(constants.datasetSortOptions);
+			const sortOptions = constants.datasetSortOptions;
 
 			sortOptions.forEach(sortOption => {
 				req.params = {
@@ -151,7 +151,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
 
-			const statuses = ['active', 'inReview', 'draft', 'rejected', 'archive'];
+			const statuses = Object.values(constants.datatsetStatuses);
 
 			statuses.forEach(status => {
 				req.params = {

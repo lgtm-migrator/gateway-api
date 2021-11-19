@@ -24,12 +24,12 @@ module.exports = {
 				query: { search, datasetIndex, maxResults, datasetSort, status },
 			} = req;
 
+			const activeflagOptions = Object.values(constants.datatsetStatuses);
+
 			let searchQuery = {
-				activeflag: status
-					? status
-					: {
-							$in: ['active', 'inReview', 'draft', 'rejected', 'archive'],
-					  },
+				activeflag: {
+					$in: activeflagOptions,
+				},
 				type: 'dataset',
 				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
 			};
@@ -45,53 +45,48 @@ module.exports = {
 				.select(
 					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name'
 				)
-				.skip(datasetIndex)
-				.limit(maxResults)
-				.sort(datasetSort)
-				.lean();
-
-			let counts = {
-				inReview: 0,
-				...(publisherID !== constants.teamTypes.ADMIN && { active: 0, rejected: 0, draft: 0, archive: 0 }),
-			};
-
-			(
-				await Data.aggregate([
-					{
-						$match: {
-							...searchQuery,
-							activeflag: {
-								$in: publisherID !== constants.teamTypes.ADMIN ? ['active', 'inReview', 'draft', 'rejected', 'archive'] : ['inReview'],
-							},
-						},
-					},
-					{ $group: { _id: '$activeflag', count: { $sum: 1 } } },
-				])
-			).forEach(status => {
-				counts[status._id] = status.count;
-			});
-
-			const versionHistories = await Data.find({
-				pid: { $in: datasets.map(dataset => dataset.pid) },
-				_id: { $nin: datasets.map(dataset => dataset._id) },
-				activeflag:
-					publisherID === constants.teamTypes.ADMIN
-						? { $in: ['active', 'inReview', 'rejected', 'archive'] }
-						: { $in: ['active', 'inReview', 'draft', 'rejected', 'archive'] },
-			})
-				.select('_id pid datasetVersion activeflag')
 				.sort({ 'timestamps.updated': -1 })
 				.lean();
 
-			let listOfDatasets = datasets.reduce((arr, dataset) => {
-				dataset.listOfVersions = versionHistories.filter(version => version.pid === dataset.pid);
-				arr.push(dataset);
+			let versionedDatasets = datasets.reduce((arr, dataset) => {
+				dataset.listOfVersions = [];
+				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
+				if (datasetIdx === -1) {
+					arr = [...arr, dataset];
+				} else {
+					const { _id, datasetVersion, activeflag } = dataset;
+					const versionDetails = { _id, datasetVersion, activeflag };
+					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
+				}
 				return arr;
 			}, []);
 
+			let counts = {
+				inReview: 0,
+				active: 0,
+				rejected: 0,
+				draft: 0,
+				archive: 0,
+			};
+
+			activeflagOptions.forEach(activeflag => {
+				counts[activeflag] = versionedDatasets.filter(dataset => dataset.activeflag === activeflag).length;
+			});
+
+			if (publisherID === constants.teamTypes.ADMIN) {
+				delete counts.active;
+				delete counts.rejected;
+				delete counts.draft;
+				delete counts.archive;
+			}
+
+			if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
+			versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, datasetSort);
+			if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
+
 			return res.status(200).json({
 				success: true,
-				data: { counts, listOfDatasets },
+				data: { counts, listOfDatasets: versionedDatasets },
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);

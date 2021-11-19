@@ -224,11 +224,9 @@ const _roleTypes = {
 
 const _datatsetStatuses = {
 	DRAFT: 'draft',
-	INPROGRESS: 'inProgress',
 	INREVIEW: 'inReview',
-	APPROVED: 'approved',
+	ACTIVE: 'active',
 	REJECTED: 'rejected',
-	APPROVEDWITHCONDITIONS: 'approved with conditions',
 	ARCHIVE: 'archive',
 };
 
@@ -294,16 +292,16 @@ const _systemGeneratedUser = {
 	LASTNAME: 'Generated',
 };
 
-const _datasetSortOptions = {
-	recentActivityAsc: { 'timestamps.updated': 1 },
-	recentActivityDesc: { 'timestamps.updated': -1 },
-	alphabeticAsc: { name: 1 },
-	alphabeticDesc: { name: -1 },
-	recentlyPublishedAsc: { 'timestamps.created': 1 },
-	recentlyPublishedDesc: { 'timestamps.created': -1 },
-	metadataQualityAsc: { 'percentageCompleted.summary': 1 },
-	metadataQualityDesc: { 'percentageCompleted.summary': -1 },
-};
+const _datasetSortOptions = [
+	'recentActivityAsc',
+	'recentActivityDesc',
+	'alphabeticAsc',
+	'alphabeticDesc',
+	'recentlyPublishedAsc',
+	'recentlyPublishedDesc',
+	'metadataQualityAsc',
+	'metadataQualityDesc',
+];
 
 export default {
 	userTypes: _userTypes,
