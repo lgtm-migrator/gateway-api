@@ -1,4 +1,4 @@
-import _, { isNil, isEmpty, capitalize, groupBy, forEach, isEqual } from 'lodash';
+import _, { isNil, isEmpty, capitalize, groupBy, forEach, isEqual, values, indexOf } from 'lodash';
 import moment from 'moment';
 import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
@@ -2516,6 +2516,99 @@ const _generateAttachment = (filename, content, type) => {
 	};
 };
 
+const _generateWordAttachment = async questionAnswers => {
+	let formatedQuestionAnswers = {};
+
+	let repeatableSectionTitles = [
+		'safepeopleotherindividuals',
+		'safeprojectfunderinformation',
+		'safeprojectsponsorinformation',
+		'safeprojectdeclarationofinterest',
+	];
+
+	// pull all non-repeatable sections from questionAnswers into 'flatQuestionAnswers' object
+	let flatQuestionAnswers = getFlatSections(questionAnswers);
+	function getFlatSections(obj) {
+		return Object.fromEntries(
+			Object.entries(obj).filter(
+				([key, val]) =>
+					!key.includes('safepeopleotherindividuals') &&
+					!key.includes('safeprojectfunderinformation') &&
+					!key.includes('safeprojectsponsorinformation') &&
+					!key.includes('safeprojectdeclarationofinterest')
+			)
+		);
+	}
+
+	// pull all repeatable sections from questionAnswers into 'repeatableSectionsAnswers' object
+	let repeatableSectionsAnswers = getRepeatableSections(questionAnswers);
+	function getRepeatableSections(obj) {
+		return Object.fromEntries(
+			Object.entries(obj).filter(([key, val]) => repeatableSectionTitles.some(sectionTitle => key.includes(sectionTitle)))
+		);
+	}
+
+	let formattedRepeatableSectionQuestionAnswers = new Map();
+	// loop through each repeatable section question/answer - format it and push into correct object in correct section array
+	for (const question in repeatableSectionsAnswers) {
+		// get the title of the section aka array based on which section title the questionid contains
+		let sectionTitle = '';
+		for (const repeatableSectionTitle of repeatableSectionTitles) {
+			if (question.includes(repeatableSectionTitle)) {
+				sectionTitle = repeatableSectionTitle;
+			}
+		}
+
+		// get suffix and set as appendedIdentifier
+		let appendedIdentifier = question.substring(0, question.indexOf('_') === -1)
+			? sectionTitle
+			: question.substring(question.indexOf('_'), question.length);
+
+		// get the question id in the correct format for mapping to template ie. remove suffix where it exists
+		let formattedQuestionId = question.substring(0, question.indexOf('_') === -1)
+			? [question]
+			: [question.substring(0, question.indexOf('_'))];
+
+		// create a map object - this will then be populated with all 4 repeatable sections in correct format
+		// add fields into individual objects (individualObject) then add to the section map (sectionObjectMap)
+		if (question.includes(sectionTitle)) {
+			let sectionObjectMap;
+			let individualObject;
+			if (formattedRepeatableSectionQuestionAnswers.has(sectionTitle)) {
+				sectionObjectMap = formattedRepeatableSectionQuestionAnswers.get(sectionTitle);
+				if (sectionObjectMap.has(appendedIdentifier)) {
+					individualObject = sectionObjectMap.get(appendedIdentifier);
+					individualObject = { ...individualObject, [formattedQuestionId]: repeatableSectionsAnswers[question] };
+				} else {
+					individualObject = { [formattedQuestionId]: repeatableSectionsAnswers[question] };
+				}
+			} else {
+				sectionObjectMap = new Map();
+				individualObject = { [formattedQuestionId]: repeatableSectionsAnswers[question] };
+			}
+
+			sectionObjectMap.set(appendedIdentifier, individualObject);
+			formattedRepeatableSectionQuestionAnswers.set(sectionTitle, sectionObjectMap);
+		}
+	}
+
+	let formattedRepeatableSections = {};
+
+	formattedRepeatableSectionQuestionAnswers.forEach((sectionMap, sectionName) => {
+		let sectionArray = [];
+		for (const individualObject of sectionMap.values()) {
+			sectionArray.push(individualObject);
+		}
+		formattedRepeatableSections = { ...formattedRepeatableSections, [sectionName]: sectionArray };
+	});
+
+	// spread in the updated/restructured repeatable sections and the original remaining questionAnswers
+	formatedQuestionAnswers = { ...formattedRepeatableSections, ...flatQuestionAnswers };
+
+	return formatedQuestionAnswers;
+	// TODO - update to pass this into the docxtemplater along with the template and return word document
+};
+
 export default {
 	//General
 	sendEmail: _sendEmail,
@@ -2540,6 +2633,7 @@ export default {
 	generateAddedToTeam: _generateAddedToTeam,
 	generateNewTeamManagers: _generateNewTeamManagers,
 	generateNewDARMessage: _generateNewDARMessage,
+	generateWordAttachment: _generateWordAttachment,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
@@ -2548,7 +2642,7 @@ export default {
 	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
 	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
 	generateMetadataOnboardingDraftDeleted: _generateMetadataOnboardingDraftDeleted,
-  generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
+	generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
 	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages

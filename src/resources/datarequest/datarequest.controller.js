@@ -2107,6 +2107,10 @@ export default class DataRequestController extends Controller {
 						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
 						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
 						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+						if (['ALLIANCE > HEALTH AND SOCIAL CARE NORTHERN IRELAND', 'ALLIANCE > PUBLIC HEALTH SCOTLAND'].includes(publisher)) {
+							let wordAttachment = await emailGenerator.generateWordAttachment(questionAnswers);
+							attachments = [...attachments, wordAttachment];
+						}
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
@@ -2191,6 +2195,10 @@ export default class DataRequestController extends Controller {
 						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
 						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
 						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+						if (['ALLIANCE > HEALTH AND SOCIAL CARE NORTHERN IRELAND', 'ALLIANCE > PUBLIC HEALTH SCOTLAND'].includes(publisher)) {
+							let wordAttachment = await emailGenerator.generateWordAttachment(questionAnswers);
+							attachments = [...attachments, wordAttachment];
+						}
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
@@ -2637,6 +2645,10 @@ export default class DataRequestController extends Controller {
 						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
 						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
 						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+						if (['ALLIANCE > HEALTH AND SOCIAL CARE NORTHERN IRELAND', 'ALLIANCE > PUBLIC HEALTH SCOTLAND'].includes(publisher)) {
+							let wordAttachment = await emailGenerator.generateWordAttachment(questionAnswers);
+							attachments = [...attachments, wordAttachment];
+						}
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
