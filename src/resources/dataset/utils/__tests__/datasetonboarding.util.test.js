@@ -66,58 +66,59 @@ describe('Dataset onboarding utility', () => {
 	});
 
 	describe('datasetSortingHelper', () => {
-		const sortOptions = constants.datasetSortOptions;
+		test.each(Object.values(constants.datasetSortOptions))(
+			'Each sort option should lead to correctly sorted output arrays',
+			async sortOption => {
+				const datasetsStub = [
+					{
+						timestamps: { updated: 1234, created: 1234 },
+						name: 'abc',
+						percentageCompleted: { summary: 20 },
+					},
+					{
+						timestamps: { updated: 5678, created: 5678 },
+						name: 'xyz',
+						percentageCompleted: { summary: 80 },
+					},
+				];
 
-		test.each(Object.keys(sortOptions))('Each sort option should lead to correctly sorted output arrays', async sortOption => {
-			const datasetsStub = [
-				{
-					timestamps: { updated: 1234, created: 1234 },
-					name: 'abc',
-					percentageCompleted: { summary: 20 },
-				},
-				{
-					timestamps: { updated: 5678, created: 5678 },
-					name: 'xyz',
-					percentageCompleted: { summary: 80 },
-				},
-			];
+				const sortedDatasets = await datasetonboardingUtil.datasetSortingHelper(datasetsStub, sortOption);
 
-			const sortedDatasets = await datasetonboardingUtil.datasetSortingHelper(datasetsStub, sortOption);
-
-			if (sortOption.key === 'recentActivityAsc') {
-				let arr = sortedDatasets.map(dataset => dataset.timestamps.updated);
-				expect(arr[0]).toBeLessThan(arr[1]);
+				if (sortOption === constants.datasetSortOptions.RECENTACTIVITYASC) {
+					let arr = sortedDatasets.map(dataset => dataset.timestamps.updated);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+				if (sortOption === constants.datasetSortOptions.RECENTACTIVITYDESC) {
+					let arr = sortedDatasets.map(dataset => dataset.timestamps.updated);
+					expect(arr[0]).toBeGreaterThan(arr[1]);
+				}
+				if (sortOption === constants.datasetSortOptions.ALPHABETICASC) {
+					let arr = sortedDatasets.map(dataset => dataset.name);
+					expect(arr[0]).toEqual('abc');
+					expect(arr[1]).toEqual('xyz');
+				}
+				if (sortOption === constants.datasetSortOptions.ALPHABETICDESC) {
+					let arr = sortedDatasets.map(dataset => dataset.name);
+					expect(arr[1]).toEqual('abc');
+					expect(arr[0]).toEqual('xyz');
+				}
+				if (sortOption === constants.datasetSortOptions.RECENTLYPUBLISHEDASC) {
+					let arr = sortedDatasets.map(dataset => dataset.timestamps.created);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+				if (sortOption === constants.datasetSortOptions.RECENTLYPUBLISHEDDESC) {
+					let arr = sortedDatasets.map(dataset => dataset.timestamps.created);
+					expect(arr[0]).toBeGreaterThan(arr[1]);
+				}
+				if (sortOption === constants.datasetSortOptions.METADATAQUALITYASC) {
+					let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+				if (sortOption === constants.datasetSortOptions.METADATAQUALITYDESC) {
+					let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
+					expect(arr[0]).toBeGreaterThan(arr[1]);
+				}
 			}
-			if (sortOption === 'recentActivityDesc') {
-				let arr = sortedDatasets.map(dataset => dataset.timestamps.updated);
-				expect(arr[0]).toBeGreaterThan(arr[1]);
-			}
-			if (sortOption === 'alphabeticAsc') {
-				let arr = sortedDatasets.map(dataset => dataset.name);
-				expect(arr[0]).toEqual('A test1 v2');
-				expect(arr[1]).toEqual('B test2 v1');
-			}
-			if (sortOption === 'alphabeticDesc') {
-				let arr = sortedDatasets.map(dataset => dataset.name);
-				expect(arr[1]).toEqual('A test1 v2');
-				expect(arr[0]).toEqual('B test2 v1');
-			}
-			if (sortOption === 'recentlyPublishedAsc') {
-				let arr = sortedDatasets.map(dataset => dataset.timestamps.created);
-				expect(arr[0]).toBeLessThan(arr[1]);
-			}
-			if (sortOption === 'recentlyPublishedDesc') {
-				let arr = sortedDatasets.map(dataset => dataset.timestamps.created);
-				expect(arr[0]).toBeGreaterThan(arr[1]);
-			}
-			if (sortOption === 'metadataQualityAsc') {
-				let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
-				expect(arr[0]).toBeLessThan(arr[1]);
-			}
-			if (sortOption === 'metadataQualityDesc') {
-				let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
-				expect(arr[0]).toBeGreaterThan(arr[1]);
-			}
-		});
+		);
 	});
 });

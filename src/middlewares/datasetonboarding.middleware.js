@@ -19,7 +19,7 @@ const authoriseUserForPublisher = (req, res, next) => {
 };
 
 const validateSearchParameters = (req, res, next) => {
-	const sortOptions = constants.datasetSortOptions;
+	const sortOptions = Object.values(constants.datasetSortOptions);
 	const datasetStatuses = Object.values(constants.datatsetStatuses);
 
 	let {

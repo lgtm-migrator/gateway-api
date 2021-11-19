@@ -1286,15 +1286,15 @@ const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
 const datasetSortingHelper = (datasets, sortOption) => {
 	try {
 		switch (sortOption) {
-			case 'recentActivityAsc':
+			case constants.datasetSortOptions.RECENTACTIVITYASC:
 				return datasets.sort((a, b) => {
 					return Date.parse(a.timestamps.updated) - Date.parse(b.timestamps.updated);
 				});
-			case 'recentActivityDesc':
+			case constants.datasetSortOptions.RECENTACTIVITYDESC:
 				return datasets.sort((a, b) => {
 					return Date.parse(b.timestamps.updated) - Date.parse(a.timestamps.updated);
 				});
-			case 'alphabeticAsc':
+			case constants.datasetSortOptions.ALPHABETICASC:
 				return datasets.sort((a, b) => {
 					if (a.name < b.name) {
 						return -1;
@@ -1304,7 +1304,7 @@ const datasetSortingHelper = (datasets, sortOption) => {
 					}
 					return 0;
 				});
-			case 'alphabeticDesc':
+			case constants.datasetSortOptions.ALPHABETICDESC:
 				return datasets.sort((a, b) => {
 					if (a.name > b.name) {
 						return -1;
@@ -1314,15 +1314,15 @@ const datasetSortingHelper = (datasets, sortOption) => {
 					}
 					return 0;
 				});
-			case 'recentlyPublishedAsc':
+			case constants.datasetSortOptions.RECENTLYPUBLISHEDASC:
 				return datasets.sort((a, b) => {
 					return Date.parse(a.timestamps.created) - Date.parse(b.timestamps.created);
 				});
-			case 'recentlyPublishedDesc':
+			case constants.datasetSortOptions.RECENTLYPUBLISHEDDESC:
 				return datasets.sort((a, b) => {
-					return Date.parse(a.timestamps.created) - Date.parse(b.timestamps.created);
+					return Date.parse(b.timestamps.created) - Date.parse(a.timestamps.created);
 				});
-			case 'metadataQualityAsc':
+			case constants.datasetSortOptions.METADATAQUALITYASC:
 				datasets = datasets.map(dataset => {
 					if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
 					return dataset;
@@ -1334,7 +1334,7 @@ const datasetSortingHelper = (datasets, sortOption) => {
 					if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
 					return dataset;
 				});
-			case 'metadataQualityDesc':
+			case constants.datasetSortOptions.METADATAQUALITYDESC:
 				datasets = datasets.map(dataset => {
 					if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
 					return dataset;

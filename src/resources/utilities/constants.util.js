@@ -292,16 +292,16 @@ const _systemGeneratedUser = {
 	LASTNAME: 'Generated',
 };
 
-const _datasetSortOptions = [
-	'recentActivityAsc',
-	'recentActivityDesc',
-	'alphabeticAsc',
-	'alphabeticDesc',
-	'recentlyPublishedAsc',
-	'recentlyPublishedDesc',
-	'metadataQualityAsc',
-	'metadataQualityDesc',
-];
+const _datasetSortOptions = {
+	RECENTACTIVITYASC: 'recentActivityAsc',
+	RECENTACTIVITYDESC: 'recentActivityDesc',
+	ALPHABETICASC: 'alphabeticAsc',
+	ALPHABETICDESC: 'alphabeticDesc',
+	RECENTLYPUBLISHEDASC: 'recentlyPublishedAsc',
+	RECENTLYPUBLISHEDDESC: 'recentlyPublishedDesc',
+	METADATAQUALITYASC: 'metadataQualityAsc',
+	METADATAQUALITYDESC: 'metadataQualityDesc',
+};
 
 export default {
 	userTypes: _userTypes,
