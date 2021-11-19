@@ -599,7 +599,7 @@ export default class StatsRepository extends Repository {
 				updatedAt: 1,
 			}
 		)
-			.sort({ updatedAt: -1, name: 1 })
+			.sort({ publishedAt: -1, name: 1 })
 			.limit(10)
 			.lean();
 	}
