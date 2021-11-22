@@ -564,10 +564,10 @@ export default class StatsRepository extends Repository {
 				description: 1,
 				id: 1,
 				counter: 1,
-				publishedAt: 1,
+				updatedon: 1,
 			}
 		)
-			.sort({ publishedAt: -1, title: 1 })
+			.sort({ updatedon: -1, title: 1 })
 			.limit(10)
 			.lean();
 	}
@@ -596,10 +596,10 @@ export default class StatsRepository extends Repository {
 				datasetv2: 1,
 				datasetfields: 1,
 				description: 1,
-				publishedAt: 1,
+				'timestamps.published': 1,
 			}
 		)
-			.sort({ publishedAt: -1, name: 1 })
+			.sort({ 'timestamps.published': -1, name: 1 })
 			.limit(10)
 			.lean();
 	}
@@ -630,15 +630,15 @@ export default class StatsRepository extends Repository {
 					description: 1,
 					activeflag: 1,
 					authors: 1,
-					publishedAt: 1,
+					updatedon: 1,
 				}
 			)
 				.populate([{ path: 'persons', options: { select: { id: 1, firstname: 1, lastname: 1 } } }])
-				.sort({ publishedAt: -1, name: 1 })
+				.sort({ updatedon: -1, name: 1 })
 				.limit(10)
 				.lean();
 		} else {
-			return Data.find({ activeflag: 'active' }).sort({ publishedAt: -1 }).limit(10).lean();
+			return Data.find({ activeflag: 'active' }).sort({ updatedon: -1 }).limit(10).lean();
 		}
 	}
 
