@@ -1283,69 +1283,84 @@ const datasetv2ObjectComparison = (updatedJSON, previousJSON) => {
 	return result;
 };
 
-const datasetSortingHelper = (datasets, sortOption) => {
+const datasetSortingHelper = (datasets, sortBy, sortDirection) => {
 	try {
-		switch (sortOption) {
-			case constants.datasetSortOptions.RECENTACTIVITYASC:
-				return datasets.sort((a, b) => {
-					return Date.parse(a.timestamps.updated) - Date.parse(b.timestamps.updated);
-				});
-			case constants.datasetSortOptions.RECENTACTIVITYDESC:
-				return datasets.sort((a, b) => {
-					return Date.parse(b.timestamps.updated) - Date.parse(a.timestamps.updated);
-				});
-			case constants.datasetSortOptions.ALPHABETICASC:
-				return datasets.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-			case constants.datasetSortOptions.ALPHABETICDESC:
-				return datasets.sort((a, b) => {
-					if (a.name > b.name) {
-						return -1;
-					}
-					if (a.name < b.name) {
-						return 1;
-					}
-					return 0;
-				});
-			case constants.datasetSortOptions.RECENTLYPUBLISHEDASC:
-				return datasets.sort((a, b) => {
-					return Date.parse(a.timestamps.created) - Date.parse(b.timestamps.created);
-				});
-			case constants.datasetSortOptions.RECENTLYPUBLISHEDDESC:
-				return datasets.sort((a, b) => {
-					return Date.parse(b.timestamps.created) - Date.parse(a.timestamps.created);
-				});
-			case constants.datasetSortOptions.METADATAQUALITYASC:
-				datasets = datasets.map(dataset => {
-					if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
-					return dataset;
-				});
-				datasets = datasets.sort((a, b) => {
-					return a.percentageCompleted.summary - b.percentageCompleted.summary;
-				});
-				return datasets.map(dataset => {
-					if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
-					return dataset;
-				});
-			case constants.datasetSortOptions.METADATAQUALITYDESC:
-				datasets = datasets.map(dataset => {
-					if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
-					return dataset;
-				});
-				datasets = datasets.sort((a, b) => {
-					return b.percentageCompleted.summary - a.percentageCompleted.summary;
-				});
-				return datasets.map(dataset => {
-					if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
-					return dataset;
-				});
+		switch (sortBy) {
+			case constants.datasetSortOptions.RECENTACTIVITY:
+				if (sortDirection === constants.datasetSortDirections.ASCENDING) {
+					return datasets.sort((a, b) => {
+						return Date.parse(a.timestamps.updated) - Date.parse(b.timestamps.updated);
+					});
+				} else if (sortDirection === constants.datasetSortDirections.DESCENDING) {
+					return datasets.sort((a, b) => {
+						return Date.parse(b.timestamps.updated) - Date.parse(a.timestamps.updated);
+					});
+				}
+				break;
+
+			case constants.datasetSortOptions.ALPHABETIC:
+				if (sortDirection === constants.datasetSortDirections.ASCENDING) {
+					return datasets.sort((a, b) => {
+						if (a.name < b.name) {
+							return -1;
+						}
+						if (a.name > b.name) {
+							return 1;
+						}
+						return 0;
+					});
+				} else if (sortDirection === constants.datasetSortDirections.DESCENDING) {
+					return datasets.sort((a, b) => {
+						if (a.name > b.name) {
+							return -1;
+						}
+						if (a.name < b.name) {
+							return 1;
+						}
+						return 0;
+					});
+				}
+				break;
+
+			case constants.datasetSortOptions.RECENTLYPUBLISHED:
+				if (sortDirection === constants.datasetSortDirections.ASCENDING) {
+					return datasets.sort((a, b) => {
+						return Date.parse(a.timestamps.created) - Date.parse(b.timestamps.created);
+					});
+				} else if (sortDirection === constants.datasetSortDirections.DESCENDING) {
+					return datasets.sort((a, b) => {
+						return Date.parse(b.timestamps.created) - Date.parse(a.timestamps.created);
+					});
+				}
+				break;
+
+			case constants.datasetSortOptions.METADATAQUALITY:
+				if (sortDirection === constants.datasetSortDirections.ASCENDING) {
+					datasets = datasets.map(dataset => {
+						if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
+						return dataset;
+					});
+					datasets = datasets.sort((a, b) => {
+						return a.percentageCompleted.summary - b.percentageCompleted.summary;
+					});
+					return datasets.map(dataset => {
+						if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
+						return dataset;
+					});
+				} else if (sortDirection === constants.datasetSortDirections.DESCENDING) {
+					datasets = datasets.map(dataset => {
+						if (!dataset.percentageCompleted) dataset.percentageCompleted = { summary: 0 };
+						return dataset;
+					});
+					datasets = datasets.sort((a, b) => {
+						return b.percentageCompleted.summary - a.percentageCompleted.summary;
+					});
+					return datasets.map(dataset => {
+						if (dataset.percentageCompleted.summary === 0) delete dataset.percentageCompleted;
+						return dataset;
+					});
+				}
+				break;
 		}
 	} catch (err) {
 		process.stdout.write(`${err.message}\n`);

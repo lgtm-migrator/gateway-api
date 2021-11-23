@@ -26,7 +26,7 @@ module.exports = {
 		try {
 			let {
 				params: { publisherID },
-				query: { search, datasetIndex, maxResults, datasetSort, status },
+				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
 			} = req;
 
 			const [datasets, counts] = await datasetonboardingService.getDatasetsByPublisher(
@@ -34,7 +34,8 @@ module.exports = {
 				publisherID,
 				datasetIndex,
 				maxResults,
-				datasetSort,
+				sortBy,
+				sortDirection,
 				search
 			);
 

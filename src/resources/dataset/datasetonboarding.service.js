@@ -6,7 +6,7 @@ export default class DatasetOnboardingService {
 		this.datasetOnboardingRepository = datasetOnboardingRepository;
 	}
 
-	getDatasetsByPublisher = async (status, publisherID, datasetIndex, maxResults, datasetSort, search) => {
+	getDatasetsByPublisher = async (status, publisherID, datasetIndex, maxResults, sortBy, sortDirection, search) => {
 		const activeflagOptions = Object.values(constants.datatsetStatuses);
 
 		let searchQuery = {
@@ -31,7 +31,7 @@ export default class DatasetOnboardingService {
 		const counts = this.buildCountObject(versionedDatasets, publisherID);
 
 		if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
-		versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, datasetSort);
+		versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
 		if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
 
 		return [versionedDatasets, counts];
