@@ -293,14 +293,15 @@ const _systemGeneratedUser = {
 };
 
 const _datasetSortOptions = {
-	RECENTACTIVITYASC: 'recentActivityAsc',
-	RECENTACTIVITYDESC: 'recentActivityDesc',
-	ALPHABETICASC: 'alphabeticAsc',
-	ALPHABETICDESC: 'alphabeticDesc',
-	RECENTLYPUBLISHEDASC: 'recentlyPublishedAsc',
-	RECENTLYPUBLISHEDDESC: 'recentlyPublishedDesc',
-	METADATAQUALITYASC: 'metadataQualityAsc',
-	METADATAQUALITYDESC: 'metadataQualityDesc',
+	RECENTACTIVITY: 'recentActivity',
+	ALPHABETIC: 'alphabetic',
+	RECENTLYPUBLISHED: 'recentlyPublished',
+	METADATAQUALITY: 'metadataQuality',
+};
+
+const _datasetSortDirections = {
+	ASCENDING: 'asc',
+	DESCENDING: 'desc',
 };
 
 export default {
@@ -333,4 +334,5 @@ export default {
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
 	datasetSortOptions: _datasetSortOptions,
+	datasetSortDirections: _datasetSortDirections,
 };

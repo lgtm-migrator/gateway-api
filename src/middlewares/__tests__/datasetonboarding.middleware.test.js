@@ -112,7 +112,8 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: '',
 				datasetIndex: 0,
 				maxResults: 10,
-				datasetSort: 'recentActivityAsc',
+				sortBy: 'recentActivity',
+				sortDirection: 'asc',
 				status: 'inReview',
 			};
 
@@ -137,7 +138,8 @@ describe('Testing the datasetonboarding middleware', () => {
 					search: '',
 					datasetIndex: 0,
 					maxResults: 10,
-					datasetSort: sortOption,
+					sortBy: sortOption,
+					sortDirection: 'asc',
 					status: 'inReview',
 				};
 				validateSearchParameters(req, res, nextFunction);
@@ -162,7 +164,8 @@ describe('Testing the datasetonboarding middleware', () => {
 					search: '',
 					datasetIndex: 0,
 					maxResults: 10,
-					datasetSort: 'recentActivityAsc',
+					sortBy: 'recentActivity',
+					sortDirection: 'asc',
 					status: status,
 				};
 				validateSearchParameters(req, res, nextFunction);
@@ -189,7 +192,8 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: '',
 				datasetIndex: 0,
 				maxResults: 10,
-				datasetSort: 'recentActivityAsc',
+				sortBy: 'recentActivity',
+				sortDirection: 'asc',
 				status: 'active',
 			};
 
@@ -213,31 +217,9 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: '',
 				datasetIndex: 0,
 				maxResults: 10,
-				datasetSort: 'unallowedSortOption',
+				sortBy: 'unallowedSortOption',
+				sortDirection: 'asc',
 				status: 'inReview',
-			};
-
-			validateSearchParameters(req, res, nextFunction);
-
-			expect(res.status).toHaveBeenCalledWith(500);
-			expect(nextFunction.mock.calls.length).toBe(0);
-		});
-
-		it('Should return a 500 error for an unallowed status option', () => {
-			let req = mockedRequest();
-			let res = mockedResponse();
-			const nextFunction = jest.fn();
-
-			req.params = {
-				publisherID: 'fakeTeam',
-			};
-
-			req.query = {
-				search: '',
-				datasetIndex: 0,
-				maxResults: 10,
-				datasetSort: 'recentActivityAsc',
-				status: 'unallowedStatusOption',
 			};
 
 			validateSearchParameters(req, res, nextFunction);
@@ -259,7 +241,8 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: '',
 				datasetIndex: 0,
 				maxResults: 10,
-				datasetSort: 'recentActivityAsc',
+				sortBy: 'recentActivity',
+				sortDirection: 'asc',
 				status: 'notARealStatus',
 			};
 
@@ -282,7 +265,8 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: 'unallowed-/?@"{}()characters',
 				datasetIndex: 0,
 				maxResults: 10,
-				datasetSort: 'recentActivityAsc',
+				sortBy: 'recentActivity',
+				sortDirection: 'asc',
 				status: 'inReview',
 			};
 
@@ -290,6 +274,30 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			expect(req.query.search).toEqual('unallowedcharacters');
 			expect(nextFunction.mock.calls.length).toBe(1);
+		});
+
+		it('Should return a 500 error for an unallowed sortDirection option', () => {
+			let req = mockedRequest();
+			let res = mockedResponse();
+			const nextFunction = jest.fn();
+
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
+
+			req.query = {
+				search: 'unallowed-/?@"{}()characters',
+				datasetIndex: 0,
+				maxResults: 10,
+				sortBy: 'recentActivity',
+				sortDirection: 'unallowedSortDirection',
+				status: 'inReview',
+			};
+
+			validateSearchParameters(req, res, nextFunction);
+
+			expect(res.status).toHaveBeenCalledWith(500);
+			expect(nextFunction.mock.calls.length).toBe(0);
 		});
 	});
 });

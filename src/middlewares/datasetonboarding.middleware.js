@@ -23,7 +23,7 @@ const validateSearchParameters = (req, res, next) => {
 	const datasetStatuses = Object.values(constants.datatsetStatuses);
 
 	let {
-		query: { search = '', datasetIndex = 0, maxResults, datasetSort = 'recentActivityDesc', status },
+		query: { search = '', datasetIndex = 0, maxResults, sortBy = 'recentActivity', sortDirection = 'desc', status },
 	} = req;
 
 	if (req.params.publisherID === constants.teamTypes.ADMIN) {
@@ -43,10 +43,17 @@ const validateSearchParameters = (req, res, next) => {
 		}
 	}
 
-	if (!sortOptions.includes(datasetSort)) {
+	if (!sortOptions.includes(sortBy)) {
 		return res.status(500).json({
 			success: false,
 			message: `The sort parameter must be one of [${sortOptions.join(', ')}]`,
+		});
+	}
+
+	if (!['asc', 'desc'].includes(sortDirection)) {
+		return res.status(500).json({
+			success: false,
+			message: `The sort direction must be either ascending [asc] or descending [desc]`,
 		});
 	}
 
@@ -54,7 +61,8 @@ const validateSearchParameters = (req, res, next) => {
 		search: search.replace(/[-"@.*+/?^${}()|[\]\\]/g, ''),
 		datasetIndex: parseInt(datasetIndex),
 		maxResults: parseInt(maxResults),
-		datasetSort: datasetSort,
+		sortBy: sortBy,
+		sortDirection: sortDirection,
 		status: status,
 	};
 

@@ -21,7 +21,7 @@ module.exports = {
 		try {
 			let {
 				params: { publisherID },
-				query: { search, datasetIndex, maxResults, datasetSort, status },
+				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
 			} = req;
 
 			const activeflagOptions = Object.values(constants.datatsetStatuses);
@@ -81,7 +81,7 @@ module.exports = {
 			}
 
 			if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
-			versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, datasetSort);
+			versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
 			if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
 
 			return res.status(200).json({
