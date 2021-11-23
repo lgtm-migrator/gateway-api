@@ -13,8 +13,13 @@ import datasetonboardingUtil from './utils/datasetonboarding.util';
 import { v4 as uuidv4 } from 'uuid';
 import { isEmpty, isNil, escapeRegExp } from 'lodash';
 import { activityLogService } from '../activitylog/dependency';
+import DatasetOnboardingService from './datasetonboarding.service';
+import DatasetOnboardingRepository from './datasetonboarding.repository';
 
 const readEnv = process.env.ENV || 'prod';
+
+const datasetOnboardingRepository = new DatasetOnboardingRepository();
+const datasetonboardingService = new DatasetOnboardingService(datasetOnboardingRepository);
 
 module.exports = {
 	getDatasetsByPublisher: async (req, res) => {
@@ -24,69 +29,18 @@ module.exports = {
 				query: { search, datasetIndex, maxResults, datasetSort, status },
 			} = req;
 
-			const activeflagOptions = Object.values(constants.datatsetStatuses);
-
-			let searchQuery = {
-				activeflag: {
-					$in: activeflagOptions,
-				},
-				type: 'dataset',
-				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
-			};
-
-			if (search.length > 0)
-				searchQuery['$or'] = [
-					{ name: { $regex: search, $options: 'i' } },
-					{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
-					{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
-				];
-
-			const datasets = await Data.find(searchQuery)
-				.select(
-					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name'
-				)
-				.sort({ 'timestamps.updated': -1 })
-				.lean();
-
-			let versionedDatasets = datasets.reduce((arr, dataset) => {
-				dataset.listOfVersions = [];
-				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
-				if (datasetIdx === -1) {
-					arr = [...arr, dataset];
-				} else {
-					const { _id, datasetVersion, activeflag } = dataset;
-					const versionDetails = { _id, datasetVersion, activeflag };
-					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
-				}
-				return arr;
-			}, []);
-
-			let counts = {
-				inReview: 0,
-				active: 0,
-				rejected: 0,
-				draft: 0,
-				archive: 0,
-			};
-
-			activeflagOptions.forEach(activeflag => {
-				counts[activeflag] = versionedDatasets.filter(dataset => dataset.activeflag === activeflag).length;
-			});
-
-			if (publisherID === constants.teamTypes.ADMIN) {
-				delete counts.active;
-				delete counts.rejected;
-				delete counts.draft;
-				delete counts.archive;
-			}
-
-			if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
-			versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, datasetSort);
-			if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
+			const [datasets, counts] = await datasetonboardingService.getDatasetsByPublisher(
+				status,
+				publisherID,
+				datasetIndex,
+				maxResults,
+				datasetSort,
+				search
+			);
 
 			return res.status(200).json({
 				success: true,
-				data: { counts, listOfDatasets: versionedDatasets },
+				data: { counts, listOfDatasets: datasets },
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
