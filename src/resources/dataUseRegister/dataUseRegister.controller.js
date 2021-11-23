@@ -142,7 +142,7 @@ export default class DataUseRegisterController extends Controller {
 
 			if (team === 'user') {
 				delete req.query.team;
-				query = { ...req.query, user: requestingUser._id };
+				query = { ...req.query, gatewayApplicants: requestingUser._id };
 			} else if (team === 'admin') {
 				delete req.query.team;
 				query = { ...req.query, activeflag: constants.dataUseRegisterStatus.INREVIEW };
