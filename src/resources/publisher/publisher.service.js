@@ -94,4 +94,15 @@ export default class PublisherService {
 
 		return filteredApplications;
 	}
+
+	async updateDataRequestModalContent(publisherId, requestingUserId, content) {
+		await this.publisherRepository.updatePublisher(
+			{ _id: publisherId },
+			{
+				dataRequestModalContentUpdatedOn: Date.now(),
+				dataRequestModalContentUpdatedBy: requestingUserId,
+				dataRequestModalContent: { header: '', body: content, footer: '' },
+			}
+		);
+	}
 }

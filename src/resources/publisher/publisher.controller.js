@@ -4,6 +4,7 @@ import constants from '../utilities/constants.util';
 import teamController from '../team/team.controller';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
+import { TeamModel } from '../team/team.model';
 
 const logCategory = 'Publisher';
 
@@ -158,6 +159,37 @@ export default class PublisherController extends Controller {
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred searching for custodian workflows',
+			});
+		}
+	}
+
+	async updateDataRequestModalContent(req, res) {
+		try {
+			const { _id: requestingUserId } = req.user;
+
+			const team = await TeamModel.findOne({ _id: req.params.id })
+				.populate({
+					path: 'users',
+					populate: {
+						path: 'additionalInfo',
+						select: 'organisation bio showOrganisation showBio',
+					},
+				})
+				.lean();
+
+			// Check that user is a manager
+			const authorised = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team, requestingUserId);
+			if (!authorised) {
+				return res.status(401).json({ success: false });
+			}
+
+			await this.publisherService.updateDataRequestModalContent(req.params.id, req.user.id, req.body.content).then(() => {
+				return res.status(200).json({ success: true });
+			});
+		} catch (err) {
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating data request modal content',
 			});
 		}
 	}

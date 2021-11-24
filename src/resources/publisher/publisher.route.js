@@ -54,4 +54,8 @@ router.get(
 	(req, res) => publisherController.getPublisherWorkflows(req, res)
 );
 
+router.patch('/dataRequestModalContent/:id', passport.authenticate('jwt'), (req, res) =>
+	publisherController.updateDataRequestModalContent(req, res)
+);
+
 module.exports = router;
