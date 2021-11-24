@@ -106,7 +106,7 @@ export default class DataRequestRepository extends Repository {
 		]);
 	}
 
- 	getApplicationToSubmitById(id) {
+	getApplicationToSubmitById(id) {
 		return DataRequestModel.findOne({ _id: id }).populate([
 			{
 				path: 'datasets dataset initialDatasets',
@@ -163,6 +163,19 @@ export default class DataRequestRepository extends Repository {
 			$or: [{ publisher }, { dataSetId: 'default' }],
 			status: 'active',
 		}).sort({ createdAt: -1 });
+	}
+
+	getApplicationFormSchemas(publisher) {
+		return DataRequestSchemaModel.find({ publisher: publisher.name }).sort({ version: -1 });
+	}
+
+	createApplicationFormSchema(newSchema) {
+		const newSchemaModel = new DataRequestSchemaModel(newSchema);
+		DataRequestSchemaModel.create(newSchemaModel);
+	}
+
+	updateApplicationFormSchemaById(id, data, options = {}) {
+		DataRequestSchemaModel.findByIdAndUpdate(id, data, { ...options });
 	}
 
 	getDatasetsForApplicationByIds(datasetIds) {

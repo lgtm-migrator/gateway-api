@@ -1,11 +1,11 @@
-import { isNull, isEmpty } from 'lodash';
-import { DataRequestSchemaModel } from '../datarequest/schema/datarequest.schemas.model';
+import { isEmpty } from 'lodash';
 
 export default class QuestionbankService {
-	constructor(questionbankRepository, publisherService, globalService) {
+	constructor(questionbankRepository, publisherService, globalService, dataRequestRepository) {
 		this.questionbankRepository = questionbankRepository;
 		this.publisherService = publisherService;
 		this.globalService = globalService;
+		this.dataRequestRepository = dataRequestRepository;
 	}
 
 	getQuestionbank(id, query = {}, options = {}) {
@@ -25,7 +25,7 @@ export default class QuestionbankService {
 		const global = await this.globalService.getGlobal({ localeId: 'en-gb' });
 		const masterSchema = global.masterSchema;
 
-		let dataRequestSchemas = await DataRequestSchemaModel.find({ publisher: publisher.name }).sort({ version: -1 });
+		let dataRequestSchemas = await this.dataRequestRepository.getApplicationFormSchemas(publisher);
 
 		if (isEmpty(dataRequestSchemas)) {
 			let questionStatus = {};
@@ -36,20 +36,22 @@ export default class QuestionbankService {
 				});
 			});
 
-			const newSchema = new DataRequestSchemaModel({
+			const newSchema = {
 				publisher: publisher.name,
 				status: 'draft',
 				isCloneable: true,
 				questionStatus,
-			});
+				guidance: {},
+				countOfChanges: 0,
+			};
 
-			await DataRequestSchemaModel.create(newSchema);
+			await this.dataRequestRepository.createApplicationFormSchema(newSchema);
 
 			return {
 				masterSchema,
-				questionStatus: newSchema.questionStatus,
-				guidance: newSchema.guidance,
-				countOfChanges: newSchema.countOfChanges,
+				questionStatus,
+				guidance: {},
+				countOfChanges: 0,
 			};
 		}
 
@@ -69,7 +71,7 @@ export default class QuestionbankService {
 			});
 
 			if (newQuestionsAdded)
-				await DataRequestSchemaModel.findOneAndUpdate({ _id: latestSchemaVersion._id }, { $set: { questionStatus: newQuestionStatus } });
+				await this.dataRequestRepository.updateApplicationFormSchemaById(latestSchemaVersion._id, { questionStatus: newQuestionStatus });
 
 			return {
 				masterSchema,
@@ -92,16 +94,16 @@ export default class QuestionbankService {
 					});
 				});
 
-				const newSchema = new DataRequestSchemaModel({
+				const newSchema = {
 					publisher: publisher.name,
 					status: 'draft',
 					isCloneable: true,
 					questionStatus: newQuestionStatus,
 					guidance: latestSchemaVersion.guidance,
 					version: latestSchemaVersion.version + 1,
-				});
+				};
 
-				await DataRequestSchemaModel.create(newSchema);
+				await this.dataRequestRepository.createApplicationFormSchema(newSchema);
 
 				return {
 					masterSchema,
@@ -130,16 +132,16 @@ export default class QuestionbankService {
 					});
 				});
 
-				const newSchema = new DataRequestSchemaModel({
+				const newSchema = {
 					publisher: publisher.name,
 					status: 'draft',
 					isCloneable: true,
 					questionStatus,
 					guidance,
 					version: latestSchemaVersion.version + 1,
-				});
+				};
 
-				await DataRequestSchemaModel.create(newSchema);
+				await this.dataRequestRepository.createApplicationFormSchema(newSchema);
 
 				return {
 					masterSchema,
