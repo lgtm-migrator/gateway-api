@@ -293,10 +293,10 @@ const _systemGeneratedUser = {
 };
 
 const _datasetSortOptions = {
-	RECENTACTIVITY: 'recentActivity',
+	RECENTACTIVITY: 'latest',
 	ALPHABETIC: 'alphabetic',
-	RECENTLYPUBLISHED: 'recentlyPublished',
-	METADATAQUALITY: 'metadataQuality',
+	RECENTLYPUBLISHED: 'recentlyadded',
+	METADATAQUALITY: 'metadata',
 };
 
 const _datasetSortDirections = {

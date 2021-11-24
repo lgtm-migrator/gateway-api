@@ -112,7 +112,7 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: '',
 				datasetIndex: 0,
 				maxResults: 10,
-				sortBy: 'recentActivity',
+				sortBy: 'latest',
 				sortDirection: 'asc',
 				status: 'inReview',
 			};
@@ -164,7 +164,7 @@ describe('Testing the datasetonboarding middleware', () => {
 					search: '',
 					datasetIndex: 0,
 					maxResults: 10,
-					sortBy: 'recentActivity',
+					sortBy: 'latest',
 					sortDirection: 'asc',
 					status: status,
 				};
@@ -192,7 +192,7 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: '',
 				datasetIndex: 0,
 				maxResults: 10,
-				sortBy: 'recentActivity',
+				sortBy: 'latest',
 				sortDirection: 'asc',
 				status: 'active',
 			};
@@ -241,7 +241,7 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: '',
 				datasetIndex: 0,
 				maxResults: 10,
-				sortBy: 'recentActivity',
+				sortBy: 'latest',
 				sortDirection: 'asc',
 				status: 'notARealStatus',
 			};
@@ -265,7 +265,7 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: 'unallowed-/?@"{}()characters',
 				datasetIndex: 0,
 				maxResults: 10,
-				sortBy: 'recentActivity',
+				sortBy: 'latest',
 				sortDirection: 'asc',
 				status: 'inReview',
 			};
@@ -289,7 +289,7 @@ describe('Testing the datasetonboarding middleware', () => {
 				search: 'unallowed-/?@"{}()characters',
 				datasetIndex: 0,
 				maxResults: 10,
-				sortBy: 'recentActivity',
+				sortBy: 'latest',
 				sortDirection: 'unallowedSortDirection',
 				status: 'inReview',
 			};
