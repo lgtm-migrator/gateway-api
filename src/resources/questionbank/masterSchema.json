@@ -1551,7 +1551,9 @@
 					{
 						"input": { "type": "textareaInput" },
 						"questionId": "safeprojectintellectualpropertydevelopmentnewproductprocess",
-						"question": "Please indicate if the research could lead to the development of a new product/process or the generation of intellectual property."
+						"question": "Please indicate if the research could lead to the development of a new product/process or the generation of intellectual property.",
+						"lockedQuestion": 1,
+						"defaultQuestion": 0
 					}
 				]
 			},

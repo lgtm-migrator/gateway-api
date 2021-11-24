@@ -175,7 +175,7 @@ export default class DataRequestRepository extends Repository {
 	}
 
 	updateApplicationFormSchemaById(id, data, options = {}) {
-		DataRequestSchemaModel.findByIdAndUpdate(id, data, { ...options });
+		return DataRequestSchemaModel.findByIdAndUpdate(id, data, { ...options });
 	}
 
 	getDatasetsForApplicationByIds(datasetIds) {

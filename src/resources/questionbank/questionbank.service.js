@@ -101,6 +101,7 @@ export default class QuestionbankService {
 					questionStatus: newQuestionStatus,
 					guidance: latestSchemaVersion.guidance,
 					version: latestSchemaVersion.version + 1,
+					countOfChanges: 0,
 				};
 
 				await this.dataRequestRepository.createApplicationFormSchema(newSchema);
