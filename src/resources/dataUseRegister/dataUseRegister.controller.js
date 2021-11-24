@@ -259,15 +259,84 @@ export default class DataUseRegisterController extends Controller {
 
 			searchQuery = getObjectFilters(searchQuery, req, 'dataUseRegister');
 
-			const result = await DataUseRegister.find(searchQuery)
-				.populate([
-					{ path: 'publisher' },
-					{ path: 'gatewayApplicants' },
-					{ path: 'gatewayOutputsToolsInfo' },
-					{ path: 'gatewayOutputsPapersInfo' },
-					{ path: 'publisherInfo' },
-				])
-				.lean();
+			const aggregateQuery = [
+				{
+					$lookup: {
+						from: 'publishers',
+						localField: 'publisher',
+						foreignField: '_id',
+						as: 'publisherDetails',
+					},
+				},
+				{
+					$lookup: {
+						from: 'tools',
+						localField: 'gatewayOutputsTools',
+						foreignField: 'id',
+						as: 'gatewayOutputsToolsInfo',
+					},
+				},
+				{
+					$lookup: {
+						from: 'tools',
+						localField: 'gatewayOutputsPapers',
+						foreignField: 'id',
+						as: 'gatewayOutputsPapersInfo',
+					},
+				},
+				{
+					$lookup: {
+						from: 'users',
+						let: {
+							listOfGatewayApplicants: '$gatewayApplicants',
+						},
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$and: [{ $in: ['$_id', '$$listOfGatewayApplicants'] }],
+									},
+								},
+							},
+							{ $project: { firstname: 1, lastname: 1 } },
+						],
+
+						as: 'gatewayApplicantsDetails',
+					},
+				},
+				{
+					$lookup: {
+						from: 'tools',
+						let: {
+							listOfGatewayDatasets: '$gatewayDatasets',
+						},
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$and: [
+											{ $in: ['$pid', '$$listOfGatewayDatasets'] },
+											{
+												$eq: ['$activeflag', 'active'],
+											},
+										],
+									},
+								},
+							},
+							{ $project: { pid: 1, name: 1 } },
+						],
+						as: 'gatewayDatasetsInfo',
+					},
+				},
+				{
+					$addFields: {
+						publisherInfo: { name: '$publisherDetails.name' },
+					},
+				},
+				{ $match: searchQuery },
+			];
+
+			const result = await DataUseRegister.aggregate(aggregateQuery);
 
 			return res.status(200).json({ success: true, result });
 		} catch (err) {
