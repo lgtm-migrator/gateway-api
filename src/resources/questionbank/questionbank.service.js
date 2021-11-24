@@ -1,4 +1,4 @@
-import { isEmpty } from 'lodash';
+import { isEmpty, has } from 'lodash';
 
 export default class QuestionbankService {
 	constructor(questionbankRepository, publisherService, globalService, dataRequestRepository) {
@@ -88,7 +88,7 @@ export default class QuestionbankService {
 				//check for new questions in the master schema and add those
 				masterSchema.questionSets.forEach(questionSet => {
 					questionSet.questions.forEach(question => {
-						if (!Object.keys(latestSchemaVersion.questionStatus).includes(question.questionId)) {
+						if (!has(latestSchemaVersion.questionStatus, question.questionId)) {
 							newQuestionStatus[question.questionId] = question.defaultQuestion;
 						}
 					});
@@ -118,16 +118,15 @@ export default class QuestionbankService {
 				const guidance = {};
 				const jsonSchema = latestSchemaVersion.jsonSchema;
 
-				let questionIds = [];
 				jsonSchema.questionSets.forEach(questionSet => {
-					questionIds = [...questionIds, ...questionSet.questions.map(question => question.questionId)];
+					questionSet.questions.forEach(question => {
+						questionStatus[question.questionId] = 1;
+					});
 				});
 
 				masterSchema.questionSets.forEach(questionSet => {
 					questionSet.questions.forEach(question => {
-						if (questionIds.includes(question.questionId)) {
-							questionStatus[question.questionId] = 1;
-						} else {
+						if (!has(questionStatus, question.questionId)) {
 							questionStatus[question.questionId] = question.defaultQuestion;
 						}
 					});
