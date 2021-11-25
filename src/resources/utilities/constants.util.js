@@ -224,11 +224,9 @@ const _roleTypes = {
 
 const _datatsetStatuses = {
 	DRAFT: 'draft',
-	INPROGRESS: 'inProgress',
 	INREVIEW: 'inReview',
-	APPROVED: 'approved',
+	ACTIVE: 'active',
 	REJECTED: 'rejected',
-	APPROVEDWITHCONDITIONS: 'approved with conditions',
 	ARCHIVE: 'archive',
 };
 
@@ -294,6 +292,18 @@ const _systemGeneratedUser = {
 	LASTNAME: 'Generated',
 };
 
+const _datasetSortOptions = {
+	RECENTACTIVITY: 'latest',
+	ALPHABETIC: 'alphabetic',
+	RECENTLYPUBLISHED: 'recentlyadded',
+	METADATAQUALITY: 'metadata',
+};
+
+const _datasetSortDirections = {
+	ASCENDING: 'asc',
+	DESCENDING: 'desc',
+};
+
 export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
@@ -323,4 +333,6 @@ export default {
 	systemGeneratedUser: _systemGeneratedUser,
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
+	datasetSortOptions: _datasetSortOptions,
+	datasetSortDirections: _datasetSortDirections,
 };

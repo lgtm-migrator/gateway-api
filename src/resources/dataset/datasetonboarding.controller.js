@@ -17,42 +17,38 @@ import { activityLogService } from '../activitylog/dependency';
 const readEnv = process.env.ENV || 'prod';
 
 module.exports = {
-	//GET api/v1/dataset-onboarding
 	getDatasetsByPublisher: async (req, res) => {
 		try {
 			let {
 				params: { publisherID },
+				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
 			} = req;
 
-			//If not publihserID found then return error
-			if (!publisherID) return res.status(404).json({ status: 'error', message: 'Publisher ID could not be found.' });
+			const activeflagOptions = Object.values(constants.datatsetStatuses);
 
-			//Build query, if the publisherId is admin then only return the inReview datasets
-			let query = {};
-			if (publisherID === constants.userTypes.ADMIN) {
-				// get all datasets in review for admin
-				query = {
-					activeflag: { $in: ['active', 'inReview', 'draft', 'rejected', 'archive'] },
-					type: 'dataset',
-				};
-			} else {
-				// get all pids for publisherID
-				query = {
-					'datasetv2.summary.publisher.identifier': publisherID,
-					type: 'dataset',
-					activeflag: { $in: ['active', 'inReview', 'draft', 'rejected', 'archive'] },
-				};
-			}
+			let searchQuery = {
+				activeflag: {
+					$in: activeflagOptions,
+				},
+				type: 'dataset',
+				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
+			};
 
-			const datasets = await Data.find(query)
+			if (search.length > 0)
+				searchQuery['$or'] = [
+					{ name: { $regex: search, $options: 'i' } },
+					{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
+					{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
+				];
+
+			const datasets = await Data.find(searchQuery)
 				.select(
 					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name'
 				)
 				.sort({ 'timestamps.updated': -1 })
 				.lean();
 
-			//Loop through the list of datasets and attach the list of versions to them
-			const listOfDatasets = datasets.reduce((arr, dataset) => {
+			let versionedDatasets = datasets.reduce((arr, dataset) => {
 				dataset.listOfVersions = [];
 				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
 				if (datasetIdx === -1) {
@@ -62,18 +58,38 @@ module.exports = {
 					const versionDetails = { _id, datasetVersion, activeflag };
 					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
 				}
-				if (publisherID === constants.userTypes.ADMIN) {
-					arr = arr.filter(dataset => dataset.activeflag === constants.applicationStatuses.INREVIEW);
-				}
 				return arr;
 			}, []);
 
+			let counts = {
+				inReview: 0,
+				active: 0,
+				rejected: 0,
+				draft: 0,
+				archive: 0,
+			};
+
+			activeflagOptions.forEach(activeflag => {
+				counts[activeflag] = versionedDatasets.filter(dataset => dataset.activeflag === activeflag).length;
+			});
+
+			if (publisherID === constants.teamTypes.ADMIN) {
+				delete counts.active;
+				delete counts.rejected;
+				delete counts.draft;
+				delete counts.archive;
+			}
+
+			if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
+			versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
+			if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
+
 			return res.status(200).json({
 				success: true,
-				data: { listOfDatasets },
+				data: { counts, listOfDatasets: versionedDatasets },
 			});
 		} catch (err) {
-			console.error(err.message);
+			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
 	},

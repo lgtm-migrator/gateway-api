@@ -3,7 +3,9 @@ import passport from 'passport';
 import multer from 'multer';
 const upload = multer();
 const router = express.Router();
+
 const datasetOnboardingController = require('./datasetonboarding.controller');
+import { authoriseUserForPublisher, validateSearchParameters } from '../../middlewares/index';
 
 // @route   PUT api/v1/dataset-onboarding/checkUniqueTitle
 // @desc    PUT Update the status of a dataset
@@ -23,7 +25,13 @@ router.get('/:id', passport.authenticate('jwt'), datasetOnboardingController.get
 // @route   GET api/v1/dataset-onboarding/publisher/:publisherID
 // @desc    GET Datasets for a publisher
 // @access  Private - Custodian Manager/Reviewer ?
-router.get('/publisher/:publisherID', passport.authenticate('jwt'), datasetOnboardingController.getDatasetsByPublisher);
+router.get(
+	'/publisher/:publisherID',
+	passport.authenticate('jwt'),
+	authoriseUserForPublisher,
+	validateSearchParameters,
+	datasetOnboardingController.getDatasetsByPublisher
+);
 
 // @route   POST /api/v1/dataset-onboarding/bulk-upload
 // @desc    Bulk upload for metadata
