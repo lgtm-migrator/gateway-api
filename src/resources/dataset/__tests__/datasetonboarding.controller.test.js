@@ -36,7 +36,7 @@ describe('Dataset onboarding controller', () => {
 					search: '',
 					datasetIndex: 0,
 					maxResults: 10,
-					sortBy: 'recentActivity',
+					sortBy: 'latest',
 					sortDirection: 'asc',
 					status: 'inReview',
 				};
@@ -62,7 +62,7 @@ describe('Dataset onboarding controller', () => {
 					search: 'abstract3',
 					datasetIndex: 0,
 					maxResults: 10,
-					sortBy: 'recentActivity',
+					sortBy: 'latest',
 					sortDirection: 'asc',
 					status: 'inReview',
 				};
@@ -89,7 +89,7 @@ describe('Dataset onboarding controller', () => {
 					search: '',
 					datasetIndex: 0,
 					maxResults: 10,
-					sortBy: 'recentActivity',
+					sortBy: 'latest',
 					sortDirection: 'asc',
 					status: status,
 				};
@@ -115,7 +115,7 @@ describe('Dataset onboarding controller', () => {
 					search: '',
 					datasetIndex: 0,
 					maxResults: 10,
-					sortBy: 'recentActivity',
+					sortBy: 'latest',
 					sortDirection: 'asc',
 					status: 'inReview',
 				};
@@ -141,7 +141,7 @@ describe('Dataset onboarding controller', () => {
 					search: '',
 					datasetIndex: 0,
 					maxResults: 10,
-					sortBy: 'recentActivity',
+					sortBy: 'latest',
 					sortDirection: 'asc',
 				};
 
