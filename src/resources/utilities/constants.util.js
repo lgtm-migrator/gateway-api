@@ -18,6 +18,7 @@ const _activityLogNotifications = Object.freeze({
 const _dataUseRegisterNotifications = Object.freeze({
 	DATAUSEAPPROVED: 'dataUseApproved',
 	DATAUSEREJECTED: 'dataUseRejected',
+	DATAUSEPENDING: 'dataUsePending',
 });
 
 const _teamNotificationTypes = Object.freeze({

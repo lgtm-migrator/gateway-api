@@ -214,6 +214,7 @@ export default class DataUseRegisterController extends Controller {
 			const requestingUser = req.user;
 			const result = await this.dataUseRegisterService.uploadDataUseRegisters(requestingUser, teamId, dataUses);
 			// Return success
+			await this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEPENDING, {}, result, teamId);
 			return res.status(result.uploadedCount > 0 ? 201 : 200).json({
 				success: true,
 				result,
@@ -349,7 +350,7 @@ export default class DataUseRegisterController extends Controller {
 		}
 	}
 
-	async createNotifications(type, context, dataUseRegister) {
+	async createNotifications(type, context, dataUseRegister, publisher) {
 		const { rejectionReason } = context;
 		const { id, projectTitle, user: uploader } = dataUseRegister;
 
@@ -391,6 +392,37 @@ export default class DataUseRegisterController extends Controller {
 
 				const html = emailGenerator.generateDataUseRegisterRejected(options);
 				emailGenerator.sendEmail(emailRecipients, constants.hdrukEmail, `A data use has been rejected by HDR UK`, html, false);
+				break;
+			}
+			case constants.dataUseRegisterNotifications.DATAUSEPENDING: {
+				const adminTeam = await TeamModel.findOne({ type: 'admin' })
+					.populate({
+						path: 'users',
+					})
+					.lean();
+
+				const publisherTeam = await TeamModel.findOne({ _id: publisher })
+					.populate({
+						path: 'publisher',
+					})
+					.lean();
+
+				const dataUseTeamMembers = teamController.getTeamMembersByRole(adminTeam, constants.roleTypes.ADMIN_DATA_USE);
+				const emailRecipients = [...dataUseTeamMembers];
+
+				const { uploaded } = dataUseRegister;
+				let listOfProjectTitles = [];
+				uploaded.forEach(dataset => {
+					listOfProjectTitles.push(dataset.projectTitle);
+				});
+
+				const options = {
+					listOfProjectTitles,
+					publisher: publisherTeam.publisher.name,
+				};
+
+				const html = emailGenerator.generateDataUseRegisterPending(options);
+				emailGenerator.sendEmail(emailRecipients, constants.hdrukEmail, `New data uses to review`, html, false);
 				break;
 			}
 		}
