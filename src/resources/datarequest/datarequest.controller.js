@@ -2114,7 +2114,7 @@ export default class DataRequestController extends Controller {
 
 						// Generate word attachment for publishers with 'wordTemplate' populated
 						if (!_.isUndefined(templateName)) {
-							let wordTemplateCompleted = await emailGenerator.generateWordAttachment(templateName, questionAnswers);
+							await emailGenerator.generateWordAttachment(templateName, questionAnswers);
 							let wordAttachmentName = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.docx`;
 							let wordContent = await emailGenerator.generateWordContent(wordAttachmentName);
 							let wordAttachment = await emailGenerator.generateAttachment(wordAttachmentName, wordContent, 'application/docx');
