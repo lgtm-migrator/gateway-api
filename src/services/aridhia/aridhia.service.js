@@ -151,6 +151,9 @@ export default class aridhiaService {
 			},
 			access: { accessRights: res.catalogue.accessRights || res.catalogue.rights || '' }
 		};
+
+		// Added due to changes in the schema that were made in HDR UK
+		v2.documentation = {description: ""};
 		
 		return v2;
 	}
