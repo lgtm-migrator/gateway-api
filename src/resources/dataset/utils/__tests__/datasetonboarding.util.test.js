@@ -75,11 +75,13 @@ describe('Dataset onboarding utility', () => {
 						timestamps: { updated: 1234, created: 1234 },
 						name: 'abc',
 						percentageCompleted: { summary: 20 },
+						counter: 200,
 					},
 					{
 						timestamps: { updated: 5678, created: 5678 },
 						name: 'xyz',
 						percentageCompleted: { summary: 80 },
+						counter: 100,
 					},
 				];
 
@@ -109,6 +111,10 @@ describe('Dataset onboarding utility', () => {
 					let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
 					expect(arr[0]).toBeLessThan(arr[1]);
 				}
+				if (sortOption === constants.datasetSortOptions.MOSTVIEWED) {
+					let arr = sortedDatasets.map(dataset => dataset.counter);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
 			}
 		);
 
@@ -120,11 +126,13 @@ describe('Dataset onboarding utility', () => {
 						timestamps: { updated: 1234, created: 1234 },
 						name: 'abc',
 						percentageCompleted: { summary: 20 },
+						counter: 200,
 					},
 					{
 						timestamps: { updated: 5678, created: 5678 },
 						name: 'xyz',
 						percentageCompleted: { summary: 80 },
+						counter: 100,
 					},
 				];
 
@@ -152,6 +160,10 @@ describe('Dataset onboarding utility', () => {
 				}
 				if (sortOption === constants.datasetSortOptions.METADATAQUALITY) {
 					let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
+					expect(arr[1]).toBeLessThan(arr[0]);
+				}
+				if (sortOption === constants.datasetSortOptions.MOSTVIEWED) {
+					let arr = sortedDatasets.map(dataset => dataset.counter);
 					expect(arr[1]).toBeLessThan(arr[0]);
 				}
 			}
