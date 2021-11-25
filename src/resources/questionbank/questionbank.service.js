@@ -30,6 +30,7 @@ export default class QuestionbankService {
 		if (isEmpty(dataRequestSchemas)) {
 			let questionStatus = {};
 
+			//create the questionStatus from the master schema
 			masterSchema.questionSets.forEach(questionSet => {
 				questionSet.questions.forEach(question => {
 					questionStatus[question.questionId] = question.defaultQuestion;
@@ -49,27 +50,18 @@ export default class QuestionbankService {
 
 			return {
 				masterSchema,
-				questionStatus,
-				guidance: {},
-				countOfChanges: 0,
+				questionStatus: newSchema.questionStatus,
+				guidance: newSchema.guidance,
+				countOfChanges: newSchema.countOfChanges,
 			};
 		}
 
 		const latestSchemaVersion = dataRequestSchemas[0];
 		if (latestSchemaVersion.status === 'draft') {
-			//check if new questions added in the masterSchema
 			let newQuestionStatus = latestSchemaVersion.questionStatus;
-			let newQuestionsAdded = false;
+			let newQuestionsAdded = this.addQuestionsFromMasterSchema(masterSchema, latestSchemaVersion, newQuestionStatus);
 
-			masterSchema.questionSets.forEach(questionSet => {
-				questionSet.questions.forEach(question => {
-					if (!Object.keys(latestSchemaVersion.questionStatus).includes(question.questionId)) {
-						newQuestionStatus[question.questionId] = question.defaultQuestion;
-						newQuestionsAdded = true;
-					}
-				});
-			});
-
+			//Add new questions from the master schema if any
 			if (newQuestionsAdded)
 				await this.dataRequestRepository.updateApplicationFormSchemaById(latestSchemaVersion._id, { questionStatus: newQuestionStatus });
 
@@ -85,14 +77,8 @@ export default class QuestionbankService {
 			if (!isEmpty(latestSchemaVersion.questionStatus)) {
 				let newQuestionStatus = latestSchemaVersion.questionStatus;
 
-				//check for new questions in the master schema and add those
-				masterSchema.questionSets.forEach(questionSet => {
-					questionSet.questions.forEach(question => {
-						if (!has(latestSchemaVersion.questionStatus, question.questionId)) {
-							newQuestionStatus[question.questionId] = question.defaultQuestion;
-						}
-					});
-				});
+				//Add new questions from the master schema if any
+				this.addQuestionsFromMasterSchema(masterSchema, latestSchemaVersion, newQuestionStatus);
 
 				const newSchema = {
 					publisher: publisher.name,
@@ -113,31 +99,21 @@ export default class QuestionbankService {
 					countOfChanges: newSchema.countOfChanges,
 				};
 			} else {
-				//need to create the question status from the current jsonSchema
 				let questionStatus = {};
-				const guidance = {};
-				const jsonSchema = latestSchemaVersion.jsonSchema;
 
-				jsonSchema.questionSets.forEach(questionSet => {
-					questionSet.questions.forEach(question => {
-						questionStatus[question.questionId] = 1;
-					});
-				});
+				//Add questions from the publisher schema
+				this.addQuestionsFromPublisherSchema(latestSchemaVersion, questionStatus);
 
-				masterSchema.questionSets.forEach(questionSet => {
-					questionSet.questions.forEach(question => {
-						if (!has(questionStatus, question.questionId)) {
-							questionStatus[question.questionId] = question.defaultQuestion;
-						}
-					});
-				});
+				//Add question from master schema if not in the publisher schema
+				this.addQuestionsFromMasterSchema(masterSchema, latestSchemaVersion, questionStatus);
 
 				const newSchema = {
 					publisher: publisher.name,
 					status: 'draft',
 					isCloneable: true,
 					questionStatus,
-					guidance,
+					guidance: {},
+					countOfChanges: 0,
 					version: latestSchemaVersion.version + 1,
 				};
 
@@ -145,12 +121,36 @@ export default class QuestionbankService {
 
 				return {
 					masterSchema,
-					questionStatus,
-					guidance: {},
-					countOfChanges: 0,
-					version: latestSchemaVersion.version + 1,
+					questionStatus: newSchema.questionStatus,
+					guidance: newSchema.guidance,
+					countOfChanges: newSchema.countOfChanges,
 				};
 			}
 		}
+	}
+
+	addQuestionsFromPublisherSchema(publisherSchema, questionStatus) {
+		const jsonSchema = publisherSchema.jsonSchema;
+		jsonSchema.questionSets.forEach(questionSet => {
+			questionSet.questions.forEach(question => {
+				questionStatus[question.questionId] = 1;
+			});
+		});
+	}
+
+	addQuestionsFromMasterSchema(masterSchema, publisherSchema, questionStatus) {
+		let newQuestionsAdded = false;
+
+		//Add new questions from the master schema if any
+		masterSchema.questionSets.forEach(questionSet => {
+			questionSet.questions.forEach(question => {
+				if (!has(publisherSchema.questionStatus, question.questionId)) {
+					questionStatus[question.questionId] = question.defaultQuestion;
+					newQuestionsAdded = true;
+				}
+			});
+		});
+
+		return newQuestionsAdded;
 	}
 }
