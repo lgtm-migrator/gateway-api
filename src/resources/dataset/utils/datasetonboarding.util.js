@@ -1361,6 +1361,26 @@ const datasetSortingHelper = (datasets, sortBy, sortDirection) => {
 					});
 				}
 				break;
+
+			case constants.datasetSortOptions.MOSTVIEWED:
+				if (sortDirection === constants.datasetSortDirections.ASCENDING) {
+					datasets = datasets.map(dataset => {
+						if (!dataset.counter) dataset.counter = 0;
+						return dataset;
+					});
+					return datasets.sort((a, b) => {
+						return a.counter - b.counter;
+					});
+				} else if (sortDirection === constants.datasetSortDirections.DESCENDING) {
+					datasets = datasets.map(dataset => {
+						if (!dataset.counter) dataset.counter = 0;
+						return dataset;
+					});
+					return datasets.sort((a, b) => {
+						return b.counter - a.counter;
+					});
+				}
+				break;
 		}
 	} catch (err) {
 		process.stdout.write(`${err.message}\n`);

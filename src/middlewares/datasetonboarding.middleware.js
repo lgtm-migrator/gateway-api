@@ -23,7 +23,7 @@ const validateSearchParameters = (req, res, next) => {
 	const datasetStatuses = Object.values(constants.datatsetStatuses);
 
 	let {
-		query: { search = '', datasetIndex = 0, maxResults, sortBy = 'recentActivity', sortDirection = 'desc', status },
+		query: { search = '', datasetIndex = 0, maxResults, sortBy = 'latest', sortDirection = 'desc', status },
 	} = req;
 
 	if (req.params.publisherID === constants.teamTypes.ADMIN) {
@@ -54,6 +54,13 @@ const validateSearchParameters = (req, res, next) => {
 		return res.status(500).json({
 			success: false,
 			message: `The sort direction must be either ascending [asc] or descending [desc]`,
+		});
+	}
+
+	if (sortBy === constants.datasetSortOptions.MOSTVIEWED && status !== constants.datatsetStatuses.ACTIVE) {
+		return res.status(500).json({
+			success: false,
+			message: `Sorting by popularity is only available for active datasets [status=active]`,
 		});
 	}
 

@@ -43,7 +43,7 @@ module.exports = {
 
 			const datasets = await Data.find(searchQuery)
 				.select(
-					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name'
+					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
 				)
 				.sort({ 'timestamps.updated': -1 })
 				.lean();
