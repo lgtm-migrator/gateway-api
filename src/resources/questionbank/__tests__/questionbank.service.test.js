@@ -4,7 +4,6 @@ import QuestionBankService from '../questionbank.service';
 import GlobalService from '../../global/global.service';
 import * as questionBank from '../__mocks__/questionbank';
 import PublisherService from '../../publisher/publisher.service';
-import QuestionBankRepository from '../questionbank.repository';
 import PublisherRepository from '../../publisher/publisher.repository';
 import * as activeSchemaNotCreatedThroughForm from '../__mocks__/activeSchemaNotCreatedThroughForm';
 import * as activeSchemaCreatedThroughForm from '../__mocks__/activeSchemaCreatedThroughForm';
@@ -18,8 +17,7 @@ describe('Question Bank Service', function () {
 	const publisherRepository = new PublisherRepository();
 	sinon.stub(publisherRepository, 'getPublisher').returns(questionBank.publisherDocument);
 	const publisherService = new PublisherService(publisherRepository);
-	const questionBankRepository = new QuestionBankRepository();
-	const questionBankService = new QuestionBankService(questionBankRepository, publisherService, globalService, dataRequestRepository);
+	const questionBankService = new QuestionBankService(publisherService, globalService, dataRequestRepository);
 	let dataRequestRepositoryStubGet;
 	let dataRequestRepositoryStubCreate;
 

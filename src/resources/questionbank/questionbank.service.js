@@ -1,23 +1,10 @@
 import { isEmpty, has } from 'lodash';
 
 export default class QuestionbankService {
-	constructor(questionbankRepository, publisherService, globalService, dataRequestRepository) {
-		this.questionbankRepository = questionbankRepository;
+	constructor(publisherService, globalService, dataRequestRepository) {
 		this.publisherService = publisherService;
 		this.globalService = globalService;
 		this.dataRequestRepository = dataRequestRepository;
-	}
-
-	getQuestionbank(id, query = {}, options = {}) {
-		// Protect for no id passed
-		if (!id) return;
-
-		query = { ...query, id };
-		return this.questionbankRepository.getQuestionbank(query, options);
-	}
-
-	getQuestionbanks(query = {}) {
-		return this.questionbankRepository.getQuestionbanks(query);
 	}
 
 	async getQuestionBankInfo(publisherId) {
