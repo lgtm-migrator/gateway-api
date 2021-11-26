@@ -46,13 +46,14 @@ export default class QuestionbankService {
 				countOfChanges: 0,
 			};
 
-			await this.dataRequestRepository.createApplicationFormSchema(newSchema);
+			const schema = await this.dataRequestRepository.createApplicationFormSchema(newSchema);
 
 			return {
 				masterSchema,
-				questionStatus: newSchema.questionStatus,
-				guidance: newSchema.guidance,
-				countOfChanges: newSchema.countOfChanges,
+				questionStatus: schema.questionStatus,
+				guidance: schema.guidance,
+				countOfChanges: schema.countOfChanges,
+				schemaId: schema._id,
 			};
 		}
 
@@ -70,6 +71,7 @@ export default class QuestionbankService {
 				questionStatus: newQuestionStatus,
 				guidance: latestSchemaVersion.guidance,
 				countOfChanges: latestSchemaVersion.countOfChanges,
+				schemaId: latestSchemaVersion._id,
 			};
 		}
 
@@ -90,13 +92,14 @@ export default class QuestionbankService {
 					countOfChanges: 0,
 				};
 
-				await this.dataRequestRepository.createApplicationFormSchema(newSchema);
+				const schema = await this.dataRequestRepository.createApplicationFormSchema(newSchema);
 
 				return {
 					masterSchema,
 					questionStatus: newSchema.questionStatus,
 					guidance: newSchema.guidance,
 					countOfChanges: newSchema.countOfChanges,
+					schemaId: schema._id,
 				};
 			} else {
 				let questionStatus = {};
@@ -117,13 +120,14 @@ export default class QuestionbankService {
 					version: latestSchemaVersion.version + 1,
 				};
 
-				await this.dataRequestRepository.createApplicationFormSchema(newSchema);
+				const schema = await this.dataRequestRepository.createApplicationFormSchema(newSchema);
 
 				return {
 					masterSchema,
 					questionStatus: newSchema.questionStatus,
 					guidance: newSchema.guidance,
 					countOfChanges: newSchema.countOfChanges,
+					schemaId: schema._id,
 				};
 			}
 		}

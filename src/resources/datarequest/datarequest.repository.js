@@ -171,7 +171,7 @@ export default class DataRequestRepository extends Repository {
 
 	createApplicationFormSchema(newSchema) {
 		const newSchemaModel = new DataRequestSchemaModel(newSchema);
-		DataRequestSchemaModel.create(newSchemaModel);
+		return DataRequestSchemaModel.create(newSchemaModel);
 	}
 
 	updateApplicationFormSchemaById(id, data, options = {}) {

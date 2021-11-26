@@ -1,5 +1,5 @@
 export const dataRequestSchema = {
-	_id: { $oid: '619baf36eb175aaacd592bbb' },
+	_id: '619baf36eb175aaacd592bbb',
 	version: 1,
 	dataSetId: '',
 	publisher: 'ALLIANCE > SAIL',

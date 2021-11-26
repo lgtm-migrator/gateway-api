@@ -13,7 +13,6 @@ import * as noSchemaExists from '../__mocks__/noSchemaExists';
 
 describe('Question Bank Service', function () {
 	const dataRequestRepository = new DataRequestRepository();
-	sinon.stub(dataRequestRepository, 'createApplicationFormSchema');
 	const globalService = new GlobalService();
 	sinon.stub(globalService, 'getGlobal').returns(questionBank.globalDocument);
 	const publisherRepository = new PublisherRepository();
@@ -21,25 +20,30 @@ describe('Question Bank Service', function () {
 	const publisherService = new PublisherService(publisherRepository);
 	const questionBankRepository = new QuestionBankRepository();
 	const questionBankService = new QuestionBankService(questionBankRepository, publisherService, globalService, dataRequestRepository);
-	let dataRequestRepositoryStub;
+	let dataRequestRepositoryStubGet;
+	let dataRequestRepositoryStubCreate;
 
 	afterEach(function () {
-		dataRequestRepositoryStub.restore();
+		dataRequestRepositoryStubGet.restore();
+		dataRequestRepositoryStubCreate.restore();
 	});
 
 	it('No data request schema exists', async function () {
-		dataRequestRepositoryStub = sinon.stub(dataRequestRepository, 'getApplicationFormSchemas').returns([]);
+		dataRequestRepositoryStubGet = sinon.stub(dataRequestRepository, 'getApplicationFormSchemas').returns([]);
+		dataRequestRepositoryStubCreate = sinon
+			.stub(dataRequestRepository, 'createApplicationFormSchema')
+			.returns(noSchemaExists.expectedSchema);
 
 		const result = await questionBankService.getQuestionBankInfo(questionBank.publisherDocument._id);
 
-		expect(result.questionStatus).toEqual(noSchemaExists.expectedQuestionStatus);
-		expect(result.guidance).toEqual(noSchemaExists.expectedGuidance);
-		expect(result.countOfChanges).toEqual(noSchemaExists.expectedCountOfChanges);
+		expect(result.questionStatus).toEqual(noSchemaExists.expectedSchema.questionStatus);
+		expect(result.guidance).toEqual(noSchemaExists.expectedSchema.guidance);
+		expect(result.countOfChanges).toEqual(noSchemaExists.expectedSchema.countOfChanges);
 		expect(result.masterSchema).toEqual(questionBank.globalDocument.masterSchema);
 	});
 
 	it('Draft data request schema exists created through the customize form', async function () {
-		dataRequestRepositoryStub = sinon
+		dataRequestRepositoryStubGet = sinon
 			.stub(dataRequestRepository, 'getApplicationFormSchemas')
 			.returns([draftSchemaNotCreatedThroughForm.dataRequestSchema]);
 
@@ -52,28 +56,36 @@ describe('Question Bank Service', function () {
 	});
 
 	it('Active data request schema exists created through the customize form', async function () {
-		dataRequestRepositoryStub = sinon
+		dataRequestRepositoryStubGet = sinon
 			.stub(dataRequestRepository, 'getApplicationFormSchemas')
 			.returns([activeSchemaCreatedThroughForm.dataRequestSchema]);
+
+		dataRequestRepositoryStubCreate = sinon
+			.stub(dataRequestRepository, 'createApplicationFormSchema')
+			.returns(activeSchemaCreatedThroughForm.expectedSchema);
 
 		const result = await questionBankService.getQuestionBankInfo(questionBank.publisherDocument._id);
 
 		expect(result.masterSchema).toEqual(questionBank.globalDocument.masterSchema);
-		expect(result.guidance).toEqual(activeSchemaCreatedThroughForm.expectedGuidance);
-		expect(result.questionStatus).toEqual(activeSchemaCreatedThroughForm.expectedQuestionStatus);
-		expect(result.countOfChanges).toEqual(activeSchemaCreatedThroughForm.expectedCountOfChanges);
+		expect(result.guidance).toEqual(activeSchemaCreatedThroughForm.expectedSchema.guidance);
+		expect(result.questionStatus).toEqual(activeSchemaCreatedThroughForm.expectedSchema.questionStatus);
+		expect(result.countOfChanges).toEqual(activeSchemaCreatedThroughForm.expectedSchema.countOfChanges);
 	});
 
 	it('Active data request schema exists not created through the customize form', async function () {
-		dataRequestRepositoryStub = sinon
+		dataRequestRepositoryStubGet = sinon
 			.stub(dataRequestRepository, 'getApplicationFormSchemas')
 			.returns([activeSchemaNotCreatedThroughForm.dataRequestSchema]);
 
+		dataRequestRepositoryStubCreate = sinon
+			.stub(dataRequestRepository, 'createApplicationFormSchema')
+			.returns(activeSchemaNotCreatedThroughForm.expectedSchema);
+
 		const result = await questionBankService.getQuestionBankInfo(questionBank.publisherDocument._id);
 
-		expect(result.questionStatus).toEqual(activeSchemaNotCreatedThroughForm.expectedQuestionStatus);
-		expect(result.guidance).toEqual(activeSchemaNotCreatedThroughForm.expectedGuidance);
-		expect(result.countOfChanges).toEqual(activeSchemaNotCreatedThroughForm.expectedCountOfChanges);
+		expect(result.questionStatus).toEqual(activeSchemaNotCreatedThroughForm.expectedSchema.questionStatus);
+		expect(result.guidance).toEqual(activeSchemaNotCreatedThroughForm.expectedSchema.guidance);
+		expect(result.countOfChanges).toEqual(activeSchemaNotCreatedThroughForm.expectedSchema.countOfChanges);
 		expect(result.masterSchema).toEqual(questionBank.globalDocument.masterSchema);
 	});
 });

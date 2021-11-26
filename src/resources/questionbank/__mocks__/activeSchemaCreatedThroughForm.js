@@ -25,32 +25,32 @@ export const dataRequestSchema = {
 	},
 };
 
-export const expectedQuestionStatus = {
-	safedatadataflowdiagramenclosed: 1,
-	safeoutputsoutputsdisseminationplansproposalfindings: 0,
-	safeoutputsoutputsdisseminationplansmilestones: 0,
-	safeoutputsoutputsdisseminationplansdisclosurecontrolpolicy: 0,
-	'safeoutputs-dataretention-retaindatadate': 0,
-	safeoutputsdataretentionretaindatadatereason: 1,
-	safeoutputsdataretentionretaindataextensionpermissions: 0,
-	safepeopleprimaryapplicantfullname: 0,
-	safepeopleprimaryapplicantjobtitle: 1,
-	safepeopleprimaryapplicanttelephone: 0,
-	safepeopleprimaryapplicantorcid: 1,
-	safepeopleprimaryapplicantemail: 0,
-	safepeopleotherindividualsfullname: 1,
-	safepeopleotherindividualsjobtitle: 0,
-	safepeopleotherindividualsorganisation: 0,
-	safepeopleotherindividualsrole: 0,
-	safepeopleotherindividualsaccessdata: 1,
-	safepeopleotherindividualsaccreditedresearcher: 0,
-	safepeopleotherindividualstraininginformationgovernance: 0,
-	safepeopleotherindividualsexperience: 1,
+export const expectedSchema = {
+	questionStatus: {
+		safedatadataflowdiagramenclosed: 1,
+		safeoutputsoutputsdisseminationplansproposalfindings: 0,
+		safeoutputsoutputsdisseminationplansmilestones: 0,
+		safeoutputsoutputsdisseminationplansdisclosurecontrolpolicy: 0,
+		'safeoutputs-dataretention-retaindatadate': 0,
+		safeoutputsdataretentionretaindatadatereason: 1,
+		safeoutputsdataretentionretaindataextensionpermissions: 0,
+		safepeopleprimaryapplicantfullname: 0,
+		safepeopleprimaryapplicantjobtitle: 1,
+		safepeopleprimaryapplicanttelephone: 0,
+		safepeopleprimaryapplicantorcid: 1,
+		safepeopleprimaryapplicantemail: 0,
+		safepeopleotherindividualsfullname: 1,
+		safepeopleotherindividualsjobtitle: 0,
+		safepeopleotherindividualsorganisation: 0,
+		safepeopleotherindividualsrole: 0,
+		safepeopleotherindividualsaccessdata: 1,
+		safepeopleotherindividualsaccreditedresearcher: 0,
+		safepeopleotherindividualstraininginformationgovernance: 0,
+		safepeopleotherindividualsexperience: 1,
+	},
+	guidance: {
+		safedatadataflowdiagramenclosed: 'This is the guidance for safedatadataflowdiagramenclosed',
+		'safeoutputs-dataretention-retaindatadate': 'This is the guidance for safeoutputs-dataretention-retaindatadate',
+	},
+	countOfChanges: 0,
 };
-
-export const expectedGuidance = {
-	safedatadataflowdiagramenclosed: 'This is the guidance for safedatadataflowdiagramenclosed',
-	'safeoutputs-dataretention-retaindatadate': 'This is the guidance for safeoutputs-dataretention-retaindatadate',
-};
-
-export const expectedCountOfChanges = 0;
