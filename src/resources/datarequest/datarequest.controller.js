@@ -14,6 +14,7 @@ import inputSanitizer from '../utilities/inputSanitizer';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
+import { PublisherModel } from '../publisher/publisher.model';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -2100,6 +2101,9 @@ export default class DataRequestController extends Controller {
 						questionAnswers,
 						options
 					));
+					// Get the name of the publishers word template
+						let publisherTemplate = await PublisherModel.findOne({ name: publisher }, { wordTemplate: 1, _id: 0 }).lean();
+						let templateName = publisherTemplate.wordTemplate;
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
@@ -2107,6 +2111,15 @@ export default class DataRequestController extends Controller {
 						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
 						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
 						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+
+						// Generate word attachment for publishers with 'wordTemplate' populated
+						if (!_.isUndefined(templateName)) {
+							await emailGenerator.generateWordAttachment(templateName, questionAnswers);
+							let wordAttachmentName = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.docx`;
+							let wordContent = await emailGenerator.generateWordContent(wordAttachmentName);
+							let wordAttachment = await emailGenerator.generateAttachment(wordAttachmentName, wordContent, 'application/docx');
+							attachments = [...attachments, wordAttachment];
+						}
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
@@ -2122,6 +2135,9 @@ export default class DataRequestController extends Controller {
 							attachments
 						);
 					}
+
+					// Remove temporary files for word attachment
+					if (!_.isUndefined(templateName)) { await emailGenerator.deleteWordAttachmentTempFiles() }
 				}
 				break;
 			case constants.notificationTypes.RESUBMITTED:

@@ -4,7 +4,9 @@ import { UserModel } from '../user/user.model';
 import helper from '../utilities/helper.util';
 import constants from '../utilities/constants.util';
 import * as Sentry from '@sentry/node';
+import wordTemplateBuilder from '../utilities/wordTemplateBuilder.util';
 
+const fs = require('fs');
 const sgMail = require('@sendgrid/mail');
 const readEnv = process.env.ENV || 'prod';
 let parent, qsId;
@@ -2516,6 +2518,24 @@ const _generateAttachment = (filename, content, type) => {
 	};
 };
 
+const _generateWordAttachment = async (templateName, questionAnswers) => {
+	await wordTemplateBuilder.getTemplate(templateName);
+	let formattedQuestionAnswers = await wordTemplateBuilder.generateRestructuredQuestionAnswers(questionAnswers);
+	let wordAttachment = await wordTemplateBuilder.generatePopulatedTemplate(formattedQuestionAnswers);
+	return wordAttachment;
+};
+
+const _generateWordContent = async (filename) => {
+  let pathToAttachment = `${__dirname}/populatedtemplate.docx`;
+  let content = await fs.readFileSync(pathToAttachment).toString('base64');
+  return content
+}
+
+const _deleteWordAttachmentTempFiles = async () => {
+  if(fs.existsSync(`${__dirname}/template.docx`)){fs.unlinkSync(__dirname + '/template.docx')}
+  if(fs.existsSync(`${__dirname}/populatedtemplate.docx`)){fs.unlinkSync(__dirname + '/populatedtemplate.docx')}
+};
+
 export default {
 	//General
 	sendEmail: _sendEmail,
@@ -2540,6 +2560,9 @@ export default {
 	generateAddedToTeam: _generateAddedToTeam,
 	generateNewTeamManagers: _generateNewTeamManagers,
 	generateNewDARMessage: _generateNewDARMessage,
+	deleteWordAttachmentTempFiles: _deleteWordAttachmentTempFiles,
+	generateWordAttachment: _generateWordAttachment,
+  generateWordContent: _generateWordContent,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
@@ -2548,7 +2571,7 @@ export default {
 	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
 	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
 	generateMetadataOnboardingDraftDeleted: _generateMetadataOnboardingDraftDeleted,
-  generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
+	generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
 	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages
