@@ -140,7 +140,7 @@ describe('Testing the datasetonboarding middleware', () => {
 					maxResults: 10,
 					sortBy: sortOption,
 					sortDirection: 'asc',
-					status: 'inReview',
+					status: 'active',
 				};
 				validateSearchParameters(req, res, nextFunction);
 			});
@@ -297,6 +297,36 @@ describe('Testing the datasetonboarding middleware', () => {
 			validateSearchParameters(req, res, nextFunction);
 
 			expect(res.status).toHaveBeenCalledWith(500);
+			expect(nextFunction.mock.calls.length).toBe(0);
+		});
+
+		it('Should return a 500 error for the popularity sort option with a status which does not equal active', () => {
+			let req = mockedRequest();
+			let res = mockedResponse();
+			const nextFunction = jest.fn();
+
+			const expectedResponse = {
+				success: false,
+				message: `Sorting by popularity is only available for active datasets [status=active]`,
+			};
+
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
+
+			req.query = {
+				search: '',
+				datasetIndex: 0,
+				maxResults: 10,
+				sortBy: 'popularity',
+				sortDirection: 'asc',
+				status: 'inReview',
+			};
+
+			validateSearchParameters(req, res, nextFunction);
+
+			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
 			expect(nextFunction.mock.calls.length).toBe(0);
 		});
 	});
