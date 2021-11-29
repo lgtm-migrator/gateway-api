@@ -1,7 +1,7 @@
 import Repository from '../base/repository';
 import { DataUseRegister } from './dataUseRegister.model';
 import { isNil } from 'lodash';
-import { filtersService } from '../filters/dependency';
+import { filtersService } from '../filters/filters.service';
 
 export default class DataUseRegisterRepository extends Repository {
 	constructor() {

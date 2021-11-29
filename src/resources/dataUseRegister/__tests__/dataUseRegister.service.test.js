@@ -2,6 +2,7 @@ import sinon from 'sinon';
 
 import DataUseRegisterService from '../dataUseRegister.service';
 import DataUseRegisterRepository from '../dataUseRegister.repository';
+import dataUseRegisterUtil from '../dataUseRegister.util';
 import { dataUseRegisterUploadsWithDuplicates, dataUseRegisterUploads } from '../__mocks__/dataUseRegisters';
 
 describe('DataUseRegisterService', function () {
@@ -44,6 +45,8 @@ describe('DataUseRegisterService', function () {
 			const checkDataUseRegisterExistsStub = sinon.stub(dataUseRegisterRepository, 'checkDataUseRegisterExists');
 			checkDataUseRegisterExistsStub.onCall(0).returns(false);
 			checkDataUseRegisterExistsStub.onCall(1).returns(true);
+			const getLinkedDatasetsStub = sinon.stub(dataUseRegisterUtil, 'getLinkedDatasets');
+			getLinkedDatasetsStub.returns({ linkedDatasets: [], namedDatasets: [] });
 
 			// Act
 			const result = await dataUseRegisterService.filterExistingDataUseRegisters(dataUseRegisterUploads);
