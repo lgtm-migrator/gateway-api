@@ -5,7 +5,7 @@ export default class PublisherService {
 		this.publisherRepository = publisherRepository;
 	}
 
-	getPublisher(id, options = {}) {
+	async getPublisher(id, options = {}) {
 		return this.publisherRepository.getPublisher(id, options);
 	}
 
