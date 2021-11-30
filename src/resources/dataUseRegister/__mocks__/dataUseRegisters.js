@@ -302,19 +302,19 @@ export const dataUseRegisterUploadsWithDuplicates = [
 
 export const datasets = [
 	{
-		datasetid: '70b4d407-288a-4945-a4d5-506d60715110',
+		id: '70b4d407-288a-4945-a4d5-506d60715110',
 		pid: 'e55df485-5acd-4606-bbb8-668d4c06380a',
 	},
 	{
-		datasetid: '82ef7d1a-98d8-48b6-9acd-461bf2a399c3',
+		id: '82ef7d1a-98d8-48b6-9acd-461bf2a399c3',
 		pid: 'e55df485-5acd-4606-bbb8-668d4c06380a',
 	},
 	{
-		datasetid: '673626f3-bdac-4d32-9bb8-c890b727c0d1',
+		id: '673626f3-bdac-4d32-9bb8-c890b727c0d1',
 		pid: '594d79a4-92b9-4a7f-b991-abf850bf2b67',
 	},
 	{
-		datasetid: '89e57932-ac48-48ac-a6e5-29795bc38b94',
+		id: '89e57932-ac48-48ac-a6e5-29795bc38b94',
 		pid: 'efbd4275-70e2-4887-8499-18b1fb24ce5b',
 	},
 ];
@@ -325,7 +325,7 @@ export const relatedObjectDatasets = [
 		pid: 'e55df485-5acd-4606-bbb8-668d4c06380a',
 		objectType: 'dataset',
 		user: 'James Smith',
-		updated: '2021-24-09T11:01:58.135Z',
+		updated: '24 Sept 2021',
 		isLocked: true,
 		reason: 'This dataset was added automatically during the manual upload of this data use register',
 	},
@@ -334,7 +334,7 @@ export const relatedObjectDatasets = [
 		pid: 'e55df485-5acd-4606-bbb8-668d4c06380a',
 		objectType: 'dataset',
 		user: 'James Smith',
-		updated: '2021-24-09T11:01:58.135Z',
+		updated: '24 Sept 2021',
 		isLocked: true,
 		reason: 'This dataset was added automatically during the manual upload of this data use register',
 	},
@@ -343,7 +343,7 @@ export const relatedObjectDatasets = [
 		pid: '594d79a4-92b9-4a7f-b991-abf850bf2b67',
 		objectType: 'dataset',
 		user: 'James Smith',
-		updated: '2021-24-09T11:01:58.135Z',
+		updated: '24 Sept 2021',
 		isLocked: true,
 		reason: 'This dataset was added automatically during the manual upload of this data use register',
 	},
@@ -352,7 +352,7 @@ export const relatedObjectDatasets = [
 		pid: 'efbd4275-70e2-4887-8499-18b1fb24ce5b',
 		objectType: 'dataset',
 		user: 'James Smith',
-		updated: '2021-24-09T11:01:58.135Z',
+		updated: '24 Sept 2021',
 		isLocked: true,
 		reason: 'This dataset was added automatically during the manual upload of this data use register',
 	},
@@ -370,6 +370,12 @@ export const expectedGatewayDatasets = [
 	{ datasetid: '1', name: 'dataset 1', pid: '111' },
 	{ datasetid: '2', name: 'dataset 2', pid: '222' },
 	{ datasetid: '3', name: 'dataset 3', pid: '333' },
+];
+
+export const expectedGatewayDatasetsReturned = [
+	{ id: '1', name: 'dataset 1', pid: '111' },
+	{ id: '2', name: 'dataset 2', pid: '222' },
+	{ id: '3', name: 'dataset 3', pid: '333' },
 ];
 
 export const nonGatewayApplicantNames = ['applicant one', 'applicant two', 'applicant three', 'applicant four'];

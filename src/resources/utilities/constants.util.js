@@ -18,6 +18,7 @@ const _activityLogNotifications = Object.freeze({
 const _dataUseRegisterNotifications = Object.freeze({
 	DATAUSEAPPROVED: 'dataUseApproved',
 	DATAUSEREJECTED: 'dataUseRejected',
+	DATAUSEPENDING: 'dataUsePending',
 });
 
 const _teamNotificationTypes = Object.freeze({
@@ -263,33 +264,46 @@ const _dataUseRegisterStatus = {
 
 // Activity log related enums
 const _activityLogEvents = {
-	APPLICATION_SUBMITTED: 'applicationSubmitted',
-	REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
-	UPDATES_SUBMITTED: 'updatesSubmitted',
-	AMENDMENT_SUBMITTED: 'amendmentSubmitted',
-	APPLICATION_APPROVED: 'applicationApproved',
-	APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
-	APPLICATION_REJECTED: 'applicationRejected',
-	COLLABORATOR_ADDEDD: 'collaboratorAdded',
-	COLLABORATOR_REMOVED: 'collaboratorRemoved',
-	PRESUBMISSION_MESSAGE: 'presubmissionMessage',
-	UPDATE_REQUESTED: 'updateRequested',
-	UPDATE_SUBMITTED: 'updateSubmitted',
-	WORKFLOW_ASSIGNED: 'workflowAssigned',
-	REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
-	RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
-	RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
-	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
-	DEADLINE_PASSED: 'deadlinePassed',
-	MANUAL_EVENT: 'manualEvent',
-	CONTEXTUAL_MESSAGE: 'contextualMessage',
-	NOTE: 'note',
-	DATA_USE_REGISTER_UPDATED: 'dataUseRegisterUpdated',
+	data_access_request: {
+		APPLICATION_SUBMITTED: 'applicationSubmitted',
+		REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
+		UPDATES_SUBMITTED: 'updatesSubmitted',
+		AMENDMENT_SUBMITTED: 'amendmentSubmitted',
+		APPLICATION_APPROVED: 'applicationApproved',
+		APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
+		APPLICATION_REJECTED: 'applicationRejected',
+		COLLABORATOR_ADDEDD: 'collaboratorAdded',
+		COLLABORATOR_REMOVED: 'collaboratorRemoved',
+		PRESUBMISSION_MESSAGE: 'presubmissionMessage',
+		UPDATE_REQUESTED: 'updateRequested',
+		UPDATE_SUBMITTED: 'updateSubmitted',
+		WORKFLOW_ASSIGNED: 'workflowAssigned',
+		REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
+		RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
+		RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
+		FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
+		DEADLINE_PASSED: 'deadlinePassed',
+		MANUAL_EVENT: 'manualEvent',
+		CONTEXTUAL_MESSAGE: 'contextualMessage',
+		NOTE: 'note',
+	},
+	dataset: {
+		DATASET_VERSION_SUBMITTED: 'newDatasetVersionSubmitted',
+		DATASET_VERSION_APPROVED: 'datasetVersionApproved',
+		DATASET_VERSION_REJECTED: 'datasetVersionRejected',
+		DATASET_VERSION_ARCHIVED: 'datasetVersionArchived',
+		DATASET_VERSION_UNARCHIVED: 'datasetVersionUnarchived',
+		DATASET_UPDATES_SUBMITTED: 'datasetUpdatesSubmitted',
+	},
+	data_use_register: {
+		DATA_USE_REGISTER_UPDATED: 'dataUseRegisterUpdated',
+	},
 };
 
 const _activityLogTypes = {
 	DATA_ACCESS_REQUEST: 'data_request',
 	DATA_USE_REGISTER: 'data_use_register',
+	DATASET: 'dataset',
 };
 
 const _systemGeneratedUser = {
