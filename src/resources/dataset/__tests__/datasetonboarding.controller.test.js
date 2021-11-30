@@ -43,7 +43,7 @@ describe('Dataset onboarding controller', () => {
 
 				const response = await getDatasetsByPublisher(req, res);
 
-				const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
+				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
 
 				formattedDatasets.forEach(dataset => {
 					expect(dataset.activeflag).toEqual('inReview');
@@ -69,13 +69,13 @@ describe('Dataset onboarding controller', () => {
 
 				const response = await getDatasetsByPublisher(req, res);
 
-				const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
+				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
 
 				expect(formattedDatasets.length).toEqual(1);
 			});
 		});
 		describe('As a publisher team user', () => {
-			const statuses = Object.values(constants.datatsetStatuses);
+			const statuses = Object.values(constants.datasetStatuses);
 
 			test.each(statuses)('Each status should only return datasets with the supplied status', async status => {
 				let res = mockedResponse();
@@ -96,7 +96,7 @@ describe('Dataset onboarding controller', () => {
 
 				const response = await getDatasetsByPublisher(req, res);
 
-				const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
+				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
 
 				formattedDatasets.forEach(dataset => {
 					expect(dataset.activeflag).toEqual(status);
@@ -151,9 +151,33 @@ describe('Dataset onboarding controller', () => {
 
 				const response = await getDatasetsByPublisher(req, res);
 
-				const formattedDatasets = response.json.mock.calls[0][0].data.listOfDatasets;
+				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
 
 				expect([...new Set(formattedDatasets.map(dataset => dataset.activeflag))]).toEqual([...new Set(expectedResponse)]);
+			});
+
+			it('Should return the correct count matching the supplied query parameters', async () => {
+				let req = mockedRequest();
+				let res = mockedResponse();
+
+				req.params = {
+					publisherID: 'TestPublisher',
+				};
+
+				req.query = {
+					search: '',
+					datasetIndex: 0,
+					maxResults: 10,
+					sortBy: 'latest',
+					sortDirection: 'asc',
+					status: 'inReview',
+				};
+
+				const response = await getDatasetsByPublisher(req, res);
+
+				const counts = response.json.mock.calls[0][0].data.results.total;
+
+				expect(counts).toBeGreaterThan(0);
 			});
 		});
 	});

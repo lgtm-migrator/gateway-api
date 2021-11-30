@@ -18,36 +18,7 @@ const readEnv = process.env.ENV || 'prod';
 
 module.exports = {
 	getDatasetsByPublisher: async (req, res) => {
-		try {
-			let {
-				params: { publisherID },
-				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
-			} = req;
-
-			const activeflagOptions = Object.values(constants.datatsetStatuses);
-
-			let searchQuery = {
-				activeflag: {
-					$in: activeflagOptions,
-				},
-				type: 'dataset',
-				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
-			};
-
-			if (search.length > 0)
-				searchQuery['$or'] = [
-					{ name: { $regex: search, $options: 'i' } },
-					{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
-					{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
-				];
-
-			const datasets = await Data.find(searchQuery)
-				.select(
-					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
-				)
-				.sort({ 'timestamps.updated': -1 })
-				.lean();
-
+		const versioningHelper = datasets => {
 			let versionedDatasets = datasets.reduce((arr, dataset) => {
 				dataset.listOfVersions = [];
 				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
@@ -60,8 +31,35 @@ module.exports = {
 				}
 				return arr;
 			}, []);
+			return versionedDatasets;
+		};
 
-			let counts = {
+		try {
+			let {
+				params: { publisherID },
+				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
+			} = req;
+
+			const activeflagOptions = Object.values(constants.datasetStatuses);
+
+			let searchQuery = {
+				activeflag: {
+					$in: activeflagOptions,
+				},
+				type: 'dataset',
+				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
+			};
+
+			const allPublishersDatasetVersions = await Data.find(searchQuery)
+				.select(
+					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
+				)
+				.sort({ 'timestamps.updated': -1 })
+				.lean();
+
+			const allPublisherDatasets = await versioningHelper(allPublishersDatasetVersions);
+
+			let totalCounts = {
 				inReview: 0,
 				active: 0,
 				rejected: 0,
@@ -70,23 +68,45 @@ module.exports = {
 			};
 
 			activeflagOptions.forEach(activeflag => {
-				counts[activeflag] = versionedDatasets.filter(dataset => dataset.activeflag === activeflag).length;
+				totalCounts[activeflag] = allPublisherDatasets.filter(dataset => dataset.activeflag === activeflag).length;
 			});
 
 			if (publisherID === constants.teamTypes.ADMIN) {
-				delete counts.active;
-				delete counts.rejected;
-				delete counts.draft;
-				delete counts.archive;
+				delete totalCounts.active;
+				delete totalCounts.rejected;
+				delete totalCounts.draft;
+				delete totalCounts.archive;
+			}
+
+			let versionedDatasets = [];
+
+			if (search.length > 0) {
+				searchQuery['$or'] = [
+					{ name: { $regex: search, $options: 'i' } },
+					{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
+					{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
+				];
+
+				const datasets = await Data.find(searchQuery)
+					.select(
+						'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
+					)
+					.sort({ 'timestamps.updated': -1 })
+					.lean();
+
+				versionedDatasets = await versioningHelper(datasets);
+			} else {
+				versionedDatasets = allPublisherDatasets;
 			}
 
 			if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
+			const count = versionedDatasets.length;
 			versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
 			if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
 
 			return res.status(200).json({
 				success: true,
-				data: { counts, listOfDatasets: versionedDatasets },
+				data: { counts: totalCounts, results: { total: count, listOfDatasets: versionedDatasets } },
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
@@ -347,12 +367,12 @@ module.exports = {
 
 			let datasetv2Object = await datasetonboardingUtil.buildv2Object(dataset);
 
-			//update dataset to inreview - constants.datatsetStatuses.INREVIEW
+			//update dataset to inreview - constants.datasetStatuses.INREVIEW
 			let updatedDataset = await Data.findOneAndUpdate(
 				{ _id: id },
 				{
 					datasetv2: datasetv2Object,
-					activeflag: constants.datatsetStatuses.INREVIEW,
+					activeflag: constants.datasetStatuses.INREVIEW,
 					'timestamps.updated': Date.now(),
 					'timestamps.submitted': Date.now(),
 				}
@@ -584,7 +604,7 @@ module.exports = {
 				let updatedDataset = await Data.findOneAndUpdate(
 					{ _id: id },
 					{
-						activeflag: constants.datatsetStatuses.REJECTED,
+						activeflag: constants.datasetStatuses.REJECTED,
 						applicationStatusDesc: applicationStatusDesc,
 						applicationStatusAuthor: `${firstname} ${lastname}`,
 						'timestamps.rejected': Date.now(),
@@ -642,7 +662,7 @@ module.exports = {
 				}
 				let updatedDataset = await Data.findOneAndUpdate(
 					{ _id: id },
-					{ activeflag: constants.datatsetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
+					{ activeflag: constants.datasetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
 				);
 
 				await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_ARCHIVED, {

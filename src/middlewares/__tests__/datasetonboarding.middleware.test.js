@@ -153,7 +153,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
 
-			const statuses = Object.values(constants.datatsetStatuses);
+			const statuses = Object.values(constants.datasetStatuses);
 
 			statuses.forEach(status => {
 				req.params = {
