@@ -18,6 +18,22 @@ const readEnv = process.env.ENV || 'prod';
 
 module.exports = {
 	getDatasetsByPublisher: async (req, res) => {
+		const versioningHelper = datasets => {
+			let versionedDatasets = datasets.reduce((arr, dataset) => {
+				dataset.listOfVersions = [];
+				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
+				if (datasetIdx === -1) {
+					arr = [...arr, dataset];
+				} else {
+					const { _id, datasetVersion, activeflag } = dataset;
+					const versionDetails = { _id, datasetVersion, activeflag };
+					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
+				}
+				return arr;
+			}, []);
+			return versionedDatasets;
+		};
+
 		try {
 			let {
 				params: { publisherID },
@@ -34,34 +50,17 @@ module.exports = {
 				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
 			};
 
-			if (search.length > 0)
-				searchQuery['$or'] = [
-					{ name: { $regex: search, $options: 'i' } },
-					{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
-					{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
-				];
-
-			const datasets = await Data.find(searchQuery)
+			//Get all datasets with no search term to produce a counts object
+			const allPublishersDatasetVersions = await Data.find(searchQuery)
 				.select(
 					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
 				)
 				.sort({ 'timestamps.updated': -1 })
 				.lean();
 
-			let versionedDatasets = datasets.reduce((arr, dataset) => {
-				dataset.listOfVersions = [];
-				const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
-				if (datasetIdx === -1) {
-					arr = [...arr, dataset];
-				} else {
-					const { _id, datasetVersion, activeflag } = dataset;
-					const versionDetails = { _id, datasetVersion, activeflag };
-					arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
-				}
-				return arr;
-			}, []);
+			const allPublisherDatasets = await versioningHelper(allPublishersDatasetVersions);
 
-			let counts = {
+			let totalCounts = {
 				inReview: 0,
 				active: 0,
 				rejected: 0,
@@ -70,23 +69,46 @@ module.exports = {
 			};
 
 			activeflagOptions.forEach(activeflag => {
-				counts[activeflag] = versionedDatasets.filter(dataset => dataset.activeflag === activeflag).length;
+				totalCounts[activeflag] = allPublisherDatasets.filter(dataset => dataset.activeflag === activeflag).length;
 			});
 
 			if (publisherID === constants.teamTypes.ADMIN) {
-				delete counts.active;
-				delete counts.rejected;
-				delete counts.draft;
-				delete counts.archive;
+				delete totalCounts.active;
+				delete totalCounts.rejected;
+				delete totalCounts.draft;
+				delete totalCounts.archive;
+			}
+
+			let versionedDatasets = [];
+
+			//If search term, return only datasets matching search term
+			if (search.length > 0) {
+				searchQuery['$or'] = [
+					{ name: { $regex: search, $options: 'i' } },
+					{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
+					{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
+				];
+
+				const datasets = await Data.find(searchQuery)
+					.select(
+						'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
+					)
+					.sort({ 'timestamps.updated': -1 })
+					.lean();
+
+				versionedDatasets = await versioningHelper(datasets);
+			} else {
+				versionedDatasets = allPublisherDatasets;
 			}
 
 			if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
+			const count = versionedDatasets.length;
 			versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
 			if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
 
 			return res.status(200).json({
 				success: true,
-				data: { counts, listOfDatasets: versionedDatasets },
+				data: { counts: totalCounts, results: { total: count, listOfDatasets: versionedDatasets } },
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
