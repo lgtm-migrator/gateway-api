@@ -222,7 +222,7 @@ const _roleTypes = {
 
 // <Dataset onboarding related enums>
 
-const _datatsetStatuses = {
+const _datasetStatuses = {
 	DRAFT: 'draft',
 	INREVIEW: 'inReview',
 	ACTIVE: 'active',
@@ -327,7 +327,7 @@ export default {
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
-	datatsetStatuses: _datatsetStatuses,
+	datasetStatuses: _datasetStatuses,
 	logTypes: _logTypes,
 	activityLogEvents: _activityLogEvents,
 	activityLogTypes: _activityLogTypes,

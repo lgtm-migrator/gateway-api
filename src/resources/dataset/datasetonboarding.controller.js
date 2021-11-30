@@ -40,7 +40,7 @@ module.exports = {
 				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
 			} = req;
 
-			const activeflagOptions = Object.values(constants.datatsetStatuses);
+			const activeflagOptions = Object.values(constants.datasetStatuses);
 
 			let searchQuery = {
 				activeflag: {
@@ -367,12 +367,12 @@ module.exports = {
 
 			let datasetv2Object = await datasetonboardingUtil.buildv2Object(dataset);
 
-			//update dataset to inreview - constants.datatsetStatuses.INREVIEW
+			//update dataset to inreview - constants.datasetStatuses.INREVIEW
 			let updatedDataset = await Data.findOneAndUpdate(
 				{ _id: id },
 				{
 					datasetv2: datasetv2Object,
-					activeflag: constants.datatsetStatuses.INREVIEW,
+					activeflag: constants.datasetStatuses.INREVIEW,
 					'timestamps.updated': Date.now(),
 					'timestamps.submitted': Date.now(),
 				}
@@ -604,7 +604,7 @@ module.exports = {
 				let updatedDataset = await Data.findOneAndUpdate(
 					{ _id: id },
 					{
-						activeflag: constants.datatsetStatuses.REJECTED,
+						activeflag: constants.datasetStatuses.REJECTED,
 						applicationStatusDesc: applicationStatusDesc,
 						applicationStatusAuthor: `${firstname} ${lastname}`,
 						'timestamps.rejected': Date.now(),
@@ -662,7 +662,7 @@ module.exports = {
 				}
 				let updatedDataset = await Data.findOneAndUpdate(
 					{ _id: id },
-					{ activeflag: constants.datatsetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
+					{ activeflag: constants.datasetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
 				);
 
 				await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_VERSION_ARCHIVED, {

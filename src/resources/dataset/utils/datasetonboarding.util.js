@@ -332,7 +332,7 @@ const updateDataset = async (dataset, updateObj) => {
 	// 1. Extract properties
 	let { activeflag, _id } = dataset;
 	// 2. If application is in progress, update initial question answers
-	if (activeflag === constants.datatsetStatuses.DRAFT || activeflag === constants.applicationStatuses.INREVIEW) {
+	if (activeflag === constants.datasetStatuses.DRAFT || activeflag === constants.applicationStatuses.INREVIEW) {
 		await Data.findByIdAndUpdate(_id, updateObj, { new: true }).catch(err => {
 			console.error(err);
 			throw err;
@@ -740,7 +740,7 @@ const buildMetadataQuality = async (dataset, v2Object, pid) => {
 				} else completeness.push({ value: 'observation.measuredProperty', weight });
 			}
 		} else {
-			let datasetValue = getDatatsetValue(cleanV2Object, key);
+			let datasetValue = getDatasetValue(cleanV2Object, key);
 
 			if (!isEmpty(datasetValue)) {
 				totalCount++;
@@ -767,7 +767,7 @@ const buildMetadataQuality = async (dataset, v2Object, pid) => {
 		errorWeight = 0;
 
 	Object.entries(weights).forEach(([key, weight]) => {
-		let datasetValue = getDatatsetValue(cleanV2Object, key);
+		let datasetValue = getDatasetValue(cleanV2Object, key);
 		let updatedKey = '/' + key.replace(/\./g, '/');
 
 		let errorIndex = Object.keys(validate.errors).find(key => validate.errors[key].instancePath === updatedKey);
@@ -822,7 +822,7 @@ const cleanUpV2Object = v2Object => {
  *
  * @return  {String}           [return field value that is found in the dataset]
  */
-const getDatatsetValue = (dataset, field) => {
+const getDatasetValue = (dataset, field) => {
 	return field.split('.').reduce(function (o, k) {
 		return o && o[k];
 	}, dataset);
