@@ -89,7 +89,7 @@ module.exports = {
 				return res.status(404).json({ status: 'error', message: 'Dataset publisher could not be found.' });
 			}
 
-			[data, error] = datasetonboardingService.createNewDatasetVersion(publisherID, pid, currentVersionId);
+			const [data, error] = await datasetonboardingService.createNewDatasetVersion(publisherID, pid, currentVersionId);
 
 			if (error) {
 				if (error === 'existingDataset') {
@@ -170,7 +170,7 @@ module.exports = {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			const updatedDataset = await datasetonboardingService.submitDatasetVersion(id);
+			const [updatedDataset, dataset] = await datasetonboardingService.submitDatasetVersion(id);
 
 			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
 
@@ -181,7 +181,7 @@ module.exports = {
 			});
 
 			if (parseInt(updatedDataset.datasetVersion) !== 1) {
-				let datasetv2DifferenceObject = datasetonboardingUtil.datasetv2ObjectComparison(datasetv2Object, dataset.datasetv2);
+				let datasetv2DifferenceObject = datasetonboardingUtil.datasetv2ObjectComparison(updatedDataset.datasetv2, dataset.datasetv2);
 
 				if (!_.isEmpty(datasetv2DifferenceObject)) {
 					await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_UPDATES_SUBMITTED, {
@@ -674,7 +674,7 @@ module.exports = {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			dataset = await datasetonboardingService.duplicateDataset(id);
+			const dataset = await datasetonboardingService.duplicateDataset(id);
 
 			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
 

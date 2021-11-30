@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import moment from 'moment';
+import { v4 as uuidv4 } from 'uuid';
 
 import { Data } from '../tool/data.model';
 import constants from '../utilities/constants.util';
@@ -92,18 +93,18 @@ export default class DatasetOnboardingService {
 	};
 
 	getDatasetVersion = async id => {
-		let dataset = this.datasetOnboardingRepository.findOne({ _id: id });
+		let dataset = await Data.findOne({ _id: id });
 
 		if (dataset.questionAnswers) {
 			dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
 		} else {
 			dataset.questionAnswers = datasetonboardingUtil.populateQuestionAnswers(dataset.datasetv2);
-			await this.datasetOnboardingRepository.findOneAndUpdate({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
+			await this.datasetOnboardingRepository.updateByQuery({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
 		}
 
 		if (_.isEmpty(dataset.structuralMetadata)) {
-			dataset.structuralMetadata = datasetonboardingUtil.populateStructuralMetadata(dataset.datasetv2);
-			await this.datasetOnboardingRepository.findOneAndUpdate({ _id: id }, { structuralMetadata: dataset.structuralMetadata });
+			dataset.structuralMetadata = datasetonboardingUtil.populateStructuralMetadata(dataset.datasetfields.technicaldetails);
+			await this.datasetOnboardingRepository.updateByQuery({ _id: id }, { structuralMetadata: dataset.structuralMetadata });
 		}
 
 		return dataset;
@@ -121,10 +122,13 @@ export default class DatasetOnboardingService {
 			},
 		};
 
+		let data = null;
+		let error = null;
+
 		if (!pid) {
-			[data, error] = this.initialDatasetVersion(publisherObject, publisherData);
+			[data, error] = await this.initialDatasetVersion(publisherObject, publisherData);
 		} else {
-			[data, error] = this.newVersionForExistingDataset(currentVersionId);
+			[data, error] = await this.newVersionForExistingDataset(currentVersionId, publisherData, pid);
 		}
 
 		return [data, error];
@@ -137,7 +141,7 @@ export default class DatasetOnboardingService {
 
 		let datasetv2Object = await datasetonboardingUtil.buildv2Object(dataset);
 
-		let updatedDataset = await this.datasetOnboardingRepository.findOneAndUpdate(
+		let updatedDataset = await Data.findOneAndUpdate(
 			{ _id: id },
 			{
 				datasetv2: datasetv2Object,
@@ -147,11 +151,11 @@ export default class DatasetOnboardingService {
 			}
 		);
 
-		return updatedDataset;
+		return [updatedDataset, dataset];
 	};
 
 	checkUniqueTitle = async (regex, pid) => {
-		let dataset = await this.datasetOnboardingRepository.findOne({ name: regex, pid: { $ne: pid } });
+		let dataset = await Data.findOne({ name: regex, pid: { $ne: pid } });
 
 		return dataset;
 	};
@@ -160,15 +164,13 @@ export default class DatasetOnboardingService {
 		let dataset = {};
 
 		if (!isEmpty(pid)) {
-			dataset = await this.datasetOnboardingRepository.findOne({ pid: { $eq: pid }, activeflag: constants.datasetStatuses.ACTIVE }).lean();
+			dataset = await Data.findOne({ pid: { $eq: pid }, activeflag: constants.datasetStatuses.ACTIVE }).lean();
 
 			if (!isEmpty(datasetID)) {
-				dataset = await this.datasetOnboardingRepository
-					.findOne({ pid: { $eq: datasetID }, activeflag: constants.datasetStatuses.ARCHIVE })
-					.sort({ createdAt: -1 });
+				dataset = await Data.findOne({ pid: { $eq: datasetID }, activeflag: constants.datasetStatuses.ARCHIVE }).sort({ createdAt: -1 });
 			}
 		} else if (!isEmpty(datasetID)) {
-			dataset = await this.datasetOnboardingRepository.findOne({ datasetid: { datasetID } }).lean();
+			dataset = await Data.findOne({ datasetid: { datasetID } }).lean();
 		}
 
 		if (isEmpty(dataset)) throw new Error('Dataset could not be found.');
@@ -177,7 +179,7 @@ export default class DatasetOnboardingService {
 
 		if (recalculate) {
 			metadataQuality = await datasetonboardingUtil.buildMetadataQuality(dataset, dataset.datasetv2, dataset.pid);
-			await this.datasetOnboardingRepository.findOneAndUpdate({ _id: dataset._id }, { 'datasetfields.metadataquality': metadataQuality });
+			await Data.findOneAndUpdate({ _id: dataset._id }, { 'datasetfields.metadataquality': metadataQuality });
 		} else {
 			metadataQuality = dataset.datasetfields.metadataquality;
 		}
@@ -186,14 +188,14 @@ export default class DatasetOnboardingService {
 	};
 
 	deleteDraftDataset = async id => {
-		let dataset = await this.datasetOnboardingRepository.findOneAndRemove({ _id: id, activeflag: constants.datasetStatuses.DRAFT });
+		let dataset = await Data.findOneAndRemove({ _id: id, activeflag: constants.datasetStatuses.DRAFT });
 		let draftDatasetName = dataset.name;
 
 		return [dataset, draftDatasetName];
 	};
 
 	duplicateDataset = async id => {
-		let dataset = await this.datasetOnboardingRepository.findOne({ _id: id });
+		let dataset = await Data.findOne({ _id: id });
 		let datasetCopy = JSON.parse(JSON.stringify(dataset));
 		let duplicateText = '-duplicate';
 
@@ -228,11 +230,7 @@ export default class DatasetOnboardingService {
 			let title = questionAnswers['properties/summary/title'];
 
 			if (title && title.length >= 2) {
-				await this.datasetOnboardingRepository.findByIdAndUpdate(
-					{ _id: id },
-					{ name: title, 'timestamps.updated': Date.now() },
-					{ new: true }
-				);
+				await Data.findByIdAndUpdate({ _id: id }, { name: title, 'timestamps.updated': Date.now() }, { new: true });
 				data.name = title;
 			}
 		}
@@ -241,7 +239,7 @@ export default class DatasetOnboardingService {
 	};
 
 	updateStructuralMetadata = async (structuralMetadata, id) => {
-		await this.datasetOnboardingRepository.findByIdAndUpdate(
+		await Data.findByIdAndUpdate(
 			{ _id: id },
 			{
 				structuralMetadata,
@@ -252,23 +250,25 @@ export default class DatasetOnboardingService {
 		);
 	};
 
-	newVersionForExistingDataset = async (currentVersionId, publisherData) => {
-		let isDraftDataset = await this.datasetOnboardingRepository.findOne({ pid, activeflag: 'draft' }, { _id: 1 });
+	newVersionForExistingDataset = async (currentVersionId, publisherData, pid) => {
+		let isDraftDataset = await Data.findOne({ pid, activeflag: 'draft' }, { _id: 1 });
 
-		if (!isNil(isDraftDataset)) {
-			return [isDraftDataset, 'existingDataset']; //return res.status(200).json({ success: true, data: { id: isDraftDataset._id, draftExists: true } });
+		console.log('here');
+
+		if (!_.isNil(isDraftDataset)) {
+			return [null, 'existingDataset'];
 		}
 
-		let datasetToCopy = await this.datasetOnboardingRepository.findOne({ _id: currentVersionId });
+		let datasetToCopy = await Data.findOne({ _id: currentVersionId });
 
-		if (isNil(datasetToCopy)) {
-			return [, 'missingVersion'];
+		if (_.isNil(datasetToCopy)) {
+			return [null, 'missingVersion'];
 		}
 
 		let uniqueID = '';
 		while (uniqueID === '') {
 			uniqueID = parseInt(Math.random().toString().replace('0.', ''));
-			if ((await this.datasetOnboardingRepository.find({ id: uniqueID }).length) === 0) uniqueID = '';
+			if ((await Data.find({ id: uniqueID }).length) === 0) uniqueID = '';
 		}
 
 		let newVersion = datasetonboardingUtil.incrementVersion([1, 0, 0], datasetToCopy.datasetVersion);
@@ -307,13 +307,13 @@ export default class DatasetOnboardingService {
 		let uuid = '';
 		while (uuid === '') {
 			uuid = uuidv4();
-			if ((await this.datasetOnboardingRepository.find({ pid: uuid }).length) === 0) uuid = '';
+			if ((await Data.find({ pid: uuid }).length) === 0) uuid = '';
 		}
 
 		let uniqueID = '';
 		while (uniqueID === '') {
 			uniqueID = parseInt(Math.random().toString().replace('0.', ''));
-			if ((await this.datasetOnboardingRepository.find({ id: uniqueID }).length) === 0) uniqueID = '';
+			if ((await Data.find({ id: uniqueID }).length) === 0) uniqueID = '';
 		}
 
 		let data = new Data();
@@ -340,7 +340,7 @@ export default class DatasetOnboardingService {
 
 	//Return a list of datasets for a given PID
 	getAssociatedVersions = async pid => {
-		let datasets = await this.datasetOnboardingRepository.find({ pid: pid }, { _id: 1, datasetVersion: 1, activeflag: 1 }).sort({
+		let datasets = await Data.find({ pid: pid }, { _id: 1, datasetVersion: 1, activeflag: 1 }).sort({
 			'timestamps.created': -1,
 		});
 		return datasets;
