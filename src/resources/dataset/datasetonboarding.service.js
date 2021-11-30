@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import moment from 'moment';
 
+import { Data } from '../tool/data.model';
 import constants from '../utilities/constants.util';
 import { PublisherModel } from '../publisher/publisher.model';
 import datasetonboardingUtil from './utils/datasetonboarding.util';
@@ -9,6 +10,48 @@ export default class DatasetOnboardingService {
 	constructor(datasetOnboardingRepository) {
 		this.datasetOnboardingRepository = datasetOnboardingRepository;
 	}
+
+	getDatasetsByPublisherCounts = async publisherID => {
+		const activeflagOptions = Object.values(constants.datasetStatuses);
+
+		let searchQuery = {
+			activeflag: {
+				$in: activeflagOptions,
+			},
+			type: 'dataset',
+			...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
+		};
+
+		const allPublishersDatasetVersions = await Data.find(searchQuery)
+			.select(
+				'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
+			)
+			.sort({ 'timestamps.updated': -1 })
+			.lean();
+
+		const allPublisherDatasets = await this.versioningHelper(allPublishersDatasetVersions);
+
+		let totalCounts = {
+			inReview: 0,
+			active: 0,
+			rejected: 0,
+			draft: 0,
+			archive: 0,
+		};
+
+		activeflagOptions.forEach(activeflag => {
+			totalCounts[activeflag] = allPublisherDatasets.filter(dataset => dataset.activeflag === activeflag).length;
+		});
+
+		if (publisherID === constants.teamTypes.ADMIN) {
+			delete totalCounts.active;
+			delete totalCounts.rejected;
+			delete totalCounts.draft;
+			delete totalCounts.archive;
+		}
+
+		return totalCounts;
+	};
 
 	getDatasetsByPublisher = async (status, publisherID, datasetIndex, maxResults, sortBy, sortDirection, search) => {
 		const activeflagOptions = Object.values(constants.datasetStatuses);
@@ -28,17 +71,24 @@ export default class DatasetOnboardingService {
 				{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
 			];
 
-		const datasets = await this.datasetOnboardingRepository.getDatasetsByPublisher(searchQuery);
+		const datasets = await Data.find(searchQuery)
+			.select(
+				'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
+			)
+			.sort({ 'timestamps.updated': -1 })
+			.lean();
 
-		let versionedDatasets = await this.versionDatasets(datasets);
-
-		const counts = this.buildCountObject(versionedDatasets, publisherID);
+		let versionedDatasets = await this.versioningHelper(datasets);
 
 		if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
+
+		const count = versionedDatasets.length;
+
 		versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
+
 		if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
 
-		return [versionedDatasets, counts];
+		return [versionedDatasets, count];
 	};
 
 	getDatasetVersion = async id => {
@@ -337,5 +387,21 @@ export default class DatasetOnboardingService {
 		}
 
 		return counts;
+	};
+
+	versioningHelper = datasets => {
+		let versionedDatasets = datasets.reduce((arr, dataset) => {
+			dataset.listOfVersions = [];
+			const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
+			if (datasetIdx === -1) {
+				arr = [...arr, dataset];
+			} else {
+				const { _id, datasetVersion, activeflag } = dataset;
+				const versionDetails = { _id, datasetVersion, activeflag };
+				arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
+			}
+			return arr;
+		}, []);
+		return versionedDatasets;
 	};
 }

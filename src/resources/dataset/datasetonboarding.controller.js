@@ -28,7 +28,9 @@ module.exports = {
 				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
 			} = req;
 
-			const [datasets, counts] = await datasetonboardingService.getDatasetsByPublisher(
+			const totalCounts = await datasetonboardingService.getDatasetsByPublisherCounts(publisherID);
+
+			const [versionedDatasets, count] = await datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
 				datasetIndex,
@@ -40,7 +42,7 @@ module.exports = {
 
 			return res.status(200).json({
 				success: true,
-				data: { counts, listOfDatasets: datasets },
+				data: { counts: totalCounts, results: { total: count, listOfDatasets: versionedDatasets } },
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
