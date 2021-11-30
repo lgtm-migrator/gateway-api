@@ -75,7 +75,7 @@ describe('Dataset onboarding controller', () => {
 			});
 		});
 		describe('As a publisher team user', () => {
-			const statuses = Object.values(constants.datatsetStatuses);
+			const statuses = Object.values(constants.datasetStatuses);
 
 			test.each(statuses)('Each status should only return datasets with the supplied status', async status => {
 				let res = mockedResponse();

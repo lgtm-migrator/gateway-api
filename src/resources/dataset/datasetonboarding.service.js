@@ -1,4 +1,8 @@
+import _ from 'lodash';
+import moment from 'moment';
+
 import constants from '../utilities/constants.util';
+import { PublisherModel } from '../publisher/publisher.model';
 import datasetonboardingUtil from './utils/datasetonboarding.util';
 
 export default class DatasetOnboardingService {
@@ -7,7 +11,7 @@ export default class DatasetOnboardingService {
 	}
 
 	getDatasetsByPublisher = async (status, publisherID, datasetIndex, maxResults, sortBy, sortDirection, search) => {
-		const activeflagOptions = Object.values(constants.datatsetStatuses);
+		const activeflagOptions = Object.values(constants.datasetStatuses);
 
 		let searchQuery = {
 			activeflag: {
@@ -37,6 +41,262 @@ export default class DatasetOnboardingService {
 		return [versionedDatasets, counts];
 	};
 
+	getDatasetVersion = async id => {
+		let dataset = this.datasetOnboardingRepository.findOne({ _id: id });
+
+		if (dataset.questionAnswers) {
+			dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
+		} else {
+			dataset.questionAnswers = datasetonboardingUtil.populateQuestionAnswers(dataset.datasetv2);
+			await this.datasetOnboardingRepository.findOneAndUpdate({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
+		}
+
+		if (_.isEmpty(dataset.structuralMetadata)) {
+			dataset.structuralMetadata = datasetonboardingUtil.populateStructuralMetadata(dataset.datasetv2);
+			await this.datasetOnboardingRepository.findOneAndUpdate({ _id: id }, { structuralMetadata: dataset.structuralMetadata });
+		}
+
+		return dataset;
+	};
+
+	createNewDatasetVersion = async (publisherID, pid, currentVersionId) => {
+		const publisherData = await PublisherModel.find({ _id: publisherID }).lean();
+		let publisherObject = {
+			summary: {
+				publisher: {
+					identifier: publisherID,
+					name: publisherData[0].publisherDetails.name,
+					memberOf: publisherData[0].publisherDetails.memberOf,
+				},
+			},
+		};
+
+		if (!pid) {
+			[data, error] = this.initialDatasetVersion(publisherObject, publisherData);
+		} else {
+			[data, error] = this.newVersionForExistingDataset(currentVersionId);
+		}
+
+		return [data, error];
+	};
+
+	submitDatasetVersion = async id => {
+		let dataset = await Data.findOne({ _id: id });
+
+		dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
+
+		let datasetv2Object = await datasetonboardingUtil.buildv2Object(dataset);
+
+		let updatedDataset = await this.datasetOnboardingRepository.findOneAndUpdate(
+			{ _id: id },
+			{
+				datasetv2: datasetv2Object,
+				activeflag: constants.datasetStatuses.INREVIEW,
+				'timestamps.updated': Date.now(),
+				'timestamps.submitted': Date.now(),
+			}
+		);
+
+		return updatedDataset;
+	};
+
+	checkUniqueTitle = async (regex, pid) => {
+		let dataset = await this.datasetOnboardingRepository.findOne({ name: regex, pid: { $ne: pid } });
+
+		return dataset;
+	};
+
+	getMetadataQuality = async (pid, datasetID, recalculate) => {
+		let dataset = {};
+
+		if (!isEmpty(pid)) {
+			dataset = await this.datasetOnboardingRepository.findOne({ pid: { $eq: pid }, activeflag: constants.datasetStatuses.ACTIVE }).lean();
+
+			if (!isEmpty(datasetID)) {
+				dataset = await this.datasetOnboardingRepository
+					.findOne({ pid: { $eq: datasetID }, activeflag: constants.datasetStatuses.ARCHIVE })
+					.sort({ createdAt: -1 });
+			}
+		} else if (!isEmpty(datasetID)) {
+			dataset = await this.datasetOnboardingRepository.findOne({ datasetid: { datasetID } }).lean();
+		}
+
+		if (isEmpty(dataset)) throw new Error('Dataset could not be found.');
+
+		let metadataQuality = {};
+
+		if (recalculate) {
+			metadataQuality = await datasetonboardingUtil.buildMetadataQuality(dataset, dataset.datasetv2, dataset.pid);
+			await this.datasetOnboardingRepository.findOneAndUpdate({ _id: dataset._id }, { 'datasetfields.metadataquality': metadataQuality });
+		} else {
+			metadataQuality = dataset.datasetfields.metadataquality;
+		}
+
+		return metadataQuality;
+	};
+
+	deleteDraftDataset = async id => {
+		let dataset = await this.datasetOnboardingRepository.findOneAndRemove({ _id: id, activeflag: constants.datasetStatuses.DRAFT });
+		let draftDatasetName = dataset.name;
+
+		return [dataset, draftDatasetName];
+	};
+
+	duplicateDataset = async id => {
+		let dataset = await this.datasetOnboardingRepository.findOne({ _id: id });
+		let datasetCopy = JSON.parse(JSON.stringify(dataset));
+		let duplicateText = '-duplicate';
+
+		delete datasetCopy._id;
+		datasetCopy.pid = uuidv4();
+
+		let parsedQuestionAnswers = JSON.parse(datasetCopy.questionAnswers);
+		parsedQuestionAnswers['properties/summary/title'] += duplicateText;
+
+		datasetCopy.name += duplicateText;
+		datasetCopy.activeflag = 'draft';
+		datasetCopy.datasetVersion = '1.0.0';
+		datasetCopy.questionAnswers = JSON.stringify(parsedQuestionAnswers);
+		if (datasetCopy.datasetv2.summary.title) {
+			datasetCopy.datasetv2.summary.title += duplicateText;
+		}
+
+		await Data.create(datasetCopy);
+
+		return dataset;
+	};
+
+	updateDatasetVersionDataElement = async (dataset, updateObj, id) => {
+		await datasetonboardingUtil.updateDataset(dataset, updateObj);
+
+		let data = {
+			status: 'success',
+		};
+
+		if (updateObj.updatedQuestionId === 'properties/summary/title') {
+			let questionAnswers = JSON.parse(updateObj.questionAnswers);
+			let title = questionAnswers['properties/summary/title'];
+
+			if (title && title.length >= 2) {
+				await this.datasetOnboardingRepository.findByIdAndUpdate(
+					{ _id: id },
+					{ name: title, 'timestamps.updated': Date.now() },
+					{ new: true }
+				);
+				data.name = title;
+			}
+		}
+
+		return data;
+	};
+
+	updateStructuralMetadata = async (structuralMetadata, id) => {
+		await this.datasetOnboardingRepository.findByIdAndUpdate(
+			{ _id: id },
+			{
+				structuralMetadata,
+				percentageCompleted,
+				'timestamps.updated': Date.now(),
+			},
+			{ new: true }
+		);
+	};
+
+	newVersionForExistingDataset = async (currentVersionId, publisherData) => {
+		let isDraftDataset = await this.datasetOnboardingRepository.findOne({ pid, activeflag: 'draft' }, { _id: 1 });
+
+		if (!isNil(isDraftDataset)) {
+			return [isDraftDataset, 'existingDataset']; //return res.status(200).json({ success: true, data: { id: isDraftDataset._id, draftExists: true } });
+		}
+
+		let datasetToCopy = await this.datasetOnboardingRepository.findOne({ _id: currentVersionId });
+
+		if (isNil(datasetToCopy)) {
+			return [, 'missingVersion'];
+		}
+
+		let uniqueID = '';
+		while (uniqueID === '') {
+			uniqueID = parseInt(Math.random().toString().replace('0.', ''));
+			if ((await this.datasetOnboardingRepository.find({ id: uniqueID }).length) === 0) uniqueID = '';
+		}
+
+		let newVersion = datasetonboardingUtil.incrementVersion([1, 0, 0], datasetToCopy.datasetVersion);
+
+		datasetToCopy.questionAnswers = JSON.parse(datasetToCopy.questionAnswers);
+
+		if (!datasetToCopy.questionAnswers['properties/documentation/description'] && datasetToCopy.description)
+			datasetToCopy.questionAnswers['properties/documentation/description'] = datasetToCopy.description;
+
+		let data = new Data();
+		data.pid = pid;
+		data.datasetVersion = newVersion;
+		data.id = uniqueID;
+		data.datasetid = 'New dataset version';
+		data.name = datasetToCopy.name;
+		data.datasetv2 = datasetToCopy.datasetv2;
+		data.datasetv2.identifier = '';
+		data.datasetv2.version = '';
+		data.type = 'dataset';
+		data.activeflag = 'draft';
+		data.source = 'HDRUK MDC';
+		data.is5Safes = publisherData[0].uses5Safes;
+		data.questionAnswers = JSON.stringify(datasetToCopy.questionAnswers);
+		data.structuralMetadata = datasetToCopy.structuralMetadata;
+		data.percentageCompleted = datasetToCopy.percentageCompleted;
+		data.timestamps.created = Date.now();
+		data.timestamps.updated = Date.now();
+
+		await data.save();
+
+		return [data, null];
+	};
+
+	//Create a new version for a new dataset
+	initialDatasetVersion = async (publisherObject, publisherData) => {
+		let uuid = '';
+		while (uuid === '') {
+			uuid = uuidv4();
+			if ((await this.datasetOnboardingRepository.find({ pid: uuid }).length) === 0) uuid = '';
+		}
+
+		let uniqueID = '';
+		while (uniqueID === '') {
+			uniqueID = parseInt(Math.random().toString().replace('0.', ''));
+			if ((await this.datasetOnboardingRepository.find({ id: uniqueID }).length) === 0) uniqueID = '';
+		}
+
+		let data = new Data();
+		data.pid = uuid;
+		data.datasetVersion = '1.0.0';
+		data.id = uniqueID;
+		data.datasetid = 'New dataset';
+		data.name = `New dataset ${moment(Date.now()).format('D MMM YYYY HH:mm')}`;
+		data.datasetv2 = publisherObject;
+		data.type = 'dataset';
+		data.activeflag = 'draft';
+		data.source = 'HDRUK MDC';
+		data.is5Safes = publisherData[0].uses5Safes;
+		data.timestamps.created = Date.now();
+		data.timestamps.updated = Date.now();
+		data.questionAnswers = JSON.stringify({
+			'properties/summary/title': `New dataset ${moment(Date.now()).format('D MMM YYYY HH:mm')}`,
+		});
+
+		await data.save();
+
+		return [data, null];
+	};
+
+	//Return a list of datasets for a given PID
+	getAssociatedVersions = async pid => {
+		let datasets = await this.datasetOnboardingRepository.find({ pid: pid }, { _id: 1, datasetVersion: 1, activeflag: 1 }).sort({
+			'timestamps.created': -1,
+		});
+		return datasets;
+	};
+
+	// Reduce a list of datasets into their consituent versions
 	versionDatasets = datasets => {
 		let versionedDatasets = datasets.reduce((arr, dataset) => {
 			dataset.listOfVersions = [];
@@ -55,7 +315,7 @@ export default class DatasetOnboardingService {
 	};
 
 	buildCountObject = (versionedDatasets, publisherID) => {
-		const activeflagOptions = Object.values(constants.datatsetStatuses);
+		const activeflagOptions = Object.values(constants.datasetStatuses);
 
 		let counts = {
 			inReview: 0,
