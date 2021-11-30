@@ -50,7 +50,6 @@ module.exports = {
 				...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
 			};
 
-			//Get all datasets with no search term to produce a counts object
 			const allPublishersDatasetVersions = await Data.find(searchQuery)
 				.select(
 					'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
@@ -81,7 +80,6 @@ module.exports = {
 
 			let versionedDatasets = [];
 
-			//If search term, return only datasets matching search term
 			if (search.length > 0) {
 				searchQuery['$or'] = [
 					{ name: { $regex: search, $options: 'i' } },
