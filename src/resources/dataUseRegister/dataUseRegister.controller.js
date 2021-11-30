@@ -401,7 +401,7 @@ export default class DataUseRegisterController extends Controller {
 					})
 					.lean();
 
-				const publisherTeam = await TeamModel.findOne({ _id: publisher })
+				const publisherTeam = await TeamModel.findOne({ _id: { $eq: publisher } })
 					.populate({
 						path: 'publisher',
 					})
