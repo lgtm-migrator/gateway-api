@@ -30,7 +30,7 @@ module.exports = {
 
 			const totalCounts = await datasetonboardingService.getDatasetsByPublisherCounts(publisherID);
 
-			const [versionedDatasets, count] = await datasetonboardingService.getDatasetsByPublisher(
+			const [versionedDatasets, count, pageCount] = await datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
 				datasetIndex,
@@ -40,9 +40,14 @@ module.exports = {
 				search
 			);
 
+			if (!status) status = 'all statuses';
+
 			return res.status(200).json({
 				success: true,
-				data: { counts: totalCounts, results: { total: count, listOfDatasets: versionedDatasets } },
+				data: {
+					publisherTotals: totalCounts,
+					results: { resultsFor: status, total: count, pageCount: pageCount, listOfDatasets: versionedDatasets },
+				},
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
@@ -107,7 +112,6 @@ module.exports = {
 		}
 	},
 
-	//PATCH api/v1/dataset-onboarding/:id
 	updateDatasetVersionDataElement: async (req, res) => {
 		try {
 			const {
@@ -146,9 +150,9 @@ module.exports = {
 					}
 				}
 			} else {
-				data = await datasetonboardingService.updateDatasetVersionDataElement(dataset, updateObj, id);
+				let response = await datasetonboardingService.updateDatasetVersionDataElement(dataset, updateObj, id);
 
-				return res.status(200).json(data);
+				return res.status(200).json(response);
 			}
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
@@ -156,7 +160,6 @@ module.exports = {
 		}
 	},
 
-	//POST api/v1/dataset-onboarding/:id
 	submitDatasetVersion: async (req, res) => {
 		try {
 			// 1. id is the _id object in mongoo.db not the generated id or dataset Id
@@ -200,7 +203,6 @@ module.exports = {
 		}
 	},
 
-	//PUT api/v1/dataset-onboarding/:id
 	changeDatasetVersionStatus: async (req, res) => {
 		try {
 			// 1. Id is the _id object in MongoDb not the generated id or dataset Id
@@ -573,7 +575,6 @@ module.exports = {
 		}
 	},
 
-	//POST /api/v1/dataset-onboarding/bulk-upload
 	bulkUpload: async (req, res) => {
 		try {
 			let key = req.body.key;
@@ -668,8 +669,8 @@ module.exports = {
 		try {
 			let id = req.params.id;
 
-			//Check user type and authentication to submit application
 			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}

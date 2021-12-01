@@ -122,7 +122,7 @@ describe('Dataset onboarding controller', () => {
 
 				const response = await getDatasetsByPublisher(req, res);
 
-				const counts = response.json.mock.calls[0][0].data.counts;
+				const counts = response.json.mock.calls[0][0].data.publisherTotals;
 
 				Object.keys(counts).forEach(status => {
 					expect(counts[status]).toBeGreaterThan(0);

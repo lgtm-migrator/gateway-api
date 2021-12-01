@@ -65,6 +65,105 @@ module.exports = {
 			},
 		},
 	},
+	'/api/v1/dataset-onboarding/publisher/{publisherID}': {
+		get: {
+			summary: 'Returns a list of datasets for a given publisher, or the admin team, as per the supplied query parameters.',
+			security: [
+				{
+					cookieAuth: [],
+				},
+			],
+			tags: ['Datasets'],
+			parameters: [
+				{
+					in: 'path',
+					name: 'publisherID',
+					required: true,
+					description: `The ID of the publisher, or 'admin' for the HDR UK admin team`,
+					schema: {
+						type: 'string',
+						example: '5f3f98068af2ef61552e1d75',
+					},
+				},
+				{
+					in: 'query',
+					name: 'search',
+					required: false,
+					description: `A search string used to filter the publisher's datasets. String is matched against the publisher name, dataset abstract and dataset title.`,
+					schema: {
+						type: 'string',
+						example: 'covid',
+					},
+				},
+				{
+					in: 'query',
+					name: 'status',
+					required: false,
+					description: `Filter the results by a given dataset status. Note that if the status parameter is not given, all dataset types are returned in the search results. If the publisherID is 'admin', only 'inReview' is an acceptable status.`,
+					schema: {
+						type: 'string',
+						example: 'inReview',
+						enum: ['active', 'rejected', 'inReview', 'draft', 'archive'],
+					},
+				},
+				{
+					in: 'query',
+					name: 'datasetIndex',
+					required: false,
+					description: 'The index at which to start the results from for pagination purposed. Defaults to 0 if parameter is not given.',
+					schema: {
+						type: 'integer',
+						example: 0,
+					},
+				},
+				{
+					in: 'query',
+					name: 'maxResults',
+					required: false,
+					description:
+						'The maximum number of results (i.e., datasets) to return in the response. Defaults to 10 if the parameter is not given in the initial request.',
+					schema: {
+						type: 'integer',
+						example: 10,
+					},
+				},
+				{
+					in: 'query',
+					name: 'sortBy',
+					required: false,
+					description: `The parameter to sort the dataset results by. Links to the 'sortDirection' which controls whether the sort is ascending or descending. Note that sorting by popularity is only applicable when 'status=active.'. Defaults to 'latest' if no 'sortBy' parameter is given in the request.`,
+					schema: {
+						type: 'string',
+						example: 'latest',
+						enum: ['latest', 'alphabetic', 'recentlyadded', 'metadata', 'popularity'],
+					},
+				},
+				{
+					in: 'query',
+					name: 'sortDirection',
+					required: false,
+					description: `Controls the sort direction (i.e., ascending or descending). Defaults to 'desc' if no 'sortDirection' parameter is given in the initial request.`,
+					schema: {
+						type: 'string',
+						example: 'desc',
+						enum: ['asc', 'desc'],
+					},
+				},
+			],
+			description: `Returns a list of datasets for either a publisher team or the HDR administration team based on supplied query parameters. All query parameters are optional. If none are given, all datasets associated with the publisher team, regardless of the dataset status, are returned (sorted by latest, descending) One exception is for 'publisherID=admin', in which case only 'inReview' datasets are returned.`,
+			responses: {
+				200: {
+					description: 'Successful API response',
+				},
+				401: {
+					description: 'Unauthorised - see message in response',
+				},
+				500: {
+					description: 'Server error - see message in response',
+				},
+			},
+		},
+	},
 	'/api/v2/datasets': {
 		get: {
 			summary: 'Returns a list of dataset objects',

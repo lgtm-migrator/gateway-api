@@ -87,9 +87,11 @@ export default class DatasetOnboardingService {
 
 		versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
 
-		if (maxResults) versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
+		versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
 
-		return [versionedDatasets, count];
+		const pageCount = versionedDatasets.length;
+
+		return [versionedDatasets, count, pageCount];
 	};
 
 	getDatasetVersion = async id => {
@@ -252,8 +254,6 @@ export default class DatasetOnboardingService {
 
 	newVersionForExistingDataset = async (currentVersionId, publisherData, pid) => {
 		let isDraftDataset = await Data.findOne({ pid, activeflag: 'draft' }, { _id: 1 });
-
-		console.log('here');
 
 		if (!_.isNil(isDraftDataset)) {
 			return [null, 'existingDataset'];
