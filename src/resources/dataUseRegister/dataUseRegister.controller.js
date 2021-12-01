@@ -214,6 +214,7 @@ export default class DataUseRegisterController extends Controller {
 			const requestingUser = req.user;
 			const result = await this.dataUseRegisterService.uploadDataUseRegisters(requestingUser, teamId, dataUses);
 			// Return success
+			await this.createNotifications(constants.dataUseRegisterNotifications.DATAUSEPENDING, {}, result, teamId);
 			return res.status(result.uploadedCount > 0 ? 201 : 200).json({
 				success: true,
 				result,
@@ -259,15 +260,84 @@ export default class DataUseRegisterController extends Controller {
 
 			searchQuery = getObjectFilters(searchQuery, req, 'dataUseRegister');
 
-			const result = await DataUseRegister.find(searchQuery)
-				.populate([
-					{ path: 'publisher' },
-					{ path: 'gatewayApplicants' },
-					{ path: 'gatewayOutputsToolsInfo' },
-					{ path: 'gatewayOutputsPapersInfo' },
-					{ path: 'publisherInfo' },
-				])
-				.lean();
+			const aggregateQuery = [
+				{
+					$lookup: {
+						from: 'publishers',
+						localField: 'publisher',
+						foreignField: '_id',
+						as: 'publisherDetails',
+					},
+				},
+				{
+					$lookup: {
+						from: 'tools',
+						localField: 'gatewayOutputsTools',
+						foreignField: 'id',
+						as: 'gatewayOutputsToolsInfo',
+					},
+				},
+				{
+					$lookup: {
+						from: 'tools',
+						localField: 'gatewayOutputsPapers',
+						foreignField: 'id',
+						as: 'gatewayOutputsPapersInfo',
+					},
+				},
+				{
+					$lookup: {
+						from: 'users',
+						let: {
+							listOfGatewayApplicants: '$gatewayApplicants',
+						},
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$and: [{ $in: ['$_id', '$$listOfGatewayApplicants'] }],
+									},
+								},
+							},
+							{ $project: { firstname: 1, lastname: 1 } },
+						],
+
+						as: 'gatewayApplicantsDetails',
+					},
+				},
+				{
+					$lookup: {
+						from: 'tools',
+						let: {
+							listOfGatewayDatasets: '$gatewayDatasets',
+						},
+						pipeline: [
+							{
+								$match: {
+									$expr: {
+										$and: [
+											{ $in: ['$pid', '$$listOfGatewayDatasets'] },
+											{
+												$eq: ['$activeflag', 'active'],
+											},
+										],
+									},
+								},
+							},
+							{ $project: { pid: 1, name: 1 } },
+						],
+						as: 'gatewayDatasetsInfo',
+					},
+				},
+				{
+					$addFields: {
+						publisherInfo: { name: '$publisherDetails.name' },
+					},
+				},
+				{ $match: searchQuery },
+			];
+
+			const result = await DataUseRegister.aggregate(aggregateQuery);
 
 			return res.status(200).json({ success: true, result });
 		} catch (err) {
@@ -280,7 +350,7 @@ export default class DataUseRegisterController extends Controller {
 		}
 	}
 
-	async createNotifications(type, context, dataUseRegister) {
+	async createNotifications(type, context, dataUseRegister, publisher) {
 		const { rejectionReason } = context;
 		const { id, projectTitle, user: uploader } = dataUseRegister;
 
@@ -322,6 +392,37 @@ export default class DataUseRegisterController extends Controller {
 
 				const html = emailGenerator.generateDataUseRegisterRejected(options);
 				emailGenerator.sendEmail(emailRecipients, constants.hdrukEmail, `A data use has been rejected by HDR UK`, html, false);
+				break;
+			}
+			case constants.dataUseRegisterNotifications.DATAUSEPENDING: {
+				const adminTeam = await TeamModel.findOne({ type: 'admin' })
+					.populate({
+						path: 'users',
+					})
+					.lean();
+
+				const publisherTeam = await TeamModel.findOne({ _id: { $eq: publisher } })
+					.populate({
+						path: 'publisher',
+					})
+					.lean();
+
+				const dataUseTeamMembers = teamController.getTeamMembersByRole(adminTeam, constants.roleTypes.ADMIN_DATA_USE);
+				const emailRecipients = [...dataUseTeamMembers];
+
+				const { uploaded } = dataUseRegister;
+				let listOfProjectTitles = [];
+				uploaded.forEach(dataset => {
+					listOfProjectTitles.push(dataset.projectTitle);
+				});
+
+				const options = {
+					listOfProjectTitles,
+					publisher: publisherTeam.publisher.name,
+				};
+
+				const html = emailGenerator.generateDataUseRegisterPending(options);
+				emailGenerator.sendEmail(emailRecipients, constants.hdrukEmail, `New data uses to review`, html, false);
 				break;
 			}
 		}

@@ -1,4 +1,5 @@
 import sinon from 'sinon';
+import { fn as momentProto } from 'moment';
 import { cloneDeep } from 'lodash';
 
 import dataUseRegisterUtil from '../dataUseRegister.util';
@@ -8,15 +9,18 @@ import {
 	nonGatewayDatasetNames,
 	gatewayDatasetNames,
 	expectedGatewayDatasets,
+	expectedGatewayDatasetsReturned,
 	nonGatewayApplicantNames,
 	gatewayApplicantNames,
 	expectedGatewayApplicants,
 	applications,
-	authors
+	authors,
 } from '../__mocks__/dataUseRegisters';
 import { uploader } from '../__mocks__/dataUseRegisterUsers';
 import * as userRepository from '../../user/user.repository';
 import { datasetService } from '../../dataset/dependency';
+
+const sandbox = sinon.createSandbox();
 
 describe('DataUseRegisterUtil', function () {
 	beforeAll(function () {
@@ -25,6 +29,10 @@ describe('DataUseRegisterUtil', function () {
 
 	describe('getLinkedDatasets', function () {
 		it('returns the names of the datasets that could not be found on the Gateway as named datasets', async function () {
+			// Arrange
+			const getDatasetsByNameStub = sinon.stub(datasetService, 'getDatasetsByName');
+			getDatasetsByNameStub.returns();
+
 			// Act
 			const result = await dataUseRegisterUtil.getLinkedDatasets(nonGatewayDatasetNames);
 
@@ -41,7 +49,7 @@ describe('DataUseRegisterUtil', function () {
 
 			// Assert
 			expect(getDatasetsByPidsStub.calledOnce).toBe(true);
-			expect(result).toEqual({ linkedDatasets: expectedGatewayDatasets, namedDatasets: [] });
+			expect(result).toEqual({ linkedDatasets: expectedGatewayDatasetsReturned, namedDatasets: [] });
 		});
 	});
 
@@ -63,18 +71,24 @@ describe('DataUseRegisterUtil', function () {
 
 			// Assert
 			expect(getUsersByIdsStub.calledOnce).toBe(true);
-			expect(result).toEqual({ gatewayApplicants: expectedGatewayApplicants, nonGatewayApplicants: [] });
+			expect(result.gatewayApplicants[0]._id).toEqual(expectedGatewayApplicants[0]);
+			expect(result.gatewayApplicants[1]._id).toEqual(expectedGatewayApplicants[1]);
+			expect(result.nonGatewayApplicants).toEqual([]);
 		});
 	});
 
-	describe('buildRelatedDatasets', function () {
+	describe('buildRelatedObjects', function () {
+		beforeEach(() => {
+			sandbox.stub(momentProto, 'format');
+			momentProto.format.withArgs('DD MMM YYYY').returns('24 Sept 2021');
+		});
+
 		it('filters out data uses that are found to already exist in the database', async function () {
 			// Arrange
 			const data = cloneDeep(datasets);
-			sinon.stub(Date, 'now').returns('2021-24-09T11:01:58.135Z');
 
 			// Act
-			const result = dataUseRegisterUtil.buildRelatedDatasets(uploader, data);
+			const result = dataUseRegisterUtil.buildRelatedObjects(uploader, 'dataset', data);
 
 			// Assert
 			expect(result.length).toBe(data.length);
@@ -83,6 +97,7 @@ describe('DataUseRegisterUtil', function () {
 
 		afterEach(function () {
 			sinon.restore();
+			sandbox.restore();
 		});
 	});
 
