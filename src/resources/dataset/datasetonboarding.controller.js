@@ -119,13 +119,15 @@ module.exports = {
 				body: data,
 			} = req;
 
-			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
+			const datasetID = id;
+
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(datasetID, req.user);
 
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			let dataset = await Data.findOne({ _id: id });
+			let dataset = await Data.findOne({ _id: datasetID });
 
 			if (!dataset) {
 				return res.status(404).json({ status: 'error', message: 'Dataset not found.' });
@@ -145,12 +147,12 @@ module.exports = {
 					if (isEmpty(structuralMetadata)) {
 						return res.status(404).json({ status: 'error', message: 'Update failed' });
 					} else {
-						await datasetonboardingService.updateStructuralMetadata(structuralMetadata, id);
+						await datasetonboardingService.updateStructuralMetadata(structuralMetadata, datasetID);
 						return res.status(200).json();
 					}
 				}
 			} else {
-				let response = await datasetonboardingService.updateDatasetVersionDataElement(dataset, updateObj, id);
+				let response = await datasetonboardingService.updateDatasetVersionDataElement(dataset, updateObj, datasetID);
 
 				return res.status(200).json(response);
 			}
@@ -534,7 +536,7 @@ module.exports = {
 		let { pid, title = '' } = req.query;
 		let regex = new RegExp(`^${escapeRegExp(title)}$`, 'i');
 
-		const dataset = datasetonboardingService.checkUniqueTitle(regex, pid);
+		const dataset = await datasetonboardingService.checkUniqueTitle(regex, pid);
 
 		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
 	},
@@ -561,7 +563,7 @@ module.exports = {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			[dataset, draftDatasetName] = await datasetonboardingService.deleteDraftDataset(id);
+			const [dataset, draftDatasetName] = await datasetonboardingService.deleteDraftDataset(id);
 
 			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DRAFTDATASETDELETED, dataset);
 
