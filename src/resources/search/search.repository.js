@@ -295,7 +295,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 					activeflag: 1,
 					counter: 1,
-					'datasetfields.metadataquality.quality_score': 1,
+					'datasetfields.metadataquality.weighted_quality_score': 1,
 
 					latestUpdate: '$timestamps.updated',
 					relatedresources: {
@@ -364,7 +364,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 					activeflag: 1,
 					counter: 1,
-					'datasetfields.metadataquality.quality_score': 1,
+					'datasetfields.metadataquality.weighted_quality_score': 1,
 					latestUpdate: {
 						$cond: {
 							if: { $gte: ['$createdAt', '$updatedon'] },
@@ -391,7 +391,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 	if (sort === '') {
 		if (type === 'dataset') {
-			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
+			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, name: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
 		} else if (type === 'paper') {
 			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
@@ -424,8 +424,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			else queryObject.push({ $sort: { counter: -1, score: { $meta: 'textScore' } } });
 		}
 	} else if (sort === 'metadata') {
-		if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
-		else queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, score: { $meta: 'textScore' } } });
+		if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, name: 1 } });
+		else queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, score: { $meta: 'textScore' } } });
 	} else if (sort === 'startdate') {
 		if (form === 'true' && searchAll) {
 			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1 } });
