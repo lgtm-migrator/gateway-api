@@ -1,27 +1,27 @@
-import axios from 'axios';
-import FormData from 'form-data';
-import * as Sentry from '@sentry/node';
 var fs = require('fs');
 import _ from 'lodash';
-
-import { Data } from '../tool/data.model';
-import { PublisherModel } from '../publisher/publisher.model';
-import { filtersService } from '../filters/dependency';
-import constants from '../utilities/constants.util';
-import datasetonboardingUtil from './utils/datasetonboarding.util';
+import axios from 'axios';
+import FormData from 'form-data';
 import { v4 as uuidv4 } from 'uuid';
+import * as Sentry from '@sentry/node';
 import { isEmpty, escapeRegExp } from 'lodash';
-import { activityLogService } from '../activitylog/dependency';
-import DatasetOnboardingService from './datasetonboarding.service';
-import DatasetOnboardingRepository from './datasetonboarding.repository';
+
+import { Data } from '../resources/tool/data.model';
+import constants from '../resources/utilities/constants.util';
+import { filtersService } from '../resources/filters/dependency';
+import { PublisherModel } from '../resources/publisher/publisher.model';
+import { activityLogService } from '../resources/activitylog/dependency';
+import datasetonboardingUtil from '../resources/dataset/utils/datasetonboarding.util';
+import DatasetOnboardingService from '../resources/dataset/datasetonboarding.service';
+import DatasetOnboardingRepository from '../resources/dataset/datasetonboarding.repository';
 
 const readEnv = process.env.ENV || 'prod';
 
-const datasetOnboardingRepository = new DatasetOnboardingRepository();
-const datasetonboardingService = new DatasetOnboardingService(datasetOnboardingRepository);
+const datasetonboardingRepository = new DatasetOnboardingRepository();
+const datasetonboardingService = new DatasetOnboardingService(datasetonboardingRepository);
 
-module.exports = {
-	getDatasetsByPublisher: async (req, res) => {
+export default class DatasetOnboardingController {
+	getDatasetsByPublisher = async (req, res) => {
 		try {
 			let {
 				params: { publisherID },
@@ -53,9 +53,9 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
-	},
+	};
 
-	getDatasetVersion: async (req, res) => {
+	getDatasetVersion = async (req, res) => {
 		try {
 			const id = req.params.id;
 
@@ -76,9 +76,9 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
-	},
+	};
 
-	createNewDatasetVersion: async (req, res) => {
+	createNewDatasetVersion = async (req, res) => {
 		try {
 			const pid = req.body.pid || null;
 			const publisherID = req.body.publisherID || null;
@@ -110,9 +110,9 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
-	},
+	};
 
-	updateDatasetVersionDataElement: async (req, res) => {
+	updateDatasetVersionDataElement = async (req, res) => {
 		try {
 			const {
 				params: { id },
@@ -158,9 +158,9 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
-	},
+	};
 
-	submitDatasetVersion: async (req, res) => {
+	submitDatasetVersion = async (req, res) => {
 		try {
 			// 1. id is the _id object in mongoo.db not the generated id or dataset Id
 			const id = req.params.id || null;
@@ -201,9 +201,9 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
-	},
+	};
 
-	changeDatasetVersionStatus: async (req, res) => {
+	changeDatasetVersionStatus = async (req, res) => {
 		try {
 			// 1. Id is the _id object in MongoDb not the generated id or dataset Id
 			// 2. Get the userId
@@ -528,18 +528,18 @@ module.exports = {
 				message: 'An error occurred updating the dataset status',
 			});
 		}
-	},
+	};
 
-	checkUniqueTitle: async (req, res) => {
+	checkUniqueTitle = async (req, res) => {
 		let { pid, title = '' } = req.query;
 		let regex = new RegExp(`^${escapeRegExp(title)}$`, 'i');
 
 		const dataset = await datasetonboardingService.checkUniqueTitle(regex, pid);
 
 		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
-	},
+	};
 
-	getMetadataQuality: async (req, res) => {
+	getMetadataQuality = async (req, res) => {
 		try {
 			let { pid = '', datasetID = '', recalculate = false } = req.query;
 
@@ -550,9 +550,9 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
-	},
+	};
 
-	deleteDraftDataset: async (req, res) => {
+	deleteDraftDataset = async (req, res) => {
 		try {
 			let id = req.params.id;
 
@@ -573,9 +573,9 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
-	},
+	};
 
-	bulkUpload: async (req, res) => {
+	bulkUpload = async (req, res) => {
 		try {
 			let key = req.body.key;
 			// Check for key
@@ -663,9 +663,9 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
 		}
-	},
+	};
 
-	duplicateDataset: async (req, res) => {
+	duplicateDataset = async (req, res) => {
 		try {
 			let id = req.params.id;
 
@@ -687,5 +687,5 @@ module.exports = {
 			process.stdout.write(`${err.message}\n`);
 			res.status(500).json({ status: 'error', message: err.message });
 		}
-	},
-};
+	};
+}

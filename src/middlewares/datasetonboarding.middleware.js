@@ -23,7 +23,14 @@ const validateSearchParameters = (req, res, next) => {
 	const datasetStatuses = Object.values(constants.datasetStatuses);
 
 	let {
-		query: { search = '', datasetIndex = 0, maxResults = 10, sortBy = 'latest', sortDirection = 'desc', status },
+		query: {
+			search = '',
+			datasetIndex = 0,
+			maxResults = process.env.API_DEFAULT_RESULTS_LIMIT,
+			sortBy = process.env.API_DEFAULT_SORT_OPTION,
+			sortDirection = process.env.API_DEFAULT_SORT_DIRECTION,
+			status,
+		},
 	} = req;
 
 	if (req.params.publisherID === constants.teamTypes.ADMIN) {

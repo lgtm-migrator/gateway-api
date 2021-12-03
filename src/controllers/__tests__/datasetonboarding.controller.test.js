@@ -1,7 +1,7 @@
-import dbHandler from '../../../config/in-memory-db';
-import { getDatasetsByPublisher } from '../datasetonboarding.controller';
-import { datasetSearchStub } from '../__mocks__/datasets';
-import constants from '../../utilities/constants.util';
+import dbHandler from '../../config/in-memory-db';
+import { datasetSearchStub } from '../__mocks__/datasetSearchStub';
+import constants from '../../resources/utilities/constants.util';
+import datasetOnboardingController from '../datasetonboarding.controller';
 
 beforeAll(async () => {
 	await dbHandler.connect();
@@ -22,6 +22,9 @@ describe('Dataset onboarding controller', () => {
 		res.json = jest.fn().mockReturnValue(res);
 		return res;
 	};
+
+	const datasetonboardingController = new datasetOnboardingController();
+
 	describe('getDatasetsByPublisher', () => {
 		describe('As an admin team user', () => {
 			it('A search for inReview datasets should only return inReview datasets', async () => {
@@ -41,7 +44,7 @@ describe('Dataset onboarding controller', () => {
 					status: 'inReview',
 				};
 
-				const response = await getDatasetsByPublisher(req, res);
+				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
 
 				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
 
@@ -67,7 +70,7 @@ describe('Dataset onboarding controller', () => {
 					status: 'inReview',
 				};
 
-				const response = await getDatasetsByPublisher(req, res);
+				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
 
 				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
 
@@ -94,7 +97,7 @@ describe('Dataset onboarding controller', () => {
 					status: status,
 				};
 
-				const response = await getDatasetsByPublisher(req, res);
+				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
 
 				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
 
@@ -120,7 +123,7 @@ describe('Dataset onboarding controller', () => {
 					status: 'inReview',
 				};
 
-				const response = await getDatasetsByPublisher(req, res);
+				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
 
 				const counts = response.json.mock.calls[0][0].data.publisherTotals;
 
@@ -149,7 +152,7 @@ describe('Dataset onboarding controller', () => {
 					.filter(dataset => dataset.datasetv2.summary.publisher.identifier === 'TestPublisher')
 					.map(dataset => dataset.activeflag);
 
-				const response = await getDatasetsByPublisher(req, res);
+				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
 
 				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
 
@@ -173,7 +176,7 @@ describe('Dataset onboarding controller', () => {
 					status: 'inReview',
 				};
 
-				const response = await getDatasetsByPublisher(req, res);
+				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
 
 				const counts = response.json.mock.calls[0][0].data.results.total;
 
