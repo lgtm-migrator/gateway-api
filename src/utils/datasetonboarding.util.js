@@ -1,17 +1,19 @@
-import { Data } from '../../tool/data.model';
-import { TeamModel } from '../../team/team.model';
-import { PublisherModel } from '../../publisher/publisher.model';
-import { UserModel } from '../../user/user.model';
-import notificationBuilder from '../../utilities/notificationBuilder';
-import emailGenerator from '../../utilities/emailGenerator.util';
-import _, { isEmpty, isNil, cloneDeep, isString, map, groupBy, orderBy } from 'lodash';
-import constants from '../../utilities/constants.util';
-import moment from 'moment';
-import randomstring from 'randomstring';
 import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
-var fs = require('fs');
+import moment from 'moment';
 import { flatten } from 'flat';
+import addFormats from 'ajv-formats';
+import randomstring from 'randomstring';
+import constants from '../resources/utilities/constants.util';
+import _, { isEmpty, isNil, cloneDeep, isString, map, groupBy, orderBy } from 'lodash';
+
+import { Data } from '../resources/tool/data.model';
+import { TeamModel } from '../resources/team/team.model';
+import { UserModel } from '../resources/user/user.model';
+import { PublisherModel } from '../resources/publisher/publisher.model';
+import emailGenerator from '../resources/utilities/emailGenerator.util';
+import notificationBuilder from '../resources/utilities/notificationBuilder';
+
+var fs = require('fs');
 
 /**
  * Checks to see if the user has the correct permissions to access the dataset

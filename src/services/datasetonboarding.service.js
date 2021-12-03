@@ -2,10 +2,10 @@ import _ from 'lodash';
 import moment from 'moment';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Data } from '../tool/data.model';
-import constants from '../utilities/constants.util';
-import { PublisherModel } from '../publisher/publisher.model';
-import datasetonboardingUtil from './utils/datasetonboarding.util';
+import { Data } from '../resources/tool/data.model';
+import constants from '../resources/utilities/constants.util';
+import { PublisherModel } from '../resources/publisher/publisher.model';
+import datasetonboardingUtil from '../utils/datasetonboarding.util';
 
 export default class DatasetOnboardingService {
 	constructor(datasetOnboardingRepository) {

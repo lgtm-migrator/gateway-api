@@ -9,11 +9,11 @@ import { isEmpty, escapeRegExp } from 'lodash';
 import { Data } from '../resources/tool/data.model';
 import constants from '../resources/utilities/constants.util';
 import { filtersService } from '../resources/filters/dependency';
+import datasetonboardingUtil from '../utils/datasetonboarding.util';
 import { PublisherModel } from '../resources/publisher/publisher.model';
 import { activityLogService } from '../resources/activitylog/dependency';
-import datasetonboardingUtil from '../resources/dataset/utils/datasetonboarding.util';
-import DatasetOnboardingService from '../resources/dataset/datasetonboarding.service';
-import DatasetOnboardingRepository from '../resources/dataset/datasetonboarding.repository';
+import DatasetOnboardingService from '../services/datasetonboarding.service';
+import DatasetOnboardingRepository from '../repositories/datasetonboarding.repository';
 
 const readEnv = process.env.ENV || 'prod';
 

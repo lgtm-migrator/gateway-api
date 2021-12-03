@@ -1,7 +1,7 @@
-import dbHandler from '../../../../config/in-memory-db';
+import dbHandler from '../../config/in-memory-db';
 import datasetonboardingUtil from '../datasetonboarding.util';
 import { datasetQuestionAnswersMocks, datasetv2ObjectMock, publisherDetailsMock } from '../__mocks__/datasetobjects';
-import constants from '../../../utilities/constants.util';
+import constants from '../../resources/utilities/constants.util';
 import _ from 'lodash';
 
 beforeAll(async () => {

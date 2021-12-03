@@ -3,7 +3,7 @@ import { isEmpty } from 'lodash';
 import { activityLogService } from '../resources/activitylog/dependency';
 import { dataRequestService } from '../resources//datarequest/dependency';
 import { datasetService } from '../resources/dataset/dependency';
-import datasetonboardingUtil from '../resources/dataset/utils/datasetonboarding.util';
+import datasetonboardingUtil from '../utils/datasetonboarding.util';
 import constants from '../resources/utilities/constants.util';
 
 const validateViewRequest = (req, res, next) => {
