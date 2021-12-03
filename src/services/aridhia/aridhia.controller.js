@@ -8,7 +8,7 @@ import * as Sentry from '@sentry/node';
 export default class AridhiaController {
 	constructor() {
 		this.datasetService = new DatasetService();
-		this.aridhia = new Aridhia(http, config);
+		this.aridhia = new Aridhia(http, config);	
 	}
 
 	async main() {
@@ -27,7 +27,6 @@ export default class AridhiaController {
 			for (const code of codes) {
 				datasets.push(await this.aridhia.getDataset(code));
 			}
-	
 			// Take each dataset respond that we got from the api and map it to our dataset model
 			for (const ds of datasets) {
 				models.push(this.aridhia.resToDataset(ds));
@@ -38,6 +37,8 @@ export default class AridhiaController {
 				console.log(`updating dataset with pid ${model.pid}...`);
 				await Dataset.findOneAndUpdate({"pid": model.pid, "activeflag": "active"}, model , { upsert: true });
 			}
+
+			this.deleteDeprecatedDatasets(codes);
 	
 			return res;
 
@@ -50,6 +51,16 @@ export default class AridhiaController {
 
 			logger.logError(err, config.logCategory);
 			console.log("Aridhia Script broke down. Error: " + err);
+		}
+	}
+
+	async deleteDeprecatedDatasets(codesFromAridhiaApi) {
+		const res = await Dataset.find({"pid": /.*fair-.*/}, {"pid": 1});
+		const aridhiaSetsIntheDatabase = res.map(doc => doc.pid.slice(5));
+		const deprecatedAridhiaSets = aridhiaSetsIntheDatabase.filter(ds => !codesFromAridhiaApi.includes(ds));
+		for (const pid of deprecatedAridhiaSets) { 
+			console.log(`Deleting deprecated dataset with pid: ${pid} from the Database`);
+			await Dataset.deleteOne({"pid": `fair-${pid}`});
 		}
 	}
 }
