@@ -165,24 +165,6 @@ export default class PublisherController extends Controller {
 
 	async updateDataRequestModalContent(req, res) {
 		try {
-			const { _id: requestingUserId } = req.user;
-
-			const team = await TeamModel.findOne({ _id: req.params.id })
-				.populate({
-					path: 'users',
-					populate: {
-						path: 'additionalInfo',
-						select: 'organisation bio showOrganisation showBio',
-					},
-				})
-				.lean();
-
-			// Check that user is a manager
-			const authorised = teamController.checkTeamPermissions(constants.roleTypes.MANAGER, team, requestingUserId);
-			if (!authorised) {
-				return res.status(401).json({ success: false });
-			}
-
 			await this.publisherService.updateDataRequestModalContent(req.params.id, req.user.id, req.body.content).then(() => {
 				return res.status(200).json({ success: true });
 			});
