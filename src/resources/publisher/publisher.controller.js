@@ -1,10 +1,8 @@
 import _ from 'lodash';
-
 import constants from '../utilities/constants.util';
 import teamController from '../team/team.controller';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
-import { TeamModel } from '../team/team.model';
 
 const logCategory = 'Publisher';
 
