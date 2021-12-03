@@ -119,15 +119,13 @@ module.exports = {
 				body: data,
 			} = req;
 
-			const datasetID = id;
-
-			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(datasetID, req.user);
+			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(id, req.user);
 
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			let dataset = await Data.findOne({ _id: datasetID });
+			let dataset = await Data.findOne({ _id: id });
 
 			if (!dataset) {
 				return res.status(404).json({ status: 'error', message: 'Dataset not found.' });
@@ -147,12 +145,12 @@ module.exports = {
 					if (isEmpty(structuralMetadata)) {
 						return res.status(404).json({ status: 'error', message: 'Update failed' });
 					} else {
-						await datasetonboardingService.updateStructuralMetadata(structuralMetadata, datasetID);
+						await datasetonboardingService.updateStructuralMetadata(structuralMetadata, id);
 						return res.status(200).json();
 					}
 				}
 			} else {
-				let response = await datasetonboardingService.updateDatasetVersionDataElement(dataset, updateObj, datasetID);
+				let response = await datasetonboardingService.updateDatasetVersionDataElement(dataset, updateObj, id);
 
 				return res.status(200).json(response);
 			}
