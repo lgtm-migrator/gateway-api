@@ -96,6 +96,12 @@ dataUseRegisterSchema.virtual('publisherDetails', {
 	justOne: true,
 });
 
+dataUseRegisterSchema.virtual('applicantDetails', {
+	ref: 'User',
+	foreignField: '_id',
+	localField: 'gatewayApplicants',
+});
+
 dataUseRegisterSchema.virtual('gatewayDatasetsInfo', {
 	ref: 'Data',
 	foreignField: 'pid',

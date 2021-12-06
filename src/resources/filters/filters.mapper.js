@@ -916,7 +916,7 @@ export const dataUseRegisterFilters = [
 		highlighted: [],
 		beta: false,
 	},
-	/* {
+	{
 		id: 5,
 		label: 'Keywords',
 		key: 'keywords',
@@ -930,5 +930,5 @@ export const dataUseRegisterFilters = [
 		filters: [],
 		highlighted: [],
 		beta: false,
-	}, */
+	},
 ];

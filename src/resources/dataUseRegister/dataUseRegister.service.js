@@ -1,3 +1,4 @@
+/* eslint-disable class-methods-use-this */
 import dataUseRegisterUtil from './dataUseRegister.util';
 import DataUseRegister from './dataUseRegister.entity';
 import constants from '../utilities/constants.util';
@@ -326,7 +327,7 @@ export default class DataUseRegisterService {
 		return relatedDataUseRegisters;
 	}
 
-	buildUpdateObject(dataUseRegister, dataUseRegisterPayload) {
+	async buildUpdateObject(dataUseRegister, dataUseRegisterPayload, user) {
 		let updateObj = {};
 
 		const {
@@ -369,10 +370,84 @@ export default class DataUseRegisterService {
 			accessDate,
 			accessType,
 			privacyEnhancements,
-			gatewayOutputsTools,
-			gatewayOutputsPapers,
+			gatewayOutputs,
 			nonGatewayOutputs,
 		} = dataUseRegisterPayload;
+
+		const gatewayDatasetPids = await dataUseRegisterUtil.getDatasetsByPids(gatewayDatasets);
+		const gatewayApplicantIDs = await dataUseRegisterUtil.getAppplicantByIds(gatewayApplicants);
+		const { gatewayToolIDs, gatewayPaperIDs } = await dataUseRegisterUtil.getSafeOutputsByIds(gatewayOutputs || []);
+
+		let gatewayApplicantIDsList = [];
+		gatewayApplicantIDs.forEach(applicant => {
+			gatewayApplicantIDsList.push(applicant._id);
+		});
+		if (!isUndefined(gatewayApplicants) && !isEqual(gatewayApplicantIDsList, dataUseRegister.gatewayApplicants))
+			updateObj.gatewayApplicants = gatewayApplicantIDsList;
+
+		let gatewayOutputsToolIDsList = [],
+			gatewayOutputsToolIDsListRelatedResource = [];
+		gatewayToolIDs.forEach(tool => {
+			gatewayOutputsToolIDsList.push(tool.id);
+			gatewayOutputsToolIDsListRelatedResource.push({ id: tool.id.toString() });
+		});
+		if (!isUndefined(gatewayOutputs) && !isEqual(gatewayOutputsToolIDsList, dataUseRegister.gatewayOutputsTools))
+			updateObj.gatewayOutputsTools = gatewayOutputsToolIDsList;
+
+		let gatewayOutputsPaperIDsList = [],
+			gatewayOutputsPaperIDsListRelatedResource = [];
+		gatewayPaperIDs.forEach(paper => {
+			gatewayOutputsPaperIDsList.push(paper.id);
+			gatewayOutputsPaperIDsListRelatedResource.push({ id: paper.id.toString() });
+		});
+		if (!isUndefined(gatewayOutputs) && !isEqual(gatewayOutputsPaperIDsList, dataUseRegister.gatewayOutputsPapers))
+			updateObj.gatewayOutputsPapers = gatewayOutputsPaperIDsList;
+
+		let gatewayDatasetPidsListRelatedResource = [];
+		gatewayDatasetPids.forEach(dataset => {
+			gatewayDatasetPidsListRelatedResource.push({ id: dataset.datasetid, pid: dataset.pid });
+		});
+
+		let automaticRelatedResources = [
+			...dataUseRegisterUtil.buildRelatedObjects(user, 'dataset', gatewayDatasetPidsListRelatedResource, false, true),
+			...dataUseRegisterUtil.buildRelatedObjects(user, 'tool', gatewayOutputsToolIDsListRelatedResource, false, true),
+			...dataUseRegisterUtil.buildRelatedObjects(user, 'paper', gatewayOutputsPaperIDsListRelatedResource, false, true),
+		];
+
+		//dataUseRegister.relatedObjects
+
+		//Loop through automaticRelatedResources to see if it exists, if not add to another array
+
+		let newAutomaticRelatedResources = [];
+		automaticRelatedResources.forEach(automaticResource => {
+			if (!dataUseRegister.relatedObjects.find(resource => resource.objectId === automaticResource.objectId)) {
+				newAutomaticRelatedResources.push(automaticResource);
+			}
+		});
+
+		let newManualRelatedResources = [];
+		relatedObjects.forEach(manualResource => {
+			if (!dataUseRegister.relatedObjects.find(resource => resource.objectId === manualResource.objectId)) {
+				if (!manualResource.isLocked) newManualRelatedResources.push(manualResource);
+			}
+		});
+
+		let relatedResourcesWithRemovedOldAutomaticEntries = [];
+		dataUseRegister.relatedObjects.forEach(resource => {
+			if (resource.isLocked && automaticRelatedResources.find(automaticResource => automaticResource.objectId === resource.objectId)) {
+				relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
+			} else if (!resource.isLocked) {
+				relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
+			}
+		});
+
+		//relatedObjects
+
+		updateObj.relatedObjects = [
+			...relatedResourcesWithRemovedOldAutomaticEntries,
+			...newAutomaticRelatedResources,
+			...newManualRelatedResources,
+		];
 
 		const fundersAndSponsorsList =
 			fundersAndSponsors &&
@@ -382,6 +457,8 @@ export default class DataUseRegisterService {
 				.map(el => {
 					if (!isEmpty(el)) return el.trim();
 				});
+		if (!isEmpty(fundersAndSponsorsList) && !isEqual(fundersAndSponsorsList, dataUseRegister.fundersAndSponsors))
+			updateObj.fundersAndSponsors = fundersAndSponsorsList;
 
 		const otherApprovalCommitteesList =
 			otherApprovalCommittees &&
@@ -391,13 +468,14 @@ export default class DataUseRegisterService {
 				.map(el => {
 					if (!isEmpty(el)) return el.trim();
 				});
+		if (!isEmpty(otherApprovalCommitteesList) && !isEqual(otherApprovalCommitteesList, dataUseRegister.otherApprovalCommittees))
+			updateObj.otherApprovalCommittees = otherApprovalCommitteesList;
 
 		if (!isUndefined(activeflag) && !isEqual(activeflag, dataUseRegister.activeflag)) updateObj.activeflag = activeflag;
 		if (!isUndefined(rejectionReason) && !isEqual(rejectionReason, dataUseRegister.rejectionReason))
 			updateObj.rejectionReason = rejectionReason;
 		if (!isUndefined(discourseTopicId) && !isEqual(discourseTopicId, dataUseRegister.discourseTopicId))
 			updateObj.discourseTopicId = discourseTopicId;
-		if (!isUndefined(relatedObjects) && !isEqual(relatedObjects, dataUseRegister.relatedObjects)) updateObj.relatedObjects = relatedObjects;
 		if (!isUndefined(keywords) && !isEqual(keywords, dataUseRegister.keywords)) updateObj.keywords = keywords;
 		if (!isUndefined(projectTitle) && !isEqual(projectTitle, dataUseRegister.projectTitle)) updateObj.projectTitle = projectTitle;
 		if (!isUndefined(projectId) && !isEqual(projectId, dataUseRegister.projectId)) updateObj.projectId = projectId;
@@ -413,13 +491,9 @@ export default class DataUseRegisterService {
 		if (!isUndefined(organisationId) && !isEqual(organisationId, dataUseRegister.organisationId)) updateObj.organisationId = organisationId;
 		if (!isUndefined(organisationSector) && !isEqual(organisationSector, dataUseRegister.organisationSector))
 			updateObj.organisationSector = organisationSector;
-		if (!isUndefined(gatewayApplicants) && !isEqual(gatewayApplicants, dataUseRegister.gatewayApplicants))
-			updateObj.gatewayApplicants = gatewayApplicants;
 		if (!isUndefined(nonGatewayApplicants) && !isEqual(nonGatewayApplicants, dataUseRegister.nonGatewayApplicants))
 			updateObj.nonGatewayApplicants = nonGatewayApplicants;
 		if (!isUndefined(applicantId) && !isEqual(applicantId, dataUseRegister.applicantId)) updateObj.applicantId = applicantId;
-		if (!isEmpty(fundersAndSponsorsList) && !isEqual(fundersAndSponsorsList, dataUseRegister.fundersAndSponsors))
-			updateObj.fundersAndSponsors = fundersAndSponsorsList;
 		if (!isUndefined(accreditedResearcherStatus) && !isEqual(accreditedResearcherStatus, dataUseRegister.accreditedResearcherStatus))
 			updateObj.accreditedResearcherStatus = accreditedResearcherStatus;
 		if (!isUndefined(sublicenceArrangements) && !isEqual(sublicenceArrangements, dataUseRegister.sublicenceArrangements))
@@ -431,8 +505,6 @@ export default class DataUseRegisterService {
 			updateObj.requestCategoryType = requestCategoryType;
 		if (!isUndefined(technicalSummary) && !isEqual(technicalSummary, dataUseRegister.technicalSummary))
 			updateObj.technicalSummary = technicalSummary;
-		if (!isEmpty(otherApprovalCommitteesList) && !isEqual(otherApprovalCommitteesList, dataUseRegister.otherApprovalCommittees))
-			updateObj.otherApprovalCommittees = otherApprovalCommitteesList;
 		if (
 			!isEmpty(projectStartDate) &&
 			!isEqual(moment(projectStartDate).format('YYYY-MM-DD'), moment(dataUseRegister.projectStartDate).format('YYYY-MM-DD'))
@@ -469,10 +541,6 @@ export default class DataUseRegisterService {
 		if (!isUndefined(accessType) && !isEqual(accessType, dataUseRegister.accessType)) updateObj.accessType = accessType;
 		if (!isUndefined(privacyEnhancements) && !isEqual(privacyEnhancements, dataUseRegister.privacyEnhancements))
 			updateObj.privacyEnhancements = privacyEnhancements;
-		if (!isUndefined(gatewayOutputsTools) && !isEqual(gatewayOutputsTools, dataUseRegister.gatewayOutputsTools))
-			updateObj.gatewayOutputsTools = gatewayOutputsTools;
-		if (!isUndefined(gatewayOutputsPapers) && !isEqual(gatewayOutputsPapers, dataUseRegister.gatewayOutputsPapers))
-			updateObj.gatewayOutputsPapers = gatewayOutputsPapers;
 		if (!isUndefined(nonGatewayOutputs) && !isEqual(nonGatewayOutputs, dataUseRegister.nonGatewayOutputs))
 			updateObj.nonGatewayOutputs = nonGatewayOutputs;
 

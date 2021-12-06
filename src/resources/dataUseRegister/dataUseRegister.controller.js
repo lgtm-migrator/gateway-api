@@ -1,3 +1,4 @@
+/* eslint-disable class-methods-use-this */
 import Mongoose from 'mongoose';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
@@ -9,7 +10,7 @@ import emailGenerator from '../utilities/emailGenerator.util';
 import { getObjectFilters } from '../search/search.repository';
 
 import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 
 const logCategory = 'dataUseRegister';
 
@@ -24,6 +25,9 @@ export default class DataUseRegisterController extends Controller {
 		try {
 			// Extract id parameter from query string
 			const { id } = req.params;
+			const isEdit = req.query.isEdit || false;
+			if (req.query.isEdit) delete req.query.isEdit;
+
 			// If no id provided, it is a bad request
 			if (!id) {
 				return res.status(400).json({
@@ -44,73 +48,6 @@ export default class DataUseRegisterController extends Controller {
 			};
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, req.query, options);
 
-			// Reverse look up
-			var query = Data.aggregate([
-				{ $match: { id: parseInt(req.params.id) } },
-				{
-					$lookup: {
-						from: 'tools',
-						localField: 'creator',
-						foreignField: 'id',
-						as: 'creator',
-					},
-				},
-				{
-					$lookup: {
-						from: 'tools',
-						let: {
-							pid: '$pid',
-						},
-						pipeline: [
-							{
-								$match: {
-									$expr: {
-										$and: [{ $eq: ['$gatewayDatasets', '$$pid'] }],
-									},
-								},
-							},
-							{ $project: { pid: 1, name: 1 } },
-						],
-						as: 'gatewayDatasets2',
-					},
-				},
-			]);
-			query.exec((err, data) => {
-				if (data.length > 0) {
-					/* var p = Data.aggregate([
-						{
-							$match: {
-								$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }],
-							},
-						},
-					]);
-					p.exec((err, relatedData) => {
-						relatedData.forEach(dat => {
-							dat.relatedObjects.forEach(x => {
-								if (x.objectId === req.params.id && dat.id !== req.params.id) {
-									let relatedObject = {
-										objectId: dat.id,
-										reason: x.reason,
-										objectType: dat.type,
-										user: x.user,
-										updated: x.updated,
-									};
-									data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
-								}
-							});
-						});
-
-						if (err) return res.json({ success: false, error: err });
-
-						return res.json({
-							success: true,
-							data: data,
-						});
-					}); */
-				} else {
-					//return res.status(404).send(`Data Use Register not found for Id: ${escape(id)}`);
-				}
-			});
 			// Return if no dataUseRegister found
 			if (!dataUseRegister) {
 				return res.status(404).json({
@@ -118,10 +55,33 @@ export default class DataUseRegisterController extends Controller {
 					message: 'A dataUseRegister could not be found with the provided id',
 				});
 			}
-			// Return the dataUseRegister
-			return res.status(200).json({
-				success: true,
-				...dataUseRegister,
+
+			// Reverse look up
+			var p = Data.aggregate([{ $match: { $and: [{ relatedObjects: { $elemMatch: { objectId: id } } }] } }]);
+			p.exec((err, relatedData) => {
+				if (!isEdit) {
+					relatedData.forEach(dat => {
+						dat.relatedObjects.forEach(x => {
+							if (x.objectId === id && dat.id !== id) {
+								if (typeof dataUseRegister.relatedObjects === 'undefined') dataUseRegister.relatedObjects = [];
+								dataUseRegister.relatedObjects.push({
+									objectId: dat.id,
+									reason: x.reason,
+									objectType: dat.type,
+									user: x.user,
+									updated: x.updated,
+								});
+							}
+						});
+					});
+				}
+				if (err) return res.json({ success: false, error: err });
+
+				// Return the dataUseRegister
+				return res.status(200).json({
+					success: true,
+					...dataUseRegister,
+				});
 			});
 		} catch (err) {
 			// Return error response if something goes wrong
@@ -140,27 +100,38 @@ export default class DataUseRegisterController extends Controller {
 
 			let query = '';
 
-			if (team === 'user') {
-				delete req.query.team;
-				query = { ...req.query, gatewayApplicants: requestingUser._id };
-			} else if (team === 'admin') {
-				delete req.query.team;
-				query = { ...req.query, activeflag: constants.dataUseRegisterStatus.INREVIEW };
-			} else if (team !== 'user' && team !== 'admin') {
-				delete req.query.team;
-				query = { publisher: new Mongoose.Types.ObjectId(team) };
-			} else {
-				query = req.query;
-			}
+			if (!isUndefined(team)) {
+				if (team === 'user') {
+					delete req.query.team;
+					query = { ...req.query, gatewayApplicants: requestingUser._id };
+				} else if (team === 'admin') {
+					delete req.query.team;
+					query = { ...req.query, activeflag: constants.dataUseRegisterStatus.INREVIEW };
+				} else if (team !== 'user' && team !== 'admin') {
+					delete req.query.team;
+					query = { publisher: new Mongoose.Types.ObjectId(team) };
+				}
 
-			const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters({ $and: [query] }, { aggregate: true }).catch(err => {
-				logger.logError(err, logCategory);
-			});
-			// Return the dataUseRegisters
-			return res.status(200).json({
-				success: true,
-				data: dataUseRegisters,
-			});
+				const dataUseRegisters = await this.dataUseRegisterService
+					.getDataUseRegisters({ $and: [query] }, { aggregate: true })
+					.catch(err => {
+						logger.logError(err, logCategory);
+					});
+				// Return the dataUseRegisters
+				return res.status(200).json({
+					success: true,
+					data: dataUseRegisters,
+				});
+			} else {
+				const dataUseRegisters = await this.dataUseRegisterService.getDataUseRegisters(req.query).catch(err => {
+					logger.logError(err, logCategory);
+				});
+				// Return the dataUseRegisters
+				return res.status(200).json({
+					success: true,
+					data: dataUseRegisters,
+				});
+			}
 		} catch (err) {
 			// Return error response if something goes wrong
 			logger.logError(err, logCategory);
@@ -177,15 +148,16 @@ export default class DataUseRegisterController extends Controller {
 			const requestingUser = req.user;
 			const { rejectionReason } = req.body;
 
-			const options = { lean: true, populate: 'user' };
+			const options = { lean: true, populate: 'applicantDetails' };
 			const dataUseRegister = await this.dataUseRegisterService.getDataUseRegister(id, {}, options);
-			const updateObj = this.dataUseRegisterService.buildUpdateObject(dataUseRegister, req.body);
+			const updateObj = await this.dataUseRegisterService.buildUpdateObject(dataUseRegister, req.body, requestingUser);
 
 			if (isEmpty(updateObj)) {
 				return res.status(200).json({
 					success: true,
 				});
 			}
+
 			this.dataUseRegisterService.updateDataUseRegister(dataUseRegister._id, updateObj).catch(err => {
 				logger.logError(err, logCategory);
 			});
@@ -446,6 +418,21 @@ export default class DataUseRegisterController extends Controller {
 				emailGenerator.sendEmail(emailRecipients, constants.hdrukEmail, `New data uses to review`, html, false);
 				break;
 			}
+		}
+	}
+
+	updateDataUseRegisterCounter(req, res) {
+		try {
+			const { id, counter } = req.body;
+			this.dataUseRegisterService.updateDataUseRegister(id, { counter });
+			return res.status(200).json({ success: true });
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'A server error occurred, please try again',
+			});
 		}
 	}
 }
