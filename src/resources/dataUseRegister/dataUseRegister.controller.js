@@ -8,6 +8,7 @@ import { TeamModel } from '../team/team.model';
 import teamController from '../team/team.controller';
 import emailGenerator from '../utilities/emailGenerator.util';
 import { getObjectFilters } from '../search/search.repository';
+import { filtersService } from '../filters/dependency';
 
 import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
 import { isEmpty, isUndefined } from 'lodash';
@@ -158,9 +159,11 @@ export default class DataUseRegisterController extends Controller {
 				});
 			}
 
-			this.dataUseRegisterService.updateDataUseRegister(dataUseRegister._id, updateObj).catch(err => {
+			await this.dataUseRegisterService.updateDataUseRegister(dataUseRegister._id, updateObj).catch(err => {
 				logger.logError(err, logCategory);
 			});
+
+			filtersService.optimiseFilters('dataUseRegister');
 
 			const isDataUseRegisterApproved =
 				updateObj.activeflag &&
