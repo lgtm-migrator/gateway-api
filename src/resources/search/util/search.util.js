@@ -10,12 +10,14 @@ const arrayToTree = (array) => {
         for (var j = 0; j < arr.length; j++) {
             var label = arr[j];
             var child = parent.find(function(el) {
+                el.value == label;
                 return el.label == label;
             });
             if (child) {
                 parent = child.children;
             } else {
                 child = {
+                    value: label,
                     label: label,
                     children: []
                 };
