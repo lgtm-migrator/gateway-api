@@ -3,8 +3,6 @@ import passport from 'passport';
 
 import { utils } from '../auth';
 import { UserModel } from './user.model';
-import { Data } from '../tool/data.model';
-import helper from '../utilities/helper.util';
 import { ROLES } from './user.roles';
 import { setCohortDiscoveryAccess, getUsers } from './user.service';
 import { upperCase } from 'lodash';
