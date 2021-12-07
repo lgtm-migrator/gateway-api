@@ -8,7 +8,7 @@ import * as Sentry from '@sentry/node';
 export default class AridhiaController {
 	constructor() {
 		this.datasetService = new DatasetService();
-		this.aridhia = new Aridhia(http, config);	
+		this.aridhia = new Aridhia(http, config);
 	}
 
 	async main() {
@@ -18,7 +18,6 @@ export default class AridhiaController {
 		let models = [];
 	
 		try {
-
 			// get the dataset codes from aridhia api. we need these codes for the next step
 			res = await this.aridhia.getDatasetLists();
 			const codes = await this.aridhia.extractCodesFromAridhiaResponse(res.data);
@@ -55,12 +54,19 @@ export default class AridhiaController {
 	}
 
 	async deleteDeprecatedDatasets(codesFromAridhiaApi) {
+		// get all fair datasets that are in our database
 		const res = await Dataset.find({"pid": /.*fair-.*/}, {"pid": 1});
+		
+		// slice the datasets pids (e.g. slice "fair-dp1" ---> "dp1")
 		const aridhiaSetsIntheDatabase = res.map(doc => doc.pid.slice(5));
+
+		// filter out the datasets that are shown in aridhia api. The one that are left after filtering are the deprecated ones
 		const deprecatedAridhiaSets = aridhiaSetsIntheDatabase.filter(ds => !codesFromAridhiaApi.includes(ds));
+
+		// archive deprecated datasets
 		for (const pid of deprecatedAridhiaSets) { 
-			console.log(`Deleting deprecated dataset with pid: ${pid} from the Database`);
-			await Dataset.deleteOne({"pid": `fair-${pid}`});
+			console.log(`Changing activelag pid: ${pid} from "active" to "archive"`);
+			await Dataset.findOneAndUpdate({"pid": `fair-${pid}`, "activeflag": "active"}, { $set: {"activeflag": "archive"}});
 		}
 	}
 }
