@@ -18,7 +18,6 @@ export default class AridhiaController {
 		let models = [];
 	
 		try {
-
 			// get the dataset codes from aridhia api. we need these codes for the next step
 			res = await this.aridhia.getDatasetLists();
 			const codes = await this.aridhia.extractCodesFromAridhiaResponse(res.data);
@@ -27,7 +26,6 @@ export default class AridhiaController {
 			for (const code of codes) {
 				datasets.push(await this.aridhia.getDataset(code));
 			}
-	
 			// Take each dataset respond that we got from the api and map it to our dataset model
 			for (const ds of datasets) {
 				models.push(this.aridhia.resToDataset(ds));
@@ -38,6 +36,8 @@ export default class AridhiaController {
 				console.log(`updating dataset with pid ${model.pid}...`);
 				await Dataset.findOneAndUpdate({"pid": model.pid, "activeflag": "active"}, model , { upsert: true });
 			}
+
+			this.archiveDeprecatedDatasets(codes);
 	
 			return res;
 
@@ -50,6 +50,23 @@ export default class AridhiaController {
 
 			logger.logError(err, config.logCategory);
 			console.log("Aridhia Script broke down. Error: " + err);
+		}
+	}
+
+	async archiveDeprecatedDatasets(codesFromAridhiaApi) {
+		// get all fair datasets that are in our database
+		const res = await Dataset.find({"pid": /.*fair-.*/}, {"pid": 1});
+		
+		// slice the datasets pids (e.g. slice "fair-dp1" ---> "dp1")
+		const aridhiaSetsIntheDatabase = res.map(doc => doc.pid.slice(5));
+
+		// filter out the datasets that are shown in aridhia api. The one that are left after filtering are the deprecated ones
+		const deprecatedAridhiaSets = aridhiaSetsIntheDatabase.filter(ds => !codesFromAridhiaApi.includes(ds));
+
+		// archive deprecated datasets
+		for (const pid of deprecatedAridhiaSets) { 
+			console.log(`Changing activelag pid: ${pid} from "active" to "archive"`);
+			await Dataset.findOneAndUpdate({"pid": `fair-${pid}`, "activeflag": "active"}, { $set: {"activeflag": "archive"}});
 		}
 	}
 }
