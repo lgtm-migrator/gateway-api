@@ -3,13 +3,13 @@ const orderArrayByValue = (array) => {
 }
 
 const arrayToTree = (array) => {
-    var tree = [];
-    for (var i = 0; i < array.length; i++) {
-        var arr = array[i].split(',');
-        var parent = tree;
-        for (var j = 0; j < arr.length; j++) {
-            var label = arr[j];
-            var child = parent.find(function(el) {
+    let tree = [];
+    for (let i = 0; i < array.length; i++) {
+        let arr = array[i].split(',');
+        let parent = tree;
+        for (let j = 0; j < arr.length; j++) {
+            let label = arr[j];
+            let child = parent.find(function(el) {
                 el.value == label;
                 return el.label == label;
             });
