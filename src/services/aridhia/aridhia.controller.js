@@ -37,7 +37,7 @@ export default class AridhiaController {
 				await Dataset.findOneAndUpdate({"pid": model.pid, "activeflag": "active"}, model , { upsert: true });
 			}
 
-			this.deleteDeprecatedDatasets(codes);
+			this.archiveDeprecatedDatasets(codes);
 	
 			return res;
 
@@ -53,7 +53,7 @@ export default class AridhiaController {
 		}
 	}
 
-	async deleteDeprecatedDatasets(codesFromAridhiaApi) {
+	async archiveDeprecatedDatasets(codesFromAridhiaApi) {
 		// get all fair datasets that are in our database
 		const res = await Dataset.find({"pid": /.*fair-.*/}, {"pid": 1});
 		
