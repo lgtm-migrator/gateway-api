@@ -163,16 +163,14 @@ export default class DatasetOnboardingService {
 	};
 
 	getMetadataQuality = async (pid, datasetID, recalculate) => {
-		let dataset = {};
+		let dataset = await Data.findOne({ datasetid: { datasetID } }).lean();
 
-		if (!isEmpty(pid)) {
+		if (!isEmpty(pid) && isEmpty(datasetID)) {
 			dataset = await Data.findOne({ pid: { $eq: pid }, activeflag: constants.datasetStatuses.ACTIVE }).lean();
+		}
 
-			if (!isEmpty(datasetID)) {
-				dataset = await Data.findOne({ pid: { $eq: datasetID }, activeflag: constants.datasetStatuses.ARCHIVE }).sort({ createdAt: -1 });
-			}
-		} else if (!isEmpty(datasetID)) {
-			dataset = await Data.findOne({ datasetid: { datasetID } }).lean();
+		if (!isEmpty(pid) && !isEmpty(datasetID)) {
+			dataset = await Data.findOne({ pid: { $eq: datasetID }, activeflag: constants.datasetStatuses.ARCHIVE }).sort({ createdAt: -1 });
 		}
 
 		if (isEmpty(dataset)) throw new Error('Dataset could not be found.');
@@ -275,8 +273,9 @@ export default class DatasetOnboardingService {
 
 		datasetToCopy.questionAnswers = JSON.parse(datasetToCopy.questionAnswers);
 
-		if (!datasetToCopy.questionAnswers['properties/documentation/description'] && datasetToCopy.description)
+		if (!datasetToCopy.questionAnswers['properties/documentation/description'] && datasetToCopy.description) {
 			datasetToCopy.questionAnswers['properties/documentation/description'] = datasetToCopy.description;
+		}
 
 		let data = new Data();
 		data.pid = pid;

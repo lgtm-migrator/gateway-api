@@ -1,18 +1,18 @@
-import dbHandler from '../../config/in-memory-db';
-import { datasetSearchStub } from '../__mocks__/datasetSearchStub';
-import constants from '../../resources/utilities/constants.util';
-import datasetOnboardingController from '../datasetonboarding.controller';
+import sinon from 'sinon';
 
-beforeAll(async () => {
-	await dbHandler.connect();
-	await dbHandler.loadData({ tools: datasetSearchStub });
+import datasetOnboardingController from '../datasetonboarding.controller';
+import datasetOnboardingService from '../../services/datasetonboarding.service';
+
+afterEach(function () {
+	sinon.restore();
 });
 
-afterAll(async () => await dbHandler.closeDatabase());
-
-describe('Dataset onboarding controller', () => {
+describe('datasetOnboardingController', () => {
 	const mockedRequest = () => {
-		const req = {};
+		const req = {
+			query: {},
+			params: {},
+		};
 		return req;
 	};
 
@@ -23,165 +23,189 @@ describe('Dataset onboarding controller', () => {
 		return res;
 	};
 
-	const datasetonboardingController = new datasetOnboardingController();
+	const datasetonboardingService = new datasetOnboardingService();
+	const datasetonboardingController = new datasetOnboardingController(datasetonboardingService);
 
 	describe('getDatasetsByPublisher', () => {
-		describe('As an admin team user', () => {
-			it('A search for inReview datasets should only return inReview datasets', async () => {
-				let req = mockedRequest();
-				let res = mockedResponse();
+		it('should return a correctly formatted JSON response', async () => {
+			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisherCounts').returns({ inReview: 100 });
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisher').returns([[], 100, 10]);
 
-				req.params = {
-					publisherID: 'admin',
-				};
+			let req = mockedRequest();
+			let res = mockedResponse();
 
-				req.query = {
-					search: '',
-					datasetIndex: 0,
-					maxResults: 10,
-					sortBy: 'latest',
-					sortDirection: 'asc',
-					status: 'inReview',
-				};
+			req.query.status = 'inReview';
+			req.params.publisherID = 'testPublisher';
 
-				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
+			const expectedResponse = {
+				success: true,
+				data: {
+					publisherTotals: {
+						inReview: 100,
+					},
+					results: {
+						status: 'inReview',
+						total: 100,
+						pageCount: 10,
+						listOfDatasets: [],
+					},
+				},
+			};
 
-				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
+			await datasetonboardingController.getDatasetsByPublisher(req, res);
 
-				formattedDatasets.forEach(dataset => {
-					expect(dataset.activeflag).toEqual('inReview');
-				});
-			});
-
-			it('Should return the correct number of inReview datasets with a search parameter', async () => {
-				let req = mockedRequest();
-				let res = mockedResponse();
-
-				req.params = {
-					publisherID: 'admin',
-				};
-
-				req.query = {
-					search: 'abstract3',
-					datasetIndex: 0,
-					maxResults: 10,
-					sortBy: 'latest',
-					sortDirection: 'asc',
-					status: 'inReview',
-				};
-
-				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
-
-				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
-
-				expect(formattedDatasets.length).toEqual(1);
-			});
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
+			expect(serviceStub1.calledOnce).toBe(true);
+			expect(serviceStub2.calledOnce).toBe(true);
 		});
-		describe('As a publisher team user', () => {
-			const statuses = Object.values(constants.datasetStatuses);
 
-			test.each(statuses)('Each status should only return datasets with the supplied status', async status => {
-				let res = mockedResponse();
-				let req = mockedRequest();
+		it('should return status=all if no status param given in initial request', async () => {
+			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisherCounts').returns({ inReview: 100 });
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisher').returns([[], 100, 10]);
 
-				req.params = {
-					publisherID: 'TestPublisher',
-				};
+			let req = mockedRequest();
+			let res = mockedResponse();
 
-				req.query = {
-					search: '',
-					datasetIndex: 0,
-					maxResults: 10,
-					sortBy: 'latest',
-					sortDirection: 'asc',
-					status: status,
-				};
+			req.params.publisherID = 'testPublisher';
 
-				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
+			const expectedResponse = {
+				success: true,
+				data: {
+					publisherTotals: {
+						inReview: 100,
+					},
+					results: {
+						status: 'all',
+						total: 100,
+						pageCount: 10,
+						listOfDatasets: [],
+					},
+				},
+			};
 
-				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
+			await datasetonboardingController.getDatasetsByPublisher(req, res);
 
-				formattedDatasets.forEach(dataset => {
-					expect(dataset.activeflag).toEqual(status);
-				});
-			});
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
+			expect(serviceStub1.calledOnce).toBe(true);
+			expect(serviceStub2.calledOnce).toBe(true);
+		});
 
-			it('Should return the correct counts', async () => {
-				let req = mockedRequest();
-				let res = mockedResponse();
+		it('should return a 500 error if a service function throws an error', async () => {
+			const errMessage = 'random error message';
+			const error = new Error(errMessage);
+			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisherCounts').throws(error);
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisher');
 
-				req.params = {
-					publisherID: 'TestPublisher',
-				};
+			let req = mockedRequest();
+			let res = mockedResponse();
 
-				req.query = {
-					search: '',
-					datasetIndex: 0,
-					maxResults: 10,
-					sortBy: 'latest',
-					sortDirection: 'asc',
-					status: 'inReview',
-				};
+			const expectedResponse = {
+				success: false,
+				message: errMessage,
+			};
 
-				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
+			await datasetonboardingController.getDatasetsByPublisher(req, res);
 
-				const counts = response.json.mock.calls[0][0].data.publisherTotals;
+			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
+			expect(serviceStub1.calledOnce).toBe(true);
+			expect(serviceStub2.calledOnce).toBe(false);
+		});
+	});
 
-				Object.keys(counts).forEach(status => {
-					expect(counts[status]).toBeGreaterThan(0);
-				});
-			});
+	describe('getDatasetVersion', () => {
+		it('should return a correctly formatted JSON response', async () => {
+			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetVersion').returns({});
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getAssociatedVersions').returns([]);
 
-			it('Should return all dataset activeflag types if no status parameter is supplied', async () => {
-				let req = mockedRequest();
-				let res = mockedResponse();
+			let req = mockedRequest();
+			let res = mockedResponse();
 
-				req.params = {
-					publisherID: 'TestPublisher',
-				};
+			req.params.id = '123';
 
-				req.query = {
-					search: '',
-					datasetIndex: 0,
-					maxResults: 10,
-					sortBy: 'latest',
-					sortDirection: 'asc',
-				};
+			const expectedResponse = {
+				success: true,
+				data: { dataset: {} },
+				listOfDatasets: [],
+			};
 
-				const expectedResponse = datasetSearchStub
-					.filter(dataset => dataset.datasetv2.summary.publisher.identifier === 'TestPublisher')
-					.map(dataset => dataset.activeflag);
+			await datasetonboardingController.getDatasetVersion(req, res);
 
-				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
+			expect(serviceStub1.calledOnce).toBe(true);
+			expect(serviceStub2.calledOnce).toBe(true);
+		});
 
-				const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
+		it('should return 404 if no dataset ID is given in the request', async () => {
+			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetVersion').returns({});
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getAssociatedVersions').returns([]);
 
-				expect([...new Set(formattedDatasets.map(dataset => dataset.activeflag))]).toEqual([...new Set(expectedResponse)]);
-			});
+			let req = mockedRequest();
+			let res = mockedResponse();
 
-			it('Should return the correct count matching the supplied query parameters', async () => {
-				let req = mockedRequest();
-				let res = mockedResponse();
+			const expectedResponse = {
+				success: false,
+				message: 'A valid dataset ID was not supplied',
+			};
 
-				req.params = {
-					publisherID: 'TestPublisher',
-				};
+			await datasetonboardingController.getDatasetVersion(req, res);
 
-				req.query = {
-					search: '',
-					datasetIndex: 0,
-					maxResults: 10,
-					sortBy: 'latest',
-					sortDirection: 'asc',
-					status: 'inReview',
-				};
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
+			expect(serviceStub1.callCount).toBe(0);
+			expect(serviceStub2.callCount).toBe(0);
+		});
 
-				const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
+		it('should return 500 if a service function throws an error', async () => {
+			const errMessage = 'random error message';
+			const error = new Error(errMessage);
+			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetVersion').throws(error);
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getAssociatedVersions');
 
-				const counts = response.json.mock.calls[0][0].data.results.total;
+			let req = mockedRequest();
+			let res = mockedResponse();
 
-				expect(counts).toBeGreaterThan(0);
-			});
+			req.params.id = '123';
+
+			const expectedResponse = {
+				success: false,
+				message: errMessage,
+			};
+
+			await datasetonboardingController.getDatasetVersion(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
+			expect(serviceStub1.callCount).toBe(1);
+			expect(serviceStub2.callCount).toBe(0);
+		});
+	});
+
+	describe('createNewDatasetVersion', () => {
+		it('should return a correctly formatted JSON response', async () => {
+			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetVersion').returns({});
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getAssociatedVersions').returns([]);
+
+			let req = mockedRequest();
+			let res = mockedResponse();
+
+			req.params.id = '123';
+
+			const expectedResponse = {
+				success: true,
+				data: { dataset: {} },
+				listOfDatasets: [],
+			};
+
+			await datasetonboardingController.getDatasetVersion(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.json).toHaveBeenCalledWith(expectedResponse);
+			expect(serviceStub1.calledOnce).toBe(true);
+			expect(serviceStub2.calledOnce).toBe(true);
 		});
 	});
 });

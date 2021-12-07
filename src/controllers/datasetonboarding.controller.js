@@ -12,15 +12,14 @@ import { filtersService } from '../resources/filters/dependency';
 import datasetonboardingUtil from '../utils/datasetonboarding.util';
 import { PublisherModel } from '../resources/publisher/publisher.model';
 import { activityLogService } from '../resources/activitylog/dependency';
-import DatasetOnboardingService from '../services/datasetonboarding.service';
-import DatasetOnboardingRepository from '../repositories/datasetonboarding.repository';
 
 const readEnv = process.env.ENV || 'prod';
 
-const datasetonboardingRepository = new DatasetOnboardingRepository();
-const datasetonboardingService = new DatasetOnboardingService(datasetonboardingRepository);
-
 export default class DatasetOnboardingController {
+	constructor(datasetonboardingService) {
+		this.datasetonboardingService = datasetonboardingService;
+	}
+
 	getDatasetsByPublisher = async (req, res) => {
 		try {
 			let {
@@ -28,9 +27,9 @@ export default class DatasetOnboardingController {
 				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
 			} = req;
 
-			const totalCounts = await datasetonboardingService.getDatasetsByPublisherCounts(publisherID);
+			const totalCounts = await this.datasetonboardingService.getDatasetsByPublisherCounts(publisherID);
 
-			const [versionedDatasets, count, pageCount] = await datasetonboardingService.getDatasetsByPublisher(
+			const [versionedDatasets, count, pageCount] = await this.datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
 				datasetIndex,
@@ -40,18 +39,18 @@ export default class DatasetOnboardingController {
 				search
 			);
 
-			if (!status) status = 'all statuses';
+			if (!status) status = 'all';
 
 			return res.status(200).json({
 				success: true,
 				data: {
 					publisherTotals: totalCounts,
-					results: { resultsFor: status, total: count, pageCount: pageCount, listOfDatasets: versionedDatasets },
+					results: { status: status, total: count, pageCount: pageCount, listOfDatasets: versionedDatasets },
 				},
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
-			res.status(500).json({ status: 'error', message: err.message });
+			res.status(500).json({ success: false, message: err.message });
 		}
 	};
 
@@ -60,12 +59,12 @@ export default class DatasetOnboardingController {
 			const id = req.params.id;
 
 			if (_.isEmpty(id)) {
-				return res.status(404).json({ success: 'error', message: 'A valid dataset ID was not supplied' });
+				return res.status(404).json({ success: false, message: 'A valid dataset ID was not supplied' });
 			}
 
-			const dataset = await datasetonboardingService.getDatasetVersion(id);
+			const dataset = await this.datasetonboardingService.getDatasetVersion(id);
 
-			const listOfDatasets = await datasetonboardingService.getAssociatedVersions(dataset.pid);
+			const listOfDatasets = await this.datasetonboardingService.getAssociatedVersions(dataset.pid);
 
 			return res.status(200).json({
 				success: true,
@@ -74,7 +73,7 @@ export default class DatasetOnboardingController {
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
-			res.status(500).json({ status: 'error', message: err.message });
+			res.status(500).json({ success: false, message: err.message });
 		}
 	};
 
@@ -94,7 +93,7 @@ export default class DatasetOnboardingController {
 				return res.status(404).json({ status: 'error', message: 'Dataset publisher could not be found.' });
 			}
 
-			const [data, error] = await datasetonboardingService.createNewDatasetVersion(publisherID, pid, currentVersionId);
+			const [data, error] = await this.datasetonboardingService.createNewDatasetVersion(publisherID, pid, currentVersionId);
 
 			if (error) {
 				if (error === 'existingDataset') {
@@ -145,12 +144,12 @@ export default class DatasetOnboardingController {
 					if (isEmpty(structuralMetadata)) {
 						return res.status(404).json({ status: 'error', message: 'Update failed' });
 					} else {
-						await datasetonboardingService.updateStructuralMetadata(structuralMetadata, id);
+						await this.datasetonboardingService.updateStructuralMetadata(structuralMetadata, id);
 						return res.status(200).json();
 					}
 				}
 			} else {
-				let response = await datasetonboardingService.updateDatasetVersionDataElement(dataset, updateObj, id);
+				let response = await this.datasetonboardingService.updateDatasetVersionDataElement(dataset, updateObj, id);
 
 				return res.status(200).json(response);
 			}
@@ -173,7 +172,7 @@ export default class DatasetOnboardingController {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			const [updatedDataset, dataset] = await datasetonboardingService.submitDatasetVersion(id);
+			const [updatedDataset, dataset] = await this.datasetonboardingService.submitDatasetVersion(id);
 
 			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
 
@@ -534,7 +533,7 @@ export default class DatasetOnboardingController {
 		let { pid, title = '' } = req.query;
 		let regex = new RegExp(`^${escapeRegExp(title)}$`, 'i');
 
-		const dataset = await datasetonboardingService.checkUniqueTitle(regex, pid);
+		const dataset = await this.datasetonboardingService.checkUniqueTitle(regex, pid);
 
 		return res.status(200).json({ isUniqueTitle: dataset ? false : true });
 	};
@@ -543,7 +542,7 @@ export default class DatasetOnboardingController {
 		try {
 			let { pid = '', datasetID = '', recalculate = false } = req.query;
 
-			const metadataQuality = await datasetonboardingService.getMetadataQuality(pid, datasetID, recalculate);
+			const metadataQuality = await this.datasetonboardingService.getMetadataQuality(pid, datasetID, recalculate);
 
 			return res.status(200).json({ metadataQuality });
 		} catch (err) {
@@ -561,7 +560,7 @@ export default class DatasetOnboardingController {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			const [dataset, draftDatasetName] = await datasetonboardingService.deleteDraftDataset(id);
+			const [dataset, draftDatasetName] = await this.datasetonboardingService.deleteDraftDataset(id);
 
 			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DRAFTDATASETDELETED, dataset);
 
@@ -675,7 +674,7 @@ export default class DatasetOnboardingController {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			const dataset = await datasetonboardingService.duplicateDataset(id);
+			const dataset = await this.datasetonboardingService.duplicateDataset(id);
 
 			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETDUPLICATED, dataset);
 
