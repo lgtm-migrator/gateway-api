@@ -155,7 +155,7 @@ describe('datasetOnboardingService', () => {
 		});
 	});
 
-	describe('createNewDatasetVersion', async () => {
+	describe('createNewDatasetVersion', () => {
 		it('should call createNewDatasetVersion if no PID exists', async () => {
 			const publisherID = '615aee882414847722e46aa1';
 			const pid = '';
