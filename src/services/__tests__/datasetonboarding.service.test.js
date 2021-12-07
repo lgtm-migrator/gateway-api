@@ -1,11 +1,14 @@
+import sinon from 'sinon';
+
 import dbHandler from '../../config/in-memory-db';
-import { datasetSearchStub } from '../__mocks__/datasetSearchStub';
+import { publisherStub } from '../__mocks__/publisherStub';
 import constants from '../../resources/utilities/constants.util';
+import { datasetSearchStub } from '../__mocks__/datasetSearchStub';
 import datasetOnboardingService from '../../services/datasetonboarding.service';
 
 beforeAll(async () => {
 	await dbHandler.connect();
-	await dbHandler.loadData({ tools: datasetSearchStub });
+	await dbHandler.loadData({ tools: datasetSearchStub, publishers: publisherStub });
 });
 
 afterAll(async () => await dbHandler.closeDatabase());
@@ -13,160 +16,168 @@ afterAll(async () => await dbHandler.closeDatabase());
 describe('datasetOnboardingService', () => {
 	const datasetonboardingService = new datasetOnboardingService();
 
+	describe('getDatasetsByPublisherCounts', () => {
+		it('only inReview dataset counts should be returned as an admin user', async () => {
+			const publisherID = 'admin';
+
+			const totalCounts = await datasetonboardingService.getDatasetsByPublisherCounts(publisherID);
+
+			expect(Object.keys(totalCounts).length).toBe(1);
+			expect(Object.keys(totalCounts)[0]).toBe(constants.datasetStatuses.INREVIEW);
+		});
+
+		it('all keys should be returned as a custodian user', async () => {
+			const publisherID = 'TestPublisher';
+
+			const totalCounts = await datasetonboardingService.getDatasetsByPublisherCounts(publisherID);
+
+			expect(Object.keys(totalCounts).length).toBe(Object.keys(constants.datasetStatuses).length);
+			expect(Object.keys(totalCounts).sort()).toEqual(Object.values(constants.datasetStatuses).sort());
+		});
+	});
+
 	describe('getDatasetsByPublisher', () => {
-		describe('As an admin team user', () => {
-			it('only inReview datasets should be returned when no status parameter is given', async () => {
-				const publisherID = 'admin';
-				const search = '';
-				const datasetIndex = 0;
-				const maxResults = 10;
-				const sortBy = 'latest';
-				const sortDirection = 'asc';
-				const status = null;
+		const statuses = Object.values(constants.datasetStatuses);
 
-				const [versionedDatasets, count, pageCount] = await datasetonboardingService.getDatasetsByPublisher(
-					status,
-					publisherID,
-					datasetIndex,
-					maxResults,
-					sortBy,
-					sortDirection,
-					search
-				);
+		test.each(statuses)('should only return datasets matching the given status', async activeflag => {
+			const datasetIndex = 0;
+			const maxResults = 10;
+			const sortBy = 'latest';
+			const sortDirection = 'desc';
+			const status = activeflag;
+			const publisherID = 'TestPublisher';
+			const search = '';
 
-				console.log(versionedDatasets, count, pageCount);
-				// 		console.log(versionDatasets, count, pageCount);
-				// 	});
+			const [versionedDatasets] = await datasetonboardingService.getDatasetsByPublisher(
+				status,
+				publisherID,
+				datasetIndex,
+				maxResults,
+				sortBy,
+				sortDirection,
+				search
+			);
 
-				// 	it('Should return the correct number of inReview datasets with a search parameter', async () => {
-				// 		let req = mockedRequest();
-				// 		let res = mockedResponse();
+			expect([...new Set(versionedDatasets.map(dataset => dataset.activeflag))].length).toEqual(1);
+		});
 
-				// 		req.params = {
-				// 			publisherID: 'admin',
-				// 		};
+		it('should return all status types if no status is given', async () => {
+			const datasetIndex = 0;
+			const maxResults = 10;
+			const sortBy = 'latest';
+			const sortDirection = 'desc';
+			const status = null;
+			const publisherID = 'TestPublisher';
+			const search = '';
 
-				// 		req.query = {
-				// 			search: 'abstract3',
-				// 			datasetIndex: 0,
-				// 			maxResults: 10,
-				// 			sortBy: 'latest',
-				// 			sortDirection: 'asc',
-				// 			status: 'inReview',
-				// 		};
+			const expectedResponse = datasetSearchStub
+				.filter(dataset => dataset.datasetv2.summary.publisher.identifier === 'TestPublisher')
+				.map(dataset => dataset.activeflag);
 
-				// 		const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
+			const [versionedDatasets] = await datasetonboardingService.getDatasetsByPublisher(
+				status,
+				publisherID,
+				datasetIndex,
+				maxResults,
+				sortBy,
+				sortDirection,
+				search
+			);
 
-				// 		const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
+			expect([...new Set(versionedDatasets.map(dataset => dataset.activeflag))]).toEqual([...new Set(expectedResponse)]);
+		});
 
-				// 		expect(formattedDatasets.length).toEqual(1);
-				// 	});
-				// });
-				// describe('As a publisher team user', () => {
-				// 	const statuses = Object.values(constants.datasetStatuses);
+		it('should return the correct count of filered results', async () => {
+			const datasetIndex = 0;
+			const maxResults = 10;
+			const sortBy = 'latest';
+			const sortDirection = 'desc';
+			const status = 'inReview';
+			const publisherID = 'admin';
+			const search = '';
 
-				// 	test.each(statuses)('Each status should only return datasets with the supplied status', async status => {
-				// 		let res = mockedResponse();
-				// 		let req = mockedRequest();
+			const [_, count] = await datasetonboardingService.getDatasetsByPublisher(
+				status,
+				publisherID,
+				datasetIndex,
+				maxResults,
+				sortBy,
+				sortDirection,
+				search
+			);
 
-				// 		req.params = {
-				// 			publisherID: 'TestPublisher',
-				// 		};
+			expect(count).toEqual(2);
+		});
 
-				// 		req.query = {
-				// 			search: '',
-				// 			datasetIndex: 0,
-				// 			maxResults: 10,
-				// 			sortBy: 'latest',
-				// 			sortDirection: 'asc',
-				// 			status: status,
-				// 		};
+		it('should return results matching an appropriate search term', async () => {
+			const datasetIndex = 0;
+			const maxResults = 10;
+			const sortBy = 'latest';
+			const sortDirection = 'desc';
+			const status = 'inReview';
+			const publisherID = 'admin';
+			const search = 'abstract3';
 
-				// 		const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
+			const [_, count] = await datasetonboardingService.getDatasetsByPublisher(
+				status,
+				publisherID,
+				datasetIndex,
+				maxResults,
+				sortBy,
+				sortDirection,
+				search
+			);
 
-				// 		const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
+			expect(count).toEqual(1);
+		});
 
-				// 		formattedDatasets.forEach(dataset => {
-				// 			expect(dataset.activeflag).toEqual(status);
-				// 		});
-				// 	});
+		it('should allow for pagintation', async () => {
+			const datasetIndex = 0;
+			const maxResults = 1;
+			const sortBy = 'latest';
+			const sortDirection = 'desc';
+			const status = 'inReview';
+			const publisherID = 'admin';
+			const search = '';
 
-				// 	it('Should return the correct counts', async () => {
-				// 		let req = mockedRequest();
-				// 		let res = mockedResponse();
+			const [_, count, pageCount] = await datasetonboardingService.getDatasetsByPublisher(
+				status,
+				publisherID,
+				datasetIndex,
+				maxResults,
+				sortBy,
+				sortDirection,
+				search
+			);
 
-				// 		req.params = {
-				// 			publisherID: 'TestPublisher',
-				// 		};
+			expect(count).toEqual(2);
+			expect(pageCount).toEqual(1);
+		});
+	});
 
-				// 		req.query = {
-				// 			search: '',
-				// 			datasetIndex: 0,
-				// 			maxResults: 10,
-				// 			sortBy: 'latest',
-				// 			sortDirection: 'asc',
-				// 			status: 'inReview',
-				// 		};
+	describe('createNewDatasetVersion', async () => {
+		it('should call createNewDatasetVersion if no PID exists', async () => {
+			const publisherID = '615aee882414847722e46aa1';
+			const pid = '';
+			const currentVersionId = '';
 
-				// 		const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
+			const initialDatasetVersionStub = sinon.stub(datasetonboardingService, 'initialDatasetVersion').returns([]);
 
-				// 		const counts = response.json.mock.calls[0][0].data.publisherTotals;
+			await datasetonboardingService.createNewDatasetVersion(publisherID, pid, currentVersionId);
 
-				// 		Object.keys(counts).forEach(status => {
-				// 			expect(counts[status]).toBeGreaterThan(0);
-				// 		});
-				// 	});
+			expect(initialDatasetVersionStub.calledOnce).toBe(true);
+		});
 
-				// 	it('Should return all dataset activeflag types if no status parameter is supplied', async () => {
-				// 		let req = mockedRequest();
-				// 		let res = mockedResponse();
+		it('should call newVersionForExistingDataset if PID exists', async () => {
+			const publisherID = '615aee882414847722e46aa1';
+			const pid = 123;
+			const currentVersionId = 456;
 
-				// 		req.params = {
-				// 			publisherID: 'TestPublisher',
-				// 		};
+			const newVersionForExistingDatasetStub = sinon.stub(datasetonboardingService, 'newVersionForExistingDataset').returns([]);
 
-				// 		req.query = {
-				// 			search: '',
-				// 			datasetIndex: 0,
-				// 			maxResults: 10,
-				// 			sortBy: 'latest',
-				// 			sortDirection: 'asc',
-				// 		};
+			await datasetonboardingService.createNewDatasetVersion(publisherID, pid, currentVersionId);
 
-				// 		const expectedResponse = datasetSearchStub
-				// 			.filter(dataset => dataset.datasetv2.summary.publisher.identifier === 'TestPublisher')
-				// 			.map(dataset => dataset.activeflag);
-
-				// 		const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
-
-				// 		const formattedDatasets = response.json.mock.calls[0][0].data.results.listOfDatasets;
-
-				// 		expect([...new Set(formattedDatasets.map(dataset => dataset.activeflag))]).toEqual([...new Set(expectedResponse)]);
-				// 	});
-
-				// 	it('Should return the correct count matching the supplied query parameters', async () => {
-				// 		let req = mockedRequest();
-				// 		let res = mockedResponse();
-
-				// 		req.params = {
-				// 			publisherID: 'TestPublisher',
-				// 		};
-
-				// 		req.query = {
-				// 			search: '',
-				// 			datasetIndex: 0,
-				// 			maxResults: 10,
-				// 			sortBy: 'latest',
-				// 			sortDirection: 'asc',
-				// 			status: 'inReview',
-				// 		};
-
-				// 		const response = await datasetonboardingController.getDatasetsByPublisher(req, res);
-
-				// 		const counts = response.json.mock.calls[0][0].data.results.total;
-
-				// 		expect(counts).toBeGreaterThan(0);
-			});
+			expect(newVersionForExistingDatasetStub.calledOnce).toBe(true);
 		});
 	});
 });

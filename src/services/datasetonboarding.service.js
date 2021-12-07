@@ -175,13 +175,11 @@ export default class DatasetOnboardingService {
 
 		if (isEmpty(dataset)) throw new Error('Dataset could not be found.');
 
-		let metadataQuality = {};
+		let metadataQuality = dataset.datasetfields.metadataquality;
 
 		if (recalculate) {
 			metadataQuality = await datasetonboardingUtil.buildMetadataQuality(dataset, dataset.datasetv2, dataset.pid);
 			await Data.findOneAndUpdate({ _id: dataset._id }, { 'datasetfields.metadataquality': metadataQuality });
-		} else {
-			metadataQuality = dataset.datasetfields.metadataquality;
 		}
 
 		return metadataQuality;
@@ -337,30 +335,11 @@ export default class DatasetOnboardingService {
 		return [data, null];
 	};
 
-	//Return a list of datasets for a given PID
 	getAssociatedVersions = async pid => {
 		let datasets = await Data.find({ pid: pid }, { _id: 1, datasetVersion: 1, activeflag: 1 }).sort({
 			'timestamps.created': -1,
 		});
 		return datasets;
-	};
-
-	// Reduce a list of datasets into their consituent versions
-	versionDatasets = datasets => {
-		let versionedDatasets = datasets.reduce((arr, dataset) => {
-			dataset.listOfVersions = [];
-			const datasetIdx = arr.findIndex(item => item.pid === dataset.pid);
-			if (datasetIdx === -1) {
-				arr = [...arr, dataset];
-			} else {
-				const { _id, datasetVersion, activeflag } = dataset;
-				const versionDetails = { _id, datasetVersion, activeflag };
-				arr[datasetIdx].listOfVersions = [...arr[datasetIdx].listOfVersions, versionDetails];
-			}
-			return arr;
-		}, []);
-
-		return versionedDatasets;
 	};
 
 	buildCountObject = (versionedDatasets, publisherID) => {

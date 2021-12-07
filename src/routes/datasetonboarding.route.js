@@ -3,11 +3,15 @@ import express from 'express';
 import passport from 'passport';
 
 import datasetOnboardingController from '../controllers/datasetonboarding.controller';
+import datasetOnboardingService from '../services/datasetonboarding.service';
+import datasetOnboardingRepository from '../repositories/datasetonboarding.repository';
 import { authoriseUserForPublisher, validateSearchParameters } from '../middlewares/index';
 
 const upload = multer();
 const router = express.Router();
-const datasetonboardingController = new datasetOnboardingController();
+const datasetonboardingRepository = new datasetOnboardingRepository();
+const datasetonboardingService = new datasetOnboardingService(datasetonboardingRepository);
+const datasetonboardingController = new datasetOnboardingController(datasetonboardingService);
 
 // @route   PUT api/v1/dataset-onboarding/checkUniqueTitle
 // @desc    PUT Update the status of a dataset
