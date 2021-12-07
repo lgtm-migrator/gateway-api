@@ -1,4 +1,4 @@
-const coverage = [ 
+const arrayUnOrdered = [ 
     'Malaysia',
     'Pakistan',
     'India',
@@ -80,7 +80,7 @@ const tree = [
 ];
 
 export default {
-    coverage,
+    arrayUnOrdered,
     arrayOrdered,
     tree,
 }
