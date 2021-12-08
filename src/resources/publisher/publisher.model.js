@@ -21,6 +21,10 @@ const PublisherSchema = new Schema(
 			body: String,
 			footer: String,
 		},
+		dataRequestModalContentUpdatedOn: Date,
+		dataRequestModalContentUpdatedBy: Number,
+		applicationFormUpdatedOn: Date,
+		applicationFormUpdatedBy: Number,
 		workflowEnabled: {
 			type: Boolean,
 			default: false,
