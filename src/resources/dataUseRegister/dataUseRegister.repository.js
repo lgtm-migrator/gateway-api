@@ -1,7 +1,6 @@
 import Repository from '../base/repository';
 import { DataUseRegister } from './dataUseRegister.model';
 import { isNil } from 'lodash';
-import FiltersService from '../filters/filters.service';
 
 export default class DataUseRegisterRepository extends Repository {
 	constructor() {
@@ -85,7 +84,6 @@ export default class DataUseRegisterRepository extends Repository {
 		body.updatedon = Date.now();
 		body.lastActivity = Date.now();
 		const updatedBody = await this.update(id, body);
-		FiltersService.optimiseFilters('dataUseRegister');
 		return updatedBody;
 	}
 

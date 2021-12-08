@@ -2,13 +2,14 @@ import express from 'express';
 import DataUseRegisterController from './dataUseRegister.controller';
 
 import { dataUseRegisterService } from './dependency';
+import { activityLogService } from '../activitylog/dependency';
 import { logger } from '../utilities/logger';
 import passport from 'passport';
 import constants from './../utilities/constants.util';
-import { isEmpty, isNull } from 'lodash';
+import { isEmpty, isNull, isEqual } from 'lodash';
 
 const router = express.Router();
-const dataUseRegisterController = new DataUseRegisterController(dataUseRegisterService);
+const dataUseRegisterController = new DataUseRegisterController(dataUseRegisterService, activityLogService);
 const logCategory = 'dataUseRegister';
 
 function isUserMemberOfTeam(user, teamId) {
@@ -70,38 +71,10 @@ const validateUploadRequest = (req, res, next) => {
 	next();
 };
 
-/* const validateViewRequest = (req, res, next) => {
-	const { team } = req.query;
-
-	if (!team) {
-		return res.status(400).json({
-			success: false,
-			message: 'You must provide a team parameter',
-		});
-	}
-
-	next();
-}; */
-
-const authorizeView = async (req, res, next) => {
-	const requestingUser = req.user;
-	const { team } = req.query;
-
-	const authorised = team === 'user' || isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, team);
-
-	if (!authorised) {
-		return res.status(401).json({
-			success: false,
-			message: 'You are not authorised to perform this action',
-		});
-	}
-
-	next();
-};
-
 const authorizeUpdate = async (req, res, next) => {
 	const requestingUser = req.user;
 	const { id } = req.params;
+	const { projectIdText, datasetTitles } = req.body;
 
 	const dataUseRegister = await dataUseRegisterService.getDataUseRegister(id);
 
@@ -113,12 +86,26 @@ const authorizeUpdate = async (req, res, next) => {
 	}
 
 	const { publisher } = dataUseRegister;
-	const authorised = isUserMemberOfTeam(requestingUser, publisher._id) || isUserDataUseAdmin(requestingUser);
+	const authorised = isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, publisher._id);
 	if (!authorised) {
 		return res.status(401).json({
 			success: false,
 			message: 'You are not authorised to perform this action',
 		});
+	}
+
+	if (!dataUseRegister.manualUpload) {
+		if (!isEqual(projectIdText, dataUseRegister.projectIdText))
+			return res.status(401).json({
+				success: false,
+				message: 'You are not authorised to update the project ID of an automatic data use register',
+			});
+
+		if (!isEqual(datasetTitles, dataUseRegister.datasetTitles))
+			return res.status(401).json({
+				success: false,
+				message: 'You are not authorised to update the datasets of an automatic data use register',
+			});
 	}
 
 	next();
@@ -157,10 +144,15 @@ router.get('/:id', logger.logRequestMiddleware({ logCategory, action: 'Viewed da
 router.get(
 	'/',
 	passport.authenticate('jwt'),
-	/* validateViewRequest, */
-	authorizeView,
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed dataUseRegisters data' }),
 	(req, res) => dataUseRegisterController.getDataUseRegisters(req, res)
+);
+
+// @route   PATCH /api/v2/data-use-registers/counter
+// @desc    Updates the data use register counter for page views
+// @access  Public
+router.patch('/counter', logger.logRequestMiddleware({ logCategory, action: 'Data use counter update' }), (req, res) =>
+	dataUseRegisterController.updateDataUseRegisterCounter(req, res)
 );
 
 // @route   PATCH /api/v2/data-use-registers/id

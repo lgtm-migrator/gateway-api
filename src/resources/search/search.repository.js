@@ -192,6 +192,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					counter: 1,
 					type: 1,
 					latestUpdate: '$lastActivity',
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 				},
 			},
 		];
@@ -907,6 +908,8 @@ export const getFilter = async (searchString, type, field, isArray, activeFilter
 			collection = Course;
 		} else if (type === 'collection') {
 			collection = Collections;
+		} else if (type === 'datause') {
+			collection = DataUseRegister;
 		}
 		let q = '',
 			p = '';

@@ -261,7 +261,7 @@ const getLinkedOutputs = async (outputs = []) => {
  * @param 	{Array<Object>} 	objects 	    An array of objects containing the necessary properties to assemble a related object record reference
 
  */
-const buildRelatedObjects = (creatorUser, type, objects = [], manualUpload = true) => {
+const buildRelatedObjects = (creatorUser, type, objects = [], manualUpload = true, addedViaEdit = false) => {
 	const { firstname, lastname } = creatorUser;
 	return objects.map(object => {
 		const { id: objectId, pid } = object;
@@ -274,6 +274,8 @@ const buildRelatedObjects = (creatorUser, type, objects = [], manualUpload = tru
 			isLocked: true,
 			reason: manualUpload
 				? `This ${type} was added automatically during the manual upload of this data use register`
+				: addedViaEdit
+				? `This ${type} was added via an edit of this data use register`
 				: `This ${type} was added automatically from an approved data access request`,
 		};
 	});
@@ -321,6 +323,18 @@ const extractFundersAndSponsors = (applicationQuestionAnswers = {}) => {
 		.map(key => applicationQuestionAnswers[key]);
 };
 
+const getDatasetsByPids = async datasetPids => {
+	return await datasetService.getDatasetsByPids(datasetPids);
+};
+
+const getAppplicantByIds = async applicantIds => {
+	return await getUsersByIds(applicantIds);
+};
+
+const getSafeOutputsByIds = async outputIds => {
+	return { gatewayToolIDs: await toolService.getToolsByIds(outputIds), gatewayPaperIDs: await paperService.getPapersByIds(outputIds) };
+};
+
 export default {
 	buildDataUseRegisters,
 	getLinkedDatasets,
@@ -329,4 +343,7 @@ export default {
 	buildRelatedObjects,
 	extractFormApplicants,
 	extractFundersAndSponsors,
+	getDatasetsByPids,
+	getAppplicantByIds,
+	getSafeOutputsByIds,
 };

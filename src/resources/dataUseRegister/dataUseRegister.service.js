@@ -1,7 +1,8 @@
+/* eslint-disable class-methods-use-this */
 import dataUseRegisterUtil from './dataUseRegister.util';
 import DataUseRegister from './dataUseRegister.entity';
 import constants from '../utilities/constants.util';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, isEqual, isUndefined } from 'lodash';
 import moment from 'moment';
 
 export default class DataUseRegisterService {
@@ -234,7 +235,11 @@ export default class DataUseRegisterService {
 			[...authors, mainApplicant],
 			questionAnswers
 		);
-		const relatedDatasets = dataUseRegisterUtil.buildRelatedDatasets(creatorUser, datasets, false);
+		const { linkedDatasets = [], namedDatasets = [] } = await dataUseRegisterUtil.getLinkedDatasets([
+			...datasets.map(dataset => dataset.name),
+		]);
+		const datasetTitles = [...linkedDatasets.map(dataset => dataset.name), ...namedDatasets];
+		const relatedDatasets = dataUseRegisterUtil.buildRelatedObjects(creatorUser, 'dataset', datasets, false);
 		const relatedApplications = await this.buildRelatedDataUseRegisters(creatorUser, versionTree, applicationId);
 		const datasetLinkageDescription = `${datasetLinkageDetails.toString().trim()} ${datasetLinkageRiskMitigation.toString().trim()}`;
 		const requestFrequency = dataRefreshRequired === 'Yes' ? 'Recurring' : dataRefreshRequired === 'No' ? 'One-off' : '';
@@ -247,7 +252,7 @@ export default class DataUseRegisterService {
 			publisher,
 			projectIdText: projectId,
 			projectId: applicationId,
-			applicantId: applicantId.trim(),
+			applicantId: applicantId ? applicantId.trim() : '',
 			accreditedResearcherStatus: isNil(accreditedResearcherStatus) ? 'Unknown' : accreditedResearcherStatus.toString().trim(),
 			...(projectTitle && { projectTitle: projectTitle.toString().trim() }),
 			...(organisationName && { organisationName: organisationName.toString().trim() }),
@@ -263,15 +268,15 @@ export default class DataUseRegisterService {
 			...(projectStartDate.isValid() && { projectStartDate }),
 			...(projectEndDate.isValid() && { projectEndDate }),
 			...(latestApprovalDate.isValid() && { latestApprovalDate }),
-			datasetTitles: [...datasets.map(dataset => dataset.name)],
-			datasetIds: [...datasets.map(dataset => dataset.datasetid)],
-			datasetPids: [...datasets.map(dataset => dataset.pid)],
+			...(!isEmpty(datasetTitles) && { datasetTitles }),
+			...(!isEmpty(linkedDatasets) && { gatewayDatasets: linkedDatasets.map(dataset => dataset.pid) }),
+			...(!isEmpty(namedDatasets) && { nonGatewayDatasets: namedDatasets }),
 			keywords: isNil(keywords) || isEmpty(keywords) ? [] : keywords.split(' ').slice(0, 6),
 			fundersAndSponsors,
 			gatewayApplicants,
 			nonGatewayApplicants,
 			relatedObjects: [...relatedDatasets, ...relatedApplications],
-			activeflag: 'inReview',
+			activeflag: 'active',
 			user: creatorUser._id,
 			userName: `${creatorUser.firstname} ${creatorUser.lastname}`,
 			updatedon: Date.now(),
@@ -320,5 +325,225 @@ export default class DataUseRegisterService {
 		}
 
 		return relatedDataUseRegisters;
+	}
+
+	async buildUpdateObject(dataUseRegister, dataUseRegisterPayload, user) {
+		let updateObj = {};
+
+		const {
+			activeflag,
+			rejectionReason,
+			discourseTopicId,
+			relatedObjects,
+			keywords,
+			projectTitle,
+			projectId,
+			projectIdText,
+			datasetTitles,
+			gatewayDatasets,
+			nonGatewayDatasets,
+			organisationName,
+			organisationId,
+			organisationSector,
+			gatewayApplicants,
+			nonGatewayApplicants,
+			applicantId,
+			fundersAndSponsors,
+			accreditedResearcherStatus,
+			sublicenceArrangements,
+			laySummary,
+			publicBenefitStatement,
+			requestCategoryType,
+			technicalSummary,
+			otherApprovalCommittees,
+			projectStartDate,
+			projectEndDate,
+			latestApprovalDate,
+			dataSensitivityLevel,
+			legalBasisForDataArticle6,
+			legalBasisForDataArticle9,
+			dutyOfConfidentiality,
+			nationalDataOptOut,
+			requestFrequency,
+			datasetLinkageDescription,
+			confidentialDataDescription,
+			accessDate,
+			accessType,
+			privacyEnhancements,
+			gatewayOutputs,
+			nonGatewayOutputs,
+		} = dataUseRegisterPayload;
+
+		const gatewayDatasetPids = await dataUseRegisterUtil.getDatasetsByPids(gatewayDatasets);
+		const gatewayApplicantIDs = await dataUseRegisterUtil.getAppplicantByIds(gatewayApplicants);
+		const { gatewayToolIDs, gatewayPaperIDs } = await dataUseRegisterUtil.getSafeOutputsByIds(gatewayOutputs || []);
+
+		let gatewayApplicantIDsList = [];
+		gatewayApplicantIDs.forEach(applicant => {
+			gatewayApplicantIDsList.push(applicant._id);
+		});
+		if (!isUndefined(gatewayApplicants) && !isEqual(gatewayApplicantIDsList, dataUseRegister.gatewayApplicants))
+			updateObj.gatewayApplicants = gatewayApplicantIDsList;
+
+		let gatewayOutputsToolIDsList = [],
+			gatewayOutputsToolIDsListRelatedResource = [];
+		gatewayToolIDs.forEach(tool => {
+			gatewayOutputsToolIDsList.push(tool.id);
+			gatewayOutputsToolIDsListRelatedResource.push({ id: tool.id.toString() });
+		});
+		if (!isUndefined(gatewayOutputs) && !isEqual(gatewayOutputsToolIDsList, dataUseRegister.gatewayOutputsTools))
+			updateObj.gatewayOutputsTools = gatewayOutputsToolIDsList;
+
+		let gatewayOutputsPaperIDsList = [],
+			gatewayOutputsPaperIDsListRelatedResource = [];
+		gatewayPaperIDs.forEach(paper => {
+			gatewayOutputsPaperIDsList.push(paper.id);
+			gatewayOutputsPaperIDsListRelatedResource.push({ id: paper.id.toString() });
+		});
+		if (!isUndefined(gatewayOutputs) && !isEqual(gatewayOutputsPaperIDsList, dataUseRegister.gatewayOutputsPapers))
+			updateObj.gatewayOutputsPapers = gatewayOutputsPaperIDsList;
+
+		let gatewayDatasetPidsListRelatedResource = [];
+		gatewayDatasetPids.forEach(dataset => {
+			gatewayDatasetPidsListRelatedResource.push({ id: dataset.datasetid, pid: dataset.pid });
+		});
+
+		let automaticRelatedResources = [
+			...dataUseRegisterUtil.buildRelatedObjects(user, 'dataset', gatewayDatasetPidsListRelatedResource, false, true),
+			...dataUseRegisterUtil.buildRelatedObjects(user, 'tool', gatewayOutputsToolIDsListRelatedResource, false, true),
+			...dataUseRegisterUtil.buildRelatedObjects(user, 'paper', gatewayOutputsPaperIDsListRelatedResource, false, true),
+		];
+
+		//dataUseRegister.relatedObjects
+
+		//Loop through automaticRelatedResources to see if it exists, if not add to another array
+
+		let newAutomaticRelatedResources = [];
+		automaticRelatedResources.forEach(automaticResource => {
+			if (!dataUseRegister.relatedObjects.find(resource => resource.objectId === automaticResource.objectId)) {
+				newAutomaticRelatedResources.push(automaticResource);
+			}
+		});
+
+		let newManualRelatedResources = [];
+		relatedObjects.forEach(manualResource => {
+			if (!dataUseRegister.relatedObjects.find(resource => resource.objectId === manualResource.objectId)) {
+				if (!manualResource.isLocked) newManualRelatedResources.push(manualResource);
+			}
+		});
+
+		let relatedResourcesWithRemovedOldAutomaticEntries = [];
+		dataUseRegister.relatedObjects.forEach(resource => {
+			if (resource.isLocked && automaticRelatedResources.find(automaticResource => automaticResource.objectId === resource.objectId)) {
+				relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
+			} else if (!resource.isLocked) {
+				relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
+			}
+		});
+
+		//relatedObjects
+
+		updateObj.relatedObjects = [
+			...relatedResourcesWithRemovedOldAutomaticEntries,
+			...newAutomaticRelatedResources,
+			...newManualRelatedResources,
+		];
+
+		const fundersAndSponsorsList =
+			fundersAndSponsors &&
+			fundersAndSponsors
+				.toString()
+				.split(',')
+				.map(el => {
+					if (!isEmpty(el)) return el.trim();
+				});
+		if (!isEmpty(fundersAndSponsorsList) && !isEqual(fundersAndSponsorsList, dataUseRegister.fundersAndSponsors))
+			updateObj.fundersAndSponsors = fundersAndSponsorsList;
+
+		const otherApprovalCommitteesList =
+			otherApprovalCommittees &&
+			otherApprovalCommittees
+				.toString()
+				.split(',')
+				.map(el => {
+					if (!isEmpty(el)) return el.trim();
+				});
+		if (!isEmpty(otherApprovalCommitteesList) && !isEqual(otherApprovalCommitteesList, dataUseRegister.otherApprovalCommittees))
+			updateObj.otherApprovalCommittees = otherApprovalCommitteesList;
+
+		if (!isUndefined(activeflag) && !isEqual(activeflag, dataUseRegister.activeflag)) updateObj.activeflag = activeflag;
+		if (!isUndefined(rejectionReason) && !isEqual(rejectionReason, dataUseRegister.rejectionReason))
+			updateObj.rejectionReason = rejectionReason;
+		if (!isUndefined(discourseTopicId) && !isEqual(discourseTopicId, dataUseRegister.discourseTopicId))
+			updateObj.discourseTopicId = discourseTopicId;
+		if (!isUndefined(keywords) && !isEqual(keywords, dataUseRegister.keywords)) updateObj.keywords = keywords;
+		if (!isUndefined(projectTitle) && !isEqual(projectTitle, dataUseRegister.projectTitle)) updateObj.projectTitle = projectTitle;
+		if (!isUndefined(projectId) && !isEqual(projectId, dataUseRegister.projectId)) updateObj.projectId = projectId;
+		if (!isUndefined(projectIdText) && !isEqual(projectIdText, dataUseRegister.projectIdText)) updateObj.projectIdText = projectIdText;
+		if (!isUndefined(datasetTitles) && !isEqual(datasetTitles, dataUseRegister.datasetTitles)) updateObj.datasetTitles = datasetTitles;
+		if (!isUndefined(gatewayDatasets) && !isEqual(gatewayDatasets, dataUseRegister.gatewayDatasets))
+			updateObj.gatewayDatasets = gatewayDatasets;
+		if (!isUndefined(nonGatewayDatasets) && !isEqual(nonGatewayDatasets, dataUseRegister.nonGatewayDatasets))
+			updateObj.nonGatewayDatasets = nonGatewayDatasets;
+		if (!isUndefined(projectTitle) && !isEqual(projectTitle, dataUseRegister.projectTitle)) updateObj.projectTitle = projectTitle;
+		if (!isUndefined(organisationName) && !isEqual(organisationName, dataUseRegister.organisationName))
+			updateObj.organisationName = organisationName;
+		if (!isUndefined(organisationId) && !isEqual(organisationId, dataUseRegister.organisationId)) updateObj.organisationId = organisationId;
+		if (!isUndefined(organisationSector) && !isEqual(organisationSector, dataUseRegister.organisationSector))
+			updateObj.organisationSector = organisationSector;
+		if (!isUndefined(nonGatewayApplicants) && !isEqual(nonGatewayApplicants, dataUseRegister.nonGatewayApplicants))
+			updateObj.nonGatewayApplicants = nonGatewayApplicants;
+		if (!isUndefined(applicantId) && !isEqual(applicantId, dataUseRegister.applicantId)) updateObj.applicantId = applicantId;
+		if (!isUndefined(accreditedResearcherStatus) && !isEqual(accreditedResearcherStatus, dataUseRegister.accreditedResearcherStatus))
+			updateObj.accreditedResearcherStatus = accreditedResearcherStatus;
+		if (!isUndefined(sublicenceArrangements) && !isEqual(sublicenceArrangements, dataUseRegister.sublicenceArrangements))
+			updateObj.sublicenceArrangements = sublicenceArrangements;
+		if (!isUndefined(laySummary) && !isEqual(laySummary, dataUseRegister.laySummary)) updateObj.laySummary = laySummary;
+		if (!isUndefined(publicBenefitStatement) && !isEqual(publicBenefitStatement, dataUseRegister.publicBenefitStatement))
+			updateObj.publicBenefitStatement = publicBenefitStatement;
+		if (!isUndefined(requestCategoryType) && !isEqual(requestCategoryType, dataUseRegister.requestCategoryType))
+			updateObj.requestCategoryType = requestCategoryType;
+		if (!isUndefined(technicalSummary) && !isEqual(technicalSummary, dataUseRegister.technicalSummary))
+			updateObj.technicalSummary = technicalSummary;
+		if (
+			!isEmpty(projectStartDate) &&
+			!isEqual(moment(projectStartDate).format('YYYY-MM-DD'), moment(dataUseRegister.projectStartDate).format('YYYY-MM-DD'))
+		)
+			updateObj.projectStartDate = moment(projectStartDate, 'YYYY-MM-DD');
+		if (
+			!isEmpty(projectEndDate) &&
+			!isEqual(moment(projectEndDate).format('YYYY-MM-DD'), moment(dataUseRegister.projectEndDate).format('YYYY-MM-DD'))
+		)
+			updateObj.projectEndDate = moment(projectEndDate, 'YYYY-MM-DD');
+		if (
+			!isEmpty(latestApprovalDate) &&
+			!isEqual(moment(latestApprovalDate).format('YYYY-MM-DD'), moment(dataUseRegister.latestApprovalDate).format('YYYY-MM-DD'))
+		)
+			updateObj.projectStartDate = moment(latestApprovalDate, 'YYYY-MM-DD');
+		if (!isUndefined(dataSensitivityLevel) && !isEqual(dataSensitivityLevel, dataUseRegister.dataSensitivityLevel))
+			updateObj.dataSensitivityLevel = dataSensitivityLevel;
+		if (!isUndefined(legalBasisForDataArticle6) && !isEqual(legalBasisForDataArticle6, dataUseRegister.legalBasisForDataArticle6))
+			updateObj.legalBasisForDataArticle6 = legalBasisForDataArticle6;
+		if (!isUndefined(legalBasisForDataArticle9) && !isEqual(legalBasisForDataArticle9, dataUseRegister.legalBasisForDataArticle9))
+			updateObj.legalBasisForDataArticle9 = legalBasisForDataArticle9;
+		if (!isUndefined(dutyOfConfidentiality) && !isEqual(dutyOfConfidentiality, dataUseRegister.dutyOfConfidentiality))
+			updateObj.dutyOfConfidentiality = dutyOfConfidentiality;
+		if (!isUndefined(nationalDataOptOut) && !isEqual(nationalDataOptOut, dataUseRegister.nationalDataOptOut))
+			updateObj.nationalDataOptOut = nationalDataOptOut;
+		if (!isUndefined(requestFrequency) && !isEqual(requestFrequency, dataUseRegister.requestFrequency))
+			updateObj.requestFrequency = requestFrequency;
+		if (!isUndefined(datasetLinkageDescription) && !isEqual(datasetLinkageDescription, dataUseRegister.datasetLinkageDescription))
+			updateObj.datasetLinkageDescription = datasetLinkageDescription;
+		if (!isUndefined(confidentialDataDescription) && !isEqual(confidentialDataDescription, dataUseRegister.confidentialDataDescription))
+			updateObj.confidentialDataDescription = confidentialDataDescription;
+		if (!isEmpty(accessDate) && !isEqual(moment(accessDate).format('YYYY-MM-DD'), moment(dataUseRegister.accessDate).format('YYYY-MM-DD')))
+			updateObj.accessDate = moment(accessDate, 'YYYY-MM-DD');
+		if (!isUndefined(accessType) && !isEqual(accessType, dataUseRegister.accessType)) updateObj.accessType = accessType;
+		if (!isUndefined(privacyEnhancements) && !isEqual(privacyEnhancements, dataUseRegister.privacyEnhancements))
+			updateObj.privacyEnhancements = privacyEnhancements;
+		if (!isUndefined(nonGatewayOutputs) && !isEqual(nonGatewayOutputs, dataUseRegister.nonGatewayOutputs))
+			updateObj.nonGatewayOutputs = nonGatewayOutputs;
+
+		return updateObj;
 	}
 }

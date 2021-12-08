@@ -295,10 +295,14 @@ const _activityLogEvents = {
 		DATASET_VERSION_UNARCHIVED: 'datasetVersionUnarchived',
 		DATASET_UPDATES_SUBMITTED: 'datasetUpdatesSubmitted',
 	},
+	data_use_register: {
+		DATA_USE_REGISTER_UPDATED: 'dataUseRegisterUpdated',
+	},
 };
 
 const _activityLogTypes = {
 	DATA_ACCESS_REQUEST: 'data_request',
+	DATA_USE_REGISTER: 'data_use_register',
 	DATASET: 'dataset',
 };
 
