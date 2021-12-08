@@ -49,4 +49,20 @@ export default class QuestionbankController extends Controller {
 			});
 		}
 	}
+
+	async publishSchema(req, res) {
+		try {
+			const { questionStatus, guidance, dataRequestSchema } = req.body;
+
+			const newRequestSchema = this.questionbankService.publishSchema({ questionStatus, guidance, dataRequestSchema });
+
+			return res.status(200).json({ success: true, result: newRequestSchema });
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'A server error occurred, please try again',
+			});
+		}
+	}
 }

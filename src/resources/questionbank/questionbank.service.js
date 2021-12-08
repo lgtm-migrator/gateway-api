@@ -120,6 +120,30 @@ export default class QuestionbankService {
 		}
 	}
 
+	async publishSchema(schema) {
+		const global = await this.globalService.getGlobal({ localeId: 'en-gb' });
+		const masterSchema = global.masterSchema;
+		const { guidance, questionStatus } = schema;
+
+		masterSchema.questionSets.forEach((questionSet, questionSetIndex) => {
+			questionSet.questions.forEach((question, questionIndex) => {
+				if (questionStatus[question.questionId] === 0) {
+					delete masterSchema.questionSets[questionSetIndex].questions[questionIndex];
+				} else {
+					if (has(guidance, question.questionId)) question.guidance = guidance[question.questionId];
+					delete masterSchema.questionSets[questionSetIndex].questions[questionIndex].lockedQuestion;
+					delete masterSchema.questionSets[questionSetIndex].questions[questionIndex].defaultQuestion;
+				}
+			});
+		});
+
+		const jsonSchema = masterSchema;
+
+		const publishedSchema = await this.dataRequestRepository.updateApplicationFormSchemaById(schema._id, { jsonSchema });
+
+		return publishedSchema;
+	}
+
 	addQuestionsFromPublisherSchema(publisherSchema, questionStatus) {
 		const jsonSchema = publisherSchema.jsonSchema;
 		jsonSchema.questionSets.forEach(questionSet => {
