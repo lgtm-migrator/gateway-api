@@ -94,4 +94,8 @@ export default class PublisherService {
 
 		return filteredApplications;
 	}
+
+	async update(document, body = {}) {
+		return this.publisherRepository.update(document, body);
+	}
 }

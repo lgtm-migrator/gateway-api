@@ -1,10 +1,11 @@
 import { isEmpty, has } from 'lodash';
 
 export default class QuestionbankService {
-	constructor(publisherService, globalService, dataRequestRepository) {
+	constructor(publisherService, globalService, dataRequestRepository, datasetService) {
 		this.publisherService = publisherService;
 		this.globalService = globalService;
 		this.dataRequestRepository = dataRequestRepository;
+		this.datasetService = datasetService;
 	}
 
 	async getQuestionBankInfo(publisherId) {
@@ -140,6 +141,19 @@ export default class QuestionbankService {
 		const jsonSchema = masterSchema;
 
 		const publishedSchema = await this.dataRequestRepository.updateApplicationFormSchemaById(schema._id, { jsonSchema });
+
+		//if its not already a 5 safes publisher then set the flags to true on the publisher and also on the datasets
+		const publisher = await this.publisherService.getPublisher(schema.publisher);
+		if (!has(publisher, 'uses5Safes')) {
+			await this.publisherService.update(publisher._id, {
+				allowsMessaging: true,
+				workflowEnabled: true,
+				allowAccessRequestManagement: true,
+				uses5Safes: true,
+			});
+
+			await this.datasetService.updateMany({ 'datasetfields.publisher': schema.publisher }, { is5Safes: false });
+		}
 
 		return publishedSchema;
 	}
