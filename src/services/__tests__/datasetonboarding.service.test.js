@@ -40,8 +40,8 @@ describe('datasetOnboardingService', () => {
 		const statuses = Object.values(constants.datasetStatuses);
 
 		test.each(statuses)('should only return datasets matching the given status', async activeflag => {
-			const datasetIndex = 0;
-			const maxResults = 10;
+			const page = 1;
+			const limit = 10;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
 			const status = activeflag;
@@ -51,8 +51,8 @@ describe('datasetOnboardingService', () => {
 			const [versionedDatasets] = await datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
-				datasetIndex,
-				maxResults,
+				page,
+				limit,
 				sortBy,
 				sortDirection,
 				search
@@ -62,8 +62,8 @@ describe('datasetOnboardingService', () => {
 		});
 
 		it('should return all status types if no status is given', async () => {
-			const datasetIndex = 0;
-			const maxResults = 10;
+			const page = 1;
+			const limit = 10;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
 			const status = null;
@@ -77,8 +77,8 @@ describe('datasetOnboardingService', () => {
 			const [versionedDatasets] = await datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
-				datasetIndex,
-				maxResults,
+				page,
+				limit,
 				sortBy,
 				sortDirection,
 				search
@@ -88,8 +88,8 @@ describe('datasetOnboardingService', () => {
 		});
 
 		it('should return the correct count of filered results', async () => {
-			const datasetIndex = 0;
-			const maxResults = 10;
+			const page = 1;
+			const limit = 10;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
 			const status = 'inReview';
@@ -99,8 +99,8 @@ describe('datasetOnboardingService', () => {
 			const [_, count] = await datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
-				datasetIndex,
-				maxResults,
+				page,
+				limit,
 				sortBy,
 				sortDirection,
 				search
@@ -110,8 +110,8 @@ describe('datasetOnboardingService', () => {
 		});
 
 		it('should return results matching an appropriate search term', async () => {
-			const datasetIndex = 0;
-			const maxResults = 10;
+			const page = 1;
+			const limit = 10;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
 			const status = 'inReview';
@@ -121,8 +121,8 @@ describe('datasetOnboardingService', () => {
 			const [_, count] = await datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
-				datasetIndex,
-				maxResults,
+				page,
+				limit,
 				sortBy,
 				sortDirection,
 				search
@@ -132,26 +132,26 @@ describe('datasetOnboardingService', () => {
 		});
 
 		it('should allow for pagintation', async () => {
-			const datasetIndex = 0;
-			const maxResults = 1;
+			const page = 1;
+			const limit = 1;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
 			const status = 'inReview';
 			const publisherID = 'admin';
 			const search = '';
 
-			const [_, count, pageCount] = await datasetonboardingService.getDatasetsByPublisher(
+			const [versionedDatasets, count] = await datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
-				datasetIndex,
-				maxResults,
+				page,
+				limit,
 				sortBy,
 				sortDirection,
 				search
 			);
 
 			expect(count).toEqual(2);
-			expect(pageCount).toEqual(1);
+			expect(versionedDatasets.length).toEqual(1);
 		});
 	});
 

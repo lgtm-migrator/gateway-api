@@ -1,6 +1,7 @@
 import { authoriseUserForPublisher, validateSearchParameters } from '../datasetonboarding.middleware';
 import { UserModel } from '../../resources/user/user.model';
 import constants from '../../resources/utilities/constants.util';
+import { testing } from 'googleapis/build/src/apis/testing';
 
 describe('Testing the datasetonboarding middleware', () => {
 	const mockedRequest = () => {
@@ -99,6 +100,46 @@ describe('Testing the datasetonboarding middleware', () => {
 	});
 
 	describe('Testing the validateSearchParameters middleware', () => {
+		const pageAndLimitOptions = [
+			{ page: -1, limit: 10 }, //page is a negative integer, limit is fine
+			{ page: 1, limit: -10 }, //page is fine, limit is negative integer
+			{ page: 'abc', limit: 10 }, //page is not an integer, limit is fine
+			{ page: 1, limit: 'abc' }, //page is fine, limit is not an integer
+		];
+
+		test.each(pageAndLimitOptions)(
+			'Each invalid page-limit combination should return a 500 error and the appropriate response',
+			pageLimitOption => {
+				let req = mockedRequest();
+				let res = mockedResponse();
+				const nextFunction = jest.fn();
+
+				const expectedResponse = {
+					success: false,
+					message: 'The page and / or limit parameter(s) must be integers > 0',
+				};
+
+				req.params = {
+					publisherID: 'fakeTeam',
+				};
+
+				req.query = {
+					search: '',
+					page: pageLimitOption['page'],
+					limit: pageLimitOption['limit'],
+					sortBy: 'latest',
+					sortDirection: 'asc',
+					status: 'inReview',
+				};
+
+				validateSearchParameters(req, res, nextFunction);
+
+				expect(res.status).toHaveBeenCalledWith(500);
+				expect(res.json).toHaveBeenCalledWith(expectedResponse);
+				expect(nextFunction.mock.calls.length).toBe(0);
+			}
+		);
+
 		it('Should invoke next() if correct query parameters are supplied', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
@@ -110,8 +151,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			req.query = {
 				search: '',
-				datasetIndex: 0,
-				maxResults: 10,
+				page: 1,
+				limit: 10,
 				sortBy: 'latest',
 				sortDirection: 'asc',
 				status: 'inReview',
@@ -136,8 +177,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 				req.query = {
 					search: '',
-					datasetIndex: 0,
-					maxResults: 10,
+					page: 1,
+					limit: 10,
 					sortBy: sortOption,
 					sortDirection: 'asc',
 					status: 'active',
@@ -162,8 +203,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 				req.query = {
 					search: '',
-					datasetIndex: 0,
-					maxResults: 10,
+					page: 1,
+					limit: 10,
 					sortBy: 'latest',
 					sortDirection: 'asc',
 					status: status,
@@ -190,8 +231,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			req.query = {
 				search: '',
-				datasetIndex: 0,
-				maxResults: 10,
+				page: 1,
+				limit: 10,
 				sortBy: 'latest',
 				sortDirection: 'asc',
 				status: 'active',
@@ -215,8 +256,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			req.query = {
 				search: '',
-				datasetIndex: 0,
-				maxResults: 10,
+				page: 1,
+				limit: 10,
 				sortBy: 'unallowedSortOption',
 				sortDirection: 'asc',
 				status: 'inReview',
@@ -239,8 +280,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			req.query = {
 				search: '',
-				datasetIndex: 0,
-				maxResults: 10,
+				page: 1,
+				limit: 10,
 				sortBy: 'latest',
 				sortDirection: 'asc',
 				status: 'notARealStatus',
@@ -263,8 +304,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			req.query = {
 				search: 'unallowed-/?@"{}()characters',
-				datasetIndex: 0,
-				maxResults: 10,
+				page: 1,
+				limit: 10,
 				sortBy: 'latest',
 				sortDirection: 'asc',
 				status: 'inReview',
@@ -287,8 +328,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			req.query = {
 				search: 'unallowed-/?@"{}()characters',
-				datasetIndex: 0,
-				maxResults: 10,
+				page: 1,
+				limit: 10,
 				sortBy: 'latest',
 				sortDirection: 'unallowedSortDirection',
 				status: 'inReview',
@@ -316,8 +357,8 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			req.query = {
 				search: '',
-				datasetIndex: 0,
-				maxResults: 10,
+				page: 1,
+				limit: 10,
 				sortBy: 'popularity',
 				sortDirection: 'asc',
 				status: 'inReview',
