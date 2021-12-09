@@ -36,7 +36,6 @@ export default class DatasetRepository extends Repository {
 	}
 
 	async updateMany(query, data) {
-		this.dataset.updateMany(query, data);
-		//ToolModel.updateMany({ 'datasetfields.publisher': 'ALLIANCE > NHS DIGITAL' }, { $set: { is5Safes: false } })
+		return this.dataset.updateMany(query, data);
 	}
 }

@@ -10,9 +10,14 @@ const router = express.Router();
 const questionbankController = new QuestionbankController(questionbankService);
 const logCategory = 'questionbank';
 
-function isUserMemberOfTeam(user, teamId) {
+function isUserMemberOfTeamById(user, teamId) {
 	let { teams } = user;
 	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id.equals(teamId));
+}
+
+function isUserMemberOfTeamByName(user, publisherName) {
+	let { teams } = user;
+	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher.name === publisherName);
 }
 
 const validateViewRequest = (req, res, next) => {
@@ -27,7 +32,7 @@ const authorizeViewRequest = (req, res, next) => {
 	const requestingUser = req.user;
 	const { publisherId } = req.params;
 
-	const authorised = isUserMemberOfTeam(requestingUser, publisherId);
+	const authorised = isUserMemberOfTeamById(requestingUser, publisherId);
 
 	if (!authorised) {
 		return res.status(401).json({
@@ -49,18 +54,18 @@ const validatePostRequest = (req, res, next) => {
 
 const authorizePostRequest = async (req, res, next) => {
 	const requestingUser = req.user;
-	const { id } = req.params;
+	const { schemaId } = req.params;
 
-	const datarequestschema = await datarequestschemaService.getDatarequestschemaById(id);
+	const dataRequestSchema = await datarequestschemaService.getDatarequestschemaById(schemaId);
 
-	if (isEmpty(datarequestschema)) {
+	if (isEmpty(dataRequestSchema)) {
 		return res.status(404).json({
 			success: false,
 			message: 'The requested data request schema could not be found',
 		});
 	}
 
-	const authorised = isUserMemberOfTeam(requestingUser, datarequestschema.publisher);
+	const authorised = isUserMemberOfTeamByName(requestingUser, dataRequestSchema.publisher);
 
 	if (!authorised) {
 		return res.status(401).json({
@@ -69,7 +74,7 @@ const authorizePostRequest = async (req, res, next) => {
 		});
 	}
 
-	req.body.datarequestschema = datarequestschema;
+	req.body.dataRequestSchema = dataRequestSchema;
 
 	next();
 };
@@ -86,17 +91,10 @@ router.get(
 	(req, res) => questionbankController.getQuestionbank(req, res)
 );
 
-// @route   GET /api/v1/questionbanks
-// @desc    Returns a collection of questionbanks based on supplied query parameters
-// @access  Public
-router.get('/', logger.logRequestMiddleware({ logCategory, action: 'Viewed questionbanks data' }), (req, res) =>
-	questionbankController.getQuestionbanks(req, res)
-);
-
 // @route   POST /api/v1/questionbanks
 // @desc    Activate a draft schema creating a jsonSchema from masterSchema
 // @access  Public
-router.post('/schemaId', passport.authenticate('jwt'), validatePostRequest, authorizePostRequest, (req, res) =>
+router.post('/:schemaId', passport.authenticate('jwt'), validatePostRequest, authorizePostRequest, (req, res) =>
 	questionbankController.publishSchema(req, res)
 );
 

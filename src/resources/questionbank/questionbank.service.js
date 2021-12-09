@@ -127,23 +127,27 @@ export default class QuestionbankService {
 		const { guidance, questionStatus } = schema;
 
 		masterSchema.questionSets.forEach((questionSet, questionSetIndex) => {
-			questionSet.questions.forEach((question, questionIndex) => {
+			let questionsArray = masterSchema.questionSets[questionSetIndex].questions;
+			questionSet.questions.forEach(question => {
 				if (questionStatus[question.questionId] === 0) {
-					delete masterSchema.questionSets[questionSetIndex].questions[questionIndex];
+					questionsArray = questionsArray.filter(q => q.questionId !== question.questionId);
 				} else {
-					if (has(guidance, question.questionId)) question.guidance = guidance[question.questionId];
-					delete masterSchema.questionSets[questionSetIndex].questions[questionIndex].lockedQuestion;
-					delete masterSchema.questionSets[questionSetIndex].questions[questionIndex].defaultQuestion;
+					if (has(guidance, question.questionId)) {
+						question.guidance = guidance[question.questionId];
+					}
+					delete question.lockedQuestion;
+					delete question.defaultQuestion;
 				}
 			});
+			masterSchema.questionSets[questionSetIndex].questions = questionsArray;
 		});
 
 		const jsonSchema = masterSchema;
 
-		const publishedSchema = await this.dataRequestRepository.updateApplicationFormSchemaById(schema._id, { jsonSchema });
+		const publishedSchema = await this.dataRequestRepository.updateApplicationFormSchemaById(schema._id, { jsonSchema, status: 'active' });
 
 		//if its not already a 5 safes publisher then set the flags to true on the publisher and also on the datasets
-		const publisher = await this.publisherService.getPublisher(schema.publisher);
+		const publisher = await this.publisherService.getPublisher(schema.publisher, { lean: true });
 		if (!has(publisher, 'uses5Safes')) {
 			await this.publisherService.update(publisher._id, {
 				allowsMessaging: true,
@@ -152,7 +156,7 @@ export default class QuestionbankService {
 				uses5Safes: true,
 			});
 
-			await this.datasetService.updateMany({ 'datasetfields.publisher': schema.publisher }, { is5Safes: false });
+			await this.datasetService.updateMany({ 'datasetfields.publisher': schema.publisher }, { is5Safes: true });
 		}
 
 		return publishedSchema;

@@ -938,10 +938,6 @@ function populateV2datasetObject(v2Data) {
 	return datasetv2Object;
 }
 
-export async function updateMany(query, data) {
-	return await Data.updateMany(query, data);
-}
-
 function checkForArray(value) {
 	if (typeof value !== 'string') return value;
 	try {
