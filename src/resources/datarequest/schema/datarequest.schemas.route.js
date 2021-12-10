@@ -80,6 +80,9 @@ router.get('/', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin, R
 	return res.json({ jsonSchema: dataRequestSchema.jsonSchema });
 });
 
+// @router   PATCH /api/v1/data-access-request/schema
+// @desc     patch a data request schema
+// @access   Private
 router.patch('/:id', passport.authenticate('jwt'), validateUpdate, authorizeUpdate, (req, res) =>
 	datarequestschemaController.updateDatarequestschema(req, res)
 );

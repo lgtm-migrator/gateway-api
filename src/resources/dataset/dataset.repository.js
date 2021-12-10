@@ -34,4 +34,8 @@ export default class DatasetRepository extends Repository {
 			return obj;
 		}, {});
 	}
+
+	async updateMany(query, data) {
+		return this.dataset.updateMany(query, data);
+	}
 }
