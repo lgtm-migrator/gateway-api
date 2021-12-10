@@ -3,7 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import { to } from 'await-to-js';
 import Url from 'url';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNull } from 'lodash';
 import queryString from 'query-string';
 
 import { ROLES } from '../user/user.roles';
@@ -202,6 +202,16 @@ const loginAndSignToken = (req, res, next) => {
 	});
 };
 
+function isUserMemberOfTeamById(user, teamId) {
+	let { teams } = user;
+	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id.equals(teamId));
+}
+
+function isUserMemberOfTeamByName(user, publisherName) {
+	let { teams } = user;
+	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher.name === publisherName);
+}
+
 export {
 	setup,
 	signToken,
@@ -213,4 +223,6 @@ export {
 	getTeams,
 	catchLoginErrorAndRedirect,
 	loginAndSignToken,
+	isUserMemberOfTeamById,
+	isUserMemberOfTeamByName,
 };

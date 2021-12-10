@@ -1,24 +1,15 @@
 import express from 'express';
 import passport from 'passport';
-import { isUndefined, isNull, isEmpty } from 'lodash';
+import { isUndefined, isEmpty } from 'lodash';
 import QuestionbankController from './questionbank.controller';
 import { questionbankService } from './dependency';
 import { datarequestschemaService } from './../datarequest/schema/dependency';
 import { logger } from '../utilities/logger';
+import { isUserMemberOfTeamById, isUserMemberOfTeamByName } from '../auth/utils';
 
 const router = express.Router();
 const questionbankController = new QuestionbankController(questionbankService);
 const logCategory = 'questionbank';
-
-function isUserMemberOfTeamById(user, teamId) {
-	let { teams } = user;
-	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id.equals(teamId));
-}
-
-function isUserMemberOfTeamByName(user, publisherName) {
-	let { teams } = user;
-	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher.name === publisherName);
-}
 
 const validateViewRequest = (req, res, next) => {
 	const { publisherId } = req.params;
