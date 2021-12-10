@@ -87,19 +87,3 @@ describe('Question Bank Service', function () {
 		expect(result.masterSchema).toEqual(questionBank.globalDocument.masterSchema);
 	});
 });
-
-describe('Question Bank Service, schema creation', function () {
-	// 	Pull the master schema
-	// Get the question status and guidance
-	// Loops through the question sets on master schema
-	// If question status is off then remove the question
-	// If question is on check the if guidance is changed and update the guidance
-	// Remove the extra options that are not needed by the final version of a schema
-	// Locked question option
-	// Default question option
-	// Save final schema as a new version along with question status and guidance objects
-	// If first time for 5 safes
-	// Set the flags that are needed for 5 safes to be functional
-
-	it('creation of a new data request schema');
-});
