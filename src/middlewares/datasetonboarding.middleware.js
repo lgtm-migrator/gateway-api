@@ -25,13 +25,20 @@ const validateSearchParameters = (req, res, next) => {
 	let {
 		query: {
 			search = '',
-			datasetIndex = 0,
-			maxResults = process.env.API_DEFAULT_RESULTS_LIMIT,
+			page = 1,
+			limit = process.env.API_DEFAULT_RESULTS_LIMIT,
 			sortBy = process.env.API_DEFAULT_SORT_OPTION,
 			sortDirection = process.env.API_DEFAULT_SORT_DIRECTION,
 			status,
 		},
 	} = req;
+
+	if (page < 1 || limit < 1 || !parseInt(page) || !parseInt(limit)) {
+		return res.status(500).json({
+			success: false,
+			message: 'The page and / or limit parameter(s) must be integers > 0',
+		});
+	}
 
 	if (req.params.publisherID === constants.teamTypes.ADMIN) {
 		if (!status) status = 'inReview';
@@ -73,8 +80,8 @@ const validateSearchParameters = (req, res, next) => {
 
 	req.query = {
 		search: search.replace(/[-"@.*+/?^${}()|[\]\\]/g, ''),
-		datasetIndex: parseInt(datasetIndex),
-		maxResults: parseInt(maxResults),
+		page: parseInt(page),
+		limit: parseInt(limit),
 		sortBy: sortBy,
 		sortDirection: sortDirection,
 		status: status,

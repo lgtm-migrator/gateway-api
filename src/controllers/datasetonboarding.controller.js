@@ -24,16 +24,16 @@ export default class DatasetOnboardingController {
 		try {
 			let {
 				params: { publisherID },
-				query: { search, datasetIndex, maxResults, sortBy, sortDirection, status },
+				query: { search, page, limit, sortBy, sortDirection, status },
 			} = req;
 
 			const totalCounts = await this.datasetonboardingService.getDatasetsByPublisherCounts(publisherID);
 
-			const [versionedDatasets, count, pageCount] = await this.datasetonboardingService.getDatasetsByPublisher(
+			const [versionedDatasets, count] = await this.datasetonboardingService.getDatasetsByPublisher(
 				status,
 				publisherID,
-				datasetIndex,
-				maxResults,
+				page,
+				limit,
 				sortBy,
 				sortDirection,
 				search
@@ -41,11 +41,13 @@ export default class DatasetOnboardingController {
 
 			if (!status) status = 'all';
 
+			const pageCount = Math.ceil(count / limit);
+
 			return res.status(200).json({
 				success: true,
 				data: {
 					publisherTotals: totalCounts,
-					results: { status: status, total: count, pageCount: pageCount, listOfDatasets: versionedDatasets },
+					results: { status: status, total: count, currentPage: page, totalPages: pageCount, listOfDatasets: versionedDatasets },
 				},
 			});
 		} catch (err) {

@@ -54,7 +54,7 @@ export default class DatasetOnboardingService {
 		return totalCounts;
 	};
 
-	getDatasetsByPublisher = async (status, publisherID, datasetIndex, maxResults, sortBy, sortDirection, search) => {
+	getDatasetsByPublisher = async (status, publisherID, page, limit, sortBy, sortDirection, search) => {
 		const activeflagOptions = Object.values(constants.datasetStatuses);
 
 		let searchQuery = {
@@ -87,11 +87,9 @@ export default class DatasetOnboardingService {
 
 		versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
 
-		versionedDatasets = versionedDatasets.slice(datasetIndex, datasetIndex + maxResults);
+		versionedDatasets = versionedDatasets.slice((page - 1) * limit, page * limit);
 
-		const pageCount = versionedDatasets.length;
-
-		return [versionedDatasets, count, pageCount];
+		return [versionedDatasets, count];
 	};
 
 	getDatasetVersion = async id => {

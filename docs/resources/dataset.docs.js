@@ -108,20 +108,21 @@ module.exports = {
 				},
 				{
 					in: 'query',
-					name: 'datasetIndex',
+					name: 'page',
 					required: false,
-					description: 'The index at which to start the results from for pagination purposed. Defaults to 0 if parameter is not given.',
+					description:
+						'The page of results to return as set by the limit parameter. The totalPages count in the API response details the amount of results pages available for the given limit. Must ba positive integer greater than 1.',
 					schema: {
 						type: 'integer',
-						example: 0,
+						example: 1,
 					},
 				},
 				{
 					in: 'query',
-					name: 'maxResults',
+					name: 'limit',
 					required: false,
 					description:
-						'The maximum number of results (i.e., datasets) to return in the response. Defaults to 10 if the parameter is not given in the initial request.',
+						'The maximum number of results (i.e., datasets) to return in the response per page. Defaults to 10 if the parameter is not given in the initial request. Must be a positive integer greater than 1.',
 					schema: {
 						type: 'integer',
 						example: 10,

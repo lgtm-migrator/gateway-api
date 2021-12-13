@@ -29,12 +29,14 @@ describe('datasetOnboardingController', () => {
 	describe('getDatasetsByPublisher', () => {
 		it('should return a correctly formatted JSON response', async () => {
 			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisherCounts').returns({ inReview: 100 });
-			let serviceStub2 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisher').returns([[], 100, 10]);
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisher').returns([[], 100]);
 
 			let req = mockedRequest();
 			let res = mockedResponse();
 
 			req.query.status = 'inReview';
+			req.query.limit = 10;
+			req.query.page = 1;
 			req.params.publisherID = 'testPublisher';
 
 			const expectedResponse = {
@@ -46,7 +48,8 @@ describe('datasetOnboardingController', () => {
 					results: {
 						status: 'inReview',
 						total: 100,
-						pageCount: 10,
+						currentPage: 1,
+						totalPages: 10,
 						listOfDatasets: [],
 					},
 				},
@@ -62,11 +65,13 @@ describe('datasetOnboardingController', () => {
 
 		it('should return status=all if no status param given in initial request', async () => {
 			let serviceStub1 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisherCounts').returns({ inReview: 100 });
-			let serviceStub2 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisher').returns([[], 100, 10]);
+			let serviceStub2 = sinon.stub(datasetonboardingService, 'getDatasetsByPublisher').returns([[], 100]);
 
 			let req = mockedRequest();
 			let res = mockedResponse();
 
+			req.query.limit = 10;
+			req.query.page = 1;
 			req.params.publisherID = 'testPublisher';
 
 			const expectedResponse = {
@@ -78,7 +83,8 @@ describe('datasetOnboardingController', () => {
 					results: {
 						status: 'all',
 						total: 100,
-						pageCount: 10,
+						currentPage: 1,
+						totalPages: 10,
 						listOfDatasets: [],
 					},
 				},
