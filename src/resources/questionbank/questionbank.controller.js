@@ -54,7 +54,7 @@ export default class QuestionbankController extends Controller {
 		try {
 			const { dataRequestSchema } = req.body;
 
-			const newRequestSchema = await this.questionbankService.publishSchema(dataRequestSchema);
+			const newRequestSchema = await this.questionbankService.publishSchema(dataRequestSchema, req.user.id);
 
 			return res.status(200).json({ success: true, result: newRequestSchema });
 		} catch (err) {

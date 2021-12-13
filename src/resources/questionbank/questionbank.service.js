@@ -122,7 +122,7 @@ export default class QuestionbankService {
 		}
 	}
 
-	async publishSchema(schema) {
+	async publishSchema(schema, userId) {
 		const global = await this.globalService.getGlobal({ localeId: 'en-gb' });
 		const masterSchema = global.masterSchema;
 		const { guidance, questionStatus } = schema;
@@ -159,6 +159,11 @@ export default class QuestionbankService {
 
 			await this.datasetService.updateMany({ 'datasetfields.publisher': schema.publisher }, { is5Safes: true });
 		}
+
+		await this.publisherService.update(publisher._id, {
+			applicationFormUpdatedOn: Date.now(),
+			applicationFormUpdatedBy: userId,
+		});
 
 		return publishedSchema;
 	}
