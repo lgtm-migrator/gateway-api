@@ -21,7 +21,8 @@ export default class QuestionbankService {
 			//create the questionStatus from the master schema
 			masterSchema.questionSets.forEach(questionSet => {
 				questionSet.questions.forEach(question => {
-					questionStatus[question.questionId] = question.defaultQuestion;
+					if (question.lockedQuestion === 1) questionStatus[question.questionId] = 2;
+					else questionStatus[question.questionId] = question.defaultQuestion;
 				});
 			});
 
@@ -148,7 +149,7 @@ export default class QuestionbankService {
 
 		//if its not already a 5 safes publisher then set the flags to true on the publisher and also on the datasets
 		const publisher = await this.publisherService.getPublisher(schema.publisher, { lean: true });
-		if (!has(publisher, 'uses5Safes')) {
+		if (!has(publisher, 'uses5Safes') || publisher.uses5Safes === false) {
 			await this.publisherService.update(publisher._id, {
 				allowsMessaging: true,
 				workflowEnabled: true,
@@ -178,7 +179,8 @@ export default class QuestionbankService {
 		masterSchema.questionSets.forEach(questionSet => {
 			questionSet.questions.forEach(question => {
 				if (!has(publisherSchema.questionStatus, question.questionId)) {
-					questionStatus[question.questionId] = question.defaultQuestion;
+					if (question.lockedQuestion === 1) questionStatus[question.questionId] = 2;
+					else questionStatus[question.questionId] = question.defaultQuestion;
 					newQuestionsAdded = true;
 				}
 			});
