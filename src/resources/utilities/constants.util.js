@@ -298,6 +298,7 @@ const _datasetSortOptions = {
 	RECENTLYPUBLISHED: 'recentlyadded',
 	METADATAQUALITY: 'metadata',
 	MOSTVIEWED: 'popularity',
+	RELEVANCE: 'relevance',
 };
 
 const _datasetSortDirections = {

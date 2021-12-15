@@ -57,37 +57,143 @@ export default class DatasetOnboardingService {
 	getDatasetsByPublisher = async (status, publisherID, page, limit, sortBy, sortDirection, search) => {
 		const activeflagOptions = Object.values(constants.datasetStatuses);
 
-		let searchQuery = {
-			activeflag: {
-				$in: activeflagOptions,
-			},
-			type: 'dataset',
-			...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
+		const sortByMapper = {
+			latest: 'timestamps.updated',
+			alphabetic: 'name',
+			metadata: 'percentageCompleted.summary',
+			recentlyadded: 'timestamps.created',
+			popularity: 'counter',
+			relevance: 'weights',
 		};
 
-		if (search.length > 0)
-			searchQuery['$or'] = [
-				{ name: { $regex: search, $options: 'i' } },
-				{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
-				{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
-			];
+		const sortDirectionMapper = {
+			asc: 1,
+			desc: -1,
+		};
 
-		const datasets = await Data.find(searchQuery)
-			.select(
-				'_id pid name datasetVersion activeflag timestamps applicationStatusDesc applicationStatusAuthor percentageCompleted datasetv2.summary.publisher.name counter'
-			)
-			.sort({ 'timestamps.updated': -1 })
-			.lean();
+		let datasets = await Data.aggregate([
+			{
+				$match: {
+					type: 'dataset',
+					...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
+				},
+			},
+			{
+				$lookup: {
+					from: 'tools',
+					let: {
+						pid: '$pid',
+					},
+					pipeline: [{ $match: { $expr: { $eq: ['$pid', '$$pid'] } } }, { $sort: { 'timestamps.updated': -1 } }],
+					as: 'versions',
+				},
+			},
+			{
+				$group: {
+					_id: '$pid',
+					versions: {
+						$first: '$versions',
+					},
+				},
+			},
+			{
+				$project: {
+					pid: '$_id',
+					_id: { $arrayElemAt: ['$versions._id', 0] },
+					name: { $arrayElemAt: ['$versions.name', 0] },
+					activeflag: { $arrayElemAt: ['$versions.activeflag', 0] },
+					datasetVersion: { $arrayElemAt: ['$versions.datasetVersion', 0] },
+					timestamps: { $arrayElemAt: ['$versions.timestamps', 0] },
+					'datasetv2.summary.publisher.name': { $arrayElemAt: ['$versions.datasetv2.summary.publisher.name', 0] },
+					'datasetv2.summary.abstract': { $arrayElemAt: ['$versions.datasetv2.summary.abstract', 0] },
+					'datasetv2.summary.publisher.identifier': { $arrayElemAt: ['$versions.datasetv2.summary.publisher.identifier', 0] },
+					counter: { $arrayElemAt: ['$versions.counter', 0] },
+					percentageCompleted: { $arrayElemAt: ['$versions.percentageCompleted', 0] },
+					listOfVersions: {
+						$map: {
+							input: '$versions',
+							as: 'version',
+							in: {
+								_id: '$$version._id',
+								datasetVersion: '$$version.datasetVersion',
+								activeflag: '$$version.activeflag',
+							},
+						},
+					},
+				},
+			},
+			{
+				$set: {
+					listOfVersions: {
+						$filter: {
+							input: '$listOfVersions',
+							cond: { $not: { $eq: ['$$this.datasetVersion', { $arrayElemAt: ['$listOfVersions.datasetVersion', 0] }] } },
+						},
+					},
+				},
+			},
+			{
+				$match: {
+					activeflag: status
+						? status
+						: {
+								$in: activeflagOptions,
+						  },
+					...(search.length > 0 && {
+						$or: [
+							{ name: { $regex: search, $options: 'i' } },
+							{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
+							{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
+						],
+					}),
+				},
+			},
+			{
+				$addFields: {
+					weights: {
+						$add: [
+							{
+								$cond: {
+									if: { $regexMatch: { input: '$name', regex: search, options: 'i' } },
+									then: 3,
+									else: 0,
+								},
+							},
+							{
+								$cond: {
+									if: { $regexMatch: { input: '$datasetv2.summary.publisher.name', regex: search, options: 'i' } },
+									then: 2,
+									else: 0,
+								},
+							},
+							{
+								$cond: {
+									if: { $regexMatch: { input: '$datasetv2.summary.abstract', regex: search, options: 'i' } },
+									then: 1,
+									else: 0,
+								},
+							},
+						],
+					},
+				},
+			},
+			{ $sort: { [sortByMapper[sortBy]]: sortDirectionMapper[sortDirection] } },
+			{ $unset: 'weights' },
+			{
+				$facet: {
+					datasets: [{ $skip: (page - 1) * limit }, { $limit: page * limit }],
+					totalCount: [
+						{
+							$count: 'count',
+						},
+					],
+				},
+			},
+		]).exec();
 
-		let versionedDatasets = await this.versioningHelper(datasets);
+		const versionedDatasets = datasets[0].datasets.length > 0 ? datasets[0].datasets : [];
 
-		if (status) versionedDatasets = versionedDatasets.filter(dataset => dataset.activeflag === status);
-
-		const count = versionedDatasets.length;
-
-		versionedDatasets = await datasetonboardingUtil.datasetSortingHelper(versionedDatasets, sortBy, sortDirection);
-
-		versionedDatasets = versionedDatasets.slice((page - 1) * limit, page * limit);
+		const count = datasets[0].totalCount.length > 0 ? datasets[0].totalCount[0].count : 0;
 
 		return [versionedDatasets, count];
 	};
