@@ -19,7 +19,7 @@ const authoriseUserForPublisher = (req, res, next) => {
 };
 
 const validateSearchParameters = (req, res, next) => {
-	const sortOptions = Object.values(constants.datasetSortOptions);
+	const sortOptions = Object.keys(constants.datasetSortOptions);
 	const datasetStatuses = Object.values(constants.datasetStatuses);
 
 	let {
@@ -60,7 +60,7 @@ const validateSearchParameters = (req, res, next) => {
 	if (!sortOptions.includes(sortBy)) {
 		return res.status(500).json({
 			success: false,
-			message: `The sort parameter must be one of [${sortOptions.join(', ')}]`,
+			message: `The sortBy parameter must be one of [${sortOptions.join(', ')}]`,
 		});
 	}
 
@@ -71,7 +71,7 @@ const validateSearchParameters = (req, res, next) => {
 		});
 	}
 
-	if (sortBy === constants.datasetSortOptions.MOSTVIEWED && status !== constants.datasetStatuses.ACTIVE) {
+	if (sortBy === 'popularity' && status !== constants.datasetStatuses.ACTIVE) {
 		return res.status(500).json({
 			success: false,
 			message: `Sorting by popularity is only available for active datasets [status=active]`,

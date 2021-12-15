@@ -293,17 +293,17 @@ const _systemGeneratedUser = {
 };
 
 const _datasetSortOptions = {
-	RECENTACTIVITY: 'latest',
-	ALPHABETIC: 'alphabetic',
-	RECENTLYPUBLISHED: 'recentlyadded',
-	METADATAQUALITY: 'metadata',
-	MOSTVIEWED: 'popularity',
-	RELEVANCE: 'relevance',
+	latest: 'timestamps.updated',
+	alphabetic: 'name',
+	metadata: 'percentageCompleted.summary',
+	recentlyadded: 'timestamps.created',
+	popularity: 'counter',
+	relevance: 'weights',
 };
 
 const _datasetSortDirections = {
-	ASCENDING: 'asc',
-	DESCENDING: 'desc',
+	asc: 1,
+	desc: -1,
 };
 
 export default {

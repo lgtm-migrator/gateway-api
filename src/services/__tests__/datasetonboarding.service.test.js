@@ -84,7 +84,7 @@ describe('datasetOnboardingService', () => {
 				search
 			);
 
-			expect([...new Set(versionedDatasets.map(dataset => dataset.activeflag))]).toEqual([...new Set(expectedResponse)]);
+			expect([...new Set(versionedDatasets.map(dataset => dataset.activeflag))].sort()).toEqual([...new Set(expectedResponse)].sort());
 		});
 
 		it('should return the correct count of filered results', async () => {

@@ -57,25 +57,12 @@ export default class DatasetOnboardingService {
 	getDatasetsByPublisher = async (status, publisherID, page, limit, sortBy, sortDirection, search) => {
 		const activeflagOptions = Object.values(constants.datasetStatuses);
 
-		const sortByMapper = {
-			latest: 'timestamps.updated',
-			alphabetic: 'name',
-			metadata: 'percentageCompleted.summary',
-			recentlyadded: 'timestamps.created',
-			popularity: 'counter',
-			relevance: 'weights',
-		};
-
-		const sortDirectionMapper = {
-			asc: 1,
-			desc: -1,
-		};
-
 		let datasets = await Data.aggregate([
 			{
 				$match: {
 					type: 'dataset',
 					...(publisherID !== constants.teamTypes.ADMIN && { 'datasetv2.summary.publisher.identifier': publisherID }),
+					...(publisherID === constants.teamTypes.ADMIN && { activeflag: constants.datasetStatuses.INREVIEW }),
 				},
 			},
 			{
@@ -106,6 +93,7 @@ export default class DatasetOnboardingService {
 					timestamps: { $arrayElemAt: ['$versions.timestamps', 0] },
 					'datasetv2.summary.publisher.name': { $arrayElemAt: ['$versions.datasetv2.summary.publisher.name', 0] },
 					'datasetv2.summary.abstract': { $arrayElemAt: ['$versions.datasetv2.summary.abstract', 0] },
+					'datasetv2.summary.keywords': { $arrayElemAt: ['$versions.datasetv2.summary.keywords', 0] },
 					'datasetv2.summary.publisher.identifier': { $arrayElemAt: ['$versions.datasetv2.summary.publisher.identifier', 0] },
 					counter: { $arrayElemAt: ['$versions.counter', 0] },
 					percentageCompleted: { $arrayElemAt: ['$versions.percentageCompleted', 0] },
@@ -144,6 +132,7 @@ export default class DatasetOnboardingService {
 							{ name: { $regex: search, $options: 'i' } },
 							{ 'datasetv2.summary.publisher.name': { $regex: search, $options: 'i' } },
 							{ 'datasetv2.summary.abstract': { $regex: search, $options: 'i' } },
+							{ 'datasetv2.summary.keywords': { $regex: search, $options: 'i' } },
 						],
 					}),
 				},
@@ -155,6 +144,27 @@ export default class DatasetOnboardingService {
 							{
 								$cond: {
 									if: { $regexMatch: { input: '$name', regex: search, options: 'i' } },
+									then: 4,
+									else: 0,
+								},
+							},
+							{
+								$cond: {
+									if: {
+										$regexMatch: {
+											input: {
+												$reduce: {
+													input: '$datasetv2.summary.keywords',
+													initialValue: '',
+													in: {
+														$concat: ['$$value', ',', '$$this'],
+													},
+												},
+											},
+											regex: search,
+											options: 'i',
+										},
+									},
 									then: 3,
 									else: 0,
 								},
@@ -177,7 +187,7 @@ export default class DatasetOnboardingService {
 					},
 				},
 			},
-			{ $sort: { [sortByMapper[sortBy]]: sortDirectionMapper[sortDirection] } },
+			{ $sort: { [constants.datasetSortOptions[sortBy]]: constants.datasetSortDirections[sortDirection] } },
 			{ $unset: 'weights' },
 			{
 				$facet: {
