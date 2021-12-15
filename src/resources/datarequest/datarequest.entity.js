@@ -109,7 +109,6 @@ export const buildVersionTree = accessRecord => {
 		isShared = false,
 	} = accessRecord;
 	const versionKey = majorVersion ? majorVersion.toString() : '1.0';
-
 	// 3. Reverse iterate through amendment iterations and construct minor versions
 	let minorVersions = {};
 	for (var i = 0; i < amendmentIterations.length; i++) {
@@ -131,15 +130,16 @@ export const buildVersionTree = accessRecord => {
 	// 4. Create latest major version
 	const hasMinorVersions = amendmentIterations.length > 0;
 	const isInitial = applicationType === constants.submissionTypes.INITIAL;
-	const detailedTitle = `Version ${versionKey}.0${!hasMinorVersions && !isInitial ? ' (latest)' : ''}${
+	const detailedTitle = `Version ${versionKey}${!hasMinorVersions && !isInitial ? ' (latest)' : ''}${
 		isInitial ? '' : ` | ${capitalize(applicationType)}`
 	}`;
+
 	const majorVersionObj = {
 		[`${versionKey}.0`]: {
 			applicationId,
-			displayTitle: `Version ${versionKey}.0${!hasMinorVersions && !isInitial ? ' (latest)' : ''}`,
+			displayTitle: `Version ${versionKey}${!hasMinorVersions && !isInitial ? ' (latest)' : ''}`,
 			detailedTitle,
-			link: `/data-access-request/${applicationId}?version=${versionKey}.0`,
+			link: `/data-access-request/${applicationId}?version=${versionKey}`,
 			applicationType,
 			applicationStatus,
 			isShared,
