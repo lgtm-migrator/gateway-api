@@ -1,6 +1,7 @@
 import express from 'express';
 import { ROLES } from '../../user/user.roles';
 import { Data } from '../../tool/data.model';
+import { DataUseRegister } from '../../dataUseRegister/dataUseRegister.model';
 import { Course } from '../course.model';
 import passport from 'passport';
 import { utils } from '../../auth';
@@ -104,37 +105,45 @@ router.get('/:id', async (req, res) => {
 			},
 		},
 	]);
-	query.exec((err, data) => {
+	query.exec(async (err, data) => {
 		if (data.length > 0) {
-			var p = Data.aggregate([
-				{
-					$match: {
-						$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }],
-					},
-				},
-			]);
-			p.exec((err, relatedData) => {
-				relatedData.forEach(dat => {
-					dat.relatedObjects.forEach(x => {
-						if (x.objectId === req.params.id && dat.id !== req.params.id) {
-							let relatedObject = {
-								objectId: dat.id,
-								reason: x.reason,
-								objectType: dat.type,
-								user: x.user,
-								updated: x.updated,
-							};
-							data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
-						}
-					});
-				});
+			let relatedData = await Data.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.objectId } },
+				activeflag: 'active',
+			});
 
-				if (err) return res.json({ success: false, error: err });
+			let relatedDataFromCourses = await Course.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.id } },
+				activeflag: 'active',
+			});
 
-				return res.json({
-					success: true,
-					data: data,
+			let relatedDataFromDatauses = await DataUseRegister.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.id } },
+				activeflag: 'active',
+			});
+
+			relatedData = [...relatedData, ...relatedDataFromCourses, ...relatedDataFromDatauses];
+
+			relatedData.forEach(dat => {
+				dat.relatedObjects.forEach(x => {
+					if (x.objectId === req.params.id && dat.id !== req.params.id) {
+						let relatedObject = {
+							objectId: dat.id,
+							reason: x.reason,
+							objectType: dat.type,
+							user: x.user,
+							updated: x.updated,
+						};
+						data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
+					}
 				});
+			});
+
+			if (err) return res.json({ success: false, error: err });
+
+			return res.json({
+				success: true,
+				data: data,
 			});
 		} else {
 			return res.status(404).send(`Course not found for Id: ${escape(id)}`);

@@ -425,15 +425,8 @@ export default class DataUseRegisterService {
 			}
 		});
 
-		let newManualRelatedResources = [];
-		relatedObjects.forEach(manualResource => {
-			if (!dataUseRegister.relatedObjects.find(resource => resource.objectId === manualResource.objectId)) {
-				if (!manualResource.isLocked) newManualRelatedResources.push(manualResource);
-			}
-		});
-
 		let relatedResourcesWithRemovedOldAutomaticEntries = [];
-		dataUseRegister.relatedObjects.forEach(resource => {
+		relatedObjects.forEach(resource => {
 			if (resource.isLocked && automaticRelatedResources.find(automaticResource => automaticResource.objectId === resource.objectId)) {
 				relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
 			} else if (!resource.isLocked) {
@@ -443,11 +436,7 @@ export default class DataUseRegisterService {
 
 		//relatedObjects
 
-		updateObj.relatedObjects = [
-			...relatedResourcesWithRemovedOldAutomaticEntries,
-			...newAutomaticRelatedResources,
-			...newManualRelatedResources,
-		];
+		updateObj.relatedObjects = [...relatedResourcesWithRemovedOldAutomaticEntries, ...newAutomaticRelatedResources];
 
 		const fundersAndSponsorsList =
 			fundersAndSponsors &&
