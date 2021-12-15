@@ -778,9 +778,9 @@ const buildMetadataQuality = async (dataset, v2Object, pid) => {
 		}
 	});
 
-	metadataquality.weighted_completeness_percent = Number(100 * totalWeight).toFixed(2);
-	metadataquality.weighted_error_percent = Number(100 * errorWeight).toFixed(2);
-	metadataquality.weighted_quality_score = Number(50 * (totalWeight + (1 - errorWeight))).toFixed(2);
+	metadataquality.weighted_completeness_percent = parseFloat(Number(100 * totalWeight).toFixed(2));
+	metadataquality.weighted_error_percent = parseFloat(Number(100 * errorWeight).toFixed(2));
+	metadataquality.weighted_quality_score = parseFloat(Number(50 * (totalWeight + (1 - errorWeight))).toFixed(2));
 
 	let rating = 'Not Rated';
 	if (metadataquality.weighted_quality_score > 60 && metadataquality.weighted_quality_score <= 70) rating = 'Bronze';
