@@ -25,9 +25,6 @@ export default class FiltersClass extends Entity {
 			// 4. loop over filterKeys
 			for (const filterKey of filterKeys) {
 				let newFilterOptions = [];
-				if (filterKey === 'spatial' ) {
-					console.log(JSON.stringify(this.keys[filterKey], null, 4));
-				}
 				// 5. track new variable for filter values from our db
 				let filterValues = this.keys[filterKey];
 				// 6. check if filterKey exists in our tree, return {} or undefined
