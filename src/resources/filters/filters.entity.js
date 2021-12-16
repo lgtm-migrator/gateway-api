@@ -2,6 +2,7 @@ import Entity from '../base/entity';
 import * as mapper from './filters.mapper';
 import { isEmpty, isNil } from 'lodash';
 import { findNodeInTree, formatFilterOptions, updateTree } from './utils/filters.util';
+import searchUtil from '../search/util/search.util';
 
 export default class FiltersClass extends Entity {
 	constructor(obj) {
@@ -14,6 +15,7 @@ export default class FiltersClass extends Entity {
 			console.error('Failed to load filters');
 			return;
 		}
+
 		// 1. the data tree we want to update
 		let filters = mapper[`${this.id}Filters`];
 		// 2. this.keys reperesents the filters data in db for the id
@@ -23,6 +25,9 @@ export default class FiltersClass extends Entity {
 			// 4. loop over filterKeys
 			for (const filterKey of filterKeys) {
 				let newFilterOptions = [];
+				if (filterKey === 'spatial' ) {
+					console.log(JSON.stringify(this.keys[filterKey], null, 4));
+				}
 				// 5. track new variable for filter values from our db
 				let filterValues = this.keys[filterKey];
 				// 6. check if filterKey exists in our tree, return {} or undefined
@@ -33,6 +38,10 @@ export default class FiltersClass extends Entity {
 				 	newFilterOptions = formatFilterOptions(filterValues);
 					// 9. insert new options into tree
 					filters = updateTree(filters, filterKey, newFilterOptions);
+					// update for spatial filter list
+					if (filterKey === 'spatial' ) {
+						filters = updateTree(filters, filterKey, searchUtil.arrayToTree(this.keys[filterKey]), 'filtersv2');
+					}
 				}
 			}
 		}
