@@ -1,7 +1,7 @@
 import { getUserByUserId } from '../resources/user/user.repository';
 import ga4ghUtils from '../resources/utilities/ga4gh.utils';
 import { to } from 'await-to-js';
-import _ from 'lodash';
+import { isNil } from 'lodash';
 
 const store = new Map();
 const logins = new Map();
@@ -29,8 +29,8 @@ class Account {
 			sub: this.accountId, // it is essential to always return a sub claim
 		};
 
-		let [, user] = await to(getUserByUserId(parseInt(this.accountId)));
-		if (!_.isNil(user)) {
+		let [err, user] = await to(getUserByUserId(parseInt(this.accountId)));
+		if (!isNil(user)) {
 			if (claimsToSend.includes('profile')) {
 				claim.firstname = user.firstname;
 				claim.lastname = user.lastname;
