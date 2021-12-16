@@ -141,7 +141,7 @@ export default class DataRequestService {
 			topic.save(err => {
 				if (!err) {
 					// Create activity log entries based on existing messages in topic
-					activityLogService.logActivity(constants.activityLogEvents.PRESUBMISSION_MESSAGE, {
+					activityLogService.logActivity(constants.activityLogEvents.data_access_request.PRESUBMISSION_MESSAGE, {
 						messages: topic.topicMessages,
 						applicationId,
 						publisher,

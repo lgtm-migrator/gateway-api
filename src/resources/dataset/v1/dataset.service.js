@@ -16,6 +16,8 @@ let metadataQualityList = [],
 	datasetsMDCIDs = [],
 	counter = 0;
 
+const readEnv = process.env.ENV || 'prod';
+
 export async function updateExternalDatasetServices(services) {
 	for (let service of services) {
 		if (service === 'phenotype') {
@@ -24,12 +26,14 @@ export async function updateExternalDatasetServices(services) {
 					timeout: 10000,
 				})
 				.catch(err => {
-					Sentry.addBreadcrumb({
-						category: 'Caching',
-						message: 'Unable to get metadata quality value ' + err.message,
-						level: Sentry.Severity.Error,
-					});
-					Sentry.captureException(err);
+					if (readEnv === 'test' || readEnv === 'prod') {
+						Sentry.addBreadcrumb({
+							category: 'Caching',
+							message: 'Unable to get metadata quality value ' + err.message,
+							level: Sentry.Severity.Error,
+						});
+						Sentry.captureException(err);
+					}
 					console.error('Unable to get metadata quality value ' + err.message);
 				});
 
@@ -41,12 +45,14 @@ export async function updateExternalDatasetServices(services) {
 			const dataUtilityList = await axios
 				.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout: 10000 })
 				.catch(err => {
-					Sentry.addBreadcrumb({
-						category: 'Caching',
-						message: 'Unable to get data utility ' + err.message,
-						level: Sentry.Severity.Error,
-					});
-					Sentry.captureException(err);
+					if (readEnv === 'test' || readEnv === 'prod') {
+						Sentry.addBreadcrumb({
+							category: 'Caching',
+							message: 'Unable to get data utility ' + err.message,
+							level: Sentry.Severity.Error,
+						});
+						Sentry.captureException(err);
+					}
 					console.error('Unable to get data utility ' + err.message);
 				});
 
@@ -193,12 +199,14 @@ async function importMetadataFromCatalogue(baseUri, dataModelExportRoute, source
 	await logoutCatalogue(baseUri);
 	await loginCatalogue(baseUri, credentials);
 	await loadDatasets(baseUri, dataModelExportRoute, datasetsMDCList.items, datasetsMDCList.count, source, limit).catch(err => {
-		Sentry.addBreadcrumb({
-			category: 'Caching',
-			message: `Unable to complete the metadata import for ${source} ${err.message}`,
-			level: Sentry.Severity.Error,
-		});
-		Sentry.captureException(err);
+		if (readEnv === 'test' || readEnv === 'prod') {
+			Sentry.addBreadcrumb({
+				category: 'Caching',
+				message: `Unable to complete the metadata import for ${source} ${err.message}`,
+				level: Sentry.Severity.Error,
+			});
+			Sentry.captureException(err);
+		}
 		console.error(`Unable to complete the metadata import for ${source} ${err.message}`);
 	});
 	await logoutCatalogue(baseUri);
@@ -232,12 +240,14 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 				timeout: 60000,
 			})
 			.catch(err => {
-				Sentry.addBreadcrumb({
-					category: 'Caching',
-					message: 'Unable to get dataset JSON ' + err.message,
-					level: Sentry.Severity.Error,
-				});
-				Sentry.captureException(err);
+				if (readEnv === 'test' || readEnv === 'prod') {
+					Sentry.addBreadcrumb({
+						category: 'Caching',
+						message: 'Unable to get dataset JSON ' + err.message,
+						level: Sentry.Severity.Error,
+					});
+					Sentry.captureException(err);
+				}
 				console.error('Unable to get metadata JSON ' + err.message);
 			});
 
@@ -249,22 +259,26 @@ async function loadDatasets(baseUri, dataModelExportRoute, datasetsToImport, dat
 				timeout: 10000,
 			})
 			.catch(err => {
-				Sentry.addBreadcrumb({
-					category: 'Caching',
-					message: 'Unable to get metadata schema ' + err.message,
-					level: Sentry.Severity.Error,
-				});
-				Sentry.captureException(err);
+				if (readEnv === 'test' || readEnv === 'prod') {
+					Sentry.addBreadcrumb({
+						category: 'Caching',
+						message: 'Unable to get metadata schema ' + err.message,
+						level: Sentry.Severity.Error,
+					});
+					Sentry.captureException(err);
+				}
 				console.error('Unable to get metadata schema ' + err.message);
 			});
 
 		const versionLinksCall = axios.get(`${baseUri}/api/catalogueItems/${datasetMDC.id}/semanticLinks`, { timeout: 10000 }).catch(err => {
-			Sentry.addBreadcrumb({
-				category: 'Caching',
-				message: 'Unable to get version links ' + err.message,
-				level: Sentry.Severity.Error,
-			});
-			Sentry.captureException(err);
+			if (readEnv === 'test' || readEnv === 'prod') {
+				Sentry.addBreadcrumb({
+					category: 'Caching',
+					message: 'Unable to get version links ' + err.message,
+					level: Sentry.Severity.Error,
+				});
+				Sentry.captureException(err);
+			}
 			console.error('Unable to get version links ' + err.message);
 		});
 
@@ -491,12 +505,14 @@ async function getDataUtilityExport() {
 	return await axios
 		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/data_utility.json', { timeout: 10000 })
 		.catch(err => {
-			Sentry.addBreadcrumb({
-				category: 'Caching',
-				message: 'Unable to get data utility ' + err.message,
-				level: Sentry.Severity.Error,
-			});
-			Sentry.captureException(err);
+			if (readEnv === 'test' || readEnv === 'prod') {
+				Sentry.addBreadcrumb({
+					category: 'Caching',
+					message: 'Unable to get data utility ' + err.message,
+					level: Sentry.Severity.Error,
+				});
+				Sentry.captureException(err);
+			}
 			console.error('Unable to get data utility ' + err.message);
 		});
 }
@@ -511,12 +527,14 @@ async function getPhenotypesExport() {
 	return await axios
 		.get('https://raw.githubusercontent.com/spiros/hdr-caliber-phenome-portal/master/_data/dataset2phenotypes.json', { timeout: 10000 })
 		.catch(err => {
-			Sentry.addBreadcrumb({
-				category: 'Caching',
-				message: 'Unable to get metadata quality value ' + err.message,
-				level: Sentry.Severity.Error,
-			});
-			Sentry.captureException(err);
+			if (readEnv === 'test' || readEnv === 'prod') {
+				Sentry.addBreadcrumb({
+					category: 'Caching',
+					message: 'Unable to get metadata quality value ' + err.message,
+					level: Sentry.Severity.Error,
+				});
+				Sentry.captureException(err);
+			}
 			console.error('Unable to get metadata quality value ' + err.message);
 		});
 }
@@ -531,12 +549,14 @@ async function getMetadataQualityExport() {
 	return await axios
 		.get('https://raw.githubusercontent.com/HDRUK/datasets/master/reports/metadata_quality.json', { timeout: 10000 })
 		.catch(err => {
-			Sentry.addBreadcrumb({
-				category: 'Caching',
-				message: 'Unable to get metadata quality value ' + err.message,
-				level: Sentry.Severity.Error,
-			});
-			Sentry.captureException(err);
+			if (readEnv === 'test' || readEnv === 'prod') {
+				Sentry.addBreadcrumb({
+					category: 'Caching',
+					message: 'Unable to get metadata quality value ' + err.message,
+					level: Sentry.Severity.Error,
+				});
+				Sentry.captureException(err);
+			}
 			console.error('Unable to get metadata quality value ' + err.message);
 		});
 }
@@ -549,12 +569,14 @@ async function getDataModels(baseUri) {
 				resolve(response.data);
 			})
 			.catch(err => {
-				Sentry.addBreadcrumb({
-					category: 'Caching',
-					message: 'The caching run has failed because it was unable to get a count from the MDC',
-					level: Sentry.Severity.Fatal,
-				});
-				Sentry.captureException(err);
+				if (readEnv === 'test' || readEnv === 'prod') {
+					Sentry.addBreadcrumb({
+						category: 'Caching',
+						message: 'The caching run has failed because it was unable to get a count from the MDC',
+						level: Sentry.Severity.Fatal,
+					});
+					Sentry.captureException(err);
+				}
 				reject(err);
 			});
 	}).catch(() => {
@@ -567,14 +589,16 @@ async function checkDifferentialValid(incomingMetadataCount, source, override) {
 	const datasetsHDRCount = await Data.countDocuments({ type: 'dataset', activeflag: 'active', source });
 
 	if ((incomingMetadataCount / datasetsHDRCount) * 100 < 90 && !override) {
-		Sentry.addBreadcrumb({
-			category: 'Caching',
-			message: `The caching run has failed because the counts from the MDC (${incomingMetadataCount}) where ${
-				100 - (incomingMetadataCount / datasetsHDRCount) * 100
-			}% lower than the number stored in the DB (${datasetsHDRCount})`,
-			level: Sentry.Severity.Fatal,
-		});
-		Sentry.captureException();
+		if (readEnv === 'test' || readEnv === 'prod') {
+			Sentry.addBreadcrumb({
+				category: 'Caching',
+				message: `The caching run has failed because the counts from the MDC (${incomingMetadataCount}) where ${
+					100 - (incomingMetadataCount / datasetsHDRCount) * 100
+				}% lower than the number stored in the DB (${datasetsHDRCount})`,
+				level: Sentry.Severity.Fatal,
+			});
+			Sentry.captureException();
+		}
 		return false;
 	}
 	return true;

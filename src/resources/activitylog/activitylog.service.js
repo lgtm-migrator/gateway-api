@@ -10,7 +10,7 @@ export default class activityLogService {
 
 	async searchLogs(versionIds, type, userType, versions, includePresubmission) {
 		const logs = await this.activityLogRepository.searchLogs(versionIds, type, userType);
-		return this.formatLogs(logs, versions, includePresubmission);
+		return this.formatLogs(logs, type, versions, includePresubmission);
 	}
 
 	getLog(id, type) {
@@ -19,6 +19,207 @@ export default class activityLogService {
 
 	deleteLog(id) {
 		return this.activityLogRepository.deleteLog(id);
+	}
+
+	formatLogs(logs, type, versions, includePresubmission = true) {
+		let formattedVersionEvents;
+		switch (type) {
+			case constants.activityLogTypes.DATA_ACCESS_REQUEST:
+				let presubmissionEvents = [];
+				if (includePresubmission) {
+					presubmissionEvents = this.buildPresubmissionEvents(logs);
+				}
+
+				formattedVersionEvents = versions.reduce((arr, version) => {
+					const {
+						majorVersion: majorVersionNumber,
+						dateSubmitted,
+						dateCreated,
+						applicationType,
+						applicationStatus,
+						_id: majorVersionId,
+						amendmentIterations = [],
+					} = version;
+
+					const partyDurations = this.getPartyTimeDistribution(version);
+
+					const majorVersion = this.buildVersionEvents(
+						`${majorVersionNumber}`,
+						dateSubmitted,
+						dateCreated,
+						null,
+						applicationType,
+						applicationStatus,
+						() => this.getEventsForVersion(logs, majorVersionId),
+						() => this.calculateTimeWithParty(partyDurations, constants.userTypes.APPLICANT)
+					);
+
+					if (majorVersion.events.length > 0) {
+						arr.push(majorVersion);
+					}
+
+					amendmentIterations.forEach((iterationMinorVersion, index) => {
+						const {
+							dateSubmitted: minorVersionDateSubmitted,
+							dateCreated: minorVersionDateCreated,
+							dateReturned: minorVersionDateReturned,
+							_id: minorVersionId,
+						} = iterationMinorVersion;
+						const partyDurations = this.getPartyTimeDistribution(iterationMinorVersion);
+						const minorVersion = this.buildVersionEvents(
+							`${majorVersionNumber}.${index + 1}`,
+							minorVersionDateSubmitted,
+							minorVersionDateCreated,
+							minorVersionDateReturned,
+							'Update',
+							applicationStatus,
+							() => this.getEventsForVersion(logs, minorVersionId),
+							() => this.calculateTimeWithParty(partyDurations, constants.userTypes.APPLICANT)
+						);
+						if (minorVersion.events.length > 0) {
+							arr.push(minorVersion);
+						}
+					});
+
+					return arr;
+				}, []);
+
+				if (!isEmpty(presubmissionEvents)) {
+					formattedVersionEvents.push(presubmissionEvents);
+				}
+				break;
+
+			case constants.activityLogTypes.DATASET:
+				formattedVersionEvents = versions.reduce((arr, version) => {
+					const {
+						datasetVersion,
+						timestamps: { submitted: dateSubmitted, created: dateCreated },
+						activeflag,
+						_id,
+					} = version;
+
+					const formattedVersion = {
+						version: `Version ${datasetVersion}`,
+						versionNumber: parseFloat(datasetVersion),
+						meta: {
+							...(dateSubmitted && { dateSubmitted }),
+							...(dateCreated && { dateCreated }),
+							applicationStatus: activeflag,
+						},
+						events: this.getEventsForVersion(logs, _id),
+					};
+
+					arr.push(formattedVersion);
+
+					return arr;
+				}, []);
+				break;
+		}
+		const orderedVersionEvents = orderBy(formattedVersionEvents, ['versionNumber'], ['desc']);
+		return orderedVersionEvents;
+	}
+
+	logActivity(eventType, context) {
+		const logType = context.type;
+		switch (logType) {
+			case constants.activityLogTypes.DATA_ACCESS_REQUEST:
+				this.logDataAccessRequestActivity(eventType, context);
+				break;
+			case constants.activityLogTypes.DATASET:
+				this.logDatasetActivity(eventType, context);
+				break;
+		}
+	}
+
+	async logDatasetActivity(eventType, context) {
+		const { updatedDataset, user, differences } = context;
+		const userRole = user.teams.map(team => team.type).includes(constants.userTypes.ADMIN)
+			? constants.userTypes.ADMIN
+			: constants.userTypes.CUSTODIAN;
+		let log = {
+			eventType: eventType,
+			logType: constants.activityLogTypes.DATASET,
+			timestamp: Date.now(),
+			user: user._id,
+			userDetails: { firstName: user.firstname, lastName: user.lastname, role: userRole },
+			version: updatedDataset.datasetVersion,
+			versionId: updatedDataset._id,
+			userTypes: [constants.userTypes.ADMIN, constants.userTypes.CUSTODIAN],
+		};
+
+		if (
+			eventType === constants.activityLogEvents.dataset.DATASET_VERSION_REJECTED ||
+			eventType === constants.activityLogEvents.dataset.DATASET_VERSION_APPROVED
+		)
+			log['adminComment'] = updatedDataset.applicationStatusDesc;
+
+		if (eventType === constants.activityLogEvents.dataset.DATASET_UPDATES_SUBMITTED && differences) log['datasetUpdates'] = differences;
+
+		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	logDataAccessRequestActivity(eventType, context) {
+		switch (eventType) {
+			case constants.activityLogEvents.data_access_request.APPLICATION_SUBMITTED:
+				this.logApplicationSubmittedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.REVIEW_PROCESS_STARTED:
+				this.logReviewProcessStartedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.UPDATES_SUBMITTED:
+				this.logUpdatesSubmittedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.AMENDMENT_SUBMITTED:
+				this.logAmendmentSubmittedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.APPLICATION_APPROVED:
+				this.logApplicationApprovedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.APPLICATION_APPROVED_WITH_CONDITIONS:
+				this.logApplicationApprovedWithConditionsEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.APPLICATION_REJECTED:
+				this.logApplicationRejectedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.COLLABORATOR_ADDEDD:
+				this.logCollaboratorAddedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.COLLABORATOR_REMOVED:
+				this.logCollaboratorRemovedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.PRESUBMISSION_MESSAGE:
+				this.logPresubmissionMessages(context);
+				break;
+			case constants.activityLogEvents.data_access_request.CONTEXTUAL_MESSAGE:
+				this.logContextualMessage(context);
+				break;
+			case constants.activityLogEvents.data_access_request.NOTE:
+				this.logNote(context);
+				break;
+			case constants.activityLogEvents.data_access_request.UPDATE_REQUESTED:
+				this.logUpdateRequestedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.WORKFLOW_ASSIGNED:
+				this.logWorkflowAssignedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.REVIEW_PHASE_STARTED:
+				this.logReviewPhaseStartedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.RECOMMENDATION_WITH_ISSUE:
+				this.logReccomendationWithIssueEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.RECOMMENDATION_WITH_NO_ISSUE:
+				this.logReccomendationWithNoIssueEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.DEADLINE_PASSED:
+				this.logDeadlinePassedEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.FINAL_DECISION_REQUIRED:
+				this.logFinalDecisionRequiredEvent(context);
+				break;
+			case constants.activityLogEvents.data_access_request.MANUAL_EVENT:
+				this.logManualEvent(context);
+		}
 	}
 
 	getActiveQuestion(questionsArr, questionId) {
@@ -43,75 +244,6 @@ export default class activityLogService {
 
 			if (child) return child;
 		}
-	}
-
-	formatLogs(logs, versions, includePresubmission = true) {
-		let presubmissionEvents = [];
-		if (includePresubmission) {
-			presubmissionEvents = this.buildPresubmissionEvents(logs);
-		}
-
-		const formattedVersionEvents = versions.reduce((arr, version) => {
-			const {
-				majorVersion: majorVersionNumber,
-				dateSubmitted,
-				dateCreated,
-				applicationType,
-				applicationStatus,
-				_id: majorVersionId,
-				amendmentIterations = [],
-			} = version;
-
-			const partyDurations = this.getPartyTimeDistribution(version);
-
-			const majorVersion = this.buildVersionEvents(
-				`${majorVersionNumber}`,
-				dateSubmitted,
-				dateCreated,
-				null,
-				applicationType,
-				applicationStatus,
-				() => this.getEventsForVersion(logs, majorVersionId),
-				() => this.calculateTimeWithParty(partyDurations, constants.userTypes.APPLICANT)
-			);
-
-			if (majorVersion.events.length > 0) {
-				arr.push(majorVersion);
-			}
-
-			amendmentIterations.forEach((iterationMinorVersion, index) => {
-				const {
-					dateSubmitted: minorVersionDateSubmitted,
-					dateCreated: minorVersionDateCreated,
-					dateReturned: minorVersionDateReturned,
-					_id: minorVersionId,
-				} = iterationMinorVersion;
-				const partyDurations = this.getPartyTimeDistribution(iterationMinorVersion);
-				const minorVersion = this.buildVersionEvents(
-					`${majorVersionNumber}.${index + 1}`,
-					minorVersionDateSubmitted,
-					minorVersionDateCreated,
-					minorVersionDateReturned,
-					'Update',
-					applicationStatus,
-					() => this.getEventsForVersion(logs, minorVersionId),
-					() => this.calculateTimeWithParty(partyDurations, constants.userTypes.APPLICANT)
-				);
-				if (minorVersion.events.length > 0) {
-					arr.push(minorVersion);
-				}
-			});
-
-			return arr;
-		}, []);
-
-		if (!isEmpty(presubmissionEvents)) {
-			formattedVersionEvents.push(presubmissionEvents);
-		}
-
-		const orderedVersionEvents = orderBy(formattedVersionEvents, ['versionNumber'], ['desc']);
-
-		return orderedVersionEvents;
 	}
 
 	buildPresubmissionEvents(logs) {
@@ -293,76 +425,12 @@ export default class activityLogService {
 		return partyDurations;
 	}
 
-	async logActivity(eventType, context) {
-		switch (eventType) {
-			case constants.activityLogEvents.APPLICATION_SUBMITTED:
-				this.logApplicationSubmittedEvent(context);
-				break;
-			case constants.activityLogEvents.REVIEW_PROCESS_STARTED:
-				this.logReviewProcessStartedEvent(context);
-				break;
-			case constants.activityLogEvents.UPDATES_SUBMITTED:
-				this.logUpdatesSubmittedEvent(context);
-				break;
-			case constants.activityLogEvents.AMENDMENT_SUBMITTED:
-				this.logAmendmentSubmittedEvent(context);
-				break;
-			case constants.activityLogEvents.APPLICATION_APPROVED:
-				this.logApplicationApprovedEvent(context);
-				break;
-			case constants.activityLogEvents.APPLICATION_APPROVED_WITH_CONDITIONS:
-				this.logApplicationApprovedWithConditionsEvent(context);
-				break;
-			case constants.activityLogEvents.APPLICATION_REJECTED:
-				this.logApplicationRejectedEvent(context);
-				break;
-			case constants.activityLogEvents.COLLABORATOR_ADDEDD:
-				this.logCollaboratorAddedEvent(context);
-				break;
-			case constants.activityLogEvents.COLLABORATOR_REMOVED:
-				this.logCollaboratorRemovedEvent(context);
-				break;
-			case constants.activityLogEvents.PRESUBMISSION_MESSAGE:
-				this.logPresubmissionMessages(context);
-				break;
-			case constants.activityLogEvents.CONTEXTUAL_MESSAGE:
-				this.logContextualMessage(context);
-				break;
-			case constants.activityLogEvents.NOTE:
-				this.logNote(context);
-				break;
-			case constants.activityLogEvents.UPDATE_REQUESTED:
-				this.logUpdateRequestedEvent(context);
-				break;
-			case constants.activityLogEvents.WORKFLOW_ASSIGNED:
-				this.logWorkflowAssignedEvent(context);
-				break;
-			case constants.activityLogEvents.REVIEW_PHASE_STARTED:
-				this.logReviewPhaseStartedEvent(context);
-				break;
-			case constants.activityLogEvents.RECOMMENDATION_WITH_ISSUE:
-				this.logReccomendationWithIssueEvent(context);
-				break;
-			case constants.activityLogEvents.RECOMMENDATION_WITH_NO_ISSUE:
-				this.logReccomendationWithNoIssueEvent(context);
-				break;
-			case constants.activityLogEvents.DEADLINE_PASSED:
-				this.logDeadlinePassedEvent(context);
-				break;
-			case constants.activityLogEvents.FINAL_DECISION_REQUIRED:
-				this.logFinalDecisionRequiredEvent(context);
-				break;
-			case constants.activityLogEvents.MANUAL_EVENT:
-				this.logManualEvent(context);
-		}
-	}
-
 	async logReviewProcessStartedEvent(context) {
 		const { accessRequest, user } = context;
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.0`];
 
 		const log = {
-			eventType: constants.activityLogEvents.REVIEW_PROCESS_STARTED,
+			eventType: constants.activityLogEvents.data_access_request.REVIEW_PROCESS_STARTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Review process started by custodian manager ${user.firstname} ${user.lastname}`,
@@ -381,7 +449,7 @@ export default class activityLogService {
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
 
 		const log = {
-			eventType: constants.activityLogEvents.APPLICATION_APPROVED,
+			eventType: constants.activityLogEvents.data_access_request.APPLICATION_APPROVED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Application approved by custodian manager ${user.firstname} ${user.lastname}`,
@@ -406,7 +474,7 @@ export default class activityLogService {
 			`</div>`;
 
 		const log = {
-			eventType: constants.activityLogEvents.APPLICATION_APPROVED_WITH_CONDITIONS,
+			eventType: constants.activityLogEvents.data_access_request.APPLICATION_APPROVED_WITH_CONDITIONS,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Application approved with conditions by custodian manager ${user.firstname} ${user.lastname}`,
@@ -433,7 +501,7 @@ export default class activityLogService {
 			`</div>`;
 
 		const log = {
-			eventType: constants.activityLogEvents.APPLICATION_REJECTED,
+			eventType: constants.activityLogEvents.data_access_request.APPLICATION_REJECTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Application rejected by custodian manager ${user.firstname} ${user.lastname}`,
@@ -454,7 +522,7 @@ export default class activityLogService {
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.0`];
 
 		const log = {
-			eventType: constants.activityLogEvents.APPLICATION_SUBMITTED,
+			eventType: constants.activityLogEvents.data_access_request.APPLICATION_SUBMITTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Version 1 application has been submitted by applicant ${user.firstname} ${user.lastname}`,
@@ -479,7 +547,7 @@ export default class activityLogService {
 			`</div>`;
 
 		const log = {
-			eventType: constants.activityLogEvents.AMENDMENT_SUBMITTED,
+			eventType: constants.activityLogEvents.data_access_request.AMENDMENT_SUBMITTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Amendment submitted by applicant ${user.firstname} ${user.lastname}. ${version.displayTitle} of this application has been created.`,
@@ -545,7 +613,7 @@ export default class activityLogService {
 		});
 
 		const logUpdate = {
-			eventType: constants.activityLogEvents.UPDATE_SUBMITTED,
+			eventType: constants.activityLogEvents.data_access_request.UPDATE_SUBMITTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			detailedText: detText,
@@ -565,7 +633,7 @@ export default class activityLogService {
 		await this.activityLogRepository.createActivityLog(logUpdate);
 
 		const logUpdates = {
-			eventType: constants.activityLogEvents.UPDATES_SUBMITTED,
+			eventType: constants.activityLogEvents.data_access_request.UPDATES_SUBMITTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Updates submitted by applicant ${user.firstname} ${user.lastname}. ${currentVersion.displayTitle} of this application has been created.`,
@@ -619,7 +687,7 @@ export default class activityLogService {
 		});
 
 		const log = {
-			eventType: constants.activityLogEvents.UPDATE_REQUESTED,
+			eventType: constants.activityLogEvents.data_access_request.UPDATE_REQUESTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 
@@ -649,7 +717,7 @@ export default class activityLogService {
 		});
 
 		const log = {
-			eventType: constants.activityLogEvents.COLLABORATOR_ADDEDD,
+			eventType: constants.activityLogEvents.data_access_request.COLLABORATOR_ADDEDD,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Applicant ${user.firstname} ${user.lastname} added ${collaborator.firstname} ${collaborator.lastname} as a collaborator`,
@@ -672,7 +740,7 @@ export default class activityLogService {
 		});
 
 		const log = {
-			eventType: constants.activityLogEvents.COLLABORATOR_REMOVED,
+			eventType: constants.activityLogEvents.data_access_request.COLLABORATOR_REMOVED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Applicant ${user.firstname} ${user.lastname} removed ${collaborator.firstname} ${collaborator.lastname} as a collaborator`,
@@ -715,7 +783,7 @@ export default class activityLogService {
 			.join('')}`;
 
 		const log = {
-			eventType: constants.activityLogEvents.WORKFLOW_ASSIGNED,
+			eventType: constants.activityLogEvents.data_access_request.WORKFLOW_ASSIGNED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `${workflow.workflowName} has been assigned by custodian manager ${user.firstname} ${user.lastname}`,
@@ -740,7 +808,7 @@ export default class activityLogService {
 		const step = workflow.steps.find(step => step.active);
 
 		const log = {
-			eventType: constants.activityLogEvents.REVIEW_PHASE_STARTED,
+			eventType: constants.activityLogEvents.data_access_request.REVIEW_PHASE_STARTED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `${step.stepName} has started. ${workflow.steps.findIndex(step => step.active) + 1} out of ${
@@ -771,7 +839,7 @@ export default class activityLogService {
 		const detText = `Recommendation: Issues found\n${comments}`;
 
 		const log = {
-			eventType: constants.activityLogEvents.RECOMMENDATION_WITH_ISSUE,
+			eventType: constants.activityLogEvents.data_access_request.RECOMMENDATION_WITH_ISSUE,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Recommendation with issues found sent by reviewer ${user.firstname} ${user.lastname}`,
@@ -800,7 +868,7 @@ export default class activityLogService {
 		const detText = `Recommendation: No issues found\n${comments}`;
 
 		const log = {
-			eventType: constants.activityLogEvents.RECOMMENDATION_WITH_NO_ISSUE,
+			eventType: constants.activityLogEvents.data_access_request.RECOMMENDATION_WITH_NO_ISSUE,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Recommendation with no issues found sent by reviewer ${user.firstname} ${user.lastname}`,
@@ -821,7 +889,7 @@ export default class activityLogService {
 		const version = accessRequest.versionTree[`${accessRequest.majorVersion}.${accessRequest.amendmentIterations.length}`];
 
 		const log = {
-			eventType: constants.activityLogEvents.FINAL_DECISION_REQUIRED,
+			eventType: constants.activityLogEvents.data_access_request.FINAL_DECISION_REQUIRED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Final decision required by custodian by custodian manager ${user.firstname} ${user.lastname}. All review phases completed`,
@@ -846,7 +914,7 @@ export default class activityLogService {
 			if (!userType) return;
 
 			const log = {
-				eventType: constants.activityLogEvents.PRESUBMISSION_MESSAGE,
+				eventType: constants.activityLogEvents.data_access_request.PRESUBMISSION_MESSAGE,
 				logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 				timestamp: createdDate,
 				user: createdBy._id,
@@ -905,7 +973,7 @@ export default class activityLogService {
 				.join('');
 
 		const log = {
-			eventType: constants.activityLogEvents.DEADLINE_PASSED,
+			eventType: constants.activityLogEvents.data_access_request.DEADLINE_PASSED,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			plainText: `Deadline was ${daysSinceDeadlinePassed} ${daysSinceDeadlinePassed > 1 ? 'days' : 'day'} ago for ${step.stepName} ${
@@ -931,7 +999,7 @@ export default class activityLogService {
 		const { versionId, versionTitle, description, timestamp, user = {} } = context;
 
 		const log = {
-			eventType: constants.activityLogEvents.MANUAL_EVENT,
+			eventType: constants.activityLogEvents.data_access_request.MANUAL_EVENT,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp,
 			user: user._id,
@@ -984,7 +1052,7 @@ export default class activityLogService {
 				: `<a class='activity-log-detail-link' href="${version.link}">Message</a> sent from applicant <b>${user.firstname} ${user.lastname}</b>`;
 
 		const log = {
-			eventType: constants.activityLogEvents.CONTEXTUAL_MESSAGE,
+			eventType: constants.activityLogEvents.data_access_request.CONTEXTUAL_MESSAGE,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			user: user._id,
@@ -1039,7 +1107,7 @@ export default class activityLogService {
 				: `<a class='activity-log-detail-link' href="${version.link}">Note</a> added by applicant <b>${user.firstname} ${user.lastname}</b>`;
 
 		const log = {
-			eventType: constants.activityLogEvents.NOTE,
+			eventType: constants.activityLogEvents.data_access_request.NOTE,
 			logType: constants.activityLogTypes.DATA_ACCESS_REQUEST,
 			timestamp: Date.now(),
 			user: user._id,
@@ -1054,6 +1122,54 @@ export default class activityLogService {
 		};
 
 		await this.activityLogRepository.createActivityLog(log);
+	}
+
+	async logDataUseRegisterUpdated(context) {
+		const { dataUseRegister, updateObj, user } = context;
+
+		let detHtml = '';
+		let detText = '';
+
+		Object.keys(updateObj).forEach(updatedField => {
+			const oldValue = dataUseRegister[updatedField];
+			const newValue = updateObj[updatedField];
+
+			detHtml = detHtml.concat(
+				`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${dataUseRegister.projectTitle}</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Field</div>` +
+					`<div class='activity-log-detail-row-answer'>${updatedField}</div>` +
+					`</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Previous Value</div>` +
+					`<div class='activity-log-detail-row-answer'>${oldValue ? oldValue : ''}</div>` +
+					`</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Updated Value</div>` +
+					`<div class='activity-log-detail-row-answer'>${newValue ? newValue : ''}</div>` +
+					`</div>` +
+					`</div>`
+			);
+
+			detText = detText.concat(
+				`${dataUseRegister.projectTitle}\nField: ${updatedField}\nPrevious Value: ${oldValue}\nUpdated Value: ${newValue}\n\n`
+			);
+		});
+
+		const logUpdate = {
+			eventType: constants.activityLogEvents.DATA_USE_REGISTER_UPDATED,
+			logType: constants.activityLogTypes.DATA_USE_REGISTER,
+			timestamp: Date.now(),
+			detailedText: detText,
+			plainText: `updates submitted by custodian ${user.firstname} ${user.lastname}.`,
+			html: `updates submitted by custodian <b>${user.firstname} ${user.lastname}</b>.`,
+			detailedHtml: detHtml,
+			user: user._id,
+			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(logUpdate);
 	}
 
 	getQuestionInfo(accessRequest, questionId) {

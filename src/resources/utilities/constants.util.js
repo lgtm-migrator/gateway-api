@@ -15,6 +15,12 @@ const _activityLogNotifications = Object.freeze({
 	MANUALEVENTREMOVED: 'manualEventRemoved',
 });
 
+const _dataUseRegisterNotifications = Object.freeze({
+	DATAUSEAPPROVED: 'dataUseApproved',
+	DATAUSEREJECTED: 'dataUseRejected',
+	DATAUSEPENDING: 'dataUsePending',
+});
+
 const _teamNotificationTypes = Object.freeze({
 	DATAACCESSREQUEST: 'dataAccessRequest',
 	METADATAONBOARDING: 'metaDataOnboarding',
@@ -216,6 +222,7 @@ const _roleTypes = {
 	REVIEWER: 'reviewer',
 	METADATA_EDITOR: 'metadata_editor',
 	ADMIN_DATASET: 'admin_dataset',
+	ADMIN_DATA_USE: 'admin_data_use',
 };
 
 // </Team related enums>
@@ -248,34 +255,55 @@ const _logTypes = {
 	USER: 'User',
 };
 
-// Activity log related enums
+const _dataUseRegisterStatus = {
+	ACTIVE: 'active',
+	INREVIEW: 'inReview',
+	REJECTED: 'rejected',
+	ARCHIVED: 'archived',
+};
 
+// Activity log related enums
 const _activityLogEvents = {
-	APPLICATION_SUBMITTED: 'applicationSubmitted',
-	REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
-	UPDATES_SUBMITTED: 'updatesSubmitted',
-	AMENDMENT_SUBMITTED: 'amendmentSubmitted',
-	APPLICATION_APPROVED: 'applicationApproved',
-	APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
-	APPLICATION_REJECTED: 'applicationRejected',
-	COLLABORATOR_ADDEDD: 'collaboratorAdded',
-	COLLABORATOR_REMOVED: 'collaboratorRemoved',
-	PRESUBMISSION_MESSAGE: 'presubmissionMessage',
-	UPDATE_REQUESTED: 'updateRequested',
-	UPDATE_SUBMITTED: 'updateSubmitted',
-	WORKFLOW_ASSIGNED: 'workflowAssigned',
-	REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
-	RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
-	RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
-	FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
-	DEADLINE_PASSED: 'deadlinePassed',
-	MANUAL_EVENT: 'manualEvent',
-	CONTEXTUAL_MESSAGE: 'contextualMessage',
-	NOTE: 'note',
+	data_access_request: {
+		APPLICATION_SUBMITTED: 'applicationSubmitted',
+		REVIEW_PROCESS_STARTED: 'reviewProcessStarted',
+		UPDATES_SUBMITTED: 'updatesSubmitted',
+		AMENDMENT_SUBMITTED: 'amendmentSubmitted',
+		APPLICATION_APPROVED: 'applicationApproved',
+		APPLICATION_APPROVED_WITH_CONDITIONS: 'applicationApprovedWithConditions',
+		APPLICATION_REJECTED: 'applicationRejected',
+		COLLABORATOR_ADDEDD: 'collaboratorAdded',
+		COLLABORATOR_REMOVED: 'collaboratorRemoved',
+		PRESUBMISSION_MESSAGE: 'presubmissionMessage',
+		UPDATE_REQUESTED: 'updateRequested',
+		UPDATE_SUBMITTED: 'updateSubmitted',
+		WORKFLOW_ASSIGNED: 'workflowAssigned',
+		REVIEW_PHASE_STARTED: 'reviewPhaseStarted',
+		RECOMMENDATION_WITH_ISSUE: 'reccomendationWithIssue',
+		RECOMMENDATION_WITH_NO_ISSUE: 'reccomendationWithNoIssue',
+		FINAL_DECISION_REQUIRED: 'finalDecisionRequired',
+		DEADLINE_PASSED: 'deadlinePassed',
+		MANUAL_EVENT: 'manualEvent',
+		CONTEXTUAL_MESSAGE: 'contextualMessage',
+		NOTE: 'note',
+	},
+	dataset: {
+		DATASET_VERSION_SUBMITTED: 'newDatasetVersionSubmitted',
+		DATASET_VERSION_APPROVED: 'datasetVersionApproved',
+		DATASET_VERSION_REJECTED: 'datasetVersionRejected',
+		DATASET_VERSION_ARCHIVED: 'datasetVersionArchived',
+		DATASET_VERSION_UNARCHIVED: 'datasetVersionUnarchived',
+		DATASET_UPDATES_SUBMITTED: 'datasetUpdatesSubmitted',
+	},
+	data_use_register: {
+		DATA_USE_REGISTER_UPDATED: 'dataUseRegisterUpdated',
+	},
 };
 
 const _activityLogTypes = {
 	DATA_ACCESS_REQUEST: 'data_request',
+	DATA_USE_REGISTER: 'data_use_register',
+	DATASET: 'dataset',
 };
 
 const _systemGeneratedUser = {
@@ -312,4 +340,6 @@ export default {
 	systemGeneratedUser: _systemGeneratedUser,
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
+	dataUseRegisterStatus: _dataUseRegisterStatus,
+	dataUseRegisterNotifications: _dataUseRegisterNotifications,
 };

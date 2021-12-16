@@ -252,7 +252,7 @@ export default class AmendmentController extends Controller {
 				} else {
 					// 10. Send update request notifications
 					let fullAccessRecord = await this.dataRequestService.getApplicationById(id);
-					await this.activityLogService.logActivity(constants.activityLogEvents.UPDATE_REQUESTED, {
+					await this.activityLogService.logActivity(constants.activityLogEvents.data_access_request.UPDATE_REQUESTED, {
 						accessRequest: fullAccessRecord,
 						user: req.user,
 					});

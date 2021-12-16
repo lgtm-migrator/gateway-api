@@ -6,6 +6,7 @@ import constants from '../utilities/constants.util';
 import * as Sentry from '@sentry/node';
 
 const sgMail = require('@sendgrid/mail');
+const readEnv = process.env.ENV || 'prod';
 let parent, qsId;
 let questionList = [];
 let excludedQuestionSetIds = ['addRepeatableSection', 'removeRepeatableSection'];
@@ -200,7 +201,9 @@ const _getSubmissionDetails = (
 	let body = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
   <tr>
       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
-      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+				projectName || 'No project name set'
+			}</td>
     </tr>
     <tr>
       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Related NCS project</td>
@@ -228,7 +231,9 @@ const _getSubmissionDetails = (
 	const amendBody = `<table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
   <tr>
       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project</td>
-      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${projectName}</td>
+      <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${
+				projectName || 'No project name set'
+			}</td>
     </tr>
     <tr>
       <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date of amendment submission</td>
@@ -319,19 +324,11 @@ const _getSubmissionDetails = (
  * @return  {String} Questions Answered
  */
 const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) => {
-	const {
-		userType,
-		userName,
-		userEmail,
-		datasetTitles,
-		initialDatasetTitles,
-		submissionType,
-		submissionDescription,
-		applicationId,
-	} = options;
+	const { userType, userName, userEmail, datasetTitles, initialDatasetTitles, submissionType, submissionDescription, applicationId } =
+		options;
 	const dateSubmitted = moment().format('D MMM YYYY');
 	const year = moment().year();
-	const { projectName = 'No project name set', isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
+	const { projectName, isNationalCoreStudies = false, nationalCoreStudiesProjectId = '' } = aboutApplication;
 	const linkNationalCoreStudies =
 		nationalCoreStudiesProjectId === '' ? '' : `${process.env.homeURL}/project/${nationalCoreStudiesProjectId}`;
 
@@ -348,7 +345,7 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 		datasetTitles,
 		initialDatasetTitles,
 		submissionType,
-		projectName,
+		projectName || 'No project name set',
 		isNationalCoreStudies,
 		dateSubmitted,
 		linkNationalCoreStudies
@@ -356,7 +353,13 @@ const _buildEmail = (aboutApplication, fullQuestions, questionAnswers, options) 
 
 	// Create json content payload for attaching to email
 	const jsonContent = {
-		applicationDetails: { projectName, linkNationalCoreStudies, datasetTitles, dateSubmitted, applicantName: userName },
+		applicationDetails: {
+			projectName: projectName || 'No project name set',
+			linkNationalCoreStudies,
+			datasetTitles,
+			dateSubmitted,
+			applicantName: userName,
+		},
 		questions: { ...fullQuestions },
 		answers: { ...questionAnswers },
 	};
@@ -632,18 +635,21 @@ const _displayActivityLogLink = (accessId, publisher) => {
 	return `<a style="color: #475da7;" href="${activityLogLink}">View activity log</a>`;
 };
 
+const _displayDataUseRegisterLink = dataUseId => {
+	if (!dataUseId) return '';
+
+	const dataUseLink = `${process.env.homeURL}/datause/${dataUseId}`;
+	return `<a style="color: #475da7;" href="${dataUseLink}">View data use</a>`;
+};
+
+const _displayDataUseRegisterDashboardLink = () => {
+	const dataUseLink = `${process.env.homeURL}/account?tab=datause&team=admin`;
+	return `<a style="color: #475da7;" href="${dataUseLink}">View all data uses for review </a>`;
+};
+
 const _generateDARStatusChangedEmail = options => {
-	let {
-		id,
-		applicationStatus,
-		applicationStatusDesc,
-		projectId,
-		projectName,
-		publisher,
-		datasetTitles,
-		dateSubmitted,
-		applicants,
-	} = options;
+	let { id, applicationStatus, applicationStatusDesc, projectId, projectName, publisher, datasetTitles, dateSubmitted, applicants } =
+		options;
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
@@ -660,7 +666,9 @@ const _generateDARStatusChangedEmail = options => {
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                     ${publisher} has ${applicationStatus} your data access request application.
+                    Your data access request for ${projectName || datasetTitles} has been approved with conditions by ${publisher}. 
+                    Summary information about your approved project will be included in the Gateway data use register. 
+                    You will be notified as soon as this becomes visible and searchable on the Gateway.
                     </th>
                   </tr>
                 </thead>
@@ -2397,6 +2405,85 @@ const _generateActivityLogManualEventDeleted = options => {
 	return body;
 };
 
+const _generateDataUseRegisterApproved = options => {
+	const { id, projectTitle } = options;
+	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+                <div style="padding: 40px 40px 40px 40px;">
+                <p style="border: 0; color: #29235c; font-size: 22px; text-align: left;">New active data use</p>
+                <p style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">  A data use for <b>${projectTitle}</b> has been approved by HDR UK and is now public and searchable on the Gateway. You can now edit and archive this data use directly in the Gateway.</p>
+                ${_displayDataUseRegisterLink(id)}
+                </div>
+                </div>`;
+
+	return body;
+};
+
+const _generateDataUseRegisterRejected = options => {
+	const { id, projectTitle, rejectionReason } = options;
+	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+              
+            <div style="padding: 40px 40px 40px 40px;">
+            <p style="border: 0; color: #29235c; font-size: 22px; text-align: left;">A data use has been rejected</p>
+            <p style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">A data use for <b>${projectTitle}</b> has been rejected by HDR UK team.</p>
+            <p style="color: #29235c; font-size: 18px; font-weight:500;">Reason for rejection:</p>
+            <p style="font-size: 14px; color: #3c3c3b; width: 100%;">${rejectionReason}</p>
+            ${_displayDataUseRegisterLink(id)}
+            </div>
+          </div>`;
+	return body;
+};
+
+const _generateDataUseRegisterPending = options => {
+	const { listOfProjectTitles, publisher } = options;
+
+	const body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+  <table
+  align="center"
+  border="0"
+  cellpadding="0"
+  cellspacing="40"
+  width="700"
+  style="font-family: Arial, sans-serif">
+  <thead>
+    <tr>
+      <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+      New data uses to review
+      </th>
+    </tr>
+    <tr>
+      <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+      ${publisher} has submitted [${listOfProjectTitles.length}] data uses for review including:
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+  <tr>
+    <td bgcolor="#fff" style="padding: 0; border: 0;">
+      <table border="0" border-collapse="collapse" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Project title</td>
+          <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 50%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${listOfProjectTitles.join(
+						', '
+					)}</td>
+        </tr>
+        <tr>
+          <td style="font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 30%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">Date and time submitted</td>
+          <td style=" font-size: 14px; color: #3c3c3b; padding: 10px 5px; width: 70%; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d3d4;">${moment().format(
+						'DD/MM/YYYY, HH:mmA'
+					)}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</tbody>
+</table>
+<div style="padding: 0 40px 40px 40px;">
+${_displayDataUseRegisterDashboardLink()}
+</div>
+</div>`;
+	return body;
+};
+
 /**
  * [_sendEmail]
  *
@@ -2423,7 +2510,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 
 		// 4. Send email using SendGrid
 		await sgMail.send(msg, false, err => {
-			if (err) {
+			if (err && (readEnv === 'test' || readEnv === 'prod')) {
 				Sentry.addBreadcrumb({
 					category: 'SendGrid',
 					message: 'Sending email failed',
@@ -2446,7 +2533,7 @@ const _sendIntroEmail = msg => {
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 	// 2. Send email using SendGrid
 	sgMail.send(msg, false, err => {
-		if (err) {
+		if (err && (readEnv === 'test' || readEnv === 'prod')) {
 			Sentry.addBreadcrumb({
 				category: 'SendGrid',
 				message: 'Sending email failed - Intro',
@@ -2547,7 +2634,7 @@ export default {
 	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
 	generateMetadataOnboardingRejected: _generateMetadataOnboardingRejected,
 	generateMetadataOnboardingDraftDeleted: _generateMetadataOnboardingDraftDeleted,
-  generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
+	generateMetadataOnboardingDuplicated: _generateMetadataOnboardingDuplicated,
 	//generateMetadataOnboardingArchived: _generateMetadataOnboardingArchived,
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages
@@ -2556,4 +2643,8 @@ export default {
 	//ActivityLog
 	generateActivityLogManualEventCreated: _generateActivityLogManualEventCreated,
 	generateActivityLogManualEventDeleted: _generateActivityLogManualEventDeleted,
+	//DataUseRegister
+	generateDataUseRegisterApproved: _generateDataUseRegisterApproved,
+	generateDataUseRegisterRejected: _generateDataUseRegisterRejected,
+	generateDataUseRegisterPending: _generateDataUseRegisterPending,
 };
