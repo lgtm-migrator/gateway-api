@@ -66,107 +66,107 @@ describe('Dataset onboarding utility', () => {
 		});
 	});
 
-	describe('datasetSortingHelper', () => {
-		test.each(Object.values(constants.datasetSortOptions))(
-			'Each sort option should lead to correctly sorted output arrays for ascending direction',
-			async sortOption => {
-				let datasetsStub = [
-					{
-						timestamps: { updated: 1234, created: 1234 },
-						name: 'abc',
-						percentageCompleted: { summary: 20 },
-						counter: 200,
-					},
-					{
-						timestamps: { updated: 5678, created: 5678 },
-						name: 'xyz',
-						percentageCompleted: { summary: 80 },
-						counter: 100,
-					},
-				];
+	// describe('datasetSortingHelper', () => {
+	// 	test.each(Object.values(constants.datasetSortOptions))(
+	// 		'Each sort option should lead to correctly sorted output arrays for ascending direction',
+	// 		async sortOption => {
+	// 			let datasetsStub = [
+	// 				{
+	// 					timestamps: { updated: 1234, created: 1234 },
+	// 					name: 'abc',
+	// 					percentageCompleted: { summary: 20 },
+	// 					counter: 200,
+	// 				},
+	// 				{
+	// 					timestamps: { updated: 5678, created: 5678 },
+	// 					name: 'xyz',
+	// 					percentageCompleted: { summary: 80 },
+	// 					counter: 100,
+	// 				},
+	// 			];
 
-				let unsortedDatasetsStubCopy = _.cloneDeep(datasetsStub);
+	// 			let unsortedDatasetsStubCopy = _.cloneDeep(datasetsStub);
 
-				let sortedDatasets = await datasetonboardingUtil.datasetSortingHelper(
-					datasetsStub,
-					sortOption,
-					constants.datasetSortDirections.ASCENDING
-				);
+	// 			let sortedDatasets = await datasetonboardingUtil.datasetSortingHelper(
+	// 				datasetsStub,
+	// 				sortOption,
+	// 				constants.datasetSortDirections.ASCENDING
+	// 			);
 
-				if (sortOption === constants.datasetSortOptions.RECENTACTIVITY) {
-					let arr = sortedDatasets.map(dataset => dataset.timestamps.updated);
-					expect(arr[0]).toBeLessThan(arr[1]);
-				}
+	// 			if (sortOption === constants.datasetSortOptions.RECENTACTIVITY) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.timestamps.updated);
+	// 				expect(arr[0]).toBeLessThan(arr[1]);
+	// 			}
 
-				if (sortOption === constants.datasetSortOptions.ALPHABETIC) {
-					let arr = sortedDatasets.map(dataset => dataset.name);
-					expect(arr[0]).toEqual(unsortedDatasetsStubCopy[0].name);
-					expect(arr[1]).toEqual(unsortedDatasetsStubCopy[1].name);
-				}
-				if (sortOption === constants.datasetSortOptions.RECENTLYPUBLISHED) {
-					let arr = sortedDatasets.map(dataset => dataset.timestamps.created);
-					expect(arr[0]).toBeLessThan(arr[1]);
-				}
-				if (sortOption === constants.datasetSortOptions.METADATAQUALITY) {
-					let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
-					expect(arr[0]).toBeLessThan(arr[1]);
-				}
-				if (sortOption === constants.datasetSortOptions.MOSTVIEWED) {
-					let arr = sortedDatasets.map(dataset => dataset.counter);
-					expect(arr[0]).toBeLessThan(arr[1]);
-				}
-			}
-		);
+	// 			if (sortOption === constants.datasetSortOptions.ALPHABETIC) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.name);
+	// 				expect(arr[0]).toEqual(unsortedDatasetsStubCopy[0].name);
+	// 				expect(arr[1]).toEqual(unsortedDatasetsStubCopy[1].name);
+	// 			}
+	// 			if (sortOption === constants.datasetSortOptions.RECENTLYPUBLISHED) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.timestamps.created);
+	// 				expect(arr[0]).toBeLessThan(arr[1]);
+	// 			}
+	// 			if (sortOption === constants.datasetSortOptions.METADATAQUALITY) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
+	// 				expect(arr[0]).toBeLessThan(arr[1]);
+	// 			}
+	// 			if (sortOption === constants.datasetSortOptions.MOSTVIEWED) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.counter);
+	// 				expect(arr[0]).toBeLessThan(arr[1]);
+	// 			}
+	// 		}
+	// 	);
 
-		test.each(Object.values(constants.datasetSortOptions))(
-			'Each sort option should lead to correctly sorted output arrays for descending direction',
-			async sortOption => {
-				let datasetsStub = [
-					{
-						timestamps: { updated: 1234, created: 1234 },
-						name: 'abc',
-						percentageCompleted: { summary: 20 },
-						counter: 200,
-					},
-					{
-						timestamps: { updated: 5678, created: 5678 },
-						name: 'xyz',
-						percentageCompleted: { summary: 80 },
-						counter: 100,
-					},
-				];
+	// 	test.each(Object.values(constants.datasetSortOptions))(
+	// 		'Each sort option should lead to correctly sorted output arrays for descending direction',
+	// 		async sortOption => {
+	// 			let datasetsStub = [
+	// 				{
+	// 					timestamps: { updated: 1234, created: 1234 },
+	// 					name: 'abc',
+	// 					percentageCompleted: { summary: 20 },
+	// 					counter: 200,
+	// 				},
+	// 				{
+	// 					timestamps: { updated: 5678, created: 5678 },
+	// 					name: 'xyz',
+	// 					percentageCompleted: { summary: 80 },
+	// 					counter: 100,
+	// 				},
+	// 			];
 
-				let unsortedDatasetsStubCopy = _.cloneDeep(datasetsStub);
+	// 			let unsortedDatasetsStubCopy = _.cloneDeep(datasetsStub);
 
-				let sortedDatasets = await datasetonboardingUtil.datasetSortingHelper(
-					datasetsStub,
-					sortOption,
-					constants.datasetSortDirections.DESCENDING
-				);
+	// 			let sortedDatasets = await datasetonboardingUtil.datasetSortingHelper(
+	// 				datasetsStub,
+	// 				sortOption,
+	// 				constants.datasetSortDirections.DESCENDING
+	// 			);
 
-				if (sortOption === constants.datasetSortOptions.RECENTACTIVITY) {
-					let arr = sortedDatasets.map(dataset => dataset.timestamps.updated);
-					expect(arr[1]).toBeLessThan(arr[0]);
-				}
+	// 			if (sortOption === constants.datasetSortOptions.RECENTACTIVITY) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.timestamps.updated);
+	// 				expect(arr[1]).toBeLessThan(arr[0]);
+	// 			}
 
-				if (sortOption === constants.datasetSortOptions.ALPHABETIC) {
-					let arr = sortedDatasets.map(dataset => dataset.name);
-					expect(arr[0]).toEqual(unsortedDatasetsStubCopy[1].name);
-					expect(arr[1]).toEqual(unsortedDatasetsStubCopy[0].name);
-				}
-				if (sortOption === constants.datasetSortOptions.RECENTLYPUBLISHED) {
-					let arr = sortedDatasets.map(dataset => dataset.timestamps.created);
-					expect(arr[1]).toBeLessThan(arr[0]);
-				}
-				if (sortOption === constants.datasetSortOptions.METADATAQUALITY) {
-					let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
-					expect(arr[1]).toBeLessThan(arr[0]);
-				}
-				if (sortOption === constants.datasetSortOptions.MOSTVIEWED) {
-					let arr = sortedDatasets.map(dataset => dataset.counter);
-					expect(arr[1]).toBeLessThan(arr[0]);
-				}
-			}
-		);
-	});
+	// 			if (sortOption === constants.datasetSortOptions.ALPHABETIC) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.name);
+	// 				expect(arr[0]).toEqual(unsortedDatasetsStubCopy[1].name);
+	// 				expect(arr[1]).toEqual(unsortedDatasetsStubCopy[0].name);
+	// 			}
+	// 			if (sortOption === constants.datasetSortOptions.RECENTLYPUBLISHED) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.timestamps.created);
+	// 				expect(arr[1]).toBeLessThan(arr[0]);
+	// 			}
+	// 			if (sortOption === constants.datasetSortOptions.METADATAQUALITY) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.percentageCompleted.summary);
+	// 				expect(arr[1]).toBeLessThan(arr[0]);
+	// 			}
+	// 			if (sortOption === constants.datasetSortOptions.MOSTVIEWED) {
+	// 				let arr = sortedDatasets.map(dataset => dataset.counter);
+	// 				expect(arr[1]).toBeLessThan(arr[0]);
+	// 			}
+	// 		}
+	// 	);
+	// });
 });
