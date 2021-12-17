@@ -4,6 +4,7 @@ import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import constants from './../utilities/constants.util';
 import { Data } from '../tool/data.model';
+import { Course } from '../course/course.model';
 import { TeamModel } from '../team/team.model';
 import teamController from '../team/team.controller';
 import emailGenerator from '../utilities/emailGenerator.util';
@@ -12,6 +13,7 @@ import { filtersService } from '../filters/dependency';
 
 import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
 import { isEmpty, isUndefined } from 'lodash';
+import { UserModel } from '../user/user.model';
 
 const logCategory = 'dataUseRegister';
 
@@ -58,31 +60,44 @@ export default class DataUseRegisterController extends Controller {
 			}
 
 			// Reverse look up
-			var p = Data.aggregate([{ $match: { $and: [{ relatedObjects: { $elemMatch: { objectId: id } } }] } }]);
-			p.exec((err, relatedData) => {
-				if (!isEdit) {
-					relatedData.forEach(dat => {
-						dat.relatedObjects.forEach(x => {
-							if (x.objectId === id && dat.id !== id) {
-								if (typeof dataUseRegister.relatedObjects === 'undefined') dataUseRegister.relatedObjects = [];
-								dataUseRegister.relatedObjects.push({
-									objectId: dat.id,
-									reason: x.reason,
-									objectType: dat.type,
-									user: x.user,
-									updated: x.updated,
-								});
-							}
-						});
-					});
-				}
-				if (err) return res.json({ success: false, error: err });
+			let relatedData = await Data.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.id } },
+				activeflag: 'active',
+			});
 
-				// Return the dataUseRegister
-				return res.status(200).json({
-					success: true,
-					...dataUseRegister,
+			let relatedDataFromCourses = await Course.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.id } },
+				activeflag: 'active',
+			});
+
+			let relatedDataFromDatauses = await DataUseRegister.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.id } },
+				activeflag: 'active',
+			});
+
+			relatedData = [...relatedData, ...relatedDataFromCourses, ...relatedDataFromDatauses];
+
+			if (!isEdit) {
+				relatedData.forEach(dat => {
+					dat.relatedObjects.forEach(x => {
+						if (x.objectId === id && dat.id !== id) {
+							if (typeof dataUseRegister.relatedObjects === 'undefined') dataUseRegister.relatedObjects = [];
+							dataUseRegister.relatedObjects.push({
+								objectId: dat.id,
+								reason: x.reason,
+								objectType: dat.type,
+								user: x.user,
+								updated: x.updated,
+							});
+						}
+					});
 				});
+			}
+
+			// Return the dataUseRegister
+			return res.status(200).json({
+				success: true,
+				...dataUseRegister,
 			});
 		} catch (err) {
 			// Return error response if something goes wrong
@@ -348,7 +363,9 @@ export default class DataUseRegisterController extends Controller {
 
 	async createNotifications(type, context, dataUseRegister, publisher) {
 		const { rejectionReason } = context;
-		const { id, projectTitle, user: uploader } = dataUseRegister;
+		const { id, projectTitle, user: uploaderID } = dataUseRegister;
+
+		const uploader = await UserModel.findOne({ _id: uploaderID });
 
 		switch (type) {
 			case constants.dataUseRegisterNotifications.DATAUSEAPPROVED: {
