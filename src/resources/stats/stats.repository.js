@@ -596,10 +596,10 @@ export default class StatsRepository extends Repository {
 				datasetv2: 1,
 				datasetfields: 1,
 				description: 1,
-				updatedAt: 1,
+				'timestamps.published': 1,
 			}
 		)
-			.sort({ updatedAt: -1, name: 1 })
+			.sort({ 'timestamps.published': -1, name: 1 })
 			.limit(10)
 			.lean();
 	}
