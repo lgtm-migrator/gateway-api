@@ -12,6 +12,7 @@ import { filtersService } from '../filters/dependency';
 
 import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
 import { isEmpty, isUndefined } from 'lodash';
+import { UserModel } from '../user/user.model';
 
 const logCategory = 'dataUseRegister';
 
@@ -348,7 +349,9 @@ export default class DataUseRegisterController extends Controller {
 
 	async createNotifications(type, context, dataUseRegister, publisher) {
 		const { rejectionReason } = context;
-		const { id, projectTitle, user: uploader } = dataUseRegister;
+		const { id, projectTitle, user: uploaderID } = dataUseRegister;
+
+		const uploader = await UserModel.findOne({ _id: uploaderID });
 
 		switch (type) {
 			case constants.dataUseRegisterNotifications.DATAUSEAPPROVED: {
@@ -378,7 +381,7 @@ export default class DataUseRegisterController extends Controller {
 					.lean();
 
 				const dataUseTeamMembers = teamController.getTeamMembersByRole(adminTeam, constants.roleTypes.ADMIN_DATA_USE);
-				const emailRecipients = [...dataUseTeamMembers, uploader];
+				const emailRecipients = [...dataUseTeamMembers, uploaderMember];
 
 				const options = {
 					id,
