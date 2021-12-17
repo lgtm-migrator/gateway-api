@@ -431,13 +431,14 @@ export default class DataUseRegisterService {
 		});
 
 		let relatedResourcesWithRemovedOldAutomaticEntries = [];
-		relatedObjects.forEach(resource => {
-			if (resource.isLocked && automaticRelatedResources.find(automaticResource => automaticResource.objectId === resource.objectId)) {
-				relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
-			} else if (!resource.isLocked) {
-				relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
-			}
-		});
+		!isUndefined(relatedObjects) &&
+			relatedObjects.forEach(resource => {
+				if (resource.isLocked && automaticRelatedResources.find(automaticResource => automaticResource.objectId === resource.objectId)) {
+					relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
+				} else if (!resource.isLocked) {
+					relatedResourcesWithRemovedOldAutomaticEntries.push(resource);
+				}
+			});
 
 		//relatedObjects
 
