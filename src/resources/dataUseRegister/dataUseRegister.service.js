@@ -374,9 +374,9 @@ export default class DataUseRegisterService {
 			nonGatewayOutputs,
 		} = dataUseRegisterPayload;
 
-		const gatewayDatasetPids = await dataUseRegisterUtil.getDatasetsByPids(gatewayDatasets || []);
-		const gatewayApplicantIDs = await dataUseRegisterUtil.getAppplicantByIds(gatewayApplicants || []);
-		const { gatewayToolIDs, gatewayPaperIDs } = await dataUseRegisterUtil.getSafeOutputsByIds(gatewayOutputs || []);
+		const gatewayDatasetPids = gatewayDatasets ? await dataUseRegisterUtil.getDatasetsByPids(gatewayDatasets) : [];
+		const gatewayApplicantIDs = gatewayApplicants ? await dataUseRegisterUtil.getAppplicantByIds(gatewayApplicants) : [];
+		const { gatewayToolIDs, gatewayPaperIDs } = gatewayOutputs ? await dataUseRegisterUtil.getSafeOutputsByIds(gatewayOutputs) : [];
 
 		let gatewayApplicantIDsList = [];
 		gatewayApplicantIDs &&
