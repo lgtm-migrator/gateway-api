@@ -381,7 +381,7 @@ export default class DataUseRegisterController extends Controller {
 					.lean();
 
 				const dataUseTeamMembers = teamController.getTeamMembersByRole(adminTeam, constants.roleTypes.ADMIN_DATA_USE);
-				const emailRecipients = [...dataUseTeamMembers, uploaderMember];
+				const emailRecipients = [...dataUseTeamMembers, uploader];
 
 				const options = {
 					id,
