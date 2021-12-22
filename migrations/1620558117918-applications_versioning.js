@@ -16,7 +16,7 @@ async function up() {
 		const versionTree = buildVersionTree(accessRecord);
 		const { _id } = accessRecord;
 		ops.push({
-			updateOne: {
+			updateOne: {src/resources/datarequest/amendment/amendment.service.js
 				filter: { _id },
 				update: {
 					applicationType: constants.submissionTypes.INITIAL,
@@ -33,30 +33,27 @@ async function up() {
 }
 
 async function down() {
-	// 1. Remove application type from all applications
-	// 2. Remove version from all applications
-	// 3. Remove version tree from all applications
+  // 1. Remove application type from all applications
+  // 2. Remove version from all applications
+  // 3. Remove version tree from all applications
 
-	let accessRecords = await DataRequestModel.find().select('_id version versionTree amendmentIterations').lean();
-	let ops = [];
+    let accessRecords = await DataRequestModel.find()
+		.select('_id version versionTree amendmentIterations')
+		.lean();
+let ops=[];
 
-	accessRecords.forEach(accessRecord => {
-		const { _id } = accessRecord;
-		ops.push({
-			updateOne: {
-				filter: { _id },
-				update: {
-					applicationType: undefined,
-					majorVersion: undefined,
-					version: 1,
-					versionTree: undefined,
-				},
-				upsert: false,
-			},
-		});
-	});
+ await accessRecords.forEach(accessRecord => {
+   ops.push({
+updateOne: {
+       filter:  { _id: accessRecord._id },
+       update: { $set: {version: 1 }, $unset: { versionTree: '',applicationType:'',majorVersion:'' }},
+       upsert:  true
+   }
+   })
+})
 
-	await DataRequestModel.bulkWrite(ops);
+await DataRequestModel.bulkWrite(ops);
 }
+
 
 module.exports = { up, down };
