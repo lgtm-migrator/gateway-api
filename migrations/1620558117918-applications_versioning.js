@@ -16,7 +16,7 @@ async function up() {
 		const versionTree = buildVersionTree(accessRecord);
 		const { _id } = accessRecord;
 		ops.push({
-			updateOne: {src/resources/datarequest/amendment/amendment.service.js
+			updateOne: {
 				filter: { _id },
 				update: {
 					applicationType: constants.submissionTypes.INITIAL,
