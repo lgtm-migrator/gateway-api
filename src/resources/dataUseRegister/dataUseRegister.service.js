@@ -219,7 +219,7 @@ export default class DataUseRegisterService {
 				safeprojectprojectdetailsresearchprojectsummarykeywords: keywords,
 				['safeproject-projectdetails-startdate']: startDate,
 				['safeproject-projectdetails-enddate']: endDate,
-				safedatastorageandprocessingaccessmethodtrustedresearchenvironment: accessType,
+				safedatastorageandprocessingaccessmethod: safeDataAccessOptions,
 				safedataconfidentialityavenuelegalbasisconfidentialinformation: dutyOfConfidentiality,
 				safedataotherdatasetslinkadditionaldatasetslinkagedetails: datasetLinkageDetails = '',
 				safedataotherdatasetsrisksmitigations: datasetLinkageRiskMitigation = '',
@@ -229,6 +229,18 @@ export default class DataUseRegisterService {
 				safeoutputsoutputsdisseminationplansdisclosurecontrolpolicy: privacyEnhancements,
 			},
 		} = accessRecord;
+
+		let accessType = '';
+
+		if (safeDataAccessOptions.length === 1) {
+			if (safeDataAccessOptions[0] === 'Via a Trusted Research Environment') {
+				accessType = 'Trusted Research Environment';
+			} else {
+				accessType = 'Release';
+			}
+		} else if (safeDataAccessOptions.length === 2) {
+			accessType = 'Trusted Research Environment | Release';
+		}
 
 		const fundersAndSponsors = dataUseRegisterUtil.extractFundersAndSponsors(questionAnswers);
 		const { gatewayApplicants = [], nonGatewayApplicants = [] } = dataUseRegisterUtil.extractFormApplicants(
