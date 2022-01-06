@@ -4,14 +4,14 @@ export const datasetSearchStub = [
 	{
 		_id: ObjectID('615aee882414847722e46ac1'),
 		timestamps: {
-			created: 456,
-			updated: 456,
-			submitted: 456,
+			created: 100,
+			updated: 100,
+			submitted: 100,
 		},
 		pid: 'pid1',
 		datasetVersion: '1.0.0',
 		name: 'test1 v1',
-		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract1' } },
+		datasetv2: { summary: { publisher: { identifier: 'TestPublisher' }, abstract: 'abstract1', keywords: ['test'] } },
 		activeflag: 'rejected',
 		percentageCompleted: {
 			summary: 80,
@@ -34,13 +34,14 @@ export const datasetSearchStub = [
 			summary: 60,
 		},
 		type: 'dataset',
+		counter: 5,
 	},
 	{
 		_id: ObjectID('615aee882414847722e46ac3'),
 		timestamps: {
-			created: 456,
-			updated: 456,
-			submitted: 456,
+			created: 400,
+			updated: 400,
+			submitted: 400,
 		},
 		pid: 'pid2',
 		datasetVersion: '1.0.0',
@@ -51,6 +52,7 @@ export const datasetSearchStub = [
 			summary: 80,
 		},
 		type: 'dataset',
+		counter: 10,
 	},
 	{
 		_id: ObjectID('615aee882414847722e46ac4'),
@@ -130,11 +132,12 @@ export const datasetSearchStub = [
 		pid: 'pid7',
 		datasetVersion: '1.0.0',
 		name: 'test2 v1',
-		datasetv2: { summary: { publisher: { identifier: 'AnotherTestPublisher' }, abstract: 'abstract8' } },
+		datasetv2: { summary: { publisher: { identifier: 'AnotherTestPublisher' }, abstract: 'test' } },
 		activeflag: 'inReview',
 		percentageCompleted: {
-			summary: 80,
+			summary: 70,
 		},
 		type: 'dataset',
+		counter: 1,
 	},
 ];

@@ -84,7 +84,7 @@ describe('datasetOnboardingService', () => {
 				search
 			);
 
-			expect([...new Set(versionedDatasets.map(dataset => dataset.activeflag))]).toEqual([...new Set(expectedResponse)]);
+			expect([...new Set(versionedDatasets.map(dataset => dataset.activeflag))].sort()).toEqual([...new Set(expectedResponse)].sort());
 		});
 
 		it('should return the correct count of filered results', async () => {
@@ -106,7 +106,7 @@ describe('datasetOnboardingService', () => {
 				search
 			);
 
-			expect(count).toEqual(2);
+			expect(count).toEqual(3);
 		});
 
 		it('should return results matching an appropriate search term', async () => {
@@ -150,9 +150,117 @@ describe('datasetOnboardingService', () => {
 				search
 			);
 
-			expect(count).toEqual(2);
+			expect(count).toEqual(3);
 			expect(versionedDatasets.length).toEqual(1);
 		});
+
+		test.each(Object.keys(constants.datasetSortOptions))(
+			'Each sort option should lead to correctly sorted output arrays for ascending direction',
+			async sortOption => {
+				const page = 1;
+				const limit = 10;
+				const sortBy = sortOption;
+				const sortDirection = 'asc';
+				const status = '';
+				const publisherID = 'admin';
+				const search = 'test';
+
+				const [versionedDatasets, _] = await datasetonboardingService.getDatasetsByPublisher(
+					status,
+					publisherID,
+					page,
+					limit,
+					sortBy,
+					sortDirection,
+					search
+				);
+
+				if (sortOption === 'latest') {
+					let arr = versionedDatasets.map(dataset => dataset.timestamps.updated);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+
+				if (sortOption === 'alphabetic') {
+					let arr = versionedDatasets.map(dataset => dataset.name);
+					let expectedResult = [arr[0].name, arr[1].name].sort();
+					expect([arr[0].name, arr[1].name]).toEqual(expectedResult);
+				}
+
+				if (sortOption === 'metadata') {
+					let arr = versionedDatasets.map(dataset => dataset.percentageCompleted.summary);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+
+				if (sortOption === 'recentlyadded') {
+					let arr = versionedDatasets.map(dataset => dataset.timestamps.created);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+
+				if (sortOption === 'popularity') {
+					let arr = versionedDatasets.map(dataset => dataset.counter);
+					expect(arr[0]).toBeLessThan(arr[1]);
+				}
+
+				if (sortOption === 'relevance') {
+					let arr = versionedDatasets.map(dataset => dataset.pid);
+					expect(arr[0]).toEqual('pid2');
+				}
+			}
+		);
+
+		test.each(Object.keys(constants.datasetSortOptions))(
+			'Each sort option should lead to correctly sorted output arrays for descending direction',
+			async sortOption => {
+				const page = 1;
+				const limit = 10;
+				const sortBy = sortOption;
+				const sortDirection = 'desc';
+				const status = '';
+				const publisherID = 'admin';
+				const search = 'test';
+
+				const [versionedDatasets, _] = await datasetonboardingService.getDatasetsByPublisher(
+					status,
+					publisherID,
+					page,
+					limit,
+					sortBy,
+					sortDirection,
+					search
+				);
+
+				if (sortOption === 'latest') {
+					let arr = versionedDatasets.map(dataset => dataset.timestamps.updated);
+					expect(arr[1]).toBeLessThan(arr[0]);
+				}
+
+				if (sortOption === 'alphabetic') {
+					let arr = versionedDatasets.map(dataset => dataset.name);
+					let expectedResult = [arr[0].name, arr[1].name].sort().reverse();
+					expect([arr[1].name, arr[0].name]).toEqual(expectedResult);
+				}
+
+				if (sortOption === 'metadata') {
+					let arr = versionedDatasets.map(dataset => dataset.percentageCompleted.summary);
+					expect(arr[1]).toBeLessThan(arr[0]);
+				}
+
+				if (sortOption === 'recentlyadded') {
+					let arr = versionedDatasets.map(dataset => dataset.timestamps.created);
+					expect(arr[1]).toBeLessThan(arr[0]);
+				}
+
+				if (sortOption === 'popularity') {
+					let arr = versionedDatasets.map(dataset => dataset.counter);
+					expect(arr[1]).toBeLessThan(arr[0]);
+				}
+
+				if (sortOption === 'relevance') {
+					let arr = versionedDatasets.map(dataset => dataset.pid);
+					expect(arr[0]).toEqual('pid1');
+				}
+			}
+		);
 	});
 
 	describe('createNewDatasetVersion', () => {
