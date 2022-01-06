@@ -174,7 +174,7 @@ export default class DatasetOnboardingController {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			const [updatedDataset, dataset] = await this.datasetonboardingService.submitDatasetVersion(id);
+			const [updatedDataset, dataset, datasetv2Object] = await this.datasetonboardingService.submitDatasetVersion(id);
 
 			await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETSUBMITTED, updatedDataset);
 
@@ -185,7 +185,7 @@ export default class DatasetOnboardingController {
 			});
 
 			if (parseInt(updatedDataset.datasetVersion) !== 1) {
-				let datasetv2DifferenceObject = datasetonboardingUtil.datasetv2ObjectComparison(updatedDataset.datasetv2, dataset.datasetv2);
+				let datasetv2DifferenceObject = datasetonboardingUtil.datasetv2ObjectComparison(datasetv2Object, dataset.datasetv2);
 
 				if (!_.isEmpty(datasetv2DifferenceObject)) {
 					await activityLogService.logActivity(constants.activityLogEvents.dataset.DATASET_UPDATES_SUBMITTED, {

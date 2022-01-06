@@ -267,7 +267,7 @@ export default class DatasetOnboardingService {
 			}
 		);
 
-		return [updatedDataset, dataset];
+		return [updatedDataset, dataset, datasetv2Object];
 	};
 
 	checkUniqueTitle = async (regex, pid) => {
