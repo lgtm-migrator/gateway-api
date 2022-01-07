@@ -14,6 +14,7 @@ import inputSanitizer from '../utilities/inputSanitizer';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
+import { dataUseRegisterController } from '../dataUseRegister/dependency';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -669,6 +670,12 @@ export default class DataRequestController extends Controller {
 
 					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED) {
 						await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+ 						await dataUseRegisterController.createNotifications(
+ 							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
+ 							{},
+ 							dataUseRegister
+ 						);
 						await this.activityLogService.logActivity(constants.activityLogEvents.data_access_request.APPLICATION_APPROVED, {
 							accessRequest: accessRecord,
 							user: req.user,
@@ -676,6 +683,12 @@ export default class DataRequestController extends Controller {
 					}
 					else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
 						await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+ 						await dataUseRegisterController.createNotifications(
+ 							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
+ 							{},
+ 							dataUseRegister
+ 						);
 						await this.activityLogService.logActivity(
 							constants.activityLogEvents.data_access_request.APPLICATION_APPROVED_WITH_CONDITIONS,
 							{

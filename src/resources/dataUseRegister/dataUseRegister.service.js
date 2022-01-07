@@ -297,6 +297,8 @@ export default class DataUseRegisterService {
 		});
 
 		this.dataUseRegisterRepository.createDataUseRegister(dataUseRegister);
+
+		return dataUseRegister;
 	}
 
 	/**
