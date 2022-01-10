@@ -3,6 +3,8 @@ import express from 'express';
 import { ROLES } from '../../user/user.roles';
 import { Reviews } from '../review.model';
 import { Data } from '../data.model';
+import { Course } from '../../course/course.model';
+import { DataUseRegister } from '../../dataUseRegister/dataUseRegister.model';
 import passport from 'passport';
 import { utils } from '../../auth';
 import { UserModel } from '../../user/user.model';
@@ -128,69 +130,78 @@ router.get('/:id', async (req, res) => {
 			},
 		},
 	]);
-	query.exec((err, data) => {
+	query.exec(async (err, data) => {
 		if (data.length > 0) {
 			data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
-			var p = Data.aggregate([
+
+			let relatedData = await Data.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.id } },
+				activeflag: 'active',
+			});
+
+			let relatedDataFromCourses = await Course.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.id } },
+				activeflag: 'active',
+			});
+
+			let relatedDataFromDatauses = await DataUseRegister.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.id } },
+				activeflag: 'active',
+			});
+
+			relatedData = [...relatedData, ...relatedDataFromCourses, ...relatedDataFromDatauses];
+
+			relatedData.forEach(dat => {
+				dat.relatedObjects.forEach(x => {
+					if (x.objectId === req.params.id && dat.id !== req.params.id) {
+						let relatedObject = {
+							objectId: dat.id,
+							reason: x.reason,
+							objectType: dat.type,
+							user: x.user,
+							updated: x.updated,
+						};
+						data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
+					}
+				});
+			});
+
+			var r = Reviews.aggregate([
 				{
 					$match: {
-						$and: [{ relatedObjects: { $elemMatch: { objectId: req.params.id } } }],
+						$and: [{ toolID: parseInt(req.params.id) }, { activeflag: 'active' }],
+					},
+				},
+				{ $sort: { date: -1 } },
+				{
+					$lookup: {
+						from: 'tools',
+						localField: 'reviewerID',
+						foreignField: 'id',
+						as: 'person',
+					},
+				},
+				{
+					$lookup: {
+						from: 'tools',
+						localField: 'replierID',
+						foreignField: 'id',
+						as: 'owner',
 					},
 				},
 			]);
-			p.exec((err, relatedData) => {
-				relatedData.forEach(dat => {
-					dat.relatedObjects.forEach(x => {
-						if (x.objectId === req.params.id && dat.id !== req.params.id) {
-							let relatedObject = {
-								objectId: dat.id,
-								reason: x.reason,
-								objectType: dat.type,
-								user: x.user,
-								updated: x.updated,
-							};
-							data[0].relatedObjects = [relatedObject, ...(data[0].relatedObjects || [])];
-						}
-					});
+			r.exec(async (err, reviewData) => {
+				if (err) return res.json({ success: false, error: err });
+
+				reviewData.map(reviewDat => {
+					reviewDat.person = helper.hidePrivateProfileDetails(reviewDat.person);
+					reviewDat.owner = helper.hidePrivateProfileDetails(reviewDat.owner);
 				});
 
-				var r = Reviews.aggregate([
-					{
-						$match: {
-							$and: [{ toolID: parseInt(req.params.id) }, { activeflag: 'active' }],
-						},
-					},
-					{ $sort: { date: -1 } },
-					{
-						$lookup: {
-							from: 'tools',
-							localField: 'reviewerID',
-							foreignField: 'id',
-							as: 'person',
-						},
-					},
-					{
-						$lookup: {
-							from: 'tools',
-							localField: 'replierID',
-							foreignField: 'id',
-							as: 'owner',
-						},
-					},
-				]);
-				r.exec(async (err, reviewData) => {
-					if (err) return res.json({ success: false, error: err });
-
-					reviewData.map(reviewDat => {
-						reviewDat.person = helper.hidePrivateProfileDetails(reviewDat.person);
-						reviewDat.owner = helper.hidePrivateProfileDetails(reviewDat.owner);
-					});
-
-					return res.json({
-						success: true,
-						data: data,
-						reviewData: reviewData,
-					});
+				return res.json({
+					success: true,
+					data: data,
+					reviewData: reviewData,
 				});
 			});
 		} else {

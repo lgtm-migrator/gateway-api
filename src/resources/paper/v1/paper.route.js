@@ -1,6 +1,8 @@
 /* eslint-disable no-undef */
 import express from 'express';
 import { Data } from '../../tool/data.model';
+import { Course } from '../../course/course.model';
+import { DataUseRegister } from '../../dataUseRegister/dataUseRegister.model';
 import { ROLES } from '../../user/user.roles';
 import passport from 'passport';
 import { utils } from '../../auth';
@@ -131,26 +133,40 @@ router.get('/:paperID', async (req, res) => {
 			},
 		},
 	]);
-	q.exec((err, data) => {
+	q.exec(async (err, data) => {
 		if (data.length > 0) {
-			var p = Data.aggregate([{ $match: { $and: [{ relatedObjects: { $elemMatch: { objectId: req.params.paperID } } }] } }]);
-			p.exec((err, relatedData) => {
-				relatedData.forEach(dat => {
-					dat.relatedObjects.forEach(x => {
-						if (x.objectId === req.params.paperID && dat.id !== req.params.paperID) {
-							if (typeof data[0].relatedObjects === 'undefined') data[0].relatedObjects = [];
-							data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type, user: x.user, updated: x.updated });
-						}
-					});
-				});
-				if (err) return res.json({ success: false, error: err });
-
-				data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
-				if (Array.isArray(data[0].document_links)) {
-					data[0].document_links = formatRetroDocumentLinks(data[0].document_links);
-				}
-				return res.json({ success: true, data: data });
+			let relatedData = await Data.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.paperID } },
+				activeflag: 'active',
 			});
+
+			let relatedDataFromCourses = await Course.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.paperID } },
+				activeflag: 'active',
+			});
+
+			let relatedDataFromDatauses = await DataUseRegister.find({
+				relatedObjects: { $elemMatch: { objectId: req.params.paperID } },
+				activeflag: 'active',
+			});
+
+			relatedData = [...relatedData, ...relatedDataFromCourses, ...relatedDataFromDatauses];
+
+			relatedData.forEach(dat => {
+				dat.relatedObjects.forEach(x => {
+					if (x.objectId === req.params.paperID && dat.id !== req.params.paperID) {
+						if (typeof data[0].relatedObjects === 'undefined') data[0].relatedObjects = [];
+						data[0].relatedObjects.push({ objectId: dat.id, reason: x.reason, objectType: dat.type, user: x.user, updated: x.updated });
+					}
+				});
+			});
+			if (err) return res.json({ success: false, error: err });
+
+			data[0].persons = helper.hidePrivateProfileDetails(data[0].persons);
+			if (Array.isArray(data[0].document_links)) {
+				data[0].document_links = formatRetroDocumentLinks(data[0].document_links);
+			}
+			return res.json({ success: true, data: data });
 		} else {
 			return res.status(404).send(`Paper not found for Id: ${escape(req.params.paperID)}`);
 		}
