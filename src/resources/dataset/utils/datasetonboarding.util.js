@@ -251,7 +251,7 @@ const populateStructuralMetadata = technicaldetails => {
 				columnName: dataElement.label,
 				columnDescription: dataElement.description,
 				dataType: dataElement.dataType.label,
-				sensitive: '',
+				sensitive: !!dataElement.sensitive,
 			});
 		}
 	}
