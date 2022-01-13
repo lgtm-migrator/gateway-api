@@ -1,7 +1,7 @@
 import express from 'express';
 import { getObjectFilters, getFilter } from './search.repository';
 import { filtersService } from '../filters/dependency';
-import { isEqual, lowerCase, isEmpty } from 'lodash';
+import { isEqual, isEmpty } from 'lodash';
 import searchUtil from './util/search.util';
 
 const router = express.Router();
