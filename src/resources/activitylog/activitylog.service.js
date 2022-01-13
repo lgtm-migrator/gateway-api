@@ -1124,6 +1124,54 @@ export default class activityLogService {
 		await this.activityLogRepository.createActivityLog(log);
 	}
 
+	async logDataUseRegisterUpdated(context) {
+		const { dataUseRegister, updateObj, user } = context;
+
+		let detHtml = '';
+		let detText = '';
+
+		Object.keys(updateObj).forEach(updatedField => {
+			const oldValue = dataUseRegister[updatedField];
+			const newValue = updateObj[updatedField];
+
+			detHtml = detHtml.concat(
+				`<div class='activity-log-detail'>` +
+					`<div class='activity-log-detail-header'>${dataUseRegister.projectTitle}</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Field</div>` +
+					`<div class='activity-log-detail-row-answer'>${updatedField}</div>` +
+					`</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Previous Value</div>` +
+					`<div class='activity-log-detail-row-answer'>${oldValue ? oldValue : ''}</div>` +
+					`</div>` +
+					`<div class='activity-log-detail-row'>` +
+					`<div class='activity-log-detail-row-question'>Updated Value</div>` +
+					`<div class='activity-log-detail-row-answer'>${newValue ? newValue : ''}</div>` +
+					`</div>` +
+					`</div>`
+			);
+
+			detText = detText.concat(
+				`${dataUseRegister.projectTitle}\nField: ${updatedField}\nPrevious Value: ${oldValue}\nUpdated Value: ${newValue}\n\n`
+			);
+		});
+
+		const logUpdate = {
+			eventType: constants.activityLogEvents.DATA_USE_REGISTER_UPDATED,
+			logType: constants.activityLogTypes.DATA_USE_REGISTER,
+			timestamp: Date.now(),
+			detailedText: detText,
+			plainText: `updates submitted by custodian ${user.firstname} ${user.lastname}.`,
+			html: `updates submitted by custodian <b>${user.firstname} ${user.lastname}</b>.`,
+			detailedHtml: detHtml,
+			user: user._id,
+			userTypes: [constants.userTypes.APPLICANT, constants.userTypes.CUSTODIAN],
+		};
+
+		await this.activityLogRepository.createActivityLog(logUpdate);
+	}
+
 	getQuestionInfo(accessRequest, questionId) {
 		const questionSet = accessRequest.jsonSchema.questionSets.find(qs => qs.questions.find(question => question.questionId === questionId));
 

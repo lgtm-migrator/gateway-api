@@ -269,11 +269,7 @@ module.exports = {
 					} else {
 						Data.findByIdAndUpdate(
 							{ _id: id },
-							{
-								structuralMetadata,
-								percentageCompleted,
-								'timestamps.updated': Date.now(),
-							},
+							{ structuralMetadata, percentageCompleted: data.percentageCompleted, 'timestamps.updated': Date.now() },
 							{ new: true }
 						).catch(err => {
 							console.error(err);
@@ -853,7 +849,7 @@ module.exports = {
 			return res.status(500).json({ success: false, message: 'Bulk upload of metadata failed', error: err.message });
 		}
 	},
-
+  
 	//POST api/v1/dataset-onboarding/duplicate/:id
 	duplicateDataset: async (req, res) => {
 		try {
@@ -897,3 +893,10 @@ module.exports = {
 		}
 	},
 };
+
+/* Sentry.addBreadcrumb({
+				category: 'Bulk Upload',
+				message: 'Unable to get metadata quality value ' + err.message,
+				level: Sentry.Severity.Error,
+			});
+			Sentry.captureException(err); */

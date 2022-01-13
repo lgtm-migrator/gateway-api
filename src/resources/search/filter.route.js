@@ -1,10 +1,25 @@
 import express from 'express';
 import { getObjectFilters, getFilter } from './search.repository';
 import { filtersService } from '../filters/dependency';
+<<<<<<< HEAD
 import { isEqual, lowerCase, isEmpty } from 'lodash';
 import searchUtil from './util/search.util';
+=======
+import { isEqual, isEmpty } from 'lodash';
+>>>>>>> master
 
 const router = express.Router();
+
+const typeMapper = {
+	Datasets: 'dataset',
+	Tools: 'tool',
+	Projects: 'project',
+	Papers: 'paper',
+	People: 'person',
+	Courses: 'course',
+	Collections: 'collection',
+	Datauses: 'dataUseRegister',
+};
 
 // @route   GET api/v1/search/filter
 // @desc    GET Get filters
@@ -12,6 +27,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
 	let searchString = req.query.search || ''; //If blank then return all
 	let tab = req.query.tab || ''; //If blank then return all
+<<<<<<< HEAD
 	if (tab === '') {
 		let searchQuery = { $and: [{ activeflag: 'active' }] };
 		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
@@ -80,8 +96,29 @@ router.get('/', async (req, res) => {
 		return res.json({
 			success: true,
 			filters,
+=======
+
+	const type = !isEmpty(tab) && typeof tab === 'string' ? typeMapper[`${tab}`] : '';
+
+	let defaultQuery = { $and: [{ activeflag: 'active' }] };
+	if (type === 'collection') {
+		defaultQuery['$and'].push({ publicflag: true });
+	} else if (type === 'course') {
+		defaultQuery['$and'].push({
+			$or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }],
+>>>>>>> master
 		});
 	}
+
+	if (searchString.length > 0) defaultQuery['$and'].push({ $text: { $search: searchString } });
+	const filterQuery = getObjectFilters(defaultQuery, req, type);
+	const useCachedFilters = isEqual(defaultQuery, filterQuery) && searchString.length === 0;
+
+	const filters = await filtersService.buildFilters(type, filterQuery, useCachedFilters);
+	return res.json({
+		success: true,
+		filters,
+	});
 });
 
 // @route   GET api/v1/search/filter/topic/:type
