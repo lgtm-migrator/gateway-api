@@ -64,6 +64,27 @@ router.get('/status', function (req, res, next) {
 						}
 					});
 				}
+				if (adminArray[0].roles.includes(constants.roleTypes.ADMIN_DATA_USE)) {
+					const allTeams = await getTeams();
+					allTeams.forEach(newTeam => {
+						const foundTeam = teams.find(team => team._id && team._id.toString() === newTeam._id.toString());
+						if (!isEmpty(foundTeam)) {
+							const foundRole = foundTeam.roles.find(role => role === constants.roleTypes.REVIEWER);
+							if (isEmpty(foundRole)) {
+								foundTeam.roles.push(constants.roleTypes.REVIEWER);
+							}
+							foundTeam.isAdmin = true;
+						} else {
+							teams.push({
+								_id: newTeam._id,
+								name: newTeam.publisher.name,
+								roles: [constants.roleTypes.REVIEWER],
+								type: newTeam.type,
+								isAdmin: true,
+							});
+						}
+					});
+				}
 			}
 
 			//Remove admin team and then sort teams alphabetically
