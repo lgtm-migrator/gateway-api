@@ -1,12 +1,8 @@
 import express from 'express';
 import { getObjectFilters, getFilter } from './search.repository';
 import { filtersService } from '../filters/dependency';
-<<<<<<< HEAD
 import { isEqual, lowerCase, isEmpty } from 'lodash';
 import searchUtil from './util/search.util';
-=======
-import { isEqual, isEmpty } from 'lodash';
->>>>>>> master
 
 const router = express.Router();
 
@@ -27,7 +23,6 @@ const typeMapper = {
 router.get('/', async (req, res) => {
 	let searchString = req.query.search || ''; //If blank then return all
 	let tab = req.query.tab || ''; //If blank then return all
-<<<<<<< HEAD
 	if (tab === '') {
 		let searchQuery = { $and: [{ activeflag: 'active' }] };
 		if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
@@ -96,17 +91,6 @@ router.get('/', async (req, res) => {
 		return res.json({
 			success: true,
 			filters,
-=======
-
-	const type = !isEmpty(tab) && typeof tab === 'string' ? typeMapper[`${tab}`] : '';
-
-	let defaultQuery = { $and: [{ activeflag: 'active' }] };
-	if (type === 'collection') {
-		defaultQuery['$and'].push({ publicflag: true });
-	} else if (type === 'course') {
-		defaultQuery['$and'].push({
-			$or: [{ 'courseOptions.startDate': { $gte: new Date(Date.now()) } }, { 'courseOptions.flexibleDates': true }],
->>>>>>> master
 		});
 	}
 
