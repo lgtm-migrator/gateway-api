@@ -2,8 +2,20 @@ import express from 'express';
 import { getObjectFilters, getFilter } from './search.repository';
 import { filtersService } from '../filters/dependency';
 import { isEqual, lowerCase, isEmpty } from 'lodash';
+import searchUtil from './util/search.util';
 
 const router = express.Router();
+
+const typeMapper = {
+	Datasets: 'dataset',
+	Tools: 'tool',
+	Projects: 'project',
+	Papers: 'paper',
+	People: 'person',
+	Courses: 'course',
+	Collections: 'collection',
+	Datauses: 'dataUseRegister',
+};
 
 // @route   GET api/v1/search/filter
 // @desc    GET Get filters
@@ -74,11 +86,23 @@ router.get('/', async (req, res) => {
 		const useCachedFilters = isEqual(defaultQuery, filterQuery) && searchString.length === 0;
 
 		const filters = await filtersService.buildFilters(type, filterQuery, useCachedFilters);
+		const spatialV2 = searchUtil.arrayToTree(filters['spatial']);
+		filters['spatialv2'] = spatialV2;
 		return res.json({
 			success: true,
 			filters,
 		});
 	}
+
+	if (searchString.length > 0) defaultQuery['$and'].push({ $text: { $search: searchString } });
+	const filterQuery = getObjectFilters(defaultQuery, req, type);
+	const useCachedFilters = isEqual(defaultQuery, filterQuery) && searchString.length === 0;
+
+	const filters = await filtersService.buildFilters(type, filterQuery, useCachedFilters);
+	return res.json({
+		success: true,
+		filters,
+	});
 });
 
 // @route   GET api/v1/search/filter/topic/:type

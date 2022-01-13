@@ -15,6 +15,12 @@ const _activityLogNotifications = Object.freeze({
 	MANUALEVENTREMOVED: 'manualEventRemoved',
 });
 
+const _dataUseRegisterNotifications = Object.freeze({
+	DATAUSEAPPROVED: 'dataUseApproved',
+	DATAUSEREJECTED: 'dataUseRejected',
+	DATAUSEPENDING: 'dataUsePending',
+});
+
 const _teamNotificationTypes = Object.freeze({
 	DATAACCESSREQUEST: 'dataAccessRequest',
 	METADATAONBOARDING: 'metaDataOnboarding',
@@ -113,7 +119,7 @@ const _navigationFlags = {
 						displayOrder: 1,
 					},
 				],
-				text: '#NAME# made this change on on #DATE#',
+				text: '#NAME# made this change on #DATE#',
 			},
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
@@ -216,6 +222,7 @@ const _roleTypes = {
 	REVIEWER: 'reviewer',
 	METADATA_EDITOR: 'metadata_editor',
 	ADMIN_DATASET: 'admin_dataset',
+	ADMIN_DATA_USE: 'admin_data_use',
 };
 
 // </Team related enums>
@@ -246,8 +253,14 @@ const _logTypes = {
 	USER: 'User',
 };
 
-// Activity log related enums
+const _dataUseRegisterStatus = {
+	ACTIVE: 'active',
+	INREVIEW: 'inReview',
+	REJECTED: 'rejected',
+	ARCHIVED: 'archived',
+};
 
+// Activity log related enums
 const _activityLogEvents = {
 	data_access_request: {
 		APPLICATION_SUBMITTED: 'applicationSubmitted',
@@ -280,10 +293,14 @@ const _activityLogEvents = {
 		DATASET_VERSION_UNARCHIVED: 'datasetVersionUnarchived',
 		DATASET_UPDATES_SUBMITTED: 'datasetUpdatesSubmitted',
 	},
+	data_use_register: {
+		DATA_USE_REGISTER_UPDATED: 'dataUseRegisterUpdated',
+	},
 };
 
 const _activityLogTypes = {
 	DATA_ACCESS_REQUEST: 'data_request',
+	DATA_USE_REGISTER: 'data_use_register',
 	DATASET: 'dataset',
 };
 
@@ -337,4 +354,6 @@ export default {
 	DARMessageTypes: _DARMessageTypes,
 	datasetSortOptions: _datasetSortOptions,
 	datasetSortDirections: _datasetSortDirections,
+	dataUseRegisterStatus: _dataUseRegisterStatus,
+	dataUseRegisterNotifications: _dataUseRegisterNotifications,
 };

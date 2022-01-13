@@ -5,6 +5,7 @@ import { getAllTools } from '../../tool/data.repository';
 import { isEmpty, isNil } from 'lodash';
 import escape from 'escape-html';
 import { Course } from '../../course/course.model';
+import { DataUseRegister } from '../../dataUseRegister/dataUseRegister.model';
 import { filtersService } from '../../filters/dependency';
 import * as Sentry from '@sentry/node';
 const router = express.Router();
@@ -181,7 +182,23 @@ router.get('/:datasetID', async (req, res) => {
 		activeflag: 'active',
 	});
 
-	relatedData = [...relatedData, ...relatedDataFromCourses];
+	let relatedDataFromDatauses = await DataUseRegister.find({
+		relatedObjects: {
+			$elemMatch: {
+				$or: [
+					{
+						objectId: { $in: dataVersionsArray },
+					},
+					{
+						pid: pid,
+					},
+				],
+			},
+		},
+		activeflag: 'active',
+	});
+
+	relatedData = [...relatedData, ...relatedDataFromCourses, ...relatedDataFromDatauses];
 
 	relatedData.forEach(dat => {
 		dat.relatedObjects.forEach(relatedObject => {
