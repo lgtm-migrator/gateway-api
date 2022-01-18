@@ -1,4 +1,4 @@
-import dbHandler from '../../../../config/in-memory-db';
+import dbHandler from '../../config/in-memory-db';
 import datasetonboardingUtil from '../datasetonboarding.util';
 import {
 	datasetQuestionAnswersMocks,
@@ -6,6 +6,7 @@ import {
 	publisherDetailsMock,
 	structuralMetadataMock,
 } from '../__mocks__/datasetobjects';
+import _ from 'lodash';
 
 beforeAll(async () => {
 	await dbHandler.connect();
@@ -67,39 +68,39 @@ describe('Dataset onboarding utility', () => {
 
 			expect(datasetv2DiffObject).toStrictEqual(diffArray);
 		});
-	});
 
-	describe('populateStructuralMetadata', () => {
-		it('Should return a correctly formatted  array', async () => {
-			let populateStructuralMetadataArray = await datasetonboardingUtil.populateStructuralMetadata(structuralMetadataMock);
-			const expectArray = [
-				{
-					tableName: 'papers',
-					tableDescription: 'HDR UK Paper and Preprints',
-					columnName: 'urls',
-					columnDescription: 'List of URLS (DOI, HTML, PDF)',
-					dataType: 'List (URLS)',
-					sensitive: true,
-				},
-				{
-					tableName: 'papers',
-					tableDescription: 'HDR UK Paper and Preprints',
-					columnName: 'date',
-					columnDescription: 'Date of Publication',
-					dataType: 'Date',
-					sensitive: false,
-				},
-				{
-					tableName: 'papers',
-					tableDescription: 'HDR UK Paper and Preprints',
-					columnName: 'date',
-					columnDescription: 'Date of Publication1',
-					dataType: 'Date',
-					sensitive: false,
-				},
-			];
+		describe('populateStructuralMetadata', () => {
+			it('Should return a correctly formatted  array', async () => {
+				let populateStructuralMetadataArray = await datasetonboardingUtil.populateStructuralMetadata(structuralMetadataMock);
+				const expectArray = [
+					{
+						tableName: 'papers',
+						tableDescription: 'HDR UK Paper and Preprints',
+						columnName: 'urls',
+						columnDescription: 'List of URLS (DOI, HTML, PDF)',
+						dataType: 'List (URLS)',
+						sensitive: true,
+					},
+					{
+						tableName: 'papers',
+						tableDescription: 'HDR UK Paper and Preprints',
+						columnName: 'date',
+						columnDescription: 'Date of Publication',
+						dataType: 'Date',
+						sensitive: false,
+					},
+					{
+						tableName: 'papers',
+						tableDescription: 'HDR UK Paper and Preprints',
+						columnName: 'date',
+						columnDescription: 'Date of Publication1',
+						dataType: 'Date',
+						sensitive: false,
+					},
+				];
 
-			expect(populateStructuralMetadataArray).toStrictEqual(expectArray);
+				expect(populateStructuralMetadataArray).toStrictEqual(expectArray);
+			});
 		});
 	});
 });

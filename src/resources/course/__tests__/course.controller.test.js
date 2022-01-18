@@ -75,7 +75,7 @@ describe('CourseController', function () {
 
 	describe('getCourses', function () {
 		let req, res, status, json, courseService, courseController;
-        req = { params: {} };
+		req = { params: {} };
 
 		beforeEach(() => {
 			status = sinon.stub();

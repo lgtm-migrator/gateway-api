@@ -1,4 +1,5 @@
 import { checkIDMiddleware } from './checkIDMiddleware';
+import { authoriseUserForPublisher, validateSearchParameters } from './datasetonboarding.middleware';
 import {
 	validateViewRequest,
 	authoriseView,
@@ -16,4 +17,6 @@ export {
 	validateCreateRequest,
 	validateDeleteRequest,
 	authoriseDelete,
+	authoriseUserForPublisher,
+	validateSearchParameters,
 };

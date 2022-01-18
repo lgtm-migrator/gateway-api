@@ -229,13 +229,11 @@ const _roleTypes = {
 
 // <Dataset onboarding related enums>
 
-const _datatsetStatuses = {
+const _datasetStatuses = {
 	DRAFT: 'draft',
-	INPROGRESS: 'inProgress',
 	INREVIEW: 'inReview',
-	APPROVED: 'approved',
+	ACTIVE: 'active',
 	REJECTED: 'rejected',
-	APPROVEDWITHCONDITIONS: 'approved with conditions',
 	ARCHIVE: 'archive',
 };
 
@@ -311,6 +309,20 @@ const _systemGeneratedUser = {
 	LASTNAME: 'Generated',
 };
 
+const _datasetSortOptions = {
+	latest: 'timestamps.updated',
+	alphabetic: 'name',
+	metadata: 'percentageCompleted.summary',
+	recentlyadded: 'timestamps.created',
+	popularity: 'counter',
+	relevance: 'weights',
+};
+
+const _datasetSortDirections = {
+	asc: 1,
+	desc: -1,
+};
+
 export default {
 	userTypes: _userTypes,
 	enquiryFormId: _enquiryFormId,
@@ -333,13 +345,15 @@ export default {
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
-	datatsetStatuses: _datatsetStatuses,
+	datasetStatuses: _datasetStatuses,
 	logTypes: _logTypes,
 	activityLogEvents: _activityLogEvents,
 	activityLogTypes: _activityLogTypes,
 	systemGeneratedUser: _systemGeneratedUser,
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
+	datasetSortOptions: _datasetSortOptions,
+	datasetSortDirections: _datasetSortDirections,
 	dataUseRegisterStatus: _dataUseRegisterStatus,
 	dataUseRegisterNotifications: _dataUseRegisterNotifications,
 };
