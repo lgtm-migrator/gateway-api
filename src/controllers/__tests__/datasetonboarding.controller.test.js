@@ -2,6 +2,7 @@ import sinon from 'sinon';
 
 import datasetOnboardingController from '../datasetonboarding.controller';
 import datasetOnboardingService from '../../services/datasetonboarding.service';
+import constants from '../../resources/utilities/constants.util';
 
 afterEach(function () {
 	sinon.restore();
@@ -46,7 +47,7 @@ describe('datasetOnboardingController', () => {
 						inReview: 100,
 					},
 					results: {
-						status: 'inReview',
+						'activeflag(s)': 'inReview',
 						total: 100,
 						currentPage: 1,
 						totalPages: 10,
@@ -81,7 +82,7 @@ describe('datasetOnboardingController', () => {
 						inReview: 100,
 					},
 					results: {
-						status: 'all',
+						'activeflag(s)': Object.values(constants.datasetStatuses).join(', '),
 						total: 100,
 						currentPage: 1,
 						totalPages: 10,
