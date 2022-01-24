@@ -49,26 +49,13 @@ const validateSearchParameters = (req, res, next) => {
 			});
 		}
 	} else {
-		if (status) {
-			if (status.split(',').length > 1) {
-				status.split(',').forEach(status => {
-					if (!datasetStatuses.includes(status)) {
-						return res.status(400).json({
-							success: false,
-							message: `The status parameter must be one of or a combination of [${datasetStatuses.join(
-								', '
-							)}]. Multiple statuses must be delimited by a ',' (comma - with no space)`,
-						});
-					}
-				});
-			} else if (!datasetStatuses.includes(status)) {
-				return res.status(400).json({
-					success: false,
-					message: `The status parameter must be one of or a combination of [${datasetStatuses.join(
-						', '
-					)}]. Multiple statuses must be delimited by a ',' (comma - with no space)`,
-				});
-			}
+		if (status && !status.split(',').every(option => datasetStatuses.includes(option))) {
+			return res.status(400).json({
+				success: false,
+				message: `The status parameter must be one of or a combination of [${datasetStatuses.join(
+					', '
+				)}]. Multiple statuses must be delimited by a ',' (comma - with no space)`,
+			});
 		}
 	}
 

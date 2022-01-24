@@ -54,7 +54,7 @@ export default class DatasetOnboardingController {
 				data: {
 					publisherTotals: totalCounts,
 					results: {
-						'activeflag(s)': statusArray.join(', '),
+						'activeflag(s)': [...new Set(statusArray)].join(', '),
 						total: count,
 						currentPage: page,
 						totalPages: pageCount,
