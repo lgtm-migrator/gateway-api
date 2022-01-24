@@ -54,9 +54,7 @@ export default class DatasetOnboardingService {
 		return totalCounts;
 	};
 
-	getDatasetsByPublisher = async (status, publisherID, page, limit, sortBy, sortDirection, search) => {
-		const activeflagOptions = Object.values(constants.datasetStatuses);
-
+	getDatasetsByPublisher = async (statusArray, publisherID, page, limit, sortBy, sortDirection, search) => {
 		let datasets = await Data.aggregate([
 			{
 				$match: {
@@ -122,11 +120,9 @@ export default class DatasetOnboardingService {
 			},
 			{
 				$match: {
-					activeflag: status
-						? status
-						: {
-								$in: activeflagOptions,
-						  },
+					activeflag: {
+						$in: statusArray,
+					},
 					...(search.length > 0 && {
 						$or: [
 							{ name: { $regex: search, $options: 'i' } },
