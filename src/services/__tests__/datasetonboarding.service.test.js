@@ -44,12 +44,12 @@ describe('datasetOnboardingService', () => {
 			const limit = 10;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
-			const status = activeflag;
+			const statusArray = [activeflag];
 			const publisherID = 'TestPublisher';
 			const search = '';
 
 			const [versionedDatasets] = await datasetonboardingService.getDatasetsByPublisher(
-				status,
+				statusArray,
 				publisherID,
 				page,
 				limit,
@@ -61,43 +61,17 @@ describe('datasetOnboardingService', () => {
 			expect([...new Set(versionedDatasets.map(dataset => dataset.activeflag))].length).toEqual(1);
 		});
 
-		it('should return all status types if no status is given', async () => {
-			const page = 1;
-			const limit = 10;
-			const sortBy = 'latest';
-			const sortDirection = 'desc';
-			const status = null;
-			const publisherID = 'TestPublisher';
-			const search = '';
-
-			const expectedResponse = datasetSearchStub
-				.filter(dataset => dataset.datasetv2.summary.publisher.identifier === 'TestPublisher')
-				.map(dataset => dataset.activeflag);
-
-			const [versionedDatasets] = await datasetonboardingService.getDatasetsByPublisher(
-				status,
-				publisherID,
-				page,
-				limit,
-				sortBy,
-				sortDirection,
-				search
-			);
-
-			expect([...new Set(versionedDatasets.map(dataset => dataset.activeflag))].sort()).toEqual([...new Set(expectedResponse)].sort());
-		});
-
 		it('should return the correct count of filered results', async () => {
 			const page = 1;
 			const limit = 10;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
-			const status = 'inReview';
+			const statusArray = ['inReview'];
 			const publisherID = 'admin';
 			const search = '';
 
 			const [_, count] = await datasetonboardingService.getDatasetsByPublisher(
-				status,
+				statusArray,
 				publisherID,
 				page,
 				limit,
@@ -114,12 +88,12 @@ describe('datasetOnboardingService', () => {
 			const limit = 10;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
-			const status = 'inReview';
+			const statusArray = ['inReview'];
 			const publisherID = 'admin';
 			const search = 'abstract3';
 
 			const [_, count] = await datasetonboardingService.getDatasetsByPublisher(
-				status,
+				statusArray,
 				publisherID,
 				page,
 				limit,
@@ -136,12 +110,12 @@ describe('datasetOnboardingService', () => {
 			const limit = 1;
 			const sortBy = 'latest';
 			const sortDirection = 'desc';
-			const status = 'inReview';
+			const statusArray = ['inReview'];
 			const publisherID = 'admin';
 			const search = '';
 
 			const [versionedDatasets, count] = await datasetonboardingService.getDatasetsByPublisher(
-				status,
+				statusArray,
 				publisherID,
 				page,
 				limit,
@@ -161,12 +135,12 @@ describe('datasetOnboardingService', () => {
 				const limit = 10;
 				const sortBy = sortOption;
 				const sortDirection = 'asc';
-				const status = '';
+				const statusArray = Object.values(constants.datasetStatuses);
 				const publisherID = 'admin';
 				const search = 'test';
 
 				const [versionedDatasets, _] = await datasetonboardingService.getDatasetsByPublisher(
-					status,
+					statusArray,
 					publisherID,
 					page,
 					limit,
@@ -215,12 +189,12 @@ describe('datasetOnboardingService', () => {
 				const limit = 10;
 				const sortBy = sortOption;
 				const sortDirection = 'desc';
-				const status = '';
+				const statusArray = Object.values(constants.datasetStatuses);
 				const publisherID = 'admin';
 				const search = 'test';
 
 				const [versionedDatasets, _] = await datasetonboardingService.getDatasetsByPublisher(
-					status,
+					statusArray,
 					publisherID,
 					page,
 					limit,
