@@ -136,3 +136,42 @@ export const publisherDetailsMock = [
 		mdcFolderId: 'c4f50de0-2188-426b-a6cd-6b11a8d6c3cb',
 	},
 ];
+
+export const structuralMetadataMock = [
+	{
+		label: 'papers',
+		description: 'HDR UK Paper and Preprints',
+		domainType: 'DataClass',
+		elements: [
+			{
+				label: 'urls',
+				description: 'List of URLS (DOI, HTML, PDF)',
+				dataType: {
+					label: 'List (URLS)',
+					domainType: 'PrimitiveType',
+				},
+				sensitive: true,
+				domainType: 'DataElement',
+			},
+			{
+				label: 'date',
+				description: 'Date of Publication',
+				dataType: {
+					label: 'Date',
+					domainType: 'PrimitiveType',
+				},
+				sensitive: false,
+				domainType: 'DataElement',
+			},
+			{
+				label: 'date',
+				description: 'Date of Publication1',
+				dataType: {
+					label: 'Date',
+					domainType: 'PrimitiveType',
+				},
+				domainType: 'DataElement',
+			},
+		],
+	},
+];

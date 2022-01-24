@@ -230,7 +230,7 @@ app.use('/api/v1/collectioncounter', require('../resources/collections/collectio
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
-app.use('/api/v1/dataset-onboarding', require('../resources/dataset/datasetonboarding.route'));
+app.use('/api/v1/dataset-onboarding', require('../routes/datasetonboarding.route'));
 app.use('/api/v1/datasets', require('../resources/dataset/v1/dataset.route'));
 app.use('/api/v2/datasets', require('../resources/dataset/v2/dataset.route'));
 
