@@ -108,7 +108,7 @@ describe('Testing the datasetonboarding middleware', () => {
 		];
 
 		test.each(pageAndLimitOptions)(
-			'Each invalid page-limit combination should return a 500 error and the appropriate response',
+			'Each invalid page-limit combination should return a 400 error and the appropriate response',
 			pageLimitOption => {
 				let req = mockedRequest();
 				let res = mockedResponse();
@@ -134,7 +134,7 @@ describe('Testing the datasetonboarding middleware', () => {
 
 				validateSearchParameters(req, res, nextFunction);
 
-				expect(res.status).toHaveBeenCalledWith(500);
+				expect(res.status).toHaveBeenCalledWith(400);
 				expect(res.json).toHaveBeenCalledWith(expectedResponse);
 				expect(nextFunction.mock.calls.length).toBe(0);
 			}
@@ -189,7 +189,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			expect(nextFunction.mock.calls.length).toBe(sortOptions.length);
 		});
 
-		it('Should invoke next() for each correct status option', () => {
+		it('Should invoke next() for each correct single status option', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
@@ -213,6 +213,28 @@ describe('Testing the datasetonboarding middleware', () => {
 			});
 
 			expect(nextFunction.mock.calls.length).toBe(statuses.length);
+		});
+
+		it('Should invoke next() for multiple correct status options', () => {
+			let req = mockedRequest();
+			let res = mockedResponse();
+			const nextFunction = jest.fn();
+
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
+
+			req.query = {
+				search: '',
+				page: 1,
+				limit: 10,
+				sortBy: 'latest',
+				sortDirection: 'asc',
+				status: 'active,draft,rejected',
+			};
+			validateSearchParameters(req, res, nextFunction);
+
+			expect(nextFunction.mock.calls.length).toBe(1);
 		});
 
 		it('Should return a 401 if and admin team member provides a status which is not "inReview"', () => {
@@ -245,7 +267,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			expect(nextFunction.mock.calls.length).toBe(0);
 		});
 
-		it('Should return a 500 error for an unallowed sort option', () => {
+		it('Should return a 400 error for an unallowed sort option', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
@@ -265,11 +287,11 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			validateSearchParameters(req, res, nextFunction);
 
-			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.status).toHaveBeenCalledWith(400);
 			expect(nextFunction.mock.calls.length).toBe(0);
 		});
 
-		it('Should return a 500 error for an unallowed status parameter', () => {
+		it('Should return a 400 error for an unallowed single status parameter', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
@@ -289,7 +311,31 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			validateSearchParameters(req, res, nextFunction);
 
-			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(nextFunction.mock.calls.length).toBe(0);
+		});
+
+		it('Should return a 400 error for an unallowed status parameter if multiple are supplied', () => {
+			let req = mockedRequest();
+			let res = mockedResponse();
+			const nextFunction = jest.fn();
+
+			req.params = {
+				publisherID: 'fakeTeam',
+			};
+
+			req.query = {
+				search: '',
+				page: 1,
+				limit: 10,
+				sortBy: 'latest',
+				sortDirection: 'asc',
+				status: 'active,notARealStatus,rejected',
+			};
+
+			validateSearchParameters(req, res, nextFunction);
+
+			expect(res.status).toHaveBeenCalledWith(400);
 			expect(nextFunction.mock.calls.length).toBe(0);
 		});
 
@@ -317,7 +363,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			expect(nextFunction.mock.calls.length).toBe(1);
 		});
 
-		it('Should return a 500 error for an unallowed sortDirection option', () => {
+		it('Should return a 400 error for an unallowed sortDirection option', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
@@ -337,11 +383,11 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			validateSearchParameters(req, res, nextFunction);
 
-			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.status).toHaveBeenCalledWith(400);
 			expect(nextFunction.mock.calls.length).toBe(0);
 		});
 
-		it('Should return a 500 error for the popularity sort option with a status which does not equal active', () => {
+		it('Should return a 400 error for the popularity sort option with a status which does not equal active', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
@@ -366,7 +412,7 @@ describe('Testing the datasetonboarding middleware', () => {
 
 			validateSearchParameters(req, res, nextFunction);
 
-			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.json).toHaveBeenCalledWith(expectedResponse);
 			expect(nextFunction.mock.calls.length).toBe(0);
 		});
