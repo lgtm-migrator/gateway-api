@@ -79,7 +79,7 @@ describe('DataUseRegisterService', function () {
 
 			const updateObj = await dataUseRegisterService.buildUpdateObject(dataUserRegister, dataUseRegisterPayload, user);
 
-			const expectedResponse = { relatedObjects: [], activeflag: 'active', rejectionReason: '' };
+			const expectedResponse = { activeflag: 'active', rejectionReason: '' };
 
 			expect(updateObj).toEqual(expectedResponse);
 		});
@@ -91,7 +91,7 @@ describe('DataUseRegisterService', function () {
 
 			const updateObj = await dataUseRegisterService.buildUpdateObject(dataUserRegister, dataUseRegisterPayload, user);
 
-			const expectedResponse = { relatedObjects: [], activeflag: 'rejected', rejectionReason: 'This dataset is rejected' };
+			const expectedResponse = { activeflag: 'rejected', rejectionReason: 'This dataset is rejected' };
 
 			expect(updateObj).toEqual(expectedResponse);
 		});
@@ -103,7 +103,7 @@ describe('DataUseRegisterService', function () {
 
 			const updateObj = await dataUseRegisterService.buildUpdateObject(dataUserRegister, dataUseRegisterPayload, user);
 
-			const expectedResponse = { relatedObjects: [], activeflag: 'archived', rejectionReason: '' };
+			const expectedResponse = { activeflag: 'archived', rejectionReason: '' };
 
 			expect(updateObj).toEqual(expectedResponse);
 		});
