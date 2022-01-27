@@ -132,6 +132,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	} else if (type === 'dataUseRegister') {
 		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
 
+		console.log(searchTerm);
+
 		if (searchTerm) {
 			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
 		}
