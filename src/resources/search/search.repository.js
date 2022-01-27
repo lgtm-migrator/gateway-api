@@ -151,9 +151,11 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 
 		queryObject = [
-			{ $match: searchTerm },
+			{ $match: { ...searchTerm, ...newSearchQuery } },
 			{ $addFields: { relatedResourcesCount: { $size: { $ifNull: ['$relatedObjects', []] } } } },
 			{ $sort: dataUseSort },
+			{ $skip: parseInt(startIndex) },
+			{ $limit: maxResults },
 			{
 				$lookup: {
 					from: 'publishers',
@@ -191,7 +193,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					publisherInfo: { name: '$publisherDetails.name' },
 				},
 			},
-			{ $match: newSearchQuery },
 			{
 				$project: {
 					_id: 0,
@@ -468,15 +469,20 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 	}
 
-	// Get paged results based on query params
-	const searchResults = await collection
-		.aggregate(queryObject)
-		.skip(parseInt(startIndex))
-		.limit(parseInt(maxResults))
-		.catch(err => {
+	let searchResults;
+	if (type === 'dataUseRegister') {
+		searchResults = await collection.aggregate(queryObject).catch(err => {
 			console.log(err);
 		});
-	// Return data
+	} else {
+		searchResults = await collection
+			.aggregate(queryObject)
+			.skip(parseInt(startIndex))
+			.limit(parseInt(maxResults))
+			.catch(err => {
+				console.log(err);
+			});
+	}
 
 	return { data: searchResults };
 }
