@@ -81,7 +81,7 @@ const validateSearchParameters = (req, res, next) => {
 	}
 
 	req.query = {
-		search: search.replace(/[-"@.*+/?^${}()|[\]\\]/g, ''),
+		search: search.replace(/["@.*+/?^${}()|[\]\\]/g, ''),
 		page: parseInt(page),
 		limit: parseInt(limit),
 		sortBy: sortBy,

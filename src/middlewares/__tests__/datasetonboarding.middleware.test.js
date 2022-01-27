@@ -349,7 +349,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			};
 
 			req.query = {
-				search: 'unallowed-/?@"{}()characters',
+				search: 'unallowed/?@"{}()characters',
 				page: 1,
 				limit: 10,
 				sortBy: 'latest',
@@ -373,7 +373,7 @@ describe('Testing the datasetonboarding middleware', () => {
 			};
 
 			req.query = {
-				search: 'unallowed-/?@"{}()characters',
+				search: 'unallowed/?@"{}()characters',
 				page: 1,
 				limit: 10,
 				sortBy: 'latest',
