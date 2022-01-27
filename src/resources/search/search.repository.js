@@ -132,6 +132,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	} else if (type === 'dataUseRegister') {
 		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
 
+		console.log(searchTerm);
+
 		if (searchTerm) {
 			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
 		}
@@ -151,9 +153,11 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 
 		queryObject = [
-			{ $match: searchTerm },
+			{ $match: { ...searchTerm, ...newSearchQuery } },
 			{ $addFields: { relatedResourcesCount: { $size: { $ifNull: ['$relatedObjects', []] } } } },
 			{ $sort: dataUseSort },
+			{ $skip: parseInt(startIndex) },
+			{ $limit: maxResults },
 			{
 				$lookup: {
 					from: 'publishers',
@@ -191,7 +195,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					publisherInfo: { name: '$publisherDetails.name' },
 				},
 			},
-			{ $match: newSearchQuery },
 			{
 				$project: {
 					_id: 0,
@@ -468,15 +471,24 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 	}
 
-	// Get paged results based on query params
-	const searchResults = await collection
-		.aggregate(queryObject)
-		.skip(parseInt(startIndex))
-		.limit(parseInt(maxResults))
-		.catch(err => {
+	let time1 = Date.now();
+
+	let searchResults;
+	if (type === 'dataUseRegister') {
+		searchResults = await collection.aggregate(queryObject).catch(err => {
 			console.log(err);
 		});
-	// Return data
+	} else {
+		searchResults = await collection
+			.aggregate(queryObject)
+			.skip(parseInt(startIndex))
+			.limit(parseInt(maxResults))
+			.catch(err => {
+				console.log(err);
+			});
+	}
+
+	console.log((Date.now() - time1) / 1000);
 
 	return { data: searchResults };
 }
