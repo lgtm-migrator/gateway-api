@@ -319,7 +319,7 @@ export default class FiltersService {
 					keywords,
 					organisationName,
 					organisationSector,
-					publisher: 'test', //publisherDetails[0].name,
+					publisher: publisherDetails[0].name,
 					fundersAndSponsors,
 				};
 				break;

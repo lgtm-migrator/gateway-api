@@ -476,8 +476,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 	}
 
-	let time1 = Date.now();
-
 	const searchResults =
 		type === 'dataUseRegister'
 			? await collection.aggregate(queryObject).catch(err => {
@@ -490,8 +488,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					.catch(err => {
 						console.log(err);
 					});
-
-	console.log((Date.now() - time1) / 1000);
 
 	return { data: searchResults };
 }
