@@ -157,11 +157,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 
 		queryObject = [
-			{ $match: { ...searchTerm, ...newSearchQuery } },
-			{ $addFields: { relatedResourcesCount: { $size: { $ifNull: ['$relatedObjects', []] } } } },
-			{ $sort: dataUseSort },
-			{ $skip: parseInt(startIndex) },
-			{ $limit: maxResults },
+			{ $match: searchTerm },
 			{
 				$lookup: {
 					from: 'publishers',
@@ -170,6 +166,16 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					as: 'publisherDetails',
 				},
 			},
+			{
+				$addFields: {
+					publisherInfo: { name: '$publisherDetails.name' },
+				},
+			},
+			{ $match: newSearchQuery },
+			{ $addFields: { relatedResourcesCount: { $size: { $ifNull: ['$relatedObjects', []] } } } },
+			{ $sort: dataUseSort },
+			{ $skip: parseInt(startIndex) },
+			{ $limit: maxResults },
 			{
 				$lookup: {
 					from: 'tools',
@@ -192,11 +198,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 						{ $project: { pid: 1, name: 1 } },
 					],
 					as: 'gatewayDatasetsInfo',
-				},
-			},
-			{
-				$addFields: {
-					publisherInfo: { name: '$publisherDetails.name' },
 				},
 			},
 			{
@@ -475,6 +476,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 	}
 
+	let time1 = Date.now();
+
 	const searchResults =
 		type === 'dataUseRegister'
 			? await collection.aggregate(queryObject).catch(err => {
@@ -487,6 +490,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					.catch(err => {
 						console.log(err);
 					});
+
+	console.log((Date.now() - time1) / 1000);
 
 	return { data: searchResults };
 }
