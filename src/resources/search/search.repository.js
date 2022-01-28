@@ -138,16 +138,22 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 		let dataUseSort = {};
 
-		if (sort === '') {
-			dataUseSort = searchAll ? { lastActivity: -1 } : { score: { $meta: 'textScore' } };
-		} else if (sort === 'relevance') {
-			dataUseSort = searchAll ? { projectTitle: 1 } : { score: { $meta: 'textScore' } };
-		} else if (sort === 'popularity') {
-			dataUseSort = searchAll ? { counter: -1, projectTitle: 1 } : { counter: -1, score: { $meta: 'textScore' } };
-		} else if (sort === 'latest') {
-			dataUseSort = searchAll ? { lastActivity: -1 } : { lastActivity: -1, score: { $meta: 'textScore' } };
-		} else if (sort === 'resources') {
-			dataUseSort = searchAll ? { relatedResourcesCount: -1 } : { relatedResourcesCount: -1, score: { $meta: 'textScore' } };
+		switch (sort) {
+			case '':
+				dataUseSort = searchAll ? { lastActivity: -1 } : { score: { $meta: 'textScore' } };
+				break;
+			case 'relevance':
+				dataUseSort = searchAll ? { projectTitle: 1 } : { score: { $meta: 'textScore' } };
+				break;
+			case 'popularity':
+				dataUseSort = searchAll ? { counter: -1, projectTitle: 1 } : { counter: -1, score: { $meta: 'textScore' } };
+				break;
+			case 'latest':
+				dataUseSort = searchAll ? { lastActivity: -1 } : { lastActivity: -1, score: { $meta: 'textScore' } };
+				break;
+			case 'resources':
+				dataUseSort = searchAll ? { relatedResourcesCount: -1 } : { relatedResourcesCount: -1, score: { $meta: 'textScore' } };
+				break;
 		}
 
 		queryObject = [
@@ -469,20 +475,18 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		}
 	}
 
-	let searchResults;
-	if (type === 'dataUseRegister') {
-		searchResults = await collection.aggregate(queryObject).catch(err => {
-			console.log(err);
-		});
-	} else {
-		searchResults = await collection
-			.aggregate(queryObject)
-			.skip(parseInt(startIndex))
-			.limit(parseInt(maxResults))
-			.catch(err => {
-				console.log(err);
-			});
-	}
+	const searchResults =
+		type === 'dataUseRegister'
+			? await collection.aggregate(queryObject).catch(err => {
+					console.log(err);
+			  })
+			: await collection
+					.aggregate(queryObject)
+					.skip(parseInt(startIndex))
+					.limit(parseInt(maxResults))
+					.catch(err => {
+						console.log(err);
+					});
 
 	return { data: searchResults };
 }
