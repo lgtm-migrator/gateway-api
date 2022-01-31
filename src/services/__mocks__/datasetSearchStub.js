@@ -130,6 +130,8 @@ export const datasetSearchStub = [
 			submitted: 456,
 		},
 		pid: 'pid7',
+		datasetid: 'exampleID',
+		questionAnswers: '{ "properties/summary/title": "test6 v1" }',
 		datasetVersion: '1.0.0',
 		name: 'test2 v1',
 		datasetv2: { summary: { publisher: { identifier: 'AnotherTestPublisher' }, abstract: 'test' } },

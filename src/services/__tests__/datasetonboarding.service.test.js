@@ -1,6 +1,7 @@
 import sinon from 'sinon';
 
 import dbHandler from '../../config/in-memory-db';
+import { Data } from '../../resources/tool/data.model';
 import { publisherStub } from '../__mocks__/publisherStub';
 import constants from '../../resources/utilities/constants.util';
 import { datasetSearchStub } from '../__mocks__/datasetSearchStub';
@@ -260,6 +261,26 @@ describe('datasetOnboardingService', () => {
 			await datasetonboardingService.createNewDatasetVersion(publisherID, pid, currentVersionId);
 
 			expect(newVersionForExistingDatasetStub.calledOnce).toBe(true);
+		});
+	});
+
+	describe('duplicateDataset', () => {
+		it('should not create duplicates of the pid and datasetid fields', async () => {
+			const dataset = datasetSearchStub[7];
+
+			await datasetonboardingService.duplicateDataset(dataset._id);
+
+			const allDatasets = await Data.find({}).sort({ createdAt: -1 });
+
+			const duplicatedDataset = allDatasets[0];
+
+			expect(duplicatedDataset._id).not.toEqual(dataset._id);
+			expect(duplicatedDataset.datasetid).not.toEqual(dataset.datasetid);
+			expect(duplicatedDataset.pid).not.toEqual(dataset.pid);
+			expect(duplicatedDataset.questionAnswers).not.toEqual(dataset.questionAnswers);
+			expect(duplicatedDataset.name).toEqual(dataset.name + '-duplicate');
+			expect(duplicatedDataset.activeflag).toEqual('draft');
+			expect(duplicatedDataset.datasetVersion).toEqual('1.0.0');
 		});
 	});
 });

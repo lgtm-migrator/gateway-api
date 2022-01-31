@@ -310,6 +310,9 @@ export default class DatasetOnboardingService {
 		delete datasetCopy._id;
 		datasetCopy.pid = uuidv4();
 
+		delete datasetCopy.datasetid;
+		datasetCopy.datasetid = 'New duplicated dataset';
+
 		let parsedQuestionAnswers = JSON.parse(datasetCopy.questionAnswers);
 		parsedQuestionAnswers['properties/summary/title'] += duplicateText;
 
