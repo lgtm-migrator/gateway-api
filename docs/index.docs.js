@@ -13,6 +13,7 @@ import tool from './resources/tool.docs';
 import course from './resources/course.docs';
 import collection from './resources/collections.docs';
 import activitylog from './resources/activitylog.docs';
+import spatialfilter from './resources/spatialfilter.docs';
 
 import collectionsSchema from './schemas/collections.schema';
 
@@ -65,6 +66,7 @@ module.exports = {
 		...course,
 		...collection,
 		...activitylog,
+		...spatialfilter,
 	},
 	components: {
 		securitySchemes: {
