@@ -34,7 +34,7 @@ const validateSearchParameters = (req, res, next) => {
 	} = req;
 
 	if (page < 1 || limit < 1 || !parseInt(page) || !parseInt(limit)) {
-		return res.status(500).json({
+		return res.status(400).json({
 			success: false,
 			message: 'The page and / or limit parameter(s) must be integers > 0',
 		});
@@ -49,37 +49,39 @@ const validateSearchParameters = (req, res, next) => {
 			});
 		}
 	} else {
-		if (status && !datasetStatuses.includes(status)) {
-			return res.status(500).json({
+		if (status && !status.split(',').every(option => datasetStatuses.includes(option))) {
+			return res.status(400).json({
 				success: false,
-				message: `The status parameter must be one of [${datasetStatuses.join(', ')}]`,
+				message: `The status parameter must be one of or a combination of [${datasetStatuses.join(
+					', '
+				)}]. Multiple statuses must be delimited by a ',' (comma - with no space)`,
 			});
 		}
 	}
 
 	if (!sortOptions.includes(sortBy)) {
-		return res.status(500).json({
+		return res.status(400).json({
 			success: false,
 			message: `The sortBy parameter must be one of [${sortOptions.join(', ')}]`,
 		});
 	}
 
 	if (!['asc', 'desc'].includes(sortDirection)) {
-		return res.status(500).json({
+		return res.status(400).json({
 			success: false,
 			message: `The sort direction must be either ascending [asc] or descending [desc]`,
 		});
 	}
 
 	if (sortBy === 'popularity' && status !== constants.datasetStatuses.ACTIVE) {
-		return res.status(500).json({
+		return res.status(400).json({
 			success: false,
 			message: `Sorting by popularity is only available for active datasets [status=active]`,
 		});
 	}
 
 	req.query = {
-		search: search.replace(/[-"@.*+/?^${}()|[\]\\]/g, ''),
+		search: search.replace(/["@.*+/?^${}()|[\]\\]/g, ''),
 		page: parseInt(page),
 		limit: parseInt(limit),
 		sortBy: sortBy,

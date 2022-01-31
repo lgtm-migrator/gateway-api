@@ -21,16 +21,24 @@ export default class DatasetOnboardingController {
 	}
 
 	getDatasetsByPublisher = async (req, res) => {
+		const activeflagOptions = Object.values(constants.datasetStatuses);
+
 		try {
 			let {
 				params: { publisherID },
 				query: { search, page, limit, sortBy, sortDirection, status },
 			} = req;
 
+			let statusArray = activeflagOptions;
+
+			if (status) {
+				statusArray = status.split(',');
+			}
+
 			const totalCounts = await this.datasetonboardingService.getDatasetsByPublisherCounts(publisherID);
 
 			const [versionedDatasets, count] = await this.datasetonboardingService.getDatasetsByPublisher(
-				status,
+				statusArray,
 				publisherID,
 				page,
 				limit,
@@ -39,15 +47,19 @@ export default class DatasetOnboardingController {
 				search
 			);
 
-			if (!status) status = 'all';
-
 			const pageCount = Math.ceil(count / limit);
 
 			return res.status(200).json({
 				success: true,
 				data: {
 					publisherTotals: totalCounts,
-					results: { status: status, total: count, currentPage: page, totalPages: pageCount, listOfDatasets: versionedDatasets },
+					results: {
+						'activeflag(s)': [...new Set(statusArray)].join(', '),
+						total: count,
+						currentPage: page,
+						totalPages: pageCount,
+						listOfDatasets: versionedDatasets,
+					},
 				},
 			});
 		} catch (err) {
