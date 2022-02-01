@@ -150,7 +150,7 @@ export default class FiltersService {
 				break;
 			case 'dataUseRegister':
 				fields = `organisationName,organisationSector,keywords,publisherDetails.name,fundersAndSponsors`;
-				entities = await this.DataUseRegisterRepository.getDataUseRegisters({ ...query, fields }, { aggregate: true });
+				entities = await this.DataUseRegisterRepository.getDataUseRegistersFilters({ ...query, fields }, { aggregate: true });
 				break;
 		}
 		// 3. Loop over each entity

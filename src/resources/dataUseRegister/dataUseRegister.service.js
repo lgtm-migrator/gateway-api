@@ -456,7 +456,9 @@ export default class DataUseRegisterService {
 
 		//relatedObjects
 
-		updateObj.relatedObjects = [...relatedResourcesWithRemovedOldAutomaticEntries, ...newAutomaticRelatedResources];
+		if (relatedObjects) {
+			updateObj.relatedObjects = [...relatedResourcesWithRemovedOldAutomaticEntries, ...newAutomaticRelatedResources];
+		}
 
 		const fundersAndSponsorsList =
 			fundersAndSponsors &&

@@ -136,6 +136,26 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
 		}
 
+		let dataUseSort = {};
+
+		switch (sort) {
+			case '':
+				dataUseSort = searchAll ? { lastActivity: -1 } : { score: { $meta: 'textScore' } };
+				break;
+			case 'relevance':
+				dataUseSort = searchAll ? { projectTitle: 1 } : { score: { $meta: 'textScore' } };
+				break;
+			case 'popularity':
+				dataUseSort = searchAll ? { counter: -1, projectTitle: 1 } : { counter: -1, score: { $meta: 'textScore' } };
+				break;
+			case 'latest':
+				dataUseSort = searchAll ? { lastActivity: -1 } : { lastActivity: -1, score: { $meta: 'textScore' } };
+				break;
+			case 'resources':
+				dataUseSort = searchAll ? { relatedResourcesCount: -1 } : { relatedResourcesCount: -1, score: { $meta: 'textScore' } };
+				break;
+		}
+
 		queryObject = [
 			{ $match: searchTerm },
 			{
@@ -146,6 +166,16 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					as: 'publisherDetails',
 				},
 			},
+			{
+				$addFields: {
+					publisherInfo: { name: '$publisherDetails.name' },
+				},
+			},
+			{ $match: newSearchQuery },
+			{ $addFields: { relatedResourcesCount: { $size: { $ifNull: ['$relatedObjects', []] } } } },
+			{ $sort: dataUseSort },
+			{ $skip: parseInt(startIndex) },
+			{ $limit: maxResults },
 			{
 				$lookup: {
 					from: 'tools',
@@ -170,12 +200,6 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					as: 'gatewayDatasetsInfo',
 				},
 			},
-			{
-				$addFields: {
-					publisherInfo: { name: '$publisherDetails.name' },
-				},
-			},
-			{ $match: newSearchQuery },
 			{
 				$project: {
 					_id: 0,
@@ -390,75 +414,81 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		];
 	}
 
-	if (sort === '') {
-		if (type === 'dataset') {
-			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, name: 1 } });
-			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
-		} else if (type === 'paper') {
-			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
-			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
-		} else {
-			if (form === 'true' && searchAll) {
-				queryObject.push({ $sort: { myEntity: -1, latestUpdate: -1 } });
-			} else if (form === 'true' && !searchAll) {
-				queryObject.push({ $sort: { myEntity: -1, score: { $meta: 'textScore' } } });
-			} else if (form !== 'true' && searchAll) {
-				queryObject.push({ $sort: { latestUpdate: -1 } });
-			} else if (form !== 'true' && !searchAll) {
-				queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+	if (type !== 'dataUseRegister') {
+		if (sort === '') {
+			if (type === 'dataset') {
+				if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, name: 1 } });
+				else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+			} else if (type === 'paper') {
+				if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
+				else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
+			} else {
+				if (form === 'true' && searchAll) {
+					queryObject.push({ $sort: { myEntity: -1, latestUpdate: -1 } });
+				} else if (form === 'true' && !searchAll) {
+					queryObject.push({ $sort: { myEntity: -1, score: { $meta: 'textScore' } } });
+				} else if (form !== 'true' && searchAll) {
+					queryObject.push({ $sort: { latestUpdate: -1 } });
+				} else if (form !== 'true' && !searchAll) {
+					queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+				}
 			}
-		}
-	} else if (sort === 'relevance') {
-		if (type === 'person') {
-			if (searchAll) queryObject.push({ $sort: { lastname: 1 } });
-			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
-		} else {
-			if (searchAll) queryObject.push({ $sort: { name: 1 } });
-			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
-		}
-	} else if (sort === 'popularity') {
-		if (type === 'person') {
-			if (searchAll) queryObject.push({ $sort: { counter: -1, lastname: 1 } });
-			else queryObject.push({ $sort: { counter: -1, score: { $meta: 'textScore' } } });
-		} else {
-			if (searchAll) queryObject.push({ $sort: { counter: -1, name: 1 } });
-			else queryObject.push({ $sort: { counter: -1, score: { $meta: 'textScore' } } });
-		}
-	} else if (sort === 'metadata') {
-		if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, name: 1 } });
-		else queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, score: { $meta: 'textScore' } } });
-	} else if (sort === 'startdate') {
-		if (form === 'true' && searchAll) {
-			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1 } });
-		} else if (form === 'true' && !searchAll) {
-			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
-		} else if (form !== 'true' && searchAll) {
-			queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
-		} else if (form !== 'true' && !searchAll) {
-			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
-		}
-	} else if (sort === 'latest') {
-		if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
-		else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
-	} else if (sort === 'resources') {
-		if (searchAll) queryObject.push({ $sort: { relatedresources: -1 } });
-		else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
-	} else if (sort === 'sortbyyear') {
-		if (type === 'paper') {
-			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
-			else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
+		} else if (sort === 'relevance') {
+			if (type === 'person') {
+				if (searchAll) queryObject.push({ $sort: { lastname: 1 } });
+				else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+			} else {
+				if (searchAll) queryObject.push({ $sort: { name: 1 } });
+				else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
+			}
+		} else if (sort === 'popularity') {
+			if (type === 'person') {
+				if (searchAll) queryObject.push({ $sort: { counter: -1, lastname: 1 } });
+				else queryObject.push({ $sort: { counter: -1, score: { $meta: 'textScore' } } });
+			} else {
+				if (searchAll) queryObject.push({ $sort: { counter: -1, name: 1 } });
+				else queryObject.push({ $sort: { counter: -1, score: { $meta: 'textScore' } } });
+			}
+		} else if (sort === 'metadata') {
+			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, name: 1 } });
+			else queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, score: { $meta: 'textScore' } } });
+		} else if (sort === 'startdate') {
+			if (form === 'true' && searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1 } });
+			} else if (form === 'true' && !searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+			} else if (form !== 'true' && searchAll) {
+				queryObject.push({ $sort: { 'courseOptions.startDate': 1 } });
+			} else if (form !== 'true' && !searchAll) {
+				queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1, score: { $meta: 'textScore' } } });
+			}
+		} else if (sort === 'latest') {
+			if (searchAll) queryObject.push({ $sort: { latestUpdate: -1 } });
+			else queryObject.push({ $sort: { latestUpdate: -1, score: { $meta: 'textScore' } } });
+		} else if (sort === 'resources') {
+			if (searchAll) queryObject.push({ $sort: { relatedresources: -1 } });
+			else queryObject.push({ $sort: { relatedresources: -1, score: { $meta: 'textScore' } } });
+		} else if (sort === 'sortbyyear') {
+			if (type === 'paper') {
+				if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
+				else queryObject.push({ $sort: { journalYear: -1, score: { $meta: 'textScore' } } });
+			}
 		}
 	}
 
-	// Get paged results based on query params
-	const searchResults = await collection
-		.aggregate(queryObject)
-		.skip(parseInt(startIndex))
-		.limit(parseInt(maxResults))
-		.catch(err => {
-			console.log(err);
-		});
-	// Return data
+	const searchResults =
+		type === 'dataUseRegister'
+			? await collection.aggregate(queryObject).catch(err => {
+					console.log(err);
+			  })
+			: await collection
+					.aggregate(queryObject)
+					.skip(parseInt(startIndex))
+					.limit(parseInt(maxResults))
+					.catch(err => {
+						console.log(err);
+					});
+
 	return { data: searchResults };
 }
 
