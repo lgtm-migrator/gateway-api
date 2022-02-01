@@ -76,6 +76,46 @@ export default class DataUseRegisterRepository extends Repository {
 		}
 	}
 
+	async getDataUseRegistersFilters(query, options = {}) {
+		if (options.aggregate) {
+			const searchTerm = (query && query['$and'] && query['$and'].find(exp => !isNil(exp['$text']))) || {};
+
+			if (searchTerm) {
+				query['$and'] = query['$and'].filter(exp => !exp['$text']);
+			}
+
+			const aggregateQuery = [
+				{ $match: searchTerm },
+				{
+					$lookup: {
+						from: 'publishers',
+						localField: 'publisher',
+						foreignField: '_id',
+						as: 'publisherDetails',
+					},
+				},
+				{
+					$addFields: {
+						publisherInfo: { name: '$publisherDetails.name' },
+					},
+				},
+				{ $match: { $and: [...query['$and']] } },
+			];
+
+			if (query.fields) {
+				aggregateQuery.push({
+					$project: query.fields.split(',').reduce((obj, key) => {
+						return { ...obj, [key]: 1 };
+					}, {}),
+				});
+			}
+			return DataUseRegister.aggregate(aggregateQuery);
+		} else {
+			const options = { lean: true };
+			return this.find(query, options);
+		}
+	}
+
 	getDataUseRegisterByApplicationId(applicationId) {
 		return this.dataUseRegister.findOne({ projectId: applicationId }, 'id').lean();
 	}
