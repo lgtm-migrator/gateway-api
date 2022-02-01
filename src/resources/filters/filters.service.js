@@ -119,6 +119,7 @@ export default class FiltersService {
 			fields = '';
 
 		// 2. Query Db for required entity if array of entities has not been passed
+		query.limit = 0; // unlimited rows
 		switch (type) {
 			// Get minimal payload to build filters
 			case 'dataset':
