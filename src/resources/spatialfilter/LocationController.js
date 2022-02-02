@@ -14,7 +14,7 @@ class LocationController extends BaseController {
         console.log(table);
         const statement = `SELECT name, country, level_one, level_two, level_three
                             FROM \`${table}\`
-                            WHERE lower(\`name\`) LIKE '%${filter.toLowerCase()}%'
+                            WHERE lower(\`name\`) LIKE "%${filter.toLowerCase()}%"
                             ORDER BY \`name\`
                             LIMIT ${process.env.BIG_QUERY_LIMIT_ROWS}`;
 
