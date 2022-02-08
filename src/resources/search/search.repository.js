@@ -1,8 +1,17 @@
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { Collections } from '../collections/collections.model';
+import { DataUseRegister } from '../dataUseRegister/dataUseRegister.model';
 import { findNodeInTree } from '../filters/utils/filters.util';
-import { datasetFilters, toolFilters, projectFilters, paperFilters, collectionFilters, courseFilters } from '../filters/filters.mapper';
+import {
+	datasetFilters,
+	toolFilters,
+	projectFilters,
+	paperFilters,
+	collectionFilters,
+	courseFilters,
+	dataUseRegisterFilters,
+} from '../filters/filters.mapper';
 import _ from 'lodash';
 import moment from 'moment';
 import helperUtil from '../utilities/helper.util';
@@ -13,6 +22,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 		collection = Course;
 	} else if (type === 'collection') {
 		collection = Collections;
+	} else if (type === 'dataUseRegister') {
+		collection = DataUseRegister;
 	}
 	// ie copy deep object
 	let newSearchQuery = _.cloneDeep(searchQuery);
@@ -65,13 +76,12 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			},
 		];
 	} else if (type === 'collection') {
-		
-		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
 
-		if(searchTerm) {
+		if (searchTerm) {
 			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
 		}
-		
+
 		queryObject = [
 			{ $match: searchTerm },
 			{ $lookup: { from: 'tools', localField: 'authors', foreignField: 'id', as: 'persons' } },
@@ -115,6 +125,73 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 							else: '$updatedon',
 						},
 					},
+					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
+				},
+			},
+		];
+	} else if (type === 'dataUseRegister') {
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
+
+		if (searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+
+		queryObject = [
+			{ $match: searchTerm },
+			{
+				$lookup: {
+					from: 'publishers',
+					localField: 'publisher',
+					foreignField: '_id',
+					as: 'publisherDetails',
+				},
+			},
+			{
+				$lookup: {
+					from: 'tools',
+					let: {
+						listOfGatewayDatasets: '$gatewayDatasets',
+					},
+					pipeline: [
+						{
+							$match: {
+								$expr: {
+									$and: [
+										{ $in: ['$pid', '$$listOfGatewayDatasets'] },
+										{
+											$eq: ['$activeflag', 'active'],
+										},
+									],
+								},
+							},
+						},
+						{ $project: { pid: 1, name: 1 } },
+					],
+					as: 'gatewayDatasetsInfo',
+				},
+			},
+			{
+				$addFields: {
+					publisherInfo: { name: '$publisherDetails.name' },
+				},
+			},
+			{ $match: newSearchQuery },
+			{
+				$project: {
+					_id: 0,
+					id: 1,
+					projectTitle: 1,
+					organisationName: 1,
+					keywords: 1,
+					datasetTitles: 1,
+					publisherInfo: 1,
+					publisherDetails: 1,
+					gatewayDatasetsInfo: 1,
+					nonGatewayDatasets: 1,
+					activeflag: 1,
+					counter: 1,
+					type: 1,
+					latestUpdate: '$lastActivity',
 					relatedresources: { $cond: { if: { $isArray: '$relatedObjects' }, then: { $size: '$relatedObjects' }, else: 0 } },
 				},
 			},
@@ -219,7 +296,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 					activeflag: 1,
 					counter: 1,
-					'datasetfields.metadataquality.quality_score': 1,
+					'datasetfields.metadataquality.weighted_quality_score': 1,
 
 					latestUpdate: '$timestamps.updated',
 					relatedresources: {
@@ -288,7 +365,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 					activeflag: 1,
 					counter: 1,
-					'datasetfields.metadataquality.quality_score': 1,
+					'datasetfields.metadataquality.weighted_quality_score': 1,
 					latestUpdate: {
 						$cond: {
 							if: { $gte: ['$createdAt', '$updatedon'] },
@@ -315,7 +392,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 	if (sort === '') {
 		if (type === 'dataset') {
-			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
+			if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, name: 1 } });
 			else queryObject.push({ $sort: { score: { $meta: 'textScore' } } });
 		} else if (type === 'paper') {
 			if (searchAll) queryObject.push({ $sort: { journalYear: -1 } });
@@ -348,8 +425,8 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 			else queryObject.push({ $sort: { counter: -1, score: { $meta: 'textScore' } } });
 		}
 	} else if (sort === 'metadata') {
-		if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, name: 1 } });
-		else queryObject.push({ $sort: { 'datasetfields.metadataquality.quality_score': -1, score: { $meta: 'textScore' } } });
+		if (searchAll) queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, name: 1 } });
+		else queryObject.push({ $sort: { 'datasetfields.metadataquality.weighted_quality_score': -1, score: { $meta: 'textScore' } } });
 	} else if (sort === 'startdate') {
 		if (form === 'true' && searchAll) {
 			queryObject.push({ $sort: { myEntity: -1, 'courseOptions.startDate': 1 } });
@@ -374,9 +451,13 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 	}
 
 	// Get paged results based on query params
-	const searchResults = await collection.aggregate(queryObject).skip(parseInt(startIndex)).limit(parseInt(maxResults)).catch(err => {
-		console.log(err);
-	});
+	const searchResults = await collection
+		.aggregate(queryObject)
+		.skip(parseInt(startIndex))
+		.limit(parseInt(maxResults))
+		.catch(err => {
+			console.log(err);
+		});
 	// Return data
 	return { data: searchResults };
 }
@@ -387,6 +468,8 @@ export function getObjectCount(type, searchAll, searchQuery) {
 		collection = Course;
 	} else if (type === 'collection') {
 		collection = Collections;
+	} else if (type === 'dataUseRegister') {
+		collection = DataUseRegister;
 	}
 	let newSearchQuery = JSON.parse(JSON.stringify(searchQuery));
 	if (type !== 'collection') {
@@ -451,12 +534,12 @@ export function getObjectCount(type, searchAll, searchQuery) {
 				.sort({ score: { $meta: 'textScore' } });
 		}
 	} else if (type === 'collection') {
-		const searchTerm = newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text'])) || {};
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
 
-		if(searchTerm) {
+		if (searchTerm) {
 			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
 		}
-		
+
 		if (searchAll) {
 			q = collection.aggregate([
 				{ $match: searchTerm },
@@ -532,6 +615,52 @@ export function getObjectCount(type, searchAll, searchQuery) {
 				])
 				.sort({ score: { $meta: 'textScore' } });
 		}
+	} else if (type === 'dataUseRegister') {
+		const searchTerm = (newSearchQuery && newSearchQuery['$and'] && newSearchQuery['$and'].find(exp => !_.isNil(exp['$text']))) || {};
+
+		if (searchTerm) {
+			newSearchQuery['$and'] = newSearchQuery['$and'].filter(exp => !exp['$text']);
+		}
+
+		q = collection.aggregate([
+			{ $match: searchTerm },
+			{
+				$lookup: {
+					from: 'publishers',
+					localField: 'publisher',
+					foreignField: '_id',
+					as: 'publisherDetails',
+				},
+			},
+			{
+				$addFields: {
+					publisherDetails: {
+						$map: {
+							input: '$publisherDetails',
+							as: 'row',
+							in: {
+								name: '$$row.name',
+							},
+						},
+					},
+				},
+			},
+			{ $match: newSearchQuery },
+			{
+				$group: {
+					_id: {},
+					count: {
+						$sum: 1,
+					},
+				},
+			},
+			{
+				$project: {
+					count: '$count',
+					_id: 0,
+				},
+			},
+		]);
 	} else {
 		if (searchAll) {
 			q = collection.aggregate([
@@ -723,6 +852,8 @@ export function getObjectFilters(searchQueryStart, req, type) {
 				filterNode = findNodeInTree(collectionFilters, key);
 			} else if (type === 'course') {
 				filterNode = findNodeInTree(courseFilters, key);
+			} else if (type === 'dataUseRegister') {
+				filterNode = findNodeInTree(dataUseRegisterFilters, key);
 			}
 
 			if (filterNode) {
@@ -777,6 +908,8 @@ export const getFilter = async (searchString, type, field, isArray, activeFilter
 			collection = Course;
 		} else if (type === 'collection') {
 			collection = Collections;
+		} else if (type === 'datause') {
+			collection = DataUseRegister;
 		}
 		let q = '',
 			p = '';

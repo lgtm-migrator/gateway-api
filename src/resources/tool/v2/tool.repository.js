@@ -17,4 +17,9 @@ export default class ToolRepository extends Repository {
 		const options = { lean: true };
 		return this.find(query, options);
 	}
+
+	async getToolsByIds(toolIds) {
+		const options = { lean: true };
+		return this.find({ id: { $in: toolIds } }, options);
+	}
 }
