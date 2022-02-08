@@ -183,7 +183,12 @@ export default class DatasetOnboardingService {
 					},
 				},
 			},
-			{ $sort: { [constants.datasetSortOptions[sortBy]]: constants.datasetSortDirections[sortDirection] } },
+			{
+				$sort: {
+					[constants.datasetSortOptions[sortBy]]: constants.datasetSortDirections[sortDirection],
+					'timestamps.updated': constants.datasetSortDirections[sortDirection],
+				},
+			},
 			{ $unset: 'weights' },
 			{
 				$facet: {
