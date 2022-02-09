@@ -313,9 +313,18 @@ const _datasetSortOptions = {
 	latest: 'timestamps.updated',
 	alphabetic: 'name',
 	metadata: 'percentageCompleted.summary',
-	recentlyadded: 'timestamps.created',
+	recentlyadded: 'timestamps.published',
 	popularity: 'counter',
 	relevance: 'weights',
+};
+
+const _datasetSortOptionsKeys = {
+	LATEST: 'latest',
+	ALPHABETIC: 'alphabetic',
+	METADATA: 'metadata',
+	RECENTLYADDED: 'recentlyadded',
+	POPULARITY: 'popularity',
+	RELEVANCE: 'relevance',
 };
 
 const _datasetSortDirections = {
@@ -353,6 +362,7 @@ export default {
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
 	datasetSortOptions: _datasetSortOptions,
+	datasetSortOptionsKeys: _datasetSortOptionsKeys,
 	datasetSortDirections: _datasetSortDirections,
 	dataUseRegisterStatus: _dataUseRegisterStatus,
 	dataUseRegisterNotifications: _dataUseRegisterNotifications,
