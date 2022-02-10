@@ -53,14 +53,11 @@ configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
 
-var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
-
-var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
-var arr = rx.exec(process.env.homeURL);
-
-if (Array.isArray(arr) && arr.length > 0) {
-	domains.push('https://' + arr[2]);
-}
+const domains = process.env.CORS_ALLOW_ORIGIN_URL
+				.toLowerCase()
+				.split(',')
+				.map(item=>item.trim())
+				.filter(item => item);
 
 app.use(
 	cors({
