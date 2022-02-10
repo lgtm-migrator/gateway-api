@@ -8,7 +8,7 @@ import wordTemplateBuilder from '../utilities/wordTemplateBuilder.util';
 
 const fs = require('fs');
 const sgMail = require('@sendgrid/mail');
-const readEnv = process.env.ENV || 'prod';
+const readEnv = process.env.NODE_ENV || 'prod';
 let parent, qsId;
 let questionList = [];
 let excludedQuestionSetIds = ['addRepeatableSection', 'removeRepeatableSection'];

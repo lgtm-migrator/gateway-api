@@ -13,7 +13,7 @@ import datasetonboardingUtil from '../utils/datasetonboarding.util';
 import { PublisherModel } from '../resources/publisher/publisher.model';
 import { activityLogService } from '../resources/activitylog/dependency';
 
-const readEnv = process.env.ENV || 'prod';
+const readEnv = process.env.NODE_ENV || 'prod';
 
 export default class DatasetOnboardingController {
 	constructor(datasetonboardingService) {

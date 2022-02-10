@@ -8,7 +8,7 @@ import _ from 'lodash';
 const sgMail = require('@sendgrid/mail');
 
 const hdrukEmail = `enquiry@healthdatagateway.org`;
-const readEnv = process.env.ENV || 'prod';
+const readEnv = process.env.NODE_ENV || 'prod';
 
 const axios = require('axios');
 const router = express.Router();
