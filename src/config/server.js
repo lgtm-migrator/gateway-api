@@ -20,7 +20,7 @@ var app = express();
 const readEnv = process.env.NODE_ENV || 'prod';
 if (readEnv === 'test' || readEnv === 'prod') {
 	Sentry.init({
-		dsn: 'https://b6ea46f0fbe048c9974718d2c72e261b@o444579.ingest.sentry.io/5653683',
+		dsn: process.env.SENTRY_DNS,
 		environment: process.env.NODE_ENV,
 		integrations: [
 			// enable HTTP calls tracing
