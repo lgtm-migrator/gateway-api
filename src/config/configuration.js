@@ -23,9 +23,9 @@ export const clients = [
 		client_secret: process.env.MDW_CLIENT_SECRET || '',
 		grant_types: ['authorization_code'],
 		response_types: ['code'],
-		redirect_uris: process.env.MDW_REDIRECT_URI.split(',') || [''],
+		redirect_uris: process.env.MDW_REDIRECT_URL.split(',') || [''],
 		id_token_signed_response_alg: 'HS256',
-		post_logout_redirect_uris: process.env.MDW_REDIRECT_LOGOUT_URI.split(',') || [''],
+		post_logout_redirect_uris: process.env.MDW_REDIRECT_LOGOUT_URL.split(',') || [''],
 	},
 	{
 		//BC Platforms
@@ -33,9 +33,9 @@ export const clients = [
 		client_secret: process.env.BCP_CLIENT_SECRET || '',
 		grant_types: ['authorization_code', 'implicit'],
 		response_types: ['code id_token'],
-		redirect_uris: process.env.BCP_REDIRECT_URI.split(',') || [''],
+		redirect_uris: process.env.BCP_REDIRECT_URL.split(',') || [''],
 		id_token_signed_response_alg: 'HS256',
-		post_logout_redirect_uris: process.env.BCP_REDIRECT_LOGOUT_URI.split(',') || [''],
+		post_logout_redirect_uris: process.env.BCP_REDIRECT_LOGOUT_URL.split(',') || [''],
 	},
 	{
 		//GA4GH passports
@@ -43,9 +43,9 @@ export const clients = [
 		client_secret: process.env.GA4GH_CLIENT_SECRET,
 		grant_types: ['authorization_code', 'implicit'],
 		response_types: ['code id_token'],
-		redirect_uris: process.env.GA4GH_REDIRECT_URI.split(',') || [''],
+		redirect_uris: process.env.GA4GH_REDIRECT_URL.split(',') || [''],
 		id_token_signed_response_alg: 'HS256',
-		post_logout_redirect_uris: process.env.GA4GH_REDIRECT_LOGOUT_URI.split(',') || [''],
+		post_logout_redirect_uris: process.env.GA4GH_REDIRECT_LOGOUT_URL.split(',') || [''],
 	},
 ];
 
@@ -115,5 +115,5 @@ async function logoutSource(ctx, form) {
 async function postLogoutSuccessSource(ctx) {
 	// @param ctx - koa request context
 	ctx.res.clearCookie('jwt');
-	ctx.res.status(200).redirect(process.env.homeURL + '/search?search=');
+	ctx.res.status(200).redirect(process.env.GATEWAY_WEB_URL + '/search?search=');
 }
