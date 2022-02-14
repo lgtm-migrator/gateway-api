@@ -52,10 +52,10 @@ configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.APP_URL, configuration);
 oidc.proxy = true;
 
-var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
+var domains = [/\.healthdatagateway\.org$/, process.env.GATEWAY_WEB_URL];
 
 var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
-var arr = rx.exec(process.env.homeURL);
+var arr = rx.exec(process.env.GATEWAY_WEB_URL);
 
 if (Array.isArray(arr) && arr.length > 0) {
 	domains.push('https://' + arr[2]);
@@ -110,12 +110,12 @@ function setNoCache(req, res, next) {
 app.get('/api/v1/openid/endsession', setNoCache, (req, res, next) => {
 	passport.authenticate('jwt', async function (err, user, info) {
 		if (err || !user) {
-			return res.status(200).redirect(process.env.homeURL + '/search?search=');
+			return res.status(200).redirect(process.env.GATEWAY_WEB_URL + '/search?search=');
 		}
 		req.logout();
 		res.clearCookie('jwt');
 
-		return res.status(200).redirect(process.env.homeURL + '/search?search=');
+		return res.status(200).redirect(process.env.GATEWAY_WEB_URL + '/search?search=');
 	})(req, res, next);
 });
 
@@ -123,7 +123,7 @@ app.get('/api/v1/openid/interaction/:uid', setNoCache, (req, res, next) => {
 	passport.authenticate('jwt', async function (err, user, info) {
 		if (err || !user) {
 			//login in user - go to login screen
-			return res.status(200).redirect(process.env.homeURL + '/search?search=&showLogin=true&loginReferrer=' + process.env.APP_URL + req.url);
+			return res.status(200).redirect(process.env.GATEWAY_WEB_URL + '/search?search=&showLogin=true&loginReferrer=' + process.env.APP_URL + req.url);
 		} else {
 			try {
 				const { prompt, session } = await oidc.interactionDetails(req, res);
