@@ -95,13 +95,13 @@ const authorizeUpdate = async (req, res, next) => {
 	}
 
 	if (!dataUseRegister.manualUpload) {
-		if (!isEqual(projectIdText, dataUseRegister.projectIdText))
+		if (projectIdText && !isEqual(projectIdText, dataUseRegister.projectIdText))
 			return res.status(401).json({
 				success: false,
 				message: 'You are not authorised to update the project ID of an automatic data use register',
 			});
 
-		if (!isEqual(datasetTitles, dataUseRegister.datasetTitles))
+		if (datasetTitles && !isEqual(datasetTitles, dataUseRegister.datasetTitles))
 			return res.status(401).json({
 				success: false,
 				message: 'You are not authorised to update the datasets of an automatic data use register',
