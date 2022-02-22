@@ -52,7 +52,7 @@ export default class StatsService {
 
 	async getUptimeStatsByMonth(startMonth, endMonth) {
 		const monitoring = require('@google-cloud/monitoring');
-		const projectId = 'hdruk-gateway';
+		const projectId = process.env.GCP_STATS_PROJECT_ID;
 		const client = new monitoring.MetricServiceClient();
 
 		const request = {
