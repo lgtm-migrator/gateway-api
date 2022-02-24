@@ -187,7 +187,7 @@ const addTeamMembers = async (req, res) => {
  *
  * @param {string} role New role to assign to the team member
  */
-const updateTeamMember = async (req, res) => {};
+const updateTeamMember = async () => {};
 
 /**
  * GET api/v1/teams/:id/notifications
@@ -460,7 +460,7 @@ const updateNotificationMessages = async (req, res) => {
 			{ $set: { 'members.$[m].notifications.$[].message': '' } },
 			{ arrayFilters: [{ 'm.memberid': _id }], multi: true }
 		)
-			.then(resp => {
+			.then(() => {
 				return res.status(201).json();
 			})
 			.catch(err => {
@@ -601,7 +601,7 @@ const addTeam = async (req, res) => {
 	let mdcFolderId;
 	let teamManagerIds = [];
 	let recipients = [];
-	let folders = [];
+	//let folders = [];
 	const { name, memberOf, contactPoint, teamManagers } = req.body;
 
 	// 1. Check the current user is a member of the HDR admin team
@@ -615,6 +615,7 @@ const addTeam = async (req, res) => {
 	}
 
 	try {
+		/* 
 		// 3. log into MDC
 		let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 		const loginDetails = {
@@ -683,6 +684,7 @@ const addTeam = async (req, res) => {
 		if (!isEmpty(folders)) {
 			return res.status(422).json({ success: false, message: 'Duplicate MDC folder name' });
 		}
+		 */
 
 		// 9. Create the publisher
 		let publisher = new PublisherModel();
@@ -798,6 +800,7 @@ const editTeam = async (req, res) => {
 				{ datasetid: 1 }
 			).lean();
 
+			/* 
 			// 6. log into MDC
 			let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 			const loginDetails = {
@@ -889,6 +892,7 @@ const editTeam = async (req, res) => {
 			await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
 				console.error('Error when trying to logout of the MDC - ' + err.message);
 			});
+			 */
 
 			//13. Update datasets if name or member change
 			for (let dataset of listOfDatasets) {

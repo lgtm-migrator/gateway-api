@@ -6,10 +6,10 @@ import datasetonboardingUtil from './utils/datasetonboarding.util';
 import { v4 as uuidv4 } from 'uuid';
 import { isEmpty, isNil, escapeRegExp } from 'lodash';
 import axios from 'axios';
-import FormData from 'form-data';
+//import FormData from 'form-data';
 import moment from 'moment';
 import * as Sentry from '@sentry/node';
-var fs = require('fs');
+//var fs = require('fs');
 
 module.exports = {
 	//GET api/v1/dataset-onboarding
@@ -363,6 +363,7 @@ module.exports = {
 				dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
 				const publisherData = await PublisherModel.find({ _id: dataset.datasetv2.summary.publisher.identifier }).lean();
 
+				/* 
 				//1. create new version on MDC with version number and take datasetid and store
 				let metadataCatalogueLink = process.env.MDC_Config_HDRUK_metadataUrl || 'https://modelcatalogue.cs.ox.ac.uk/hdruk-preprod';
 				const loginDetails = {
@@ -424,161 +425,170 @@ module.exports = {
 									.catch(err => {
 										console.error('Error when trying to finalise the dataset on the MDC - ' + err.message);
 									});
+								 */
 
-								// Adding to DB
-								let observations = await datasetonboardingUtil.buildObservations(dataset.questionAnswers);
+				// Adding to DB
+				let newDatasetVersionId = '';
+				while (newDatasetVersionId === '') {
+					newDatasetVersionId = uuidv4();
+					if ((await Data.find({ datasetid: newDatasetVersionId }).length) === 0) newDatasetVersionId = '';
+				}
 
-								let datasetv2Object = {
-									identifier: newDatasetVersionId,
-									version: dataset.datasetVersion,
-									issued: moment(Date.now()).format('DD/MM/YYYY'),
-									modified: moment(Date.now()).format('DD/MM/YYYY'),
-									revisions: [],
-									summary: {
-										title: dataset.questionAnswers['properties/summary/title'] || '',
-										abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
-										publisher: {
-											identifier: publisherData[0]._id.toString(),
-											name: publisherData[0].publisherDetails.name,
-											logo: publisherData[0].publisherDetails.logo || '',
-											description: publisherData[0].publisherDetails.description || '',
-											contactPoint: publisherData[0].publisherDetails.contactPoint || [],
-											memberOf: publisherData[0].publisherDetails.memberOf,
-											accessRights: publisherData[0].publisherDetails.accessRights || [],
-											deliveryLeadTime: publisherData[0].publisherDetails.deliveryLeadTime || '',
-											accessService: publisherData[0].publisherDetails.accessService || '',
-											accessRequestCost: publisherData[0].publisherDetails.accessRequestCost || '',
-											dataUseLimitation: publisherData[0].publisherDetails.dataUseLimitation || [],
-											dataUseRequirements: publisherData[0].publisherDetails.dataUseRequirements || [],
-										},
-										contactPoint: dataset.questionAnswers['properties/summary/contactPoint'] || '',
-										keywords: dataset.questionAnswers['properties/summary/keywords'] || [],
-										alternateIdentifiers: dataset.questionAnswers['properties/summary/alternateIdentifiers'] || [],
-										doiName: dataset.questionAnswers['properties/summary/doiName'] || '',
-									},
-									documentation: {
-										description: dataset.questionAnswers['properties/documentation/description'] || '',
-										associatedMedia: dataset.questionAnswers['properties/documentation/associatedMedia'] || [],
-										isPartOf: dataset.questionAnswers['properties/documentation/isPartOf'] || [],
-									},
-									coverage: {
-										spatial: dataset.questionAnswers['properties/coverage/spatial'] || [],
-										typicalAgeRange: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
-										physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
-										followup: dataset.questionAnswers['properties/coverage/followup'] || '',
-										pathway: dataset.questionAnswers['properties/coverage/pathway'] || '',
-									},
-									provenance: {
-										origin: {
-											purpose: dataset.questionAnswers['properties/provenance/origin/purpose'] || [],
-											source: dataset.questionAnswers['properties/provenance/origin/source'] || [],
-											collectionSituation: dataset.questionAnswers['properties/provenance/origin/collectionSituation'] || [],
-										},
-										temporal: {
-											accrualPeriodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
-											distributionReleaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
-											startDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
-											endDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
-											timeLag: dataset.questionAnswers['properties/provenance/temporal/timeLag'] || '',
-										},
-									},
-									accessibility: {
-										usage: {
-											dataUseLimitation: dataset.questionAnswers['properties/accessibility/usage/dataUseLimitation'] || [],
-											dataUseRequirements: dataset.questionAnswers['properties/accessibility/usage/dataUseRequirements'] || [],
-											resourceCreator: dataset.questionAnswers['properties/accessibility/usage/resourceCreator'] || '',
-											investigations: dataset.questionAnswers['properties/accessibility/usage/investigations'] || [],
-											isReferencedBy: dataset.questionAnswers['properties/accessibility/usage/isReferencedBy'] || [],
-										},
-										access: {
-											accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || [],
-											accessService: dataset.questionAnswers['properties/accessibility/access/accessService'] || '',
-											accessRequestCost: dataset.questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
-											deliveryLeadTime: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
-											jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || [],
-											dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
-											dataController: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
-										},
-										formatAndStandards: {
-											vocabularyEncodingScheme:
-												dataset.questionAnswers['properties/accessibility/formatAndStandards/vocabularyEncodingScheme'] || [],
-											conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || [],
-											language: dataset.questionAnswers['properties/accessibility/formatAndStandards/language'] || [],
-											format: dataset.questionAnswers['properties/accessibility/formatAndStandards/format'] || [],
-										},
-									},
-									enrichmentAndLinkage: {
-										qualifiedRelation: dataset.questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] || [],
-										derivation: dataset.questionAnswers['properties/enrichmentAndLinkage/derivation'] || [],
-										tools: dataset.questionAnswers['properties/enrichmentAndLinkage/tools'] || [],
-									},
-									observations: observations,
-								};
+				let observations = await datasetonboardingUtil.buildObservations(dataset.questionAnswers);
 
-								let previousDataset = await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
-								let previousCounter = 0;
-								let previousDiscourseTopicId = 0;
-								if (previousDataset) previousCounter = previousDataset.counter || 0;
-								if (previousDataset) previousDiscourseTopicId = previousDataset.discourseTopicId || 0;
+				let datasetv2Object = {
+					identifier: newDatasetVersionId,
+					version: dataset.datasetVersion,
+					issued: moment(Date.now()).format('DD/MM/YYYY'),
+					modified: moment(Date.now()).format('DD/MM/YYYY'),
+					revisions: [],
+					summary: {
+						title: dataset.questionAnswers['properties/summary/title'] || '',
+						abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
+						publisher: {
+							identifier: publisherData[0]._id.toString(),
+							name: publisherData[0].publisherDetails.name,
+							logo: publisherData[0].publisherDetails.logo || '',
+							description: publisherData[0].publisherDetails.description || '',
+							contactPoint: publisherData[0].publisherDetails.contactPoint || [],
+							memberOf: publisherData[0].publisherDetails.memberOf,
+							accessRights: publisherData[0].publisherDetails.accessRights || [],
+							deliveryLeadTime: publisherData[0].publisherDetails.deliveryLeadTime || '',
+							accessService: publisherData[0].publisherDetails.accessService || '',
+							accessRequestCost: publisherData[0].publisherDetails.accessRequestCost || '',
+							dataUseLimitation: publisherData[0].publisherDetails.dataUseLimitation || [],
+							dataUseRequirements: publisherData[0].publisherDetails.dataUseRequirements || [],
+						},
+						contactPoint: dataset.questionAnswers['properties/summary/contactPoint'] || '',
+						keywords: dataset.questionAnswers['properties/summary/keywords'] || [],
+						alternateIdentifiers: dataset.questionAnswers['properties/summary/alternateIdentifiers'] || [],
+						doiName: dataset.questionAnswers['properties/summary/doiName'] || '',
+					},
+					documentation: {
+						description: dataset.questionAnswers['properties/documentation/description'] || '',
+						associatedMedia: dataset.questionAnswers['properties/documentation/associatedMedia'] || [],
+						isPartOf: dataset.questionAnswers['properties/documentation/isPartOf'] || [],
+					},
+					coverage: {
+						spatial: dataset.questionAnswers['properties/coverage/spatial'] || [],
+						typicalAgeRange: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
+						physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
+						followup: dataset.questionAnswers['properties/coverage/followup'] || '',
+						pathway: dataset.questionAnswers['properties/coverage/pathway'] || '',
+					},
+					provenance: {
+						origin: {
+							purpose: dataset.questionAnswers['properties/provenance/origin/purpose'] || [],
+							source: dataset.questionAnswers['properties/provenance/origin/source'] || [],
+							collectionSituation: dataset.questionAnswers['properties/provenance/origin/collectionSituation'] || [],
+						},
+						temporal: {
+							accrualPeriodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
+							distributionReleaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
+							startDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
+							endDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
+							timeLag: dataset.questionAnswers['properties/provenance/temporal/timeLag'] || '',
+						},
+					},
+					accessibility: {
+						usage: {
+							dataUseLimitation: dataset.questionAnswers['properties/accessibility/usage/dataUseLimitation'] || [],
+							dataUseRequirements: dataset.questionAnswers['properties/accessibility/usage/dataUseRequirements'] || [],
+							resourceCreator: dataset.questionAnswers['properties/accessibility/usage/resourceCreator'] || '',
+							investigations: dataset.questionAnswers['properties/accessibility/usage/investigations'] || [],
+							isReferencedBy: dataset.questionAnswers['properties/accessibility/usage/isReferencedBy'] || [],
+						},
+						access: {
+							accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || [],
+							accessService: dataset.questionAnswers['properties/accessibility/access/accessService'] || '',
+							accessRequestCost: dataset.questionAnswers['properties/accessibility/access/accessRequestCost'] || '',
+							deliveryLeadTime: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
+							jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || [],
+							dataProcessor: dataset.questionAnswers['properties/accessibility/access/dataProcessor'] || '',
+							dataController: dataset.questionAnswers['properties/accessibility/access/dataController'] || '',
+						},
+						formatAndStandards: {
+							vocabularyEncodingScheme:
+								dataset.questionAnswers['properties/accessibility/formatAndStandards/vocabularyEncodingScheme'] || [],
+							conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || [],
+							language: dataset.questionAnswers['properties/accessibility/formatAndStandards/language'] || [],
+							format: dataset.questionAnswers['properties/accessibility/formatAndStandards/format'] || [],
+						},
+					},
+					enrichmentAndLinkage: {
+						qualifiedRelation: dataset.questionAnswers['properties/enrichmentAndLinkage/qualifiedRelation'] || [],
+						derivation: dataset.questionAnswers['properties/enrichmentAndLinkage/derivation'] || [],
+						tools: dataset.questionAnswers['properties/enrichmentAndLinkage/tools'] || [],
+					},
+					observations: observations,
+				};
 
-								//get technicaldetails and metadataQuality
-								let technicalDetails = await datasetonboardingUtil.buildTechnicalDetails(dataset.structuralMetadata);
-								let metadataQuality = await datasetonboardingUtil.buildMetadataQuality(dataset, datasetv2Object, dataset.pid);
+				let previousDataset = await Data.findOneAndUpdate({ pid: dataset.pid, activeflag: 'active' }, { activeflag: 'archive' });
+				let previousCounter = 0;
+				let previousDiscourseTopicId = 0;
+				if (previousDataset) previousCounter = previousDataset.counter || 0;
+				if (previousDataset) previousDiscourseTopicId = previousDataset.discourseTopicId || 0;
 
-								// call filterCommercialUsage to determine commericalUse field only pass in v2 a
-								let commercialUse = filtersService.computeCommericalUse({}, datasetv2Object);
+				//get technicaldetails and metadataQuality
+				let technicalDetails = await datasetonboardingUtil.buildTechnicalDetails(dataset.structuralMetadata);
+				let metadataQuality = await datasetonboardingUtil.buildMetadataQuality(dataset, datasetv2Object, dataset.pid);
 
-								let updatedDataset = await Data.findOneAndUpdate(
-									{ _id: id },
-									{
-										datasetid: newDatasetVersionId,
-										datasetVersion: dataset.datasetVersion,
-										name: dataset.questionAnswers['properties/summary/title'] || '',
-										description: dataset.questionAnswers['properties/documentation/abstract'] || '',
-										activeflag: 'active',
-										tags: {
-											features: dataset.questionAnswers['properties/summary/keywords'] || [],
-										},
-										commercialUse,
-										hasTechnicalDetails: !isEmpty(technicalDetails) ? true : false,
-										'timestamps.updated': Date.now(),
-										'timestamps.published': Date.now(),
-										counter: previousCounter,
-										datasetfields: {
-											publisher: `${publisherData[0].publisherDetails.memberOf} > ${publisherData[0].publisherDetails.name}`,
-											geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || [],
-											physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
-											abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
-											releaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
-											accessRequestDuration: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
-											//conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || '',
-											//accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || '',
-											//jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || '',
-											datasetStartDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
-											datasetEndDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
-											//statisticalPopulation: datasetMDC.statisticalPopulation,
-											ageBand: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
-											contactPoint: dataset.questionAnswers['properties/summary/contactPoint'] || '',
-											periodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
+				// call filterCommercialUsage to determine commericalUse field only pass in v2 a
+				let commercialUse = filtersService.computeCommericalUse({}, datasetv2Object);
 
-											metadataquality: metadataQuality,
-											//datautility: dataUtility ? dataUtility : {},
-											//metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
-											technicaldetails: technicalDetails,
-											//versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
-											phenotypes: [],
-										},
-										datasetv2: datasetv2Object,
-										applicationStatusDesc: applicationStatusDesc,
-										discourseTopicId: previousDiscourseTopicId,
-									},
-									{ new: true }
-								);
+				let updatedDataset = await Data.findOneAndUpdate(
+					{ _id: id },
+					{
+						datasetid: newDatasetVersionId,
+						datasetVersion: dataset.datasetVersion,
+						name: dataset.questionAnswers['properties/summary/title'] || '',
+						description: dataset.questionAnswers['properties/documentation/abstract'] || '',
+						activeflag: 'active',
+						tags: {
+							features: dataset.questionAnswers['properties/summary/keywords'] || [],
+						},
+						commercialUse,
+						hasTechnicalDetails: !isEmpty(technicalDetails) ? true : false,
+						'timestamps.updated': Date.now(),
+						'timestamps.published': Date.now(),
+						counter: previousCounter,
+						datasetfields: {
+							publisher: `${publisherData[0].publisherDetails.memberOf} > ${publisherData[0].publisherDetails.name}`,
+							geographicCoverage: dataset.questionAnswers['properties/coverage/spatial'] || [],
+							physicalSampleAvailability: dataset.questionAnswers['properties/coverage/physicalSampleAvailability'] || [],
+							abstract: dataset.questionAnswers['properties/summary/abstract'] || '',
+							releaseDate: dataset.questionAnswers['properties/provenance/temporal/distributionReleaseDate'] || '',
+							accessRequestDuration: dataset.questionAnswers['properties/accessibility/access/deliveryLeadTime'] || '',
+							//conformsTo: dataset.questionAnswers['properties/accessibility/formatAndStandards/conformsTo'] || '',
+							//accessRights: dataset.questionAnswers['properties/accessibility/access/accessRights'] || '',
+							//jurisdiction: dataset.questionAnswers['properties/accessibility/access/jurisdiction'] || '',
+							datasetStartDate: dataset.questionAnswers['properties/provenance/temporal/startDate'] || '',
+							datasetEndDate: dataset.questionAnswers['properties/provenance/temporal/endDate'] || '',
+							//statisticalPopulation: datasetMDC.statisticalPopulation,
+							ageBand: dataset.questionAnswers['properties/coverage/typicalAgeRange'] || '',
+							contactPoint: dataset.questionAnswers['properties/summary/contactPoint'] || '',
+							periodicity: dataset.questionAnswers['properties/provenance/temporal/accrualPeriodicity'] || '',
 
-								filtersService.optimiseFilters('dataset');
+							metadataquality: metadataQuality,
+							//datautility: dataUtility ? dataUtility : {},
+							//metadataschema: metadataSchema && metadataSchema.data ? metadataSchema.data : {},
+							technicaldetails: technicalDetails,
+							//versionLinks: versionLinks && versionLinks.data && versionLinks.data.items ? versionLinks.data.items : [],
+							phenotypes: [],
+						},
+						datasetv2: datasetv2Object,
+						applicationStatusDesc: applicationStatusDesc,
+						discourseTopicId: previousDiscourseTopicId,
+					},
+					{ new: true }
+				);
 
-								//emails / notifications
-								await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETAPPROVED, updatedDataset);
+				filtersService.optimiseFilters('dataset');
+
+				//emails / notifications
+				await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETAPPROVED, updatedDataset);
+
+				/* 
 							})
 							.catch(err => {
 								console.error('Error when trying to create new dataset on the MDC - ' + err.message);
@@ -591,6 +601,7 @@ module.exports = {
 				await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
 					console.error('Error when trying to logout of the MDC - ' + err.message);
 				});
+				 */
 
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'rejected') {
@@ -615,7 +626,7 @@ module.exports = {
 
 				return res.status(200).json({ status: 'success' });
 			} else if (applicationStatus === 'archive') {
-				let dataset = await Data.findOne({ _id: id }).lean();
+				/* let dataset = await Data.findOne({ _id: id }).lean();
 
 				if (dataset.timestamps.submitted) {
 					//soft delete from MDC
@@ -650,7 +661,8 @@ module.exports = {
 					await axios.post(metadataCatalogueLink + `/api/authentication/logout`, { withCredentials: true, timeout: 5000 }).catch(err => {
 						console.error('Error when trying to logout of the MDC - ' + err.message);
 					});
-				}
+				} */
+
 				await Data.findOneAndUpdate(
 					{ _id: id },
 					{ activeflag: constants.datatsetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }

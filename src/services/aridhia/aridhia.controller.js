@@ -12,17 +12,16 @@ export default class AridhiaController {
 	}
 
 	async main() {
-
 		let datasets = [];
-		let res = "";
+		let res = '';
 		let models = [];
-	
+
 		try {
 			// get the dataset codes from aridhia api. we need these codes for the next step
 			res = await this.aridhia.getDatasetLists();
 			const codes = await this.aridhia.extractCodesFromAridhiaResponse(res.data);
-			
-			// for each code, get its dataset from aridhia api 
+
+			// for each code, get its dataset from aridhia api
 			for (const code of codes) {
 				datasets.push(await this.aridhia.getDataset(code));
 			}
@@ -30,17 +29,16 @@ export default class AridhiaController {
 			for (const ds of datasets) {
 				models.push(this.aridhia.resToDataset(ds));
 			}
-	
+
 			// take each dataset model. if its already in the DB, update the DB. if its not --> insert to the DB
 			for (const model of models) {
 				console.log(`updating dataset with pid ${model.pid}...`);
-				await Dataset.findOneAndUpdate({"pid": model.pid, "activeflag": "active"}, model , { upsert: true });
+				await Dataset.findOneAndUpdate({ pid: model.pid, activeflag: 'active' }, model, { upsert: true });
 			}
 
 			this.archiveDeprecatedDatasets(codes);
-	
-			return res;
 
+			return res;
 		} catch (err) {
 			Sentry.addBreadcrumb({
 				category: 'Caching',
@@ -49,14 +47,14 @@ export default class AridhiaController {
 			});
 
 			logger.logError(err, config.logCategory);
-			console.log("Aridhia Script broke down. Error: " + err);
+			console.log('Aridhia Script broke down. Error: ' + err);
 		}
 	}
 
 	async archiveDeprecatedDatasets(codesFromAridhiaApi) {
 		// get all fair datasets that are in our database
-		const res = await Dataset.find({"pid": /.*fair-.*/}, {"pid": 1});
-		
+		const res = await Dataset.find({ pid: /.*fair-.*/ }, { pid: 1 });
+
 		// slice the datasets pids (e.g. slice "fair-dp1" ---> "dp1")
 		const aridhiaSetsIntheDatabase = res.map(doc => doc.pid.slice(5));
 
@@ -64,9 +62,9 @@ export default class AridhiaController {
 		const deprecatedAridhiaSets = aridhiaSetsIntheDatabase.filter(ds => !codesFromAridhiaApi.includes(ds));
 
 		// archive deprecated datasets
-		for (const pid of deprecatedAridhiaSets) { 
-			console.log(`Changing activelag pid: ${pid} from "active" to "archive"`);
-			await Dataset.findOneAndUpdate({"pid": `fair-${pid}`, "activeflag": "active"}, { $set: {"activeflag": "archive"}});
+		for (const pid of deprecatedAridhiaSets) {
+			console.log(`Changing activeflag pid: ${pid} from "active" to "archive"`);
+			await Dataset.findOneAndUpdate({ pid: `fair-${pid}`, activeflag: 'active' }, { $set: { activeflag: 'archive' } });
 		}
 	}
 }
