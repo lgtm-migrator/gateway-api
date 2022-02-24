@@ -21,7 +21,7 @@ describe('Search API', () => {
 		expect(payload).toHaveProperty('summary');
 	});
 
-	['covid', 'icoda'].forEach(function (searchString) {
+	['test', 'tool'].forEach(function (searchString) {
 		test(`Search for string '${searchString}', first tool result should contain name or description '${searchString}'`, async () => {
 			const response = await testURL.get('/api/v1/search?search=' + searchString);
 			expect(response.statusCode).toBe(200);
