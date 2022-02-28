@@ -16,39 +16,26 @@ export default class AridhiaController {
 	}
 
 	async main() {
-		let datasets = [];
-		let res = '';
-		let models = [];
-
 		try {
 			const global = await GlobalModel.find({ localeId: 'en-gb' });
 
 			// get the dataset codes from aridhia api. we need these codes for the next step
 			console.log('Getting list of datasets');
-			res = await this.aridhia.getDatasetLists(global[0].aridhiaToken);
-			console.log('Getting list of recieved');
-			const codes = await this.aridhia.extractCodesFromAridhiaResponse(res.data);
+			const listOfDatasets = await this.aridhia.getDatasetLists(global[0].aridhiaToken);
+			console.log('List of datasets recieved');
+			const codes = await this.aridhia.extractCodesFromAridhiaResponse(listOfDatasets.data);
 
 			// for each code, get its dataset from aridhia api
 			for (const code of codes) {
 				console.log(`Getting ${code} dataset`);
-				datasets.push(await this.aridhia.getDataset(global[0].aridhiaToken, code));
+				const dataset = await this.aridhia.getDataset(global[0].aridhiaToken, code);
 				console.log(`Received ${code} dataset`);
-			}
-			// Take each dataset respond that we got from the api and map it to our dataset model
-			for (const ds of datasets) {
-				models.push(this.aridhia.resToDataset(ds));
-			}
-
-			// take each dataset model. if its already in the DB, update the DB. if its not --> insert to the DB
-			for (const model of models) {
-				console.log(`updating dataset with pid ${model.pid}...`);
-				await Dataset.findOneAndUpdate({ pid: model.pid, activeflag: 'active' }, model, { upsert: true });
+				const datasetModel = this.aridhia.resToDataset(dataset);
+				await Dataset.findOneAndUpdate({ pid: datasetModel.pid, activeflag: 'active' }, datasetModel, { upsert: true });
+				console.log(`${code} dataset saved in DB`);
 			}
 
 			this.archiveDeprecatedDatasets(codes);
-
-			return res;
 		} catch (err) {
 			Sentry.addBreadcrumb({
 				category: 'Caching',
