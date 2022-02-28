@@ -1,14 +1,18 @@
 import Aridhia from './aridhia.service.js';
 import { Dataset } from '../../resources/dataset/dataset.model.js';
 import DatasetService from '../../resources/dataset/dataset.service';
-import { config, http } from './aridhia.config';
+import { GlobalModel } from '../../resources/global/global.model';
 import { logger } from '../../resources/utilities/logger';
 import * as Sentry from '@sentry/node';
 
 export default class AridhiaController {
 	constructor() {
+		let config = {
+			endpoint: process.env.ARIDHIA_ENDPOINT,
+			logCategory: 'Aridhia Script',
+		};
 		this.datasetService = new DatasetService();
-		this.aridhia = new Aridhia(http, config);
+		this.aridhia = new Aridhia(config);
 	}
 
 	async main() {
@@ -17,13 +21,19 @@ export default class AridhiaController {
 		let models = [];
 
 		try {
+			const global = await GlobalModel.find({ localeId: 'en-gb' });
+
 			// get the dataset codes from aridhia api. we need these codes for the next step
-			res = await this.aridhia.getDatasetLists();
+			console.log('Getting list of datasets');
+			res = await this.aridhia.getDatasetLists(global[0].aridhiaToken);
+			console.log('Getting list of recieved');
 			const codes = await this.aridhia.extractCodesFromAridhiaResponse(res.data);
 
 			// for each code, get its dataset from aridhia api
 			for (const code of codes) {
-				datasets.push(await this.aridhia.getDataset(code));
+				console.log(`Getting ${code} dataset`);
+				datasets.push(await this.aridhia.getDataset(global[0].aridhiaToken, code));
+				console.log(`Received ${code} dataset`);
 			}
 			// Take each dataset respond that we got from the api and map it to our dataset model
 			for (const ds of datasets) {
@@ -46,7 +56,7 @@ export default class AridhiaController {
 				level: Sentry.Severity.Error,
 			});
 
-			logger.logError(err, config.logCategory);
+			logger.logError(err, this.config.logCategory);
 			console.log('Aridhia Script broke down. Error: ' + err);
 		}
 	}
