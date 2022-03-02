@@ -1,10 +1,11 @@
 import { isEmpty, isNull, isEqual } from 'lodash';
 
 import constants from '../resources/utilities/constants.util';
+import { dataUseRegisterService } from '../resources/dataUseRegister/dependency';
 
 const _isUserMemberOfTeam = (user, teamId) => {
 	let { teams } = user;
-	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id.equals(teamId));
+	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id === teamId);
 };
 
 const _isUserDataUseAdmin = user => {
