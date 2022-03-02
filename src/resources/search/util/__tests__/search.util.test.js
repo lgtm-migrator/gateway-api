@@ -11,7 +11,6 @@ describe('arrayToTree - convert array to tree', () => {
 
     it('should return correct result', () => {
         const result = searchUtil.arrayToTree(data.arrayUnOrdered);
-
         expect(result).toEqual(data.tree);
     });
 });
