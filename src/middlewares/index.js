@@ -1,4 +1,5 @@
 import { checkIDMiddleware } from './checkIDMiddleware';
+import { authoriseUserForPublisher, validateSearchParameters } from './datasetonboarding.middleware';
 import {
 	validateViewRequest,
 	authoriseView,
@@ -7,6 +8,9 @@ import {
 	validateDeleteRequest,
 	authoriseDelete,
 } from './activitylog.middleware';
+import checkInputMiddleware from './checkInputMiddleware';
+import checkMinLengthMiddleware from './checkMinLengthMiddleware';
+import checkStringMiddleware from './checkStringMiddleware';
 
 export {
 	checkIDMiddleware,
@@ -16,4 +20,9 @@ export {
 	validateCreateRequest,
 	validateDeleteRequest,
 	authoriseDelete,
+	checkInputMiddleware,
+  checkMinLengthMiddleware,
+  checkStringMiddleware,
+	authoriseUserForPublisher,
+	validateSearchParameters,
 };

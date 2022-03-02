@@ -119,6 +119,7 @@ export default class FiltersService {
 			fields = '';
 
 		// 2. Query Db for required entity if array of entities has not been passed
+		query.limit = 0; // unlimited rows
 		switch (type) {
 			// Get minimal payload to build filters
 			case 'dataset':
@@ -186,7 +187,7 @@ export default class FiltersService {
 					value.includes('>') ? value.split(' > ')[1].toString().toUpperCase().trim() : value.toString().toUpperCase().trim()
 				);
 			} else {
-				filters[filterKey] = filters[filterKey].map(value => helper.toTitleCase(value.toString().trim()));
+				filters[filterKey] = filters[filterKey].map(value => (filterKey === 'spatial') ? value.toString().trim() : helper.toTitleCase(value.toString().trim()));
 			}
 			// 10. Distinct filter values
 			const distinctFilter = uniq(filters[filterKey]);
