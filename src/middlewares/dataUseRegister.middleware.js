@@ -5,7 +5,7 @@ import { dataUseRegisterService } from '../resources/dataUseRegister/dependency'
 
 const _isUserMemberOfTeam = (user, teamId) => {
 	let { teams } = user;
-	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id === teamId);
+	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id.equals(teamId));
 };
 
 const _isUserDataUseAdmin = user => {

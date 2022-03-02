@@ -134,7 +134,11 @@ describe('Testing the dataUserRegister middleware', () => {
 			req.user = {
 				_id: 'testUser',
 				teams: [
-					{ publisher: { _id: 'testPublisher' }, type: 'NOT_ADMIN_TEAM', members: [{ memberid: 'testUser', roles: 'admin_data_use' }] },
+					{
+						publisher: { _id: { equals: jest.fn() } },
+						type: 'NOT_ADMIN_TEAM',
+						members: [{ memberid: 'testUser', roles: 'admin_data_use' }],
+					},
 				],
 			};
 
@@ -232,14 +236,16 @@ describe('Testing the dataUserRegister middleware', () => {
 	});
 
 	describe('Testing the authorizeUpload middleware', () => {
-		it('It should return 401 is user is not authorised', () => {
+		it('It should return 401 if user is not authorised', () => {
 			let req = mockedRequest();
 			let res = mockedResponse();
 			const nextFunction = jest.fn();
 
 			req.user = {
 				_id: 'testUser',
-				teams: [{ publisher: { _id: 'testPublisher' }, type: 'NotAdmin', members: [{ memberid: 'testUser', roles: 'admin_data_use' }] }],
+				teams: [
+					{ publisher: { _id: { equals: jest.fn() } }, type: 'NotAdmin', members: [{ memberid: 'testUser', roles: 'admin_data_use' }] },
+				],
 			};
 
 			authorizeUpload(req, res, nextFunction);
