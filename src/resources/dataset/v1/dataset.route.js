@@ -19,16 +19,22 @@ const datasetLimiter = rateLimit({
 
 // This api triggers Aridhia Script (collect datasets from Aridhi API and updates the DB accordingly)
 router.post('/aridhia', async (req, res) => {
-	
-	// check for a key. return 401, since user unauthorised (caching key is missing or not matched)
-	let parsedBody = req.header('content-type') === 'application/json' ?  req.body : JSON.parse(req.body);
-	if (parsedBody.key !== process.env.cachingkey)
-		return res.status(401).json({ success: false, error: 'Caching could not be started.' });
-		
-	const ac = new AridhiaController();
-	ac.main();
+	try {
+		// check for a key. return 401, since user unauthorised (caching key is missing or not matched)
+		let parsedBody = req.header('content-type') === 'application/json' ? req.body : JSON.parse(req.body);
+		if (parsedBody.key !== process.env.cachingkey) return res.status(401).json({ success: false, error: 'Caching could not be started.' });
 
-    return  res.status(200).json({ success: true, message: 'Caching started' })
+		const ac = new AridhiaController();
+		ac.main().then(() => {
+			filtersService.optimiseFilters('dataset');
+		});
+
+		return res.status(200).json({ success: true, message: 'Caching started' });
+	} catch (err) {
+		Sentry.captureException(err);
+		console.error(err.message);
+		return res.status(500).json({ success: false, message: 'Caching failed' });
+	}
 });
 
 router.post('/', async (req, res) => {
