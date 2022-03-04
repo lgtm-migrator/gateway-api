@@ -182,7 +182,11 @@ export async function getUsers(currentUserId) {
 				email: '$user.email',
 			},
 		},
-		{ $sort: { updateAt: -1 } }
+		{ 
+			$sort: { 
+				updateAt: -1 
+			},
+		},
 	]);
 
 	return new Promise((resolve, reject) => {
