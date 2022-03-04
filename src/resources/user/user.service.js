@@ -88,22 +88,22 @@ export async function getUsersCollaborators(currentUserId) {
 	let collaborators = [];
 
 	// Get all collaborators from collections
-	let collaboratorsCollections = await Collections.find({ authors: currentUserId }, { _id: 0, authors: 1 });
+	let collaboratorsCollections = await Collections.find({ authors: currentUserId }, { _id: 0, authors: 1 }).sort({  updatedAt: -1 });
 	await populateCollaborators(collaboratorsCollections, 'authors', collaborators, currentUserId);
 
 	// Get all collaborators from cohorts
-	let collaboratorsCohorts = await Cohort.find({ uploaders: currentUserId }, { _id: 0, uploaders: 1 });
+	let collaboratorsCohorts = await Cohort.find({ uploaders: currentUserId }, { _id: 0, uploaders: 1 }).sort({  updatedAt: -1 });
 	await populateCollaborators(collaboratorsCohorts, 'uploaders', collaborators, currentUserId);
 
 	// Get all collaborators from tools and papers (data collection)
-	let collaboratorsTools = await Data.find({ authors: currentUserId }, { _id: 0, authors: 1 });
+	let collaboratorsTools = await Data.find({ authors: currentUserId }, { _id: 0, authors: 1 }).sort({  updatedAt: -1 });
 	await populateCollaborators(collaboratorsTools, 'authors', collaborators, currentUserId);
 
 	// Get all collaborators from DARs
 	let collaboratorsDARs = await DataRequestModel.find(
 		{ $or: [{ userId: currentUserId }, { authorIds: currentUserId }] },
 		{ _id: 0, authorIds: 1, userId: 1 }
-	);
+	).sort({  updatedAt: -1 });
 	await populateCollaborators(collaboratorsDARs, 'authorIds', collaborators, currentUserId);
 
 	// Strip out duplicate collaborators, add a count
@@ -182,6 +182,7 @@ export async function getUsers(currentUserId) {
 				email: '$user.email',
 			},
 		},
+		{ $sort: { updateAt: -1 } }
 	]);
 
 	return new Promise((resolve, reject) => {
