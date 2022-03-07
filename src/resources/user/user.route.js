@@ -27,7 +27,22 @@ router.get('/:userID', passport.authenticate('jwt'), utils.checkIsUser(), async 
 // @desc     get all
 // @access   Private
 router.get('/', passport.authenticate('jwt'), async (req, res) => {
-	await getUsers(req.user.id)
+	let userId = req.user.id;
+	await getUsers(userId)
+		.then(response => {
+			return res.json({ success: true, data: response });
+		})
+		.catch(err => {
+			return new Error({ success: false, error: err });
+		});
+});
+
+// @router   GET /api/v1/users/search/:filter
+// @desc     get all filtered by text
+// @access   Private
+router.get('/search/:filter', passport.authenticate('jwt'), async (req, res) => {
+	let userId = null;
+	await getUsers(userId)
 		.then(response => {
 			return res.json({ success: true, data: response });
 		})
