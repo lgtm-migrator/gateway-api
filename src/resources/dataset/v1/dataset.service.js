@@ -112,7 +112,7 @@ export async function importCatalogues(cataloguesToImport, override = false, lim
 
 export async function saveUptime() {
 	const monitoring = require('@google-cloud/monitoring');
-	const projectId = 'hdruk-gateway';
+	const projectId = process.env.GCP_DATASET_PROJECT_ID;
 	const client = new monitoring.MetricServiceClient();
 
 	var selectedMonthStart = new Date();
