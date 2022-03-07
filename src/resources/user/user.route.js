@@ -7,6 +7,10 @@ import { ROLES } from './user.roles';
 import { setCohortDiscoveryAccess, getUsers } from './user.service';
 import { upperCase } from 'lodash';
 //import { createServiceAccount } from './user.repository';
+import {
+    checkInputMiddleware,
+    checkMinLengthMiddleware,
+} from '../../middlewares/index';
 
 const router = express.Router();
 
@@ -40,12 +44,20 @@ router.get('/', passport.authenticate('jwt'), async (req, res) => {
 // @router   GET /api/v1/users/search/:filter
 // @desc     get all filtered by text
 // @access   Private
-router.get('/search/:filter', async (req, res) => {
+router.get('/search/:filter', [checkInputMiddleware, checkMinLengthMiddleware], async (req, res) => {
 	let userId = null;
+	let filterString = req.params.filter;
 	await getUsers(userId)
 		.then(response => {
-			console.log(`response: ${JSON.stringify(response)}`);
-			return res.json({ success: true, data: response });
+
+			const usersFiltered = [];
+			response.map((item) => {
+				if (item.name.toLowerCase().includes(filterString.toLowerCase())) {
+					usersFiltered.push(item);
+				}
+			});
+			
+			return res.json({ success: true, data: usersFiltered });
 		})
 		.catch(err => {
 			return new Error({ success: false, error: err });
