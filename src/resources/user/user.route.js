@@ -40,10 +40,11 @@ router.get('/', passport.authenticate('jwt'), async (req, res) => {
 // @router   GET /api/v1/users/search/:filter
 // @desc     get all filtered by text
 // @access   Private
-router.get('/search/:filter', passport.authenticate('jwt'), async (req, res) => {
+router.get('/search/:filter', async (req, res) => {
 	let userId = null;
 	await getUsers(userId)
 		.then(response => {
+			console.log(`response: ${JSON.stringify(response)}`);
 			return res.json({ success: true, data: response });
 		})
 		.catch(err => {
