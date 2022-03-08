@@ -6,7 +6,11 @@ import { UserModel } from './user.model';
 import { ROLES } from './user.roles';
 import { setCohortDiscoveryAccess, getUsers } from './user.service';
 import { upperCase } from 'lodash';
-//import { createServiceAccount } from './user.repository';
+
+import {
+    checkInputMiddleware,
+    checkMinLengthMiddleware,
+} from '../../middlewares/index';
 
 const router = express.Router();
 
@@ -30,6 +34,28 @@ router.get('/', passport.authenticate('jwt'), async (req, res) => {
 	await getUsers(req.user.id)
 		.then(response => {
 			return res.json({ success: true, data: response });
+		})
+		.catch(err => {
+			return new Error({ success: false, error: err });
+		});
+});
+
+// @router   GET /api/v1/users/search/:filter
+// @desc     get all filtered by text
+// @access   Private
+router.get('/search/:filter', passport.authenticate('jwt'), [checkInputMiddleware, checkMinLengthMiddleware], async (req, res) => {
+	let filterString = req.params.filter;
+	await getUsers(null)
+		.then(response => {
+
+			const usersFiltered = [];
+			response.map((item) => {
+				if (item.name.toLowerCase().includes(filterString.toLowerCase())) {
+					usersFiltered.push(item);
+				}
+			});
+			
+			return res.json({ success: true, data: usersFiltered });
 		})
 		.catch(err => {
 			return new Error({ success: false, error: err });
