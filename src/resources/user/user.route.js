@@ -6,7 +6,7 @@ import { UserModel } from './user.model';
 import { ROLES } from './user.roles';
 import { setCohortDiscoveryAccess, getUsers } from './user.service';
 import { upperCase } from 'lodash';
-//import { createServiceAccount } from './user.repository';
+
 import {
     checkInputMiddleware,
     checkMinLengthMiddleware,
