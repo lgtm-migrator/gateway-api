@@ -697,7 +697,6 @@ export default class DataRequestController extends Controller {
 					this.dataRequestService.updateVersionStatus(accessRecord, accessRecord.applicationStatus);
 
 					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED) {
-						await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
 						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
  						await dataUseRegisterController.createNotifications(
  							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
@@ -710,7 +709,6 @@ export default class DataRequestController extends Controller {
 						});
 					}
 					else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
-						await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
 						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
  						await dataUseRegisterController.createNotifications(
  							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
