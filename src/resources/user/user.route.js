@@ -31,8 +31,7 @@ router.get('/:userID', passport.authenticate('jwt'), utils.checkIsUser(), async 
 // @desc     get all
 // @access   Private
 router.get('/', passport.authenticate('jwt'), async (req, res) => {
-	let userId = req.user.id;
-	await getUsers(userId)
+	await getUsers(req.user.id)
 		.then(response => {
 			return res.json({ success: true, data: response });
 		})
@@ -45,9 +44,8 @@ router.get('/', passport.authenticate('jwt'), async (req, res) => {
 // @desc     get all filtered by text
 // @access   Private
 router.get('/search/:filter', passport.authenticate('jwt'), [checkInputMiddleware, checkMinLengthMiddleware], async (req, res) => {
-	let userId = null;
 	let filterString = req.params.filter;
-	await getUsers(userId)
+	await getUsers(null)
 		.then(response => {
 
 			const usersFiltered = [];
