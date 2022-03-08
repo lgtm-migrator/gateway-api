@@ -52,6 +52,16 @@ router.get(
 	(req, res) => dataRequestController.getAccessRequestById(req, res)
 );
 
+// @route   GET api/v1/data-access-request/:useId/userDetails
+// @desc    GET a single users userDetails
+// @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer
+router.get(
+	'/:useId/userDetails',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Getting User Details' }),
+	(req, res) => dataRequestController.getAccessRequestsUserDetails(req, res)
+);
+
 // @route   GET api/v1/data-access-request/datasets/:datasetIds
 // @desc    GET Access request with multiple datasets for user
 // @access  Private - Applicant (Gateway User) and Custodian Manager/Reviewer

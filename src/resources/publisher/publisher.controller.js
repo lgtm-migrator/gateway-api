@@ -91,6 +91,7 @@ export default class PublisherController extends Controller {
 				logger.logError(err, logCategory);
 			});
 
+
 			// 5. Append projectName and applicants
 			const modifiedApplications = [...applications]
 				.map(accessRecord => {

@@ -22,7 +22,7 @@ const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
-	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService) {
+	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService, publisherService) {
 		super(dataRequestService);
 		this.dataRequestService = dataRequestService;
 		this.workflowService = workflowService;
@@ -30,6 +30,8 @@ export default class DataRequestController extends Controller {
 		this.activityLogService = activityLogService;
 		this.topicService = topicService;
 		this.messageService = messageService;
+		this.publisherService = publisherService;
+
 	}
 
 	// ###### APPLICATION CRUD OPERATIONS #######
@@ -63,7 +65,7 @@ export default class DataRequestController extends Controller {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 
 			const query = {publisher: req.params.publisher, applicationStatus: {$not: {$in: ["inProgress"]}} }
-			const dars = await DataRequestModel.find(query) 
+			const dars = await DataRequestModel.find(query);
 			return res.status(200).json({ success: true, dars });   
 		} catch (err) {
 			console.error(err.message);
@@ -74,7 +76,30 @@ export default class DataRequestController extends Controller {
 			});
 		}
 	}
-  
+	//GET api/v1/data-access-request/:userId/userDetails
+	async getAccessRequestsUserDetails(req, res){
+	try{
+		// Deconstruct the parameters passed
+    			let { query = {} } = req;
+    			const userId = req.userId;
+	console.log("userId  ", userId);
+//	console.log("dars  ",dars);
+//	        let userId= dars[0].userId;
+//    			{console.log("dars.userId  ",dars[0].userId)}
+    				//test Dearbhail
+                			const userDetails = await this.publisherService.getAccessRequestsUserDetails(userId)
+
+                			console.log("userId ",userId,"\n getPublisherUserName() ",userDetails );
+                			console.log("userDetails.firstname ", userDetails.firstname)
+                			return res.status(200).json({ success: true, userDetails });
+        }catch(err){
+                 console.error(err.message);
+                 return res.status(500).json({
+                    success: false,
+                    message: 'An error occurred searching for user applications',
+            });
+                			}
+  }
 	//GET api/v1/data-access-request
 	async getAccessRequestsByUser(req, res) {
 		try {

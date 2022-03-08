@@ -4,6 +4,7 @@ import Repository from '../base/repository';
 import { PublisherModel } from './publisher.model';
 import { Dataset } from '../dataset/dataset.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
+import {UserModel} from '../user/user.model';
 
 export default class PublisherRepository extends Repository {
 	constructor() {
@@ -62,4 +63,10 @@ export default class PublisherRepository extends Repository {
 			])
 			.lean();
 	}
-}
+
+    getAccessRequestsUserDetails(id) {
+ console.log(UserModel.findById(id))
+        return  UserModel.findById(id);
+         }
+
+    }
