@@ -44,7 +44,7 @@ router.get('/', passport.authenticate('jwt'), async (req, res) => {
 // @router   GET /api/v1/users/search/:filter
 // @desc     get all filtered by text
 // @access   Private
-router.get('/search/:filter', [checkInputMiddleware, checkMinLengthMiddleware], async (req, res) => {
+router.get('/search/:filter', passport.authenticate('jwt'), [checkInputMiddleware, checkMinLengthMiddleware], async (req, res) => {
 	let userId = null;
 	let filterString = req.params.filter;
 	await getUsers(userId)
