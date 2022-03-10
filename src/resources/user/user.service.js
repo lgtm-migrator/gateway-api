@@ -90,23 +90,20 @@ export const getUsersCollaborators = async (currentUserId) => {
 	let filter = null;
 
 	filter = currentUserId ? { authors: currentUserId } : {};
-
+	
 	// Get all collaborators from collections
 	await getCollaboratorsCollections(filter, currentUserId);
 
-	filter = currentUserId ? {} : { uploaders: currentUserId };
-
 	// Get all collaborators from cohorts
+	filter = currentUserId ? { uploaders: currentUserId } : {};
 	await getCollaboratorsCohorts(filter, currentUserId);
 
 	// Get all collaborators from tools and papers (data collection)
+	filter = currentUserId ? { authors: currentUserId } : {};
 	await getCollaboratorsTools(filter, currentUserId);
 
-	if (currentUserId) {
-		filter = { $or: [{ userId: currentUserId }, { authorIds: currentUserId }] };
-	}
-
 	// Get all collaborators from DARs
+	filter = currentUserId ? { $or: [{ userId: currentUserId }, { authorIds: currentUserId }] } : {};
 	await getCollaboratorsDARs(filter, currentUserId);
 
 	// Strip out duplicate collaborators, add a count
@@ -151,16 +148,13 @@ export const getUniqueCollaborators = (collaborators) => {
 }
 
 export const populateCollaborators = async (collaboratorsEntity, items, currentUserId) => {
-	console.log(`collaboratorsEntity: ${JSON.stringify(collaboratorsEntity)}`);
 	for (const collaborator of collaboratorsEntity) {
 		if ((!currentUserId && items === 'authorIds') 
 		|| (currentUserId && items === 'authorIds' && arrCollaborators.userId !== currentUserId)) {
 			arrCollaborators.push(collaborator.userId);
 		}
 
-		console.log(`collaborator[items]: ${JSON.stringify(collaborator[items])}`);
 		for (const item of collaborator[items]) {
-			console.log(item);
 			if (!currentUserId || (currentUserId && item !== currentUserId)) {
 				arrCollaborators.push(item);
 			}

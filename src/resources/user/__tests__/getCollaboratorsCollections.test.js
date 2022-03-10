@@ -14,7 +14,7 @@ afterAll(async () => {
     await dbHandler.closeDatabase();
 });
 
-describe('getUniqueCollaborators should return one value', () => {
+describe('getCollaboratorsCollections tests', () => {
     it('should return values', async () => {
         const currentUserId = 8470291714590257;
         const filter = currentUserId ? { authors: currentUserId } : {};

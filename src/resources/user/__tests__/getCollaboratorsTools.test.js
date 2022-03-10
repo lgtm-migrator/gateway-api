@@ -1,12 +1,12 @@
 import dbHandler from '../../../config/in-memory-db';
-import {mockCohorts} from '../__mocks__/cohorts.data';
+import {mockTools} from '../__mocks__/tools.data';
 
-const {getCollaboratorsCohorts} = require('../user.service');
+const {getCollaboratorsTools} = require('../user.service');
 
 
 beforeAll(async () => {
 	await dbHandler.connect();
-	await dbHandler.loadData({ cohorts: mockCohorts });
+	await dbHandler.loadData({ tools: mockTools });
 });
 
 afterAll(async () => { 
@@ -14,13 +14,12 @@ afterAll(async () => {
     await dbHandler.closeDatabase();
 });
 
-describe('getCollaboratorsCohorts tests', () => {
+describe('getCollaboratorsTools tests', () => {
     it('should return values', async () => {
         const currentUserId = 8470291714590257;
         const filter = currentUserId ? { uploaders: currentUserId } : {};
 
-        const result = await getCollaboratorsCohorts(filter, currentUserId);
-        expect(result.length > 0).toBe(true);
+        const result = await getCollaboratorsTools(filter, currentUserId);
         expect(typeof result).toBe('object');
     });
 
@@ -28,7 +27,7 @@ describe('getCollaboratorsCohorts tests', () => {
         const currentUserId = null;
         const filter = currentUserId ? { uploaders: currentUserId } : {};
 
-        const result = await getCollaboratorsCohorts(filter, currentUserId);
+        const result = await getCollaboratorsTools(filter, currentUserId);
         console.log(`result : ${JSON.stringify(result)}`);
         expect(result.length > 0).toBe(true);
         expect(typeof result).toBe('object');

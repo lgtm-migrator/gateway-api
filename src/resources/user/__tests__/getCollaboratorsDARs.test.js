@@ -1,12 +1,12 @@
 import dbHandler from '../../../config/in-memory-db';
-import {mockCohorts} from '../__mocks__/cohorts.data';
+import {mockDars} from '../__mocks__/dars.data';
 
-const {getCollaboratorsCohorts} = require('../user.service');
+const {getCollaboratorsDARs} = require('../user.service');
 
 
 beforeAll(async () => {
 	await dbHandler.connect();
-	await dbHandler.loadData({ cohorts: mockCohorts });
+	await dbHandler.loadData({ data_requests: mockDars });
 });
 
 afterAll(async () => { 
@@ -14,21 +14,21 @@ afterAll(async () => {
     await dbHandler.closeDatabase();
 });
 
-describe('getCollaboratorsCohorts tests', () => {
+describe('getCollaboratorsDARs tests', () => {
     it('should return values', async () => {
         const currentUserId = 8470291714590257;
-        const filter = currentUserId ? { uploaders: currentUserId } : {};
+        const filter = currentUserId ? { $or: [{ userId: currentUserId }, { authorIds: currentUserId }] } : {};
 
-        const result = await getCollaboratorsCohorts(filter, currentUserId);
+        const result = await getCollaboratorsDARs(filter, currentUserId);
         expect(result.length > 0).toBe(true);
         expect(typeof result).toBe('object');
     });
 
     it('should return values', async () => {
         const currentUserId = null;
-        const filter = currentUserId ? { uploaders: currentUserId } : {};
+        const filter = currentUserId ? { $or: [{ userId: currentUserId }, { authorIds: currentUserId }] } : {};
 
-        const result = await getCollaboratorsCohorts(filter, currentUserId);
+        const result = await getCollaboratorsDARs(filter, currentUserId);
         console.log(`result : ${JSON.stringify(result)}`);
         expect(result.length > 0).toBe(true);
         expect(typeof result).toBe('object');

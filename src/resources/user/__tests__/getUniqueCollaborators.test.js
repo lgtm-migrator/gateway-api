@@ -1,7 +1,7 @@
 const {getUniqueCollaborators} = require('../user.service');
 
 
-describe('getUniqueCollaborators', () => {
+describe('getUniqueCollaborators tests', () => {
     it('should return a unique collaborator like map', () => {
         let collaborators = [39025048818527176,917335621870613];
         const result = getUniqueCollaborators(collaborators);
