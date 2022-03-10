@@ -17,7 +17,7 @@ afterAll(async () => {
 describe('getUniqueCollaborators should return one value', () => {
     it('should return values', async () => {
         const currentUserId = 8470291714590257;
-        const filter = currentUserId ? {} : { authors: currentUserId };
+        const filter = currentUserId ? { authors: currentUserId } : {};
 
         const result = await getCollaboratorsCollections(filter, currentUserId);
         expect(result.length).toBe(1);

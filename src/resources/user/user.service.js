@@ -87,14 +87,14 @@ export async function setCohortDiscoveryAccess(id, roles) {
 
 // Gets all of the logged in users collaborators
 export const getUsersCollaborators = async (currentUserId) => {
-	let filter = {};
+	let filter = null;
 
-	if (currentUserId) {
-		filter = { authors: currentUserId };
-	}
+	filter = currentUserId ? { authors: currentUserId } : {};
 
 	// Get all collaborators from collections
 	await getCollaboratorsCollections(filter, currentUserId);
+
+	filter = currentUserId ? {} : { uploaders: currentUserId };
 
 	// Get all collaborators from cohorts
 	await getCollaboratorsCohorts(filter, currentUserId);
