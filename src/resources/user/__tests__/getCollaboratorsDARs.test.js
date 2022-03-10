@@ -29,7 +29,6 @@ describe('getCollaboratorsDARs tests', () => {
         const filter = currentUserId ? { $or: [{ userId: currentUserId }, { authorIds: currentUserId }] } : {};
 
         const result = await getCollaboratorsDARs(filter, currentUserId);
-        console.log(`result : ${JSON.stringify(result)}`);
         expect(result.length > 0).toBe(true);
         expect(typeof result).toBe('object');
     });

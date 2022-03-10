@@ -29,7 +29,6 @@ describe('getCollaboratorsCohorts tests', () => {
         const filter = currentUserId ? { uploaders: currentUserId } : {};
 
         const result = await getCollaboratorsCohorts(filter, currentUserId);
-        console.log(`result : ${JSON.stringify(result)}`);
         expect(result.length > 0).toBe(true);
         expect(typeof result).toBe('object');
     });
