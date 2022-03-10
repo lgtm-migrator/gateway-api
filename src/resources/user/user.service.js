@@ -6,6 +6,8 @@ import { Cohort } from '../cohort/cohort.model';
 import { Collections } from '../collections/collections.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 
+const arrCollaborators = [];
+
 export async function createUser({ firstname, lastname, email, providerId, provider, role }) {
 	return new Promise(async resolve => {
 		const id = parseInt(Math.random().toString().replace('0.', ''));
@@ -84,8 +86,7 @@ export async function setCohortDiscoveryAccess(id, roles) {
 }
 
 // Gets all of the logged in users collaborators
-export async function getUsersCollaborators(currentUserId) {
-	let collaborators = [];
+export const getUsersCollaborators = async (currentUserId) => {
 	let filter = {};
 
 	if (currentUserId) {
@@ -93,31 +94,50 @@ export async function getUsersCollaborators(currentUserId) {
 	}
 
 	// Get all collaborators from collections
-	let collaboratorsCollections = await Collections.find(filter, { _id: 0, authors: 1 }).sort({  updatedAt: -1 });
-	await populateCollaborators(collaboratorsCollections, 'authors', collaborators, currentUserId);
+	await getCollaboratorsCollections(filter, currentUserId);
 
 	// Get all collaborators from cohorts
-	let collaboratorsCohorts = await Cohort.find(filter, { _id: 0, uploaders: 1 }).sort({  updatedAt: -1 });
-	await populateCollaborators(collaboratorsCohorts, 'uploaders', collaborators, currentUserId);
+	await getCollaboratorsCohorts(filter, currentUserId);
 
 	// Get all collaborators from tools and papers (data collection)
-	let collaboratorsTools = await Data.find(filter, { _id: 0, authors: 1 }).sort({  updatedAt: -1 });
-	await populateCollaborators(collaboratorsTools, 'authors', collaborators, currentUserId);
+	await getCollaboratorsTools(filter, currentUserId);
 
 	if (currentUserId) {
 		filter = { $or: [{ userId: currentUserId }, { authorIds: currentUserId }] };
 	}
 
 	// Get all collaborators from DARs
+	await getCollaboratorsDARs(filter, currentUserId);
+
+	// Strip out duplicate collaborators, add a count
+	return getUniqueCollaborators(arrCollaborators);
+}
+
+export const getCollaboratorsCollections = async (filter, currentUserId) => {
+	let collaboratorsCollections = await Collections.find(filter, { _id: 0, authors: 1 }).sort({  updatedAt: -1 });
+	return await populateCollaborators(collaboratorsCollections, 'authors', currentUserId);
+}
+
+export const getCollaboratorsCohorts = async (filter, currentUserId) => {
+	let collaboratorsCohorts = await Cohort.find(filter, { _id: 0, uploaders: 1 }).sort({  updatedAt: -1 });
+	return await populateCollaborators(collaboratorsCohorts, 'uploaders', currentUserId);
+}
+
+export const getCollaboratorsTools = async (filter, currentUserId) => {
+	let collaboratorsTools = await Data.find(filter, { _id: 0, authors: 1 }).sort({  updatedAt: -1 });
+	return await populateCollaborators(collaboratorsTools, 'authors', currentUserId);
+}
+
+export const getCollaboratorsDARs = async (filter, currentUserId) => {
 	let collaboratorsDARs = await DataRequestModel.find(
 		filter,
 		{ _id: 0, authorIds: 1, userId: 1 }
 	).sort({  updatedAt: -1 });
-	await populateCollaborators(collaboratorsDARs, 'authorIds', collaborators, currentUserId);
+	return await populateCollaborators(collaboratorsDARs, 'authorIds', currentUserId);
+}
 
-	// Strip out duplicate collaborators, add a count
+export const getUniqueCollaborators = (collaborators) => {
 	let uniqueCollaborators = new Map();
-
 	for (const collaborator of collaborators) {
 		if (uniqueCollaborators.has(collaborator)) {
 			let incrementedValue = uniqueCollaborators.get(collaborator) + 1;
@@ -130,24 +150,27 @@ export async function getUsersCollaborators(currentUserId) {
 	return uniqueCollaborators;
 }
 
-async function populateCollaborators(collaboratorsEntity, items, collaborators, currentUserId) {
+export const populateCollaborators = async (collaboratorsEntity, items, currentUserId) => {
+	console.log(`collaboratorsEntity: ${JSON.stringify(collaboratorsEntity)}`);
 	for (const collaborator of collaboratorsEntity) {
 		if ((!currentUserId && items === 'authorIds') 
-		|| (currentUserId && items === 'authorIds' && collaborator.userId !== currentUserId)) {
-			collaborators.push(collaborator.userId);
+		|| (currentUserId && items === 'authorIds' && arrCollaborators.userId !== currentUserId)) {
+			arrCollaborators.push(collaborator.userId);
 		}
 
+		console.log(`collaborator[items]: ${JSON.stringify(collaborator[items])}`);
 		for (const item of collaborator[items]) {
+			console.log(item);
 			if (!currentUserId || (currentUserId && item !== currentUserId)) {
-				collaborators.push(item);
+				arrCollaborators.push(item);
 			}
 		}
 	}
 
-	return collaborators;
+	return arrCollaborators;
 }
 
-export async function getUsers(currentUserId) {
+export const getUsers = async (currentUserId) => {
 	// Get the users collaborators
 	let usersCollaborators = await getUsersCollaborators(currentUserId);
 
