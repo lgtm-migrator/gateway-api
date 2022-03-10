@@ -234,7 +234,11 @@ export async function getUsers(currentUserId) {
 				return collaborator.user;
 			});
 
-			resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
+			if (currentUserId) {
+				resolve([...collaboratorUsers]);
+			} else {
+				resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
+			}
 		});
 	});
 }
