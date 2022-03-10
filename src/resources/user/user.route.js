@@ -17,7 +17,7 @@ const router = express.Router();
 // @router   GET /api/v1/users/:userID
 // @desc     find user by id
 // @access   Private
-router.get('/:userID', passport.authenticate('jwt'), async (req, res) => {
+router.get('/:userID', passport.authenticate('jwt'), utils.checkIsUser(), async (req, res) => {
 	//req.params.id is how you get the id from the url
 	var q = UserModel.find({ id: req.params.userID });
 
