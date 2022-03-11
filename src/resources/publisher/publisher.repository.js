@@ -64,9 +64,5 @@ export default class PublisherRepository extends Repository {
 			.lean();
 	}
 
-    getAccessRequestsUserDetails(id) {
- console.log(UserModel.findById(id))
-        return  UserModel.findById(id);
-         }
 
     }

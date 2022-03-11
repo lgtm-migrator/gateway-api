@@ -12,9 +12,6 @@ export default class PublisherService {
 	async getPublisherUserName(id) {
     		return this.publisherRepository.getPublisherUserName(id);
     }
-async getAccessRequestsUserDetails(id) {
-    		return this.publisherRepository.getAccessRequestsUserDetails(id);
-    }
 
 	getPublishersAndIds() {
 		return this.publisherRepository.getPublishersAndIds();

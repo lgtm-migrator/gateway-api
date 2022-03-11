@@ -17,12 +17,13 @@ import { UserModel } from '../user/user.model';
 import i18next from '../internationalization/i18next';
 import { PublisherModel } from '../publisher/publisher.model';
 import { DataRequestModel } from './datarequest.model';
+import { getAccessRequestsUserDetails } from '../user/user.service';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
-	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService, publisherService) {
+	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService) {
 		super(dataRequestService);
 		this.dataRequestService = dataRequestService;
 		this.workflowService = workflowService;
@@ -30,8 +31,6 @@ export default class DataRequestController extends Controller {
 		this.activityLogService = activityLogService;
 		this.topicService = topicService;
 		this.messageService = messageService;
-		this.publisherService = publisherService;
-
 	}
 
 	// ###### APPLICATION CRUD OPERATIONS #######
@@ -79,19 +78,18 @@ export default class DataRequestController extends Controller {
 	//GET api/v1/data-access-request/:userId/userDetails
 	async getAccessRequestsUserDetails(req, res){
 	try{
-		// Deconstruct the parameters passed
-    			let { query = {} } = req;
-    			const userId = req.userId;
-	console.log("userId  ", userId);
-//	console.log("dars  ",dars);
-//	        let userId= dars[0].userId;
-//    			{console.log("dars.userId  ",dars[0].userId)}
-    				//test Dearbhail
-                			const userDetails = await this.publisherService.getAccessRequestsUserDetails(userId)
 
-                			console.log("userId ",userId,"\n getPublisherUserName() ",userDetails );
-                			console.log("userDetails.firstname ", userDetails.firstname)
-                			return res.status(200).json({ success: true, userDetails });
+    			let query = (req);
+    			let userId= query.params;
+                console.log("userId  ", userId.useId);
+
+                const userDetails = await getAccessRequestsUserDetails(userId.useId).catch(err => {
+                    logger.logError(err, logCategory);
+                  });
+                			let mainApplicantUserName= userDetails[0].firstname.concat(" ").concat(userDetails[0].lastname)
+                            console.log("mainApplicantUserName ", mainApplicantUserName)
+
+                return res.status(200).json({ success: true, mainApplicantUserName });
         }catch(err){
                  console.error(err.message);
                  return res.status(500).json({

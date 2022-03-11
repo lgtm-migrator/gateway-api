@@ -77,3 +77,12 @@ export async function setCohortDiscoveryAccess(id, roles) {
 		return resolve(updatedUser);
 	});
 }
+
+export async function getAccessRequestsUserDetails(id ) {
+	return new Promise(async resolve => {
+		return resolve(
+                 await UserModel.find({id: id}).lean()
+                )
+
+	});
+}
