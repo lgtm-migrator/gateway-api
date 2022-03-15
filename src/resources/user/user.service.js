@@ -229,7 +229,7 @@ export const getUsers = async (currentUserId) => {
 				users.push({ _id, id, orcid, name: `${firstname} ${lastname}`, bio, email });
 			});
 
-			let collaboratorsAll = [];
+			let collaborators = [];
 			let nonCollaboratorUsers = [];
 
 			// Pull all non collaborators from users
@@ -239,15 +239,15 @@ export const getUsers = async (currentUserId) => {
 			for (const user of users) {
 				usersCollaborators.forEach((count, collaboratorId) => {
 					if (user.id === collaboratorId) {
-						collaboratorsAll.push({ user: user, count: count });
+						collaborators.push({ user: user, count: count });
 					}
 				});
 			}
 
-			collaboratorsAll.sort((a, b) => b.count - a.count);
+			collaborators.sort((a, b) => b.count - a.count);
 
 			// Remove count after collaborators are sorted
-			let collaboratorUsers = collaboratorsAll.map(collaborator => {
+			let collaboratorUsers = collaborators.map(collaborator => {
 				return collaborator.user;
 			});
 
