@@ -6,7 +6,7 @@ import { Cohort } from '../cohort/cohort.model';
 import { Collections } from '../collections/collections.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 
-const arrCollaborators = [];
+let arrCollaborators = [];
 
 export async function createUser({ firstname, lastname, email, providerId, provider, role }) {
 	return new Promise(async resolve => {
@@ -166,8 +166,8 @@ export const populateCollaborators = async (collaboratorsEntity, items, currentU
 
 export const getUsers = async (currentUserId) => {
 	// Get the users collaborators
+	arrCollaborators = [];
 	let usersCollaborators = await getUsersCollaborators(currentUserId);
-
 	// Get the whole list of users
 	var q = Data.aggregate([
 		// Find all tools with type of person
@@ -229,7 +229,7 @@ export const getUsers = async (currentUserId) => {
 				users.push({ _id, id, orcid, name: `${firstname} ${lastname}`, bio, email });
 			});
 
-			let collaborators = [];
+			let collaboratorsAll = [];
 			let nonCollaboratorUsers = [];
 
 			// Pull all non collaborators from users
@@ -239,15 +239,15 @@ export const getUsers = async (currentUserId) => {
 			for (const user of users) {
 				usersCollaborators.forEach((count, collaboratorId) => {
 					if (user.id === collaboratorId) {
-						collaborators.push({ user: user, count: count });
+						collaboratorsAll.push({ user: user, count: count });
 					}
 				});
 			}
 
-			collaborators.sort((a, b) => b.count - a.count);
+			collaboratorsAll.sort((a, b) => b.count - a.count);
 
 			// Remove count after collaborators are sorted
-			let collaboratorUsers = collaborators.map(collaborator => {
+			let collaboratorUsers = collaboratorsAll.map(collaborator => {
 				return collaborator.user;
 			});
 
