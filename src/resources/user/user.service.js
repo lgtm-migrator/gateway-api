@@ -6,7 +6,7 @@ import { Cohort } from '../cohort/cohort.model';
 import { Collections } from '../collections/collections.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 
-const arrCollaborators = [];
+let arrCollaborators = [];
 
 export async function createUser({ firstname, lastname, email, providerId, provider, role }) {
 	return new Promise(async resolve => {
@@ -166,6 +166,7 @@ export const populateCollaborators = async (collaboratorsEntity, items, currentU
 
 export const getUsers = async (currentUserId) => {
 	// Get the users collaborators
+	arrCollaborators = [];
 	let usersCollaborators = await getUsersCollaborators(currentUserId);
 
 	// Get the whole list of users
