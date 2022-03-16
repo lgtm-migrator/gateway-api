@@ -231,7 +231,6 @@ const returnAsArray = value => {
  * @returns {String} [value as date format]
  */
 const returnAsDate = value => {
-	if (moment(value, 'DD/MM/YYYY').isValid()) return value;
 	return moment(new Date(value)).format('DD/MM/YYYY');
 };
 
@@ -1303,4 +1302,5 @@ export default {
 	buildBulkUploadObject,
 	buildv2Object,
 	datasetv2ObjectComparison,
+	returnAsDate,
 };
