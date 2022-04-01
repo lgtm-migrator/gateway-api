@@ -117,7 +117,7 @@ module.exports = {
 			//Check user type and authentication to submit application
 			let { authorised } = await datasetonboardingUtil.getUserPermissionsForDataset(null, req.user, publisherID);
 			if (!authorised) {
-			console.log("In not wuthorised if ")
+			console.log("In not authorised if ")
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
@@ -256,6 +256,7 @@ module.exports = {
 					return res.status(404).json({ status: 'error', message: 'Update failed' });
 				} else {
 					let structuralMetadata = JSON.parse(data.rows);
+                    let percentageCompleted = data.percentageCompleted;
 
 					if (isEmpty(structuralMetadata)) {
 						return res.status(404).json({ status: 'error', message: 'Update failed' });

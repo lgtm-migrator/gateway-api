@@ -64,6 +64,7 @@ export default class DataRequestController extends Controller {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 
 			const query = {publisher: req.params.publisher, applicationStatus: {$not: {$in: ["inProgress"]}} }
+
 			const dars = await DataRequestModel.find(query);
 			return res.status(200).json({ success: true, dars });   
 		} catch (err) {
@@ -86,8 +87,8 @@ export default class DataRequestController extends Controller {
                 const userDetails = await getAccessRequestsUserDetails(userId.useId).catch(err => {
                     logger.logError(err, logCategory);
                   });
-                			let mainApplicantUserName= userDetails[0].firstname.concat(" ").concat(userDetails[0].lastname)
-                            console.log("mainApplicantUserName ", mainApplicantUserName)
+                let mainApplicantUserName= userDetails[0].firstname.concat(" ").concat(userDetails[0].lastname)
+
 
                 return res.status(200).json({ success: true, mainApplicantUserName });
         }catch(err){

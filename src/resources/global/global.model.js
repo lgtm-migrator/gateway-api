@@ -15,6 +15,9 @@ const GlobalSchema = new Schema(
 			type: Object,
 			default: {},
 		},
+		aridhiaToken: {
+			type: String,
+		},
 	},
 	{
 		timestamps: true,

@@ -26,12 +26,6 @@ export default class AmendmentController extends Controller {
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 			let { questionId, questionSetId, mode, reason, answer } = req.body;
-			console.log("questionId ", questionId)
-			console.log("requestingUserId ", requestingUserId)
-			console.log("questionSetId ", questionSetId)
-			console.log("mode ", mode)
-			console.log("reason ", reason)
-			console.log("answer ", answer)
 			if (_.isEmpty(questionId) || _.isEmpty(questionSetId)) {
 				return res.status(400).json({
 					success: false,

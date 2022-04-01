@@ -21,7 +21,7 @@ describe('Search API', () => {
 		expect(payload).toHaveProperty('summary');
 	});
 
-	['covid', 'CMMID'].forEach(function (searchString) {
+	['test', 'tool'].forEach(function (searchString) {
 		test(`Search for string '${searchString}', first tool result should contain name or description '${searchString}'`, async () => {
 			const response = await testURL.get('/api/v1/search?search=' + searchString);
 			expect(response.statusCode).toBe(200);
@@ -59,7 +59,7 @@ describe('Search API', () => {
 		});
 	});
 
-	['annual district death daily', 'cancer', 'epilepsy'].forEach(function (searchString) {
+	['annual district death daily', 'cancer', 'data'].forEach(function (searchString) {
 		test(`Search for string '${searchString}', first dataset result should contain name or description '${searchString}'`, async () => {
 			const response = await testURL.get('/api/v1/search?search=' + searchString);
 			expect(response.statusCode).toBe(200);
