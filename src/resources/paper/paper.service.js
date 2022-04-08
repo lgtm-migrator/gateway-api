@@ -10,4 +10,8 @@ export default class PaperService {
 	getPapers(query = {}) {
 		return this.paperRepository.getPapers(query);
 	}
+
+	getPapersByIds(paperIds) {
+		return this.paperRepository.getPapersByIds(paperIds);
+	}
 }

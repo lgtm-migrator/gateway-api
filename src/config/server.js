@@ -230,7 +230,7 @@ app.use('/api/v1/collectioncounter', require('../resources/collections/collectio
 
 app.use('/api/v1/discourse', require('../resources/discourse/discourse.route'));
 
-app.use('/api/v1/dataset-onboarding', require('../resources/dataset/datasetonboarding.route'));
+app.use('/api/v1/dataset-onboarding', require('../routes/datasetonboarding.route'));
 app.use('/api/v1/datasets', require('../resources/dataset/v1/dataset.route'));
 app.use('/api/v2/datasets', require('../resources/dataset/v2/dataset.route'));
 
@@ -255,6 +255,8 @@ app.use('/api/v1/global', require('../resources/global/global.route'));
 app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
 
 app.use('/api/v2/questionbank', require('../resources/questionbank/questionbank.route'));
+app.use('/api/v2/data-use-registers', require('../resources/dataUseRegister/dataUseRegister.route'));
+app.use('/api/v1/locations', require('../resources/spatialfilter/SpatialRouter'));
 
 initialiseAuthentication(app);
 

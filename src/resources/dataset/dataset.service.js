@@ -114,4 +114,12 @@ export default class DatasetService {
 	async updateMany(query, data) {
 		return this.datasetRepository.updateMany(query, data);
 	}
+
+	getDatasetsByPids(pids) {
+		return this.datasetRepository.getDatasetsByPids(pids);
+	}
+
+	getDatasetsByName(name) {
+		return this.datasetRepository.getDataset({ name, fields: 'pid' }, { lean: true });
+	}
 }

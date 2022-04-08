@@ -1,17 +1,19 @@
-import { Data } from '../../tool/data.model';
-import { TeamModel } from '../../team/team.model';
-import { PublisherModel } from '../../publisher/publisher.model';
-import { UserModel } from '../../user/user.model';
-import notificationBuilder from '../../utilities/notificationBuilder';
-import emailGenerator from '../../utilities/emailGenerator.util';
-import _, { isEmpty, isNil, cloneDeep, isString, map, groupBy, orderBy } from 'lodash';
-import constants from '../../utilities/constants.util';
-import moment from 'moment';
-import randomstring from 'randomstring';
 import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
-var fs = require('fs');
+import moment from 'moment';
 import { flatten } from 'flat';
+import addFormats from 'ajv-formats';
+import randomstring from 'randomstring';
+import constants from '../resources/utilities/constants.util';
+import _, { isEmpty, isNil, cloneDeep, isString, map, groupBy, orderBy } from 'lodash';
+
+import { Data } from '../resources/tool/data.model';
+import { TeamModel } from '../resources/team/team.model';
+import { UserModel } from '../resources/user/user.model';
+import { PublisherModel } from '../resources/publisher/publisher.model';
+import emailGenerator from '../resources/utilities/emailGenerator.util';
+import notificationBuilder from '../resources/utilities/notificationBuilder';
+
+var fs = require('fs');
 
 /**
  * Checks to see if the user has the correct permissions to access the dataset
@@ -229,7 +231,6 @@ const returnAsArray = value => {
  * @returns {String} [value as date format]
  */
 const returnAsDate = value => {
-	if (moment(value, 'DD/MM/YYYY').isValid()) return value;
 	return moment(new Date(value)).format('DD/MM/YYYY');
 };
 
@@ -251,7 +252,7 @@ const populateStructuralMetadata = technicaldetails => {
 				columnName: dataElement.label,
 				columnDescription: dataElement.description,
 				dataType: dataElement.dataType.label,
-				sensitive: '',
+				sensitive: !!dataElement.sensitive,
 			});
 		}
 	}
@@ -332,7 +333,7 @@ const updateDataset = async (dataset, updateObj) => {
 	// 1. Extract properties
 	let { activeflag, _id } = dataset;
 	// 2. If application is in progress, update initial question answers
-	if (activeflag === constants.datatsetStatuses.DRAFT || activeflag === constants.applicationStatuses.INREVIEW) {
+	if (activeflag === constants.datasetStatuses.DRAFT || activeflag === constants.applicationStatuses.INREVIEW) {
 		await Data.findByIdAndUpdate(_id, updateObj, { new: true }).catch(err => {
 			console.error(err);
 			throw err;
@@ -740,7 +741,7 @@ const buildMetadataQuality = async (dataset, v2Object, pid) => {
 				} else completeness.push({ value: 'observation.measuredProperty', weight });
 			}
 		} else {
-			let datasetValue = getDatatsetValue(cleanV2Object, key);
+			let datasetValue = getDatasetValue(cleanV2Object, key);
 
 			if (!isEmpty(datasetValue)) {
 				totalCount++;
@@ -767,7 +768,7 @@ const buildMetadataQuality = async (dataset, v2Object, pid) => {
 		errorWeight = 0;
 
 	Object.entries(weights).forEach(([key, weight]) => {
-		let datasetValue = getDatatsetValue(cleanV2Object, key);
+		let datasetValue = getDatasetValue(cleanV2Object, key);
 		let updatedKey = '/' + key.replace(/\./g, '/');
 
 		let errorIndex = Object.keys(validate.errors).find(key => validate.errors[key].instancePath === updatedKey);
@@ -822,7 +823,7 @@ const cleanUpV2Object = v2Object => {
  *
  * @return  {String}           [return field value that is found in the dataset]
  */
-const getDatatsetValue = (dataset, field) => {
+const getDatasetValue = (dataset, field) => {
 	return field.split('.').reduce(function (o, k) {
 		return o && o[k];
 	}, dataset);
@@ -883,7 +884,10 @@ const createNotifications = async (type, context) => {
 			team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
 
 			for (let member of team.members) {
-				if (member.roles.some(role => ['manager', 'metadata_editor'].includes(role))) teamMembers.push(member.memberid);
+				if ((Array.isArray(member.roles) && member.roles.some(role => ['manager', 'metadata_editor'].includes(role)))
+				 || (typeof member.roles === 'string' && ['manager', 'metadata_editor'].includes(member.roles))) {
+					teamMembers.push(member.memberid);
+				}
 			}
 
 			teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
@@ -1298,4 +1302,5 @@ export default {
 	buildBulkUploadObject,
 	buildv2Object,
 	datasetv2ObjectComparison,
+	returnAsDate,
 };

@@ -14,12 +14,14 @@ import inputSanitizer from '../utilities/inputSanitizer';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
+import { PublisherModel } from '../publisher/publisher.model';
+import { dataUseRegisterController } from '../dataUseRegister/dependency';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
 
 export default class DataRequestController extends Controller {
-	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService) {
+	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService, dataUseRegisterService) {
 		super(dataRequestService);
 		this.dataRequestService = dataRequestService;
 		this.workflowService = workflowService;
@@ -27,6 +29,7 @@ export default class DataRequestController extends Controller {
 		this.activityLogService = activityLogService;
 		this.topicService = topicService;
 		this.messageService = messageService;
+		this.dataUseRegisterService = dataUseRegisterService
 	}
 
 	// ###### APPLICATION CRUD OPERATIONS #######
@@ -313,6 +316,33 @@ export default class DataRequestController extends Controller {
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred opening a data access request application for the requested dataset(s)',
+			});
+		}
+	}
+
+	//GET api/v1/data-access-request/prepopulate-contributors/:id
+	async getContributorsAdditionalInfo(req, res) {
+		try {
+			let darId = req.params.id;
+			let userId = req.user.id;
+
+			//Get additional info to pre populate for user and collaborators (authors)
+			let contributors = await this.dataRequestService.getDarContributors(darId, userId);
+
+
+			// Return payload
+			return res.status(200).json({
+				success: true,
+				data: contributors.sort(function (a, b) {
+					return b.user ? 1 : -1;
+				}),
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred populating additional information for contributors.',
 			});
 		}
 	}
@@ -637,7 +667,7 @@ export default class DataRequestController extends Controller {
 				// If save has succeeded - send notifications
 				// Send notifications to added/removed contributors
 				if (contributorChange) {
-					await this.createNotifications(
+					this.createNotifications(
 						constants.notificationTypes.CONTRIBUTORCHANGE,
 						{ newAuthors, currentAuthors },
 						accessRecord,
@@ -666,12 +696,25 @@ export default class DataRequestController extends Controller {
 					//Update any connected version trees
 					this.dataRequestService.updateVersionStatus(accessRecord, accessRecord.applicationStatus);
 
-					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED)
+					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED) {
+						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+ 						await dataUseRegisterController.createNotifications(
+ 							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
+ 							{},
+ 							dataUseRegister
+ 						);
 						await this.activityLogService.logActivity(constants.activityLogEvents.data_access_request.APPLICATION_APPROVED, {
 							accessRequest: accessRecord,
 							user: req.user,
 						});
+					}
 					else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
+						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+ 						await dataUseRegisterController.createNotifications(
+ 							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
+ 							{},
+ 							dataUseRegister
+ 						);
 						await this.activityLogService.logActivity(
 							constants.activityLogEvents.data_access_request.APPLICATION_APPROVED_WITH_CONDITIONS,
 							{
@@ -687,7 +730,7 @@ export default class DataRequestController extends Controller {
 					}
 
 					// Send notifications to custodian team, main applicant and contributors regarding status change
-					await this.createNotifications(
+					this.createNotifications(
 						constants.notificationTypes.STATUSCHANGE,
 						{ applicationStatus, applicationStatusDesc },
 						accessRecord,
@@ -1887,7 +1930,7 @@ export default class DataRequestController extends Controller {
 	async createNotifications(type, context, accessRecord, user) {
 		// Project details from about application if 5 Safes
 		let { aboutApplication = {} } = accessRecord;
-		let { projectName = 'No project name set' } = aboutApplication;
+		let { projectName } = aboutApplication;
 		let { projectId, _id, workflow = {}, dateSubmitted = '', jsonSchema, questionAnswers, createdAt } = accessRecord;
 		if (_.isEmpty(projectId)) {
 			projectId = _id;
@@ -1969,7 +2012,7 @@ export default class DataRequestController extends Controller {
 				await emailGenerator.sendEmail(
 					[user],
 					constants.hdrukEmail,
-					`Data Access Request in progress for ${datasetTitles}`,
+					`Data Access Request in progress for ${projectName || datasetTitles}`,
 					html,
 					false,
 					attachments
@@ -1986,7 +2029,7 @@ export default class DataRequestController extends Controller {
 				let statusChangeUserIds = [...custodianManagers, ...stepReviewers].map(user => user.id);
 				await notificationBuilder.triggerNotificationMessage(
 					statusChangeUserIds,
-					`${appFirstName} ${appLastName}'s Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,
+					`${appFirstName} ${appLastName}'s Data Access Request for ${projectName || datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,
 					'data access request',
 					accessRecord._id
 				);
@@ -1994,7 +2037,7 @@ export default class DataRequestController extends Controller {
 				// Create applicant notification
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
+					`Your Data Access Request for ${projectName || datasetTitles} was ${context.applicationStatus} by ${publisher}`,
 					'data access request',
 					accessRecord._id
 				);
@@ -2003,7 +2046,7 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
+						`A Data Access Request you are contributing to for ${projectName || datasetTitles} was ${context.applicationStatus} by ${publisher}`,
 						'data access request',
 						accessRecord._id
 					);
@@ -2031,7 +2074,7 @@ export default class DataRequestController extends Controller {
 				await emailGenerator.sendEmail(
 					emailRecipients,
 					constants.hdrukEmail,
-					`Data Access Request for ${datasetTitles} was ${context.applicationStatus} by ${publisher}`,
+					`Data Access Request for ${projectName || datasetTitles} was ${context.applicationStatus} by ${publisher}`,
 					html,
 					false
 				);
@@ -2046,7 +2089,7 @@ export default class DataRequestController extends Controller {
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
-						`A Data Access Request has been submitted to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
+						`A Data Access Request has been submitted to ${publisher} for ${projectName || datasetTitles} by ${appFirstName} ${appLastName}`,
 						'data access request received',
 						accessRecord._id,
 						accessRecord.datasets[0].publisher._id.toString()
@@ -2058,7 +2101,7 @@ export default class DataRequestController extends Controller {
 				// Applicant notification
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully submitted to ${publisher}`,
+					`Your Data Access Request for ${projectName || datasetTitles} was successfully submitted to ${publisher}`,
 					'data access request',
 					accessRecord._id
 				);
@@ -2066,7 +2109,7 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						accessRecord.authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${datasetTitles} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,
+						`A Data Access Request you are contributing to for ${projectName || datasetTitles} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
 					);
@@ -2098,6 +2141,9 @@ export default class DataRequestController extends Controller {
 						questionAnswers,
 						options
 					));
+					// Get the name of the publishers word template
+						let publisherTemplate = await PublisherModel.findOne({ name: publisher }, { wordTemplate: 1, _id: 0 }).lean();
+						let templateName = publisherTemplate.wordTemplate;
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
@@ -2105,6 +2151,15 @@ export default class DataRequestController extends Controller {
 						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
 						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
 						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+
+						// Generate word attachment for publishers with 'wordTemplate' populated
+						if (!_.isUndefined(templateName)) {
+							await emailGenerator.generateWordAttachment(templateName, questionAnswers);
+							let wordAttachmentName = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.docx`;
+							let wordContent = await emailGenerator.generateWordContent(wordAttachmentName);
+							let wordAttachment = await emailGenerator.generateAttachment(wordAttachmentName, wordContent, 'application/docx');
+							attachments = [...attachments, wordAttachment];
+						}
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
@@ -2114,12 +2169,15 @@ export default class DataRequestController extends Controller {
 						await emailGenerator.sendEmail(
 							emailRecipients,
 							constants.hdrukEmail,
-							`Data Access Request has been submitted to ${publisher} for ${datasetTitles}`,
+							`Data Access Request has been submitted to ${publisher} for ${projectName || datasetTitles}`,
 							html,
 							false,
 							attachments
 						);
 					}
+
+					// Remove temporary files for word attachment
+					if (!_.isUndefined(templateName)) { await emailGenerator.deleteWordAttachmentTempFiles() }
 				}
 				break;
 			case constants.notificationTypes.RESUBMITTED:
@@ -2131,7 +2189,7 @@ export default class DataRequestController extends Controller {
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
-						`A Data Access Request has been resubmitted with updates to ${publisher} for ${datasetTitles} by ${appFirstName} ${appLastName}`,
+						`A Data Access Request has been resubmitted with updates to ${publisher} for ${projectName || datasetTitles} by ${appFirstName} ${appLastName}`,
 						'data access request',
 						accessRecord._id
 					);
@@ -2142,7 +2200,7 @@ export default class DataRequestController extends Controller {
 				// Applicant notification
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully resubmitted with updates to ${publisher}`,
+					`Your Data Access Request for ${projectName || datasetTitles} was successfully resubmitted with updates to ${publisher}`,
 					'data access request',
 					accessRecord._id
 				);
@@ -2150,7 +2208,7 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						accessRecord.authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${datasetTitles} was successfully resubmitted with updates to ${publisher} by ${firstname} ${lastname}`,
+						`A Data Access Request you are contributing to for ${projectName || datasetTitles} was successfully resubmitted with updates to ${publisher} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
 					);
@@ -2198,7 +2256,7 @@ export default class DataRequestController extends Controller {
 						await emailGenerator.sendEmail(
 							emailRecipients,
 							constants.hdrukEmail,
-							`Data Access Request to ${publisher} for ${datasetTitles} has been updated`,
+							`Data Access Request to ${publisher} for ${projectName || datasetTitles} has been updated`,
 							html,
 							false,
 							attachments
@@ -2480,7 +2538,7 @@ export default class DataRequestController extends Controller {
 				// 1. Create notifications
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully duplicated 
+					`Your Data Access Request for ${projectName || datasetTitles} was successfully duplicated 
 					${
 						_.isEmpty(newDatasetTitles)
 							? `from an existing form, which can now be edited`
@@ -2493,7 +2551,7 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						authors.map(author => author.id),
-						`A Data Access Request you contributed to for ${datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
+						`A Data Access Request you contributed to for ${projectName || datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
 						'data access request unlinked',
 						newApplicationId
 					);
@@ -2518,7 +2576,7 @@ export default class DataRequestController extends Controller {
 				await emailGenerator.sendEmail(
 					emailRecipients,
 					constants.hdrukEmail,
-					`Data Access Request for ${datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
+					`Data Access Request for ${projectName || datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
 					html,
 					false
 				);
@@ -2527,7 +2585,7 @@ export default class DataRequestController extends Controller {
 				// 1. Create notifications
 				await notificationBuilder.triggerNotificationMessage(
 					[accessRecord.userId],
-					`Your Data Access Request for ${datasetTitles} was successfully deleted`,
+					`Your Data Access Request for ${projectName || datasetTitles} was successfully deleted`,
 					'data access request unlinked',
 					accessRecord._id
 				);
@@ -2535,7 +2593,7 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						authors.map(author => author.id),
-						`A draft Data Access Request you contributed to for ${datasetTitles} has been deleted by ${firstname} ${lastname}`,
+						`A draft Data Access Request you contributed to for ${projectName || datasetTitles} has been deleted by ${firstname} ${lastname}`,
 						'data access request unlinked',
 						accessRecord._id
 					);
@@ -2644,7 +2702,7 @@ export default class DataRequestController extends Controller {
 						await emailGenerator.sendEmail(
 							emailRecipients,
 							constants.hdrukEmail,
-							`Data Access Request to ${publisher} for ${datasetTitles} has been amended with updates`,
+							`Data Access Request to ${publisher} for ${projectName || datasetTitles} has been amended with updates`,
 							html,
 							false,
 							attachments
@@ -2653,7 +2711,6 @@ export default class DataRequestController extends Controller {
 				}
 				break;
 			case constants.notificationTypes.MESSAGESENT:
-				let title = projectName !== 'No project name set' ? projectName : datasetTitles;
 				if (userType === constants.userTypes.APPLICANT) {
 					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
 					const custodianManagersIds = custodianManagers.map(user => user.id);
@@ -2662,7 +2719,7 @@ export default class DataRequestController extends Controller {
 
 					await notificationBuilder.triggerNotificationMessage(
 						[...custodianManagersIds, ...custodianReviewersIds, ...accessRecord.authors.map(author => author.id)],
-						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname}`,
 						'data access message sent',
 						accessRecord._id
 					);
@@ -2680,14 +2737,14 @@ export default class DataRequestController extends Controller {
 					await emailGenerator.sendEmail(
 						[...custodianManagers, ...custodianReviewers, ...accessRecord.authors],
 						constants.hdrukEmail,
-						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname}`,
 						html,
 						false
 					);
 				} else if (userType === constants.userTypes.CUSTODIAN) {
 					await notificationBuilder.triggerNotificationMessage(
 						[accessRecord.userId, ...accessRecord.authors.map(author => author.id)],
-						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname} from ${accessRecord.publisherObj.name}`,
+						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname} from ${accessRecord.publisherObj.name}`,
 						'data access message sent',
 						accessRecord._id
 					);
@@ -2705,7 +2762,7 @@ export default class DataRequestController extends Controller {
 					await emailGenerator.sendEmail(
 						[accessRecord.mainApplicant, ...accessRecord.authors],
 						constants.hdrukEmail,
-						`There is a new message for the application ${title} from ${user.firstname} ${user.lastname}`,
+						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname}`,
 						html,
 						false
 					);

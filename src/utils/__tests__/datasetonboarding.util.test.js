@@ -1,6 +1,12 @@
-import dbHandler from '../../../../config/in-memory-db';
+import dbHandler from '../../config/in-memory-db';
 import datasetonboardingUtil from '../datasetonboarding.util';
-import { datasetQuestionAnswersMocks, datasetv2ObjectMock, publisherDetailsMock } from '../__mocks__/datasetobjects';
+import {
+	datasetQuestionAnswersMocks,
+	datasetv2ObjectMock,
+	publisherDetailsMock,
+	structuralMetadataMock,
+} from '../__mocks__/datasetobjects';
+import _ from 'lodash';
 
 beforeAll(async () => {
 	await dbHandler.connect();
@@ -61,6 +67,54 @@ describe('Dataset onboarding utility', () => {
 			];
 
 			expect(datasetv2DiffObject).toStrictEqual(diffArray);
+		});
+
+		describe('populateStructuralMetadata', () => {
+			it('Should return a correctly formatted  array', async () => {
+				let populateStructuralMetadataArray = await datasetonboardingUtil.populateStructuralMetadata(structuralMetadataMock);
+				const expectArray = [
+					{
+						tableName: 'papers',
+						tableDescription: 'HDR UK Paper and Preprints',
+						columnName: 'urls',
+						columnDescription: 'List of URLS (DOI, HTML, PDF)',
+						dataType: 'List (URLS)',
+						sensitive: true,
+					},
+					{
+						tableName: 'papers',
+						tableDescription: 'HDR UK Paper and Preprints',
+						columnName: 'date',
+						columnDescription: 'Date of Publication',
+						dataType: 'Date',
+						sensitive: false,
+					},
+					{
+						tableName: 'papers',
+						tableDescription: 'HDR UK Paper and Preprints',
+						columnName: 'date',
+						columnDescription: 'Date of Publication1',
+						dataType: 'Date',
+						sensitive: false,
+					},
+				];
+
+				expect(populateStructuralMetadataArray).toStrictEqual(expectArray);
+			});
+		});
+	});
+	describe('returnAsDate', () => {
+		it('Should return a correctly formatted date for `2007-01-04`', () => {
+			expect(datasetonboardingUtil.returnAsDate('2007-01-04')).toStrictEqual(`04/01/2007`);
+		});
+		it('Should return a correctly formatted date for `2007/01/04`', () => {
+			expect(datasetonboardingUtil.returnAsDate('2007/01/04')).toStrictEqual(`04/01/2007`);
+		});
+		it('Should not return a correctly formatted date for `01-04-2007`', () => {
+			expect(datasetonboardingUtil.returnAsDate('04-01-2007')).not.toEqual(`04/01/2007`);
+		});
+		it('Should not return a correctly formatted date for `01/04/2007`', () => {
+			expect(datasetonboardingUtil.returnAsDate('04/01/2007')).not.toEqual(`04/01/2007`);
 		});
 	});
 });

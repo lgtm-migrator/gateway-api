@@ -1,0 +1,131 @@
+Arguments: 
+  C:\Program Files\nodejs\node.exe C:\Users\Peter\AppData\Roaming\npm\node_modules\yarn\bin\yarn.js
+
+PATH: 
+  C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\Peter\bin;C:\Program Files\Google\Chrome\Application;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Windows\System32\OpenSSH;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;C:\Program Files\Git\cmd;C:\Program Files\nodejs;C:\Program Files\Amazon\AWSCLIV2;C:\windows\system32;C:\windows;C:\windows\System32\Wbem;C:\windows\System32\WindowsPowerShell\v1.0;C:\windows\System32\OpenSSH;C:\Program Files\Docker\Docker\resources\bin;C:\ProgramData\DockerDesktop\version-bin;C:\Program Files\dotnet;C:\Users\Peter\AppData\Local\Microsoft\WindowsApps;C:\Users\Peter\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Peter\AppData\Roaming\npm
+
+Yarn version: 
+  1.22.10
+
+Node version: 
+  12.18.4
+
+Platform: 
+  win32 x64
+
+Trace: 
+  Error: https://affinitywater-633033879498.d.codeartifact.eu-west-1.amazonaws.com/npm/react-core-ui/@google-cloud%2fmonitoring: Unauthenticated: request used expired credentials. Please renew your credentials.
+      at Request.params.callback [as _callback] (C:\Users\Peter\AppData\Roaming\npm\node_modules\yarn\lib\cli.js:66988:18)
+      at Request.self.callback (C:\Users\Peter\AppData\Roaming\npm\node_modules\yarn\lib\cli.js:140662:22)
+      at Request.emit (events.js:315:20)
+      at Request.<anonymous> (C:\Users\Peter\AppData\Roaming\npm\node_modules\yarn\lib\cli.js:141634:10)
+      at Request.emit (events.js:315:20)
+      at Gunzip.<anonymous> (C:\Users\Peter\AppData\Roaming\npm\node_modules\yarn\lib\cli.js:141556:12)
+      at Object.onceWrapper (events.js:421:28)
+      at Gunzip.emit (events.js:327:22)
+      at endReadableNT (_stream_readable.js:1220:12)
+      at processTicksAndRejections (internal/process/task_queues.js:84:21)
+
+npm manifest: 
+  {
+  	"name": "hdruk-rdt-api",
+  	"config": {
+  		"mongodbMemoryServer": {
+  			"version": "5.0.0-rc7"
+  		}
+  	},
+  	"version": "0.1.1",
+  	"private": true,
+  	"dependencies": {
+  		"@google-cloud/monitoring": "^2.1.0",
+  		"@google-cloud/storage": "^5.3.0",
+  		"@hubspot/api-client": "^4.1.0",
+  		"@sendgrid/mail": "^7.1.0",
+  		"@sentry/node": "^6.4.1",
+  		"@sentry/tracing": "^6.4.1",
+  		"ajv": "^8.1.0",
+  		"ajv-formats": "^2.0.2",
+  		"async": "^3.2.0",
+  		"await-to-js": "^2.1.1",
+  		"axios": "0.21.1",
+  		"axios-retry": "^3.1.9",
+  		"base64url": "^3.0.1",
+  		"bcrypt": "^5.0.0",
+  		"body-parser": "^1.19.0",
+  		"btoa": "^1.2.1",
+  		"cookie-parser": "^1.4.5",
+  		"cors": "^2.8.5",
+  		"crypto": "^1.0.1",
+  		"crypto-js": "^4.0.0",
+  		"csurf": "^1.11.0",
+  		"discourse-sso": "^1.0.3",
+  		"dotenv": "^8.2.0",
+  		"escape-html": "^1.0.3",
+  		"esm": "^3.2.25",
+  		"express": "^4.17.1",
+  		"express-rate-limit": "^5.1.3",
+  		"express-session": "^1.17.1",
+  		"express-validator": "^6.6.1",
+  		"faker": "^5.3.1",
+  		"form-data": "^3.0.0",
+  		"googleapis": "^55.0.0",
+  		"jose": "^2.0.2",
+  		"jsonwebtoken": "^8.5.1",
+  		"keygrip": "^1.1.0",
+  		"lodash": "^4.17.19",
+  		"mailchimp-api-v3": "^1.15.0",
+  		"migrate-mongoose": "^4.0.0",
+  		"moment": "^2.27.0",
+  		"mongoose": "^5.12.7",
+  		"morgan": "^1.10.0",
+  		"multer": "^1.4.2",
+  		"oidc-provider": "^6.29.3",
+  		"passport": "^0.4.1",
+  		"passport-azure-ad-oauth2": "0.0.4",
+  		"passport-google-oauth": "^2.0.0",
+  		"passport-jwt": "^4.0.0",
+  		"passport-linkedin-oauth2": "^2.0.0",
+  		"passport-openidconnect": "0.0.2",
+  		"prettier": "^2.2.1",
+  		"query-string": "^6.12.1",
+  		"randomstring": "^1.1.5",
+  		"sinon": "^9.2.4",
+  		"snyk": "^1.334.0",
+  		"swagger-ui-express": "^4.1.4",
+  		"test": "^0.6.0",
+  		"transformobject": "^0.3.1",
+  		"uuid": "^8.3.1",
+  		"yamljs": "^0.3.0"
+  	},
+  	"devDependencies": {
+  		"@babel/preset-env": "^7.12.1",
+  		"@shelf/jest-mongodb": "^1.2.3",
+  		"babel-jest": "^26.6.3",
+  		"eslint": "^7.20.0",
+  		"jest": "^26.6.3",
+  		"mongodb-memory-server": "6.9.2",
+  		"nodemon": "^2.0.3",
+  		"plop": "^2.7.4",
+  		"supertest": "^4.0.2"
+  	},
+  	"scripts": {
+  		"start": "node index.js",
+  		"server": "nodemon index.js",
+  		"debug": "nodemon --inspect=0.0.0.0:3001 index.js",
+  		"build": "",
+  		"test": "jest --runInBand",
+  		"eject": "",
+  		"snyk-protect": "snyk protect",
+  		"prepublish": "npm run snyk-protect",
+  		"prettify": "prettier --write \"src/**/*.{scss,js,jsx}\"",
+  		"prettify-test": "prettier --write \"test/**/*.js\""
+  	},
+  	"proxy": "http://localhost:3001",
+  	"snyk": true
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile

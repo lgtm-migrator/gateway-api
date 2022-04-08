@@ -10,4 +10,8 @@ export default class ToolService {
 	getTools(query = {}) {
 		return this.toolRepository.getTools(query);
 	}
+
+	getToolsByIds(toolIds) {
+		return this.toolRepository.getToolsByIds(toolIds);
+	}
 }

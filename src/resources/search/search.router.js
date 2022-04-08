@@ -29,17 +29,7 @@ router.get('/', async (req, res) => {
 
 	let searchAll = false;
 	if (searchString.length > 0) {
-		searchQuery['$and'].push({ $text: { $search: searchString } });
-
-		/* datasetSearchString = '"' + searchString.split(' ').join('""') + '"';
-        //The following code is a workaround for the way search works TODO:work with MDC to improve API
-        if (searchString.match(/"/)) {
-            //user has added quotes so pass string through
-            datasetSearchString = searchString;
-        } else {
-            //no quotes so lets a proximiy search
-            datasetSearchString = '"'+searchString+'"~25';
-        } */
+		searchQuery['$and'].push({ $text: { $search: `'${searchString.split(" ").map(item => item.replace(/^/,"\"").replace(/$/,"\"")).join(" ")}'` }});
 	} else {
 		searchAll = true;
 	}
@@ -56,6 +46,7 @@ router.get('/', async (req, res) => {
 		People: 'person',
 		Courses: 'course',
 		Collections: 'collection',
+		Datauses: 'dataUseRegister',
 	};
 
 	const entityType = typeMapper[`${tab}`];
@@ -125,6 +116,14 @@ router.get('/', async (req, res) => {
 				req.query.maxResults || 40,
 				req.query.collectionSort || ''
 			),
+			getObjectResult(
+				'dataUseRegister',
+				searchAll,
+				getObjectFilters(searchQuery, req, 'dataUseRegister'),
+				req.query.dataUseRegisterIndex || 0,
+				req.query.maxResults || 40,
+				req.query.dataUseRegisterSort || ''
+			),
 		]);
 	} else {
 		const sort = entityType === 'course' ? 'startdate' : req.query[`${entityType}Sort`] || '';
@@ -146,6 +145,7 @@ router.get('/', async (req, res) => {
 		getObjectCount('person', searchAll, searchQuery),
 		getObjectCount('course', searchAll, getObjectFilters(searchQuery, req, 'course')),
 		getObjectCount('collection', searchAll, getObjectFilters(searchQuery, req, 'collection')),
+		getObjectCount('dataUseRegister', searchAll, getObjectFilters(searchQuery, req, 'dataUseRegister')),
 	]);
 
 	const summary = {
@@ -156,6 +156,7 @@ router.get('/', async (req, res) => {
 		personCount: summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0,
 		courseCount: summaryCounts[5][0] !== undefined ? summaryCounts[5][0].count : 0,
 		collectionCount: summaryCounts[6][0] !== undefined ? summaryCounts[6][0].count : 0,
+		dataUseRegisterCount: summaryCounts[7][0] !== undefined ? summaryCounts[7][0].count : 0,
 	};
 
 	let myEntitiesSummary = {};
@@ -184,6 +185,7 @@ router.get('/', async (req, res) => {
 	recordSearchData.returned.person = summaryCounts[4][0] !== undefined ? summaryCounts[4][0].count : 0;
 	recordSearchData.returned.course = summaryCounts[5][0] !== undefined ? summaryCounts[5][0].count : 0;
 	recordSearchData.returned.collection = summaryCounts[6][0] !== undefined ? summaryCounts[6][0].count : 0;
+	recordSearchData.returned.datause = summaryCounts[7][0] !== undefined ? summaryCounts[7][0].count : 0;
 	recordSearchData.datesearched = Date.now();
 	recordSearchData.save(err => {});
 
@@ -197,6 +199,7 @@ router.get('/', async (req, res) => {
 			personResults: allResults[4].data,
 			courseResults: allResults[5].data,
 			collectionResults: allResults[6].data,
+			dataUseRegisterResults: allResults[7].data,
 			summary: summary,
 			myEntitiesSummary: myEntitiesSummary,
 		});

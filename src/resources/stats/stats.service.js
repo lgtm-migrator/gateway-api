@@ -118,6 +118,8 @@ export default class StatsService {
 		switch (entityType) {
 			case 'course':
 				return this.statsRepository.getPopularCourses();
+			case 'dataUseRegister':
+				return this.statsRepository.getPopularDataUses();
 			default:
 				return this.statsRepository.getPopularEntitiesByType(entityType);
 		}
@@ -127,12 +129,18 @@ export default class StatsService {
 		return this.statsRepository.getActiveCourseCount();
 	}
 
+	async getActiveDataUsesCount() {
+		return this.statsRepository.getActiveDataUsesCount();
+	}
+
 	async getRecentlyUpdatedEntitiesByType(entityType) {
 		switch (entityType) {
 			case 'course':
 				return this.statsRepository.getRecentlyUpdatedCourses();
 			case 'dataset':
 				return this.statsRepository.getRecentlyUpdatedDatasets();
+			case 'dataUseRegister':
+				return this.statsRepository.getRecentlyUpdatedDataUses();
 			default:
 				return this.statsRepository.getRecentlyUpdatedEntitiesByType(entityType);
 		}
@@ -162,6 +170,7 @@ const entityTypeMap = {
 	Tools: 'tool',
 	Projects: 'project',
 	Courses: 'course',
-	Papers: 'papers',
+	Papers: 'paper',
 	People: 'person',
+	DataUses: 'datause',
 };
