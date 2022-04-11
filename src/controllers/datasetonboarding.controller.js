@@ -12,7 +12,7 @@ import { filtersService } from '../resources/filters/dependency';
 import datasetonboardingUtil from '../utils/datasetonboarding.util';
 import { PublisherModel } from '../resources/publisher/publisher.model';
 import { activityLogService } from '../resources/activitylog/dependency';
-const HttpClient = require('../services/httpClient/httpClient')
+const HttpClient = require('../services/httpClient/httpClient');
 
 const readEnv = process.env.ENV || 'prod';
 
@@ -222,7 +222,7 @@ export default class DatasetOnboardingController {
 		if (!id) {
 			return res.status(404).json({
 				status: 'error',
-				message: 'Dataset _id could not be found.'
+				message: 'Dataset _id could not be found.',
 			});
 		}
 
@@ -233,7 +233,7 @@ export default class DatasetOnboardingController {
 		if (!authorised) {
 			return res.status(401).json({
 				status: 'failure',
-				message: 'Unauthorised'
+				message: 'Unauthorised',
 			});
 		}
 
@@ -248,7 +248,7 @@ export default class DatasetOnboardingController {
 			let activityLogStatus = null;
 
 			const _httpClient = new HttpClient();
-			switch(applicationStatus) {
+			switch (applicationStatus) {
 				case 'approved':
 					if (userType !== constants.userTypes.ADMIN) {
 						return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
@@ -262,13 +262,16 @@ export default class DatasetOnboardingController {
 					const publisherData = await PublisherModel.find({ _id: dataset.datasetv2.summary.publisher.identifier }).lean();
 
 					await _httpClient.post(metadataCatalogueLink + `/api/authentication/logout`, null, { withCredentials: true, timeout: 5000 });
-					const responseLogin = await _httpClient.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, { withCredentials: true, timeout: 5000 });
-					const [cookie] = responseLogin.headers["set-cookie"];
+					const responseLogin = await _httpClient.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
+						withCredentials: true,
+						timeout: 5000,
+					});
+					const [cookie] = responseLogin.headers['set-cookie'];
 					_httpClient.setHttpClientCookies(cookie);
-					
+
 					let jsonData = JSON.stringify(await datasetonboardingUtil.buildJSONFile(dataset));
 					fs.writeFileSync(__dirname + `/datasetfiles/${dataset._id}.json`, jsonData);
-					
+
 					var data = new FormData();
 					data.append('folderId', publisherData[0].mdcFolderId);
 					data.append('importFile', fs.createReadStream(__dirname + `/datasetfiles/${dataset._id}.json`));
@@ -276,16 +279,17 @@ export default class DatasetOnboardingController {
 					data.append('importAsNewDocumentationVersion', 'true');
 
 					const responseImport = await _httpClient.post(
-						metadataCatalogueLink + '/api/dataModels/import/ox.softeng.metadatacatalogue.core.spi.json/JsonImporterService/1.1', 
-						data, 
+						metadataCatalogueLink + '/api/dataModels/import/ox.softeng.metadatacatalogue.core.spi.json/JsonImporterService/1.1',
+						data,
 						{
 							withCredentials: true,
 							timeout: 60000,
 							headers: {
 								...data.getHeaders(),
 							},
-						});
-					
+						}
+					);
+
 					let newDatasetVersionId = responseImport.data.items[0].id;
 					fs.unlinkSync(__dirname + `/datasetfiles/${dataset._id}.json`);
 
@@ -293,8 +297,14 @@ export default class DatasetOnboardingController {
 						documentationVersion: dataset.datasetVersion,
 					};
 
-					await _httpClient.put(metadataCatalogueLink + `/api/dataModels/${newDatasetVersionId}`, updatedDatasetDetails, { withCredentials: true, timeout: 20000 });
-					await _httpClient.put(metadataCatalogueLink + `/api/dataModels/${newDatasetVersionId}/finalise`, null, { withCredentials: true, timeout: 20000 });
+					await _httpClient.put(metadataCatalogueLink + `/api/dataModels/${newDatasetVersionId}`, updatedDatasetDetails, {
+						withCredentials: true,
+						timeout: 20000,
+					});
+					await _httpClient.put(metadataCatalogueLink + `/api/dataModels/${newDatasetVersionId}/finalise`, null, {
+						withCredentials: true,
+						timeout: 20000,
+					});
 
 					// Adding to DB
 					let datasetv2Object = await datasetonboardingUtil.buildv2Object(dataset, newDatasetVersionId);
@@ -380,7 +390,7 @@ export default class DatasetOnboardingController {
 					updatedDataset = await Data.findOneAndUpdate(
 						{ _id: id },
 						{
-							activeflag: constants.datatsetStatuses.REJECTED,
+							activeflag: constants.datasetStatuses.REJECTED,
 							applicationStatusDesc: applicationStatusDesc,
 							applicationStatusAuthor: `${firstname} ${lastname}`,
 							'timestamps.rejected': Date.now(),
@@ -393,7 +403,7 @@ export default class DatasetOnboardingController {
 					await datasetonboardingUtil.createNotifications(constants.notificationTypes.DATASETREJECTED, updatedDataset);
 
 					activityLogStatus = constants.activityLogEvents.dataset.DATASET_VERSION_REJECTED;
-				
+
 					break;
 				case 'archive':
 					dataset = await Data.findOne({ _id: id }).lean();
@@ -401,21 +411,27 @@ export default class DatasetOnboardingController {
 					if (dataset.timestamps.submitted) {
 						await _httpClient.post(metadataCatalogueLink + `/api/authentication/logout`, null, { withCredentials: true, timeout: 5000 });
 
-						const responseLogin = await _httpClient.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, { withCredentials: true, timeout: 5000 });
-						const [cookie] = responseLogin.headers["set-cookie"];
+						const responseLogin = await _httpClient.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
+							withCredentials: true,
+							timeout: 5000,
+						});
+						const [cookie] = responseLogin.headers['set-cookie'];
 						_httpClient.setHttpClientCookies(cookie);
 
-						await _httpClient.delete(metadataCatalogueLink + `/api/dataModels/${dataset.datasetid}`, loginDetails, { withCredentials: true, timeout: 5000 });
+						await _httpClient.delete(metadataCatalogueLink + `/api/dataModels/${dataset.datasetid}`, loginDetails, {
+							withCredentials: true,
+							timeout: 5000,
+						});
 
 						await _httpClient.post(metadataCatalogueLink + `/api/authentication/logout`, null, { withCredentials: true, timeout: 5000 });
 					}
 					updatedDataset = await Data.findOneAndUpdate(
 						{ _id: id },
-						{ activeflag: constants.datatsetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
+						{ activeflag: constants.datasetStatuses.ARCHIVE, 'timestamps.updated': Date.now(), 'timestamps.archived': Date.now() }
 					);
 
 					activityLogStatus = constants.activityLogEvents.dataset.DATASET_VERSION_ARCHIVED;
-				
+
 					break;
 				case 'unarchive':
 					dataset = await Data.findOne({ _id: id }).lean();
@@ -423,15 +439,22 @@ export default class DatasetOnboardingController {
 					if (dataset.timestamps.submitted) {
 						await _httpClient.post(metadataCatalogueLink + `/api/authentication/logout`, null, { withCredentials: true, timeout: 5000 });
 
-						const responseLogin = await _httpClient.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, { withCredentials: true, timeout: 5000 });
-						const [cookie] = responseLogin.headers["set-cookie"];
+						const responseLogin = await _httpClient.post(metadataCatalogueLink + '/api/authentication/login', loginDetails, {
+							withCredentials: true,
+							timeout: 5000,
+						});
+						const [cookie] = responseLogin.headers['set-cookie'];
 						_httpClient.setHttpClientCookies(cookie);
 
 						const updatedDatasetDetails = {
 							deleted: 'false',
 						};
 
-						await _httpClient.put(metadataCatalogueLink + metadataCatalogueLink + `/api/dataModels/${dataset.datasetid}`, updatedDatasetDetails, { withCredentials: true, timeout: 5000 });
+						await _httpClient.put(
+							metadataCatalogueLink + metadataCatalogueLink + `/api/dataModels/${dataset.datasetid}`,
+							updatedDatasetDetails,
+							{ withCredentials: true, timeout: 5000 }
+						);
 
 						await _httpClient.post(metadataCatalogueLink + `/api/authentication/logout`, null, { withCredentials: true, timeout: 5000 });
 
@@ -448,15 +471,14 @@ export default class DatasetOnboardingController {
 						message: 'An error occurred - application status is not set correctly',
 					});
 			}
-	
+
 			await activityLogService.logActivity(activityLogStatus, {
 				type: constants.activityLogTypes.DATASET,
 				updatedDataset,
 				user: req.user,
 			});
-	
+
 			return res.status(200).json({ status: 'success' });
-	
 		} catch (err) {
 			res.status(500).json({
 				status: 'error',
