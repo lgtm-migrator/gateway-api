@@ -9,7 +9,7 @@ describe('Email generator utility functions', () => {
 
 			const emailBody = emailGenerator.generateMetadataOnboardingRejected({ isFederated });
 
-			// Federated warning should be present if dataset if from a federated publisher
+			// Federated warning should be present if dataset is from a federated publisher
 			expect(emailBody.includes('Do not apply these changes directly to the Gateway')).toBe(true);
 		});
 
