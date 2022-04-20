@@ -2083,9 +2083,10 @@ const _generateMetadataOnboardingApproved = options => {
 };
 
 const _generateMetadataOnboardingRejected = options => {
-	let { name, publisherId, comment } = options;
+	let { name, publisherId, comment, isFederated } = options;
 
 	let commentHTML = '';
+	let federatedMessageHTML = '';
 
 	if (!_.isEmpty(comment)) {
 		commentHTML = `<tr>
@@ -2098,6 +2099,14 @@ const _generateMetadataOnboardingRejected = options => {
                       "${comment}"
                     </th>
                   </tr>`;
+	}
+
+	if (!_.isUndefined(isFederated) && isFederated) {
+		federatedMessageHTML = `<tr>
+                              <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                                <b>It is important that you update these changes in your metadata catalogue. Do not apply these changes directly to the Gateway as this ability has been disabled for federated datasets.</b>
+                              </th>
+                            </tr>`;
 	}
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -2118,6 +2127,7 @@ const _generateMetadataOnboardingRejected = options => {
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
                       Thank you for submitting ${name}, which has been reviewed by the team at HDR UK. The dataset version cannot be approved for release on the Gateway at this time. Please look at the comment from the reviewer below and make any necessary changes on a new version of the dataset before resubmitting.
                     </th>
+                  ${federatedMessageHTML}
                   </tr>
                   ${commentHTML}
                   <tr>
@@ -2611,15 +2621,19 @@ const _generateWordAttachment = async (templateName, questionAnswers) => {
 	return wordAttachment;
 };
 
-const _generateWordContent = async (filename) => {
-  let pathToAttachment = `${__dirname}/populatedtemplate.docx`;
-  let content = await fs.readFileSync(pathToAttachment).toString('base64');
-  return content
-}
+const _generateWordContent = async filename => {
+	let pathToAttachment = `${__dirname}/populatedtemplate.docx`;
+	let content = await fs.readFileSync(pathToAttachment).toString('base64');
+	return content;
+};
 
 const _deleteWordAttachmentTempFiles = async () => {
-  if(fs.existsSync(`${__dirname}/template.docx`)){fs.unlinkSync(__dirname + '/template.docx')}
-  if(fs.existsSync(`${__dirname}/populatedtemplate.docx`)){fs.unlinkSync(__dirname + '/populatedtemplate.docx')}
+	if (fs.existsSync(`${__dirname}/template.docx`)) {
+		fs.unlinkSync(__dirname + '/template.docx');
+	}
+	if (fs.existsSync(`${__dirname}/populatedtemplate.docx`)) {
+		fs.unlinkSync(__dirname + '/populatedtemplate.docx');
+	}
 };
 
 export default {
@@ -2648,7 +2662,7 @@ export default {
 	generateNewDARMessage: _generateNewDARMessage,
 	deleteWordAttachmentTempFiles: _deleteWordAttachmentTempFiles,
 	generateWordAttachment: _generateWordAttachment,
-  generateWordContent: _generateWordContent,
+	generateWordContent: _generateWordContent,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
