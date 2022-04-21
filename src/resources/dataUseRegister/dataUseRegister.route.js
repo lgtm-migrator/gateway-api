@@ -86,7 +86,8 @@ const authorizeUpdate = async (req, res, next) => {
 	}
 
 	const { publisher } = dataUseRegister;
-	const authorised = isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, publisher._id);
+	const isAuthor = requestingUser._id.toString() === dataUseRegister.user.toString();
+	const authorised = isUserDataUseAdmin(requestingUser) || isUserMemberOfTeam(requestingUser, publisher._id) || isAuthor;
 	if (!authorised) {
 		return res.status(401).json({
 			success: false,
