@@ -100,6 +100,7 @@ export const getUsersCollaborators = async (currentUserId) => {
 
 	// Get all collaborators from tools and papers (data collection)
 	filter = currentUserId ? { authors: currentUserId } : {};
+	// filter = { authors: currentUserId };
 	await getCollaboratorsTools(filter, currentUserId);
 
 	// Get all collaborators from DARs
@@ -164,7 +165,7 @@ export const populateCollaborators = async (collaboratorsEntity, items, currentU
 	return arrCollaborators;
 }
 
-export const getUsers = async (currentUserId) => {
+export const getUsers = async (currentUserId, filterString = null) => {
 	// Get the users collaborators
 	arrCollaborators = [];
 	let usersCollaborators = await getUsersCollaborators(currentUserId);
@@ -252,7 +253,7 @@ export const getUsers = async (currentUserId) => {
 				return collaborator.user;
 			});
 
-			if (currentUserId) {
+			if (!filterString) {
 				resolve([...collaboratorUsers]);
 			} else {
 				resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
