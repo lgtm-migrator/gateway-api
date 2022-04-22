@@ -2,7 +2,6 @@ import emailGeneratorUtil from '../utilities/emailGenerator.util';
 import { UserModel } from './user.model';
 import { Data } from '../tool/data.model';
 import helper from '../utilities/helper.util';
-import { Cohort } from '../cohort/cohort.model';
 import { Collections } from '../collections/collections.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 
@@ -88,15 +87,10 @@ export async function setCohortDiscoveryAccess(id, roles) {
 // Gets all of the logged in users collaborators
 export const getUsersCollaborators = async (currentUserId) => {
 	let filter = null;
-
-	filter = currentUserId ? { authors: currentUserId } : {};
 	
 	// Get all collaborators from collections
+	filter = currentUserId ? { authors: currentUserId } : {};
 	await getCollaboratorsCollections(filter, currentUserId);
-
-	// Get all collaborators from cohorts
-	// filter = currentUserId ? { uploaders: currentUserId } : {};
-	// await getCollaboratorsCohorts(filter, currentUserId);
 
 	// Get all collaborators from tools and papers (data collection)
 	filter = currentUserId ? { authors: currentUserId } : {};
@@ -114,11 +108,6 @@ export const getUsersCollaborators = async (currentUserId) => {
 export const getCollaboratorsCollections = async (filter, currentUserId) => {
 	let collaboratorsCollections = await Collections.find(filter, { _id: 0, authors: 1 }).sort({  updatedAt: -1 });
 	return await populateCollaborators(collaboratorsCollections, 'authors', currentUserId);
-}
-
-export const getCollaboratorsCohorts = async (filter, currentUserId) => {
-	let collaboratorsCohorts = await Cohort.find(filter, { _id: 0, uploaders: 1 }).sort({  updatedAt: -1 });
-	return await populateCollaborators(collaboratorsCohorts, 'uploaders', currentUserId);
 }
 
 export const getCollaboratorsTools = async (filter, currentUserId) => {
