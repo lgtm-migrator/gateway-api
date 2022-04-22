@@ -95,8 +95,8 @@ export const getUsersCollaborators = async (currentUserId) => {
 	await getCollaboratorsCollections(filter, currentUserId);
 
 	// Get all collaborators from cohorts
-	filter = currentUserId ? { uploaders: currentUserId } : {};
-	await getCollaboratorsCohorts(filter, currentUserId);
+	// filter = currentUserId ? { uploaders: currentUserId } : {};
+	// await getCollaboratorsCohorts(filter, currentUserId);
 
 	// Get all collaborators from tools and papers (data collection)
 	filter = currentUserId ? { authors: currentUserId } : {};
@@ -168,62 +168,128 @@ export const populateCollaborators = async (collaboratorsEntity, items, currentU
 export const getUsers = async (currentUserId, filterString = null) => {
 	// Get the users collaborators
 	arrCollaborators = [];
-	let usersCollaborators = await getUsersCollaborators(currentUserId);
+	let usersCollaborators;
+	if (!filterString) {
+		usersCollaborators = await getUsersCollaborators(currentUserId);
+	} else {
+		usersCollaborators = new Map();
+	}
 
 	// Get the whole list of users
-	var q = Data.aggregate([
-		// Find all tools with type of person
-		{ $match: { type: 'person' } },
-		// Perform lookup to users
-		{
-			$lookup: {
-				from: 'users',
-				localField: 'id',
-				foreignField: 'id',
-				as: 'user',
-			},
-		},
-		// select fields to use
-		{
-			$project: {
-				_id: '$user._id',
-				id: 1,
-				firstname: 1,
-				lastname: 1,
-				orcid: {
-					$cond: [
-						{
-							$eq: [true, '$showOrcid'],
-						},
-						'$orcid',
-						'$$REMOVE',
-					],
+	let typePerson;
+	if (filterString) {
+		const regex = /(?=\S*[-])([a-zA-Z'-]+)/g;
+		// Surround matching words in quotation marks
+		filterString = filterString.replace(regex, '"$1"');
+		typePerson = Data.aggregate([
+			// Find all tools with type of person
+			{ $match: { type: 'person' } },
+			// Perform lookup to users
+			{
+				$lookup: {
+					from: 'users',
+					localField: 'id',
+					foreignField: 'id',
+					as: 'user',
 				},
-				bio: {
-					$cond: [
-						{
-							$eq: [true, '$showBio'],
-						},
-						'$bio',
-						'$$REMOVE',
-					],
+			},
+			{
+				$match: {
+					$or: [
+						{ 'user.firstname': {'$regex': `${filterString}`, '$options': 'i'} },
+						{ 'user.lastname': {'$regex': `${filterString}`, '$options': 'i'} },
+					]
+				}
+			},
+			// select fields to use
+			{
+				$project: {
+					_id: '$user._id',
+					id: 1,
+					firstname: 1,
+					lastname: 1,
+					orcid: {
+						$cond: [
+							{
+								$eq: [true, '$showOrcid'],
+							},
+							'$orcid',
+							'$$REMOVE',
+						],
+					},
+					bio: {
+						$cond: [
+							{
+								$eq: [true, '$showBio'],
+							},
+							'$bio',
+							'$$REMOVE',
+						],
+					},
+					email: '$user.email',
 				},
-				email: '$user.email',
 			},
-		},
-		{ 
-			$sort: { 
-				updateAt: -1 
+			{ 
+				$sort: { 
+					updateAt: -1 
+				},
 			},
-		},
-	]);
+		]);
+	} else {
+		typePerson = Data.aggregate([
+			// Find all tools with type of person
+			{ $match: { type: 'person' } },
+			// Perform lookup to users
+			{
+				$lookup: {
+					from: 'users',
+					localField: 'id',
+					foreignField: 'id',
+					as: 'user',
+				},
+			},
+			// select fields to use
+			{
+				$project: {
+					_id: '$user._id',
+					id: 1,
+					firstname: 1,
+					lastname: 1,
+					orcid: {
+						$cond: [
+							{
+								$eq: [true, '$showOrcid'],
+							},
+							'$orcid',
+							'$$REMOVE',
+						],
+					},
+					bio: {
+						$cond: [
+							{
+								$eq: [true, '$showBio'],
+							},
+							'$bio',
+							'$$REMOVE',
+						],
+					},
+					email: '$user.email',
+				},
+			},
+			{ 
+				$sort: { 
+					updateAt: -1 
+				},
+			},
+		]);
+	}
 
 	return new Promise((resolve, reject) => {
-		q.exec((err, data) => {
+		typePerson.exec((err, data) => {
 			if (err) {
 				return err;
 			}
-
+			console.log(`data : ${JSON.stringify(data)}`);
 			const users = [];
 			data.map(dat => {
 				let { _id, id, firstname, lastname, orcid = '', bio = '', email = '' } = dat;
@@ -245,7 +311,7 @@ export const getUsers = async (currentUserId, filterString = null) => {
 					}
 				});
 			}
-
+			console.log(`collaborators : ${JSON.stringify(collaborators)}`);
 			collaborators.sort((a, b) => b.count - a.count);
 
 			// Remove count after collaborators are sorted
@@ -253,11 +319,7 @@ export const getUsers = async (currentUserId, filterString = null) => {
 				return collaborator.user;
 			});
 
-			if (!filterString) {
-				resolve([...collaboratorUsers]);
-			} else {
-				resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
-			}
+			resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
 		});
 	});
 }
