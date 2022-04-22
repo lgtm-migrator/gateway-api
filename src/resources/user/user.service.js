@@ -286,7 +286,7 @@ export const getUsers = async (currentUserId, filterString = null) => {
 			if (err) {
 				return err;
 			}
-			console.log(`data : ${JSON.stringify(data)}`);
+
 			const users = [];
 			data.map(dat => {
 				let { _id, id, firstname, lastname, orcid = '', bio = '', email = '' } = dat;
@@ -308,7 +308,7 @@ export const getUsers = async (currentUserId, filterString = null) => {
 					}
 				});
 			}
-			console.log(`collaborators : ${JSON.stringify(collaborators)}`);
+
 			collaborators.sort((a, b) => b.count - a.count);
 
 			// Remove count after collaborators are sorted
