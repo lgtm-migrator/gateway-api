@@ -86,20 +86,14 @@ export async function setCohortDiscoveryAccess(id, roles) {
 
 // Gets all of the logged in users collaborators
 export const getUsersCollaborators = async (currentUserId) => {
-	let filter = null;
-	
 	// Get all collaborators from collections
-	filter = currentUserId ? { authors: currentUserId } : {};
-	await getCollaboratorsCollections(filter, currentUserId);
+	await getCollaboratorsCollections({ authors: currentUserId }, currentUserId);
 
 	// Get all collaborators from tools and papers (data collection)
-	filter = currentUserId ? { authors: currentUserId } : {};
-	// filter = { authors: currentUserId };
-	await getCollaboratorsTools(filter, currentUserId);
+	await getCollaboratorsTools({ authors: currentUserId }, currentUserId);
 
 	// Get all collaborators from DARs
-	filter = currentUserId ? { $or: [{ userId: currentUserId }, { authorIds: currentUserId }] } : {};
-	await getCollaboratorsDARs(filter, currentUserId);
+	await getCollaboratorsDARs({ $or: [{ userId: currentUserId }, { authorIds: currentUserId }] }, currentUserId);
 
 	// Strip out duplicate collaborators, add a count
 	return getUniqueCollaborators(arrCollaborators);
