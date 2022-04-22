@@ -178,9 +178,6 @@ export const getUsers = async (currentUserId, filterString = null) => {
 	// Get the whole list of users
 	let typePerson;
 	if (filterString) {
-		const regex = /(?=\S*[-])([a-zA-Z'-]+)/g;
-		// Surround matching words in quotation marks
-		filterString = filterString.replace(regex, '"$1"');
 		typePerson = Data.aggregate([
 			// Find all tools with type of person
 			{ $match: { type: 'person' } },
