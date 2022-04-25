@@ -299,7 +299,12 @@ export const getUsers = async (currentUserId, filterString = null) => {
 				return collaborator.user;
 			});
 
-			resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
+			// resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
+			if (!filterString) {
+				resolve([...collaboratorUsers]);
+			} else {
+				resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
+			}
 		});
 	});
 }
