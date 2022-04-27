@@ -231,7 +231,6 @@ const returnAsArray = value => {
  * @returns {String} [value as date format]
  */
 const returnAsDate = value => {
-	if (moment(value, 'DD/MM/YYYY').isValid()) return value;
 	return moment(new Date(value)).format('DD/MM/YYYY');
 };
 
@@ -885,7 +884,10 @@ const createNotifications = async (type, context) => {
 			team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
 
 			for (let member of team.members) {
-				if (member.roles.some(role => ['manager', 'metadata_editor'].includes(role))) teamMembers.push(member.memberid);
+				if ((Array.isArray(member.roles) && member.roles.some(role => ['manager', 'metadata_editor'].includes(role)))
+				 || (typeof member.roles === 'string' && ['manager', 'metadata_editor'].includes(member.roles))) {
+					teamMembers.push(member.memberid);
+				}
 			}
 
 			teamMembersDetails = await UserModel.find({ _id: { $in: teamMembers } })
@@ -1300,4 +1302,5 @@ export default {
 	buildBulkUploadObject,
 	buildv2Object,
 	datasetv2ObjectComparison,
+	returnAsDate,
 };
