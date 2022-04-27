@@ -267,8 +267,6 @@ export default class DataUseRegisterController extends Controller {
 			}
 			let searchQuery = { $and: [{ activeflag: 'active' }] };
 
-			if (searchString.length > 0) searchQuery['$and'].push({ $text: { $search: searchString } });
-
 			searchQuery = getObjectFilters(searchQuery, req, 'dataUseRegister');
 
 			const aggregateQuery = [
@@ -347,6 +345,10 @@ export default class DataUseRegisterController extends Controller {
 				},
 				{ $match: searchQuery },
 			];
+
+			if (searchString.length > 0) {
+				aggregateQuery.unshift({ $match: { $text: { $search: searchString } } });
+			}
 
 			const result = await DataUseRegister.aggregate(aggregateQuery);
 
