@@ -142,7 +142,9 @@ describe('Testing the dataUserRegister middleware', () => {
 				],
 			};
 
-			sinon.stub(dataUseRegisterService, 'getDataUseRegister').returns({ publisher: 'testPublisher' });
+			sinon
+				.stub(dataUseRegisterService, 'getDataUseRegister')
+				.returns({ publisher: 'testPublisher', gatewayApplicants: ['anotherTestUser'] });
 
 			await authorizeUpdate(req, res, nextFunction);
 
@@ -170,7 +172,7 @@ describe('Testing the dataUserRegister middleware', () => {
 				teams: [{ publisher: { _id: 'testPublisher' }, type: 'admin', members: [{ memberid: 'testUser', roles: 'admin_data_use' }] }],
 			};
 
-			sinon.stub(dataUseRegisterService, 'getDataUseRegister').returns({ projectIdText: 'testIdText' });
+			sinon.stub(dataUseRegisterService, 'getDataUseRegister').returns({ projectIdText: 'testIdText', gatewayApplicants: ['testUser'] });
 
 			await authorizeUpdate(req, res, nextFunction);
 
@@ -198,7 +200,7 @@ describe('Testing the dataUserRegister middleware', () => {
 				teams: [{ publisher: { _id: 'testPublisher' }, type: 'admin', members: [{ memberid: 'testUser', roles: 'admin_data_use' }] }],
 			};
 
-			sinon.stub(dataUseRegisterService, 'getDataUseRegister').returns({ datasetTitles: 'datasetTitles' });
+			sinon.stub(dataUseRegisterService, 'getDataUseRegister').returns({ datasetTitles: 'datasetTitles', gatewayApplicants: ['testUser'] });
 
 			await authorizeUpdate(req, res, nextFunction);
 
@@ -227,7 +229,9 @@ describe('Testing the dataUserRegister middleware', () => {
 				teams: [{ publisher: { _id: 'testPublisher' }, type: 'admin', members: [{ memberid: 'testUser', roles: 'admin_data_use' }] }],
 			};
 
-			sinon.stub(dataUseRegisterService, 'getDataUseRegister').returns({ datasetTitles: 'match', projectIdText: 'match' });
+			sinon
+				.stub(dataUseRegisterService, 'getDataUseRegister')
+				.returns({ datasetTitles: 'match', projectIdText: 'match', gatewayApplicants: ['testUser'] });
 
 			await authorizeUpdate(req, res, nextFunction);
 
