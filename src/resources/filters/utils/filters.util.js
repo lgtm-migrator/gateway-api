@@ -30,7 +30,7 @@ export const findNodeInTree = (tree, key) => {
 	return found;
 };
 
-export const updateTree = (tree, key, values) => {
+export const updateTree = (tree, key, values, newkey = null) => {
 	// 1. declare iter
 	let iter = () => {};
 	// 2. loop tree with callback
@@ -39,8 +39,13 @@ export const updateTree = (tree, key, values) => {
 			// 3. if found update filters
 			if (node.key === key) {
 				// 5. set filter values
-				node.filters = values;
+				if (!newkey) {
+					node.filters = values;
+				} else {
+					node[newkey] = values;
+				}
 			}
+			
 			// 6. if has filters recall iter with new filters
 			Array.isArray(node.filters) && node.filters.forEach(iter);
 		})

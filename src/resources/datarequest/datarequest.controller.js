@@ -14,6 +14,8 @@ import inputSanitizer from '../utilities/inputSanitizer';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
+import { PublisherModel } from '../publisher/publisher.model';
+import { dataUseRegisterController } from '../dataUseRegister/dependency';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -314,6 +316,33 @@ export default class DataRequestController extends Controller {
 			return res.status(500).json({
 				success: false,
 				message: 'An error occurred opening a data access request application for the requested dataset(s)',
+			});
+		}
+	}
+
+	//GET api/v1/data-access-request/prepopulate-contributors/:id
+	async getContributorsAdditionalInfo(req, res) {
+		try {
+			let darId = req.params.id;
+			let userId = req.user.id;
+
+			//Get additional info to pre populate for user and collaborators (authors)
+			let contributors = await this.dataRequestService.getDarContributors(darId, userId);
+
+
+			// Return payload
+			return res.status(200).json({
+				success: true,
+				data: contributors.sort(function (a, b) {
+					return b.user ? 1 : -1;
+				}),
+			});
+		} catch (err) {
+			// Return error response if something goes wrong
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred populating additional information for contributors.',
 			});
 		}
 	}
@@ -668,14 +697,24 @@ export default class DataRequestController extends Controller {
 					this.dataRequestService.updateVersionStatus(accessRecord, accessRecord.applicationStatus);
 
 					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED) {
-						await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+ 						await dataUseRegisterController.createNotifications(
+ 							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
+ 							{},
+ 							dataUseRegister
+ 						);
 						await this.activityLogService.logActivity(constants.activityLogEvents.data_access_request.APPLICATION_APPROVED, {
 							accessRequest: accessRecord,
 							user: req.user,
 						});
 					}
 					else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
-						await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
+ 						await dataUseRegisterController.createNotifications(
+ 							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
+ 							{},
+ 							dataUseRegister
+ 						);
 						await this.activityLogService.logActivity(
 							constants.activityLogEvents.data_access_request.APPLICATION_APPROVED_WITH_CONDITIONS,
 							{
@@ -2102,6 +2141,9 @@ export default class DataRequestController extends Controller {
 						questionAnswers,
 						options
 					));
+					// Get the name of the publishers word template
+						let publisherTemplate = await PublisherModel.findOne({ name: publisher }, { wordTemplate: 1, _id: 0 }).lean();
+						let templateName = publisherTemplate.wordTemplate;
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
@@ -2109,6 +2151,15 @@ export default class DataRequestController extends Controller {
 						attachmentContent = Buffer.from(JSON.stringify({ id: accessRecord._id, ...jsonContent })).toString('base64');
 						filename = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.json`;
 						attachments = [await emailGenerator.generateAttachment(filename, attachmentContent, 'application/json')];
+
+						// Generate word attachment for publishers with 'wordTemplate' populated
+						if (!_.isUndefined(templateName)) {
+							await emailGenerator.generateWordAttachment(templateName, questionAnswers);
+							let wordAttachmentName = `${helper.generateFriendlyId(accessRecord._id)} ${moment().format().toString()}.docx`;
+							let wordContent = await emailGenerator.generateWordContent(wordAttachmentName);
+							let wordAttachment = await emailGenerator.generateAttachment(wordAttachmentName, wordContent, 'application/docx');
+							attachments = [...attachments, wordAttachment];
+						}
 					} else {
 						// Send email to main applicant and contributors if they have opted in to email notifications
 						emailRecipients = [accessRecord.mainApplicant, ...accessRecord.authors];
@@ -2124,6 +2175,9 @@ export default class DataRequestController extends Controller {
 							attachments
 						);
 					}
+
+					// Remove temporary files for word attachment
+					if (!_.isUndefined(templateName)) { await emailGenerator.deleteWordAttachmentTempFiles() }
 				}
 				break;
 			case constants.notificationTypes.RESUBMITTED:
