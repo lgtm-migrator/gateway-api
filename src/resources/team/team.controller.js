@@ -1,4 +1,4 @@
-import { isEmpty, has, difference, includes, isNull, filter, some } from 'lodash';
+import _, { isEmpty, has, difference, includes, isNull, filter, some } from 'lodash';
 import { TeamModel } from './team.model';
 import { UserModel } from '../user/user.model';
 import { PublisherModel } from '../publisher/publisher.model';
@@ -1047,8 +1047,12 @@ const filterMembersByNoticationTypes = (members, notificationTypes) => {
  */
 const filterMembersByNoticationTypesOptIn = (members, notificationTypes) => {
 	return filter(members, member => {
+		if (!('notifications' in member) || _.isEmpty(member.notifications)) {
+			return true;
+		}
+
 		return some(member.notifications, notification => {
-			return includes(notificationTypes, notification.notificationType) && notification.optIn;
+			return includes(notificationTypes, notification.notificationType) && (notification.optIn === true);
 		});
 	});
 };

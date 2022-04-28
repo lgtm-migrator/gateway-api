@@ -2,7 +2,6 @@ import emailGeneratorUtil from '../utilities/emailGenerator.util';
 import { UserModel } from './user.model';
 import { Data } from '../tool/data.model';
 import helper from '../utilities/helper.util';
-import { Cohort } from '../cohort/cohort.model';
 import { Collections } from '../collections/collections.model';
 import { DataRequestModel } from '../datarequest/datarequest.model';
 
@@ -87,24 +86,14 @@ export async function setCohortDiscoveryAccess(id, roles) {
 
 // Gets all of the logged in users collaborators
 export const getUsersCollaborators = async (currentUserId) => {
-	let filter = null;
-
-	filter = currentUserId ? { authors: currentUserId } : {};
-	
 	// Get all collaborators from collections
-	await getCollaboratorsCollections(filter, currentUserId);
-
-	// Get all collaborators from cohorts
-	filter = currentUserId ? { uploaders: currentUserId } : {};
-	await getCollaboratorsCohorts(filter, currentUserId);
+	await getCollaboratorsCollections({ authors: currentUserId }, currentUserId);
 
 	// Get all collaborators from tools and papers (data collection)
-	filter = currentUserId ? { authors: currentUserId } : {};
-	await getCollaboratorsTools(filter, currentUserId);
+	await getCollaboratorsTools({ authors: currentUserId }, currentUserId);
 
 	// Get all collaborators from DARs
-	filter = currentUserId ? { $or: [{ userId: currentUserId }, { authorIds: currentUserId }] } : {};
-	await getCollaboratorsDARs(filter, currentUserId);
+	await getCollaboratorsDARs({ $or: [{ userId: currentUserId }, { authorIds: currentUserId }] }, currentUserId);
 
 	// Strip out duplicate collaborators, add a count
 	return getUniqueCollaborators(arrCollaborators);
@@ -113,11 +102,6 @@ export const getUsersCollaborators = async (currentUserId) => {
 export const getCollaboratorsCollections = async (filter, currentUserId) => {
 	let collaboratorsCollections = await Collections.find(filter, { _id: 0, authors: 1 }).sort({  updatedAt: -1 });
 	return await populateCollaborators(collaboratorsCollections, 'authors', currentUserId);
-}
-
-export const getCollaboratorsCohorts = async (filter, currentUserId) => {
-	let collaboratorsCohorts = await Cohort.find(filter, { _id: 0, uploaders: 1 }).sort({  updatedAt: -1 });
-	return await populateCollaborators(collaboratorsCohorts, 'uploaders', currentUserId);
 }
 
 export const getCollaboratorsTools = async (filter, currentUserId) => {
@@ -164,61 +148,124 @@ export const populateCollaborators = async (collaboratorsEntity, items, currentU
 	return arrCollaborators;
 }
 
-export const getUsers = async (currentUserId) => {
+export const getUsers = async (currentUserId, filterString = null) => {
 	// Get the users collaborators
 	arrCollaborators = [];
-	let usersCollaborators = await getUsersCollaborators(currentUserId);
+	let usersCollaborators;
+	if (!filterString) {
+		usersCollaborators = await getUsersCollaborators(currentUserId);
+	} else {
+		usersCollaborators = new Map();
+	}
 
 	// Get the whole list of users
-	var q = Data.aggregate([
-		// Find all tools with type of person
-		{ $match: { type: 'person' } },
-		// Perform lookup to users
-		{
-			$lookup: {
-				from: 'users',
-				localField: 'id',
-				foreignField: 'id',
-				as: 'user',
-			},
-		},
-		// select fields to use
-		{
-			$project: {
-				_id: '$user._id',
-				id: 1,
-				firstname: 1,
-				lastname: 1,
-				orcid: {
-					$cond: [
-						{
-							$eq: [true, '$showOrcid'],
-						},
-						'$orcid',
-						'$$REMOVE',
-					],
+	let typePerson;
+	if (filterString) {
+		typePerson = Data.aggregate([
+			// Find all tools with type of person
+			{ $match: { type: 'person' } },
+			// Perform lookup to users
+			{
+				$lookup: {
+					from: 'users',
+					localField: 'id',
+					foreignField: 'id',
+					as: 'user',
 				},
-				bio: {
-					$cond: [
-						{
-							$eq: [true, '$showBio'],
-						},
-						'$bio',
-						'$$REMOVE',
-					],
+			},
+			{
+				$match: {
+					$or: [
+						{ 'user.firstname': {'$regex': `${filterString}`, '$options': 'i'} },
+						{ 'user.lastname': {'$regex': `${filterString}`, '$options': 'i'} },
+					]
+				}
+			},
+			// select fields to use
+			{
+				$project: {
+					_id: '$user._id',
+					id: 1,
+					firstname: 1,
+					lastname: 1,
+					orcid: {
+						$cond: [
+							{
+								$eq: [true, '$showOrcid'],
+							},
+							'$orcid',
+							'$$REMOVE',
+						],
+					},
+					bio: {
+						$cond: [
+							{
+								$eq: [true, '$showBio'],
+							},
+							'$bio',
+							'$$REMOVE',
+						],
+					},
+					email: '$user.email',
 				},
-				email: '$user.email',
 			},
-		},
-		{ 
-			$sort: { 
-				updateAt: -1 
+			{ 
+				$sort: { 
+					updateAt: -1 
+				},
 			},
-		},
-	]);
+		]);
+	} else {
+		typePerson = Data.aggregate([
+			// Find all tools with type of person
+			{ $match: { type: 'person' } },
+			// Perform lookup to users
+			{
+				$lookup: {
+					from: 'users',
+					localField: 'id',
+					foreignField: 'id',
+					as: 'user',
+				},
+			},
+			// select fields to use
+			{
+				$project: {
+					_id: '$user._id',
+					id: 1,
+					firstname: 1,
+					lastname: 1,
+					orcid: {
+						$cond: [
+							{
+								$eq: [true, '$showOrcid'],
+							},
+							'$orcid',
+							'$$REMOVE',
+						],
+					},
+					bio: {
+						$cond: [
+							{
+								$eq: [true, '$showBio'],
+							},
+							'$bio',
+							'$$REMOVE',
+						],
+					},
+					email: '$user.email',
+				},
+			},
+			{ 
+				$sort: { 
+					updateAt: -1 
+				},
+			},
+		]);
+	}
 
 	return new Promise((resolve, reject) => {
-		q.exec((err, data) => {
+		typePerson.exec((err, data) => {
 			if (err) {
 				return err;
 			}
@@ -252,7 +299,8 @@ export const getUsers = async (currentUserId) => {
 				return collaborator.user;
 			});
 
-			if (currentUserId) {
+			// resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
+			if (!filterString) {
 				resolve([...collaboratorUsers]);
 			} else {
 				resolve([...collaboratorUsers, ...nonCollaboratorUsers]);
