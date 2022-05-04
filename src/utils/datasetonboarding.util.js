@@ -952,10 +952,11 @@ const createNotifications = async (type, context) => {
 				comment: context.applicationStatusDesc,
 			};
 			html = emailGenerator.generateMetadataOnboardingRejected(options);
+			let subject = (options.isFederated) ? 'Your federated dataset has been rejected and requires review' : 'Your dataset version has been reviewed and rejected'
 			emailGenerator.sendEmail(
 				teamMembersDetails,
-				constants.hdrukEmail,
-				`Your federated dataset has been rejected and requires review`,
+				constants.hdrukEmail, 
+				subject,
 				html,
 				false
 			);
