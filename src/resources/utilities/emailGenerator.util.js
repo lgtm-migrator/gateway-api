@@ -2083,9 +2083,10 @@ const _generateMetadataOnboardingApproved = options => {
 };
 
 const _generateMetadataOnboardingRejected = options => {
-	let { name, publisherId, comment } = options;
+	let { name, publisherId, comment, isFederated } = options;
 
 	let commentHTML = '';
+	let federatedMessageHTML = '';
 
 	if (!_.isEmpty(comment)) {
 		commentHTML = `<tr>
@@ -2098,6 +2099,14 @@ const _generateMetadataOnboardingRejected = options => {
                       "${comment}"
                     </th>
                   </tr>`;
+	}
+
+	if (!_.isUndefined(isFederated) && isFederated) {
+		federatedMessageHTML = `<tr>
+                              <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                                <b>It is important that you update these changes in your metadata catalogue. Do not apply these changes directly to the Gateway as this ability has been disabled for federated datasets.</b>
+                              </th>
+                            </tr>`;
 	}
 
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
@@ -2118,6 +2127,7 @@ const _generateMetadataOnboardingRejected = options => {
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
                       Thank you for submitting ${name}, which has been reviewed by the team at HDR UK. The dataset version cannot be approved for release on the Gateway at this time. Please look at the comment from the reviewer below and make any necessary changes on a new version of the dataset before resubmitting.
                     </th>
+                  ${federatedMessageHTML}
                   </tr>
                   ${commentHTML}
                   <tr>
@@ -2486,6 +2496,10 @@ ${_displayDataUseRegisterDashboardLink()}
 	return body;
 };
 
+const _getRecipients = (recipients, environment, genericEmail) => {
+	return environment === 'production' ? [...new Map(recipients.map(item => [item['email'], item])).values()] : [{ email: genericEmail }];
+};
+
 /**
  * [_sendEmail]
  *
@@ -2497,7 +2511,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 	// 2. Ensure any duplicates recieve only a single email
-	const recipients = [...new Map(to.map(item => [item['email'], item])).values()];
+	const recipients = _getRecipients(to, process.env.NODE_ENV, process.env.GENERIC_EMAIL);
 
 	// 3. Build each email object for SendGrid extracting email addresses from user object with unique unsubscribe link (to)
 	for (let recipient of recipients) {
@@ -2512,7 +2526,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 
 		// 4. Send email using SendGrid
 		await sgMail.send(msg, false, err => {
-			if (err && (readEnv === 'test' || readEnv === 'prod')) {
+			if (err && process.env.NODE_ENV === 'production') {
 				Sentry.addBreadcrumb({
 					category: 'SendGrid',
 					message: 'Sending email failed',
@@ -2535,7 +2549,7 @@ const _sendIntroEmail = msg => {
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 	// 2. Send email using SendGrid
 	sgMail.send(msg, false, err => {
-		if (err && (readEnv === 'test' || readEnv === 'prod')) {
+		if (err && process.env.NODE_ENV === 'production') {
 			Sentry.addBreadcrumb({
 				category: 'SendGrid',
 				message: 'Sending email failed - Intro',
@@ -2611,15 +2625,19 @@ const _generateWordAttachment = async (templateName, questionAnswers) => {
 	return wordAttachment;
 };
 
-const _generateWordContent = async (filename) => {
-  let pathToAttachment = `${__dirname}/populatedtemplate.docx`;
-  let content = await fs.readFileSync(pathToAttachment).toString('base64');
-  return content
-}
+const _generateWordContent = async filename => {
+	let pathToAttachment = `${__dirname}/populatedtemplate.docx`;
+	let content = await fs.readFileSync(pathToAttachment).toString('base64');
+	return content;
+};
 
 const _deleteWordAttachmentTempFiles = async () => {
-  if(fs.existsSync(`${__dirname}/template.docx`)){fs.unlinkSync(__dirname + '/template.docx')}
-  if(fs.existsSync(`${__dirname}/populatedtemplate.docx`)){fs.unlinkSync(__dirname + '/populatedtemplate.docx')}
+	if (fs.existsSync(`${__dirname}/template.docx`)) {
+		fs.unlinkSync(__dirname + '/template.docx');
+	}
+	if (fs.existsSync(`${__dirname}/populatedtemplate.docx`)) {
+		fs.unlinkSync(__dirname + '/populatedtemplate.docx');
+	}
 };
 
 export default {
@@ -2648,7 +2666,7 @@ export default {
 	generateNewDARMessage: _generateNewDARMessage,
 	deleteWordAttachmentTempFiles: _deleteWordAttachmentTempFiles,
 	generateWordAttachment: _generateWordAttachment,
-  generateWordContent: _generateWordContent,
+	generateWordContent: _generateWordContent,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
 	generateWorkflowCreated: _generateWorkflowCreated,
@@ -2670,4 +2688,5 @@ export default {
 	generateDataUseRegisterApproved: _generateDataUseRegisterApproved,
 	generateDataUseRegisterRejected: _generateDataUseRegisterRejected,
 	generateDataUseRegisterPending: _generateDataUseRegisterPending,
+	getRecipients: _getRecipients,
 };

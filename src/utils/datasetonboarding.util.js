@@ -923,7 +923,11 @@ const createNotifications = async (type, context) => {
 			break;
 		case constants.notificationTypes.DATASETREJECTED:
 			// 1. Get user removed
-			team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier }).lean();
+			team = await TeamModel.findOne({ _id: context.datasetv2.summary.publisher.identifier })
+				.populate([{ path: 'publisher' }])
+				.lean();
+
+			const isFederated = !_.isUndefined(team.publisher.federation) && team.publisher.federation.active;
 
 			for (let member of team.members) {
 				teamMembers.push(member.memberid);
@@ -950,9 +954,11 @@ const createNotifications = async (type, context) => {
 				name: context.name,
 				publisherId: context.datasetv2.summary.publisher.identifier,
 				comment: context.applicationStatusDesc,
+				isFederated,
 			};
+
 			html = emailGenerator.generateMetadataOnboardingRejected(options);
-			let subject = (options.isFederated) ? 'Your federated dataset has been rejected and requires review' : 'Your dataset version has been reviewed and rejected'
+			let subject = (options.isFederated) ? 'Your federated dataset has been rejected and requires review' : 'Your dataset version has been reviewed and rejected';
 			emailGenerator.sendEmail(
 				teamMembersDetails,
 				constants.hdrukEmail, 
