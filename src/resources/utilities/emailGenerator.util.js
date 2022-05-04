@@ -2496,6 +2496,10 @@ ${_displayDataUseRegisterDashboardLink()}
 	return body;
 };
 
+const _getRecipients = (recipients, environment, genericEmail) => {
+	return environment === 'production' ? [...new Map(recipients.map(item => [item['email'], item])).values()] : [{ email: genericEmail }];
+};
+
 /**
  * [_sendEmail]
  *
@@ -2507,7 +2511,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 	// 2. Ensure any duplicates recieve only a single email
-	const recipients = [...new Map(to.map(item => [item['email'], item])).values()];
+	const recipients = _getRecipients(to, process.env.NODE_ENV, process.env.GENERIC_EMAIL);
 
 	// 3. Build each email object for SendGrid extracting email addresses from user object with unique unsubscribe link (to)
 	for (let recipient of recipients) {
@@ -2522,7 +2526,7 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 
 		// 4. Send email using SendGrid
 		await sgMail.send(msg, false, err => {
-			if (err && (readEnv === 'test' || readEnv === 'prod')) {
+			if (err && process.env.NODE_ENV === 'production') {
 				Sentry.addBreadcrumb({
 					category: 'SendGrid',
 					message: 'Sending email failed',
@@ -2545,7 +2549,7 @@ const _sendIntroEmail = msg => {
 	sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 	// 2. Send email using SendGrid
 	sgMail.send(msg, false, err => {
-		if (err && (readEnv === 'test' || readEnv === 'prod')) {
+		if (err && process.env.NODE_ENV === 'production') {
 			Sentry.addBreadcrumb({
 				category: 'SendGrid',
 				message: 'Sending email failed - Intro',
@@ -2684,4 +2688,5 @@ export default {
 	generateDataUseRegisterApproved: _generateDataUseRegisterApproved,
 	generateDataUseRegisterRejected: _generateDataUseRegisterRejected,
 	generateDataUseRegisterPending: _generateDataUseRegisterPending,
+	getRecipients: _getRecipients,
 };
