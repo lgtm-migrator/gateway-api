@@ -955,7 +955,7 @@ const createNotifications = async (type, context) => {
 			emailGenerator.sendEmail(
 				teamMembersDetails,
 				constants.hdrukEmail,
-				`Your dataset version has been reviewed and rejected`,
+				`Your federated dataset has been rejected and requires review`,
 				html,
 				false
 			);
