@@ -1947,6 +1947,7 @@ export default class DataRequestController extends Controller {
 		let { firstname, lastname } = user;
 		// Instantiate default params
 		let custodianManagers = [],
+			custodianManagersIds = [],
 			custodianUserIds = [],
 			managerUserIds = [],
 			emailRecipients = [],
@@ -1990,8 +1991,15 @@ export default class DataRequestController extends Controller {
 
 		switch (type) {
 			case constants.notificationTypes.INPROGRESS:
+				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+				custodianManagersIds = custodianManagers.map(user => user.id);
+				if (accessRecord.publisherObj.team.notifications[0].optIn) {
+					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({email: teamEmail});
+					});
+				}
 				await notificationBuilder.triggerNotificationMessage(
-					[user.id],
+					[user.id, ...custodianManagersIds],
 					`An email with the data access request info for ${datasetTitles} has been sent to you`,
 					'data access request',
 					accessRecord._id
@@ -2010,7 +2018,7 @@ export default class DataRequestController extends Controller {
 				// Build email template
 				({ html } = await emailGenerator.generateEmail(aboutApplication, questions, pages, questionPanels, questionAnswers, options));
 				await emailGenerator.sendEmail(
-					[user],
+					[user, ...custodianManagers],
 					constants.hdrukEmail,
 					`Data Access Request in progress for ${projectName || datasetTitles}`,
 					html,
@@ -2022,7 +2030,7 @@ export default class DataRequestController extends Controller {
 				// 1. Create notifications
 				// Custodian manager and current step reviewer notifications
 				// Retrieve all custodian manager user Ids and active step reviewers
-				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
+				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 				let activeStep = this.workflowService.getActiveWorkflowStep(workflow);
 				stepReviewers = this.workflowService.getStepReviewers(activeStep);
 				// Create custodian notification
@@ -2033,6 +2041,11 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
+				if (accessRecord.publisherObj.team.notifications[0].optIn) {
+					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({email: teamEmail});
+					});
+				}
 
 				// Create applicant notification
 				await notificationBuilder.triggerNotificationMessage(
@@ -2084,7 +2097,7 @@ export default class DataRequestController extends Controller {
 				// Custodian notification
 				if (_.has(accessRecord.datasets[0], 'publisher.team.users') && accessRecord.datasets[0].publisher.allowAccessRequestManagement) {
 					// Retrieve all custodian user Ids to generate notifications
-					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
+					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, 'All');
 					// check if publisher.team has email notifications
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
@@ -2094,6 +2107,28 @@ export default class DataRequestController extends Controller {
 						accessRecord._id,
 						accessRecord.datasets[0].publisher._id.toString()
 					);
+					if (accessRecord.datasets[0].publisher.team.notifications[0].optIn) {
+						accessRecord.datasets[0].publisher.team.notifications[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({email: teamEmail});
+						});
+					}
+				} else if (_.has(accessRecord, 'publisherObj') && accessRecord.publisherObj.allowAccessRequestManagement) {
+					// Retrieve all custodian user Ids to generate notifications
+					custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+					// check if publisher.team has email notifications
+					custodianUserIds = custodianManagers.map(user => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						custodianUserIds,
+						`A Data Access Request has been submitted to ${publisher} for ${projectName || datasetTitles} by ${appFirstName} ${appLastName}`,
+						'data access request received',
+						accessRecord._id,
+						accessRecord.datasets[0].publisher._id.toString()
+					);
+					if (accessRecord.publisherObj.team.notifications[0].optIn) {
+						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({email: teamEmail});
+						});
+					}
 				} else {
 					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
 					custodianManagers = [{ email: dataCustodianEmail }];
@@ -2185,7 +2220,7 @@ export default class DataRequestController extends Controller {
 				// Custodian notification
 				if (_.has(accessRecord.datasets[0], 'publisher.team.users')) {
 					// Retrieve all custodian user Ids to generate notifications
-					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
+					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, 'All');
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
@@ -2193,6 +2228,26 @@ export default class DataRequestController extends Controller {
 						'data access request',
 						accessRecord._id
 					);
+					if (accessRecord.datasets[0].publisher.team.notifications[0].optIn) {
+						accessRecord.datasets[0].publisher.team.notifications[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({email: teamEmail});
+						});
+					}
+				} else if (_.has(accessRecord, 'publisherObj') && accessRecord.publisherObj.allowAccessRequestManagement) {
+					// Retrieve all custodian user Ids to generate notifications
+					custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+					custodianUserIds = custodianManagers.map(user => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						custodianUserIds,
+						`A Data Access Request has been resubmitted with updates to ${publisher} for ${projectName || datasetTitles} by ${appFirstName} ${appLastName}`,
+						'data access request',
+						accessRecord._id
+					);
+					if (accessRecord.publisherObj.team.notifications[0].optIn) {
+						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({email: teamEmail});
+						});
+					}
 				} else {
 					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
 					custodianManagers = [{ email: dataCustodianEmail }];
@@ -2393,16 +2448,21 @@ export default class DataRequestController extends Controller {
 				break;
 			case constants.notificationTypes.FINALDECISIONREQUIRED:
 				// 1. Get managers for publisher
-				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
-				managerUserIds = custodianManagers.map(user => user.id);
+				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+				custodianManagersIds = custodianManagers.map(user => user.id);
 
 				// 2. Create manager notifications
 				notificationBuilder.triggerNotificationMessage(
-					managerUserIds,
+					custodianManagersIds,
 					`Action is required as a Data Access Request application for ${publisher} is now awaiting a final decision`,
 					'data access request',
 					accessRecord._id
 				);
+				if (accessRecord.publisherObj.team.notifications[0].optIn) {
+					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({email: teamEmail});
+					});
+				}
 				// 3. Create manager emails
 				options = {
 					id: accessRecord._id,
@@ -2425,9 +2485,17 @@ export default class DataRequestController extends Controller {
 				);
 				break;
 			case constants.notificationTypes.DEADLINEWARNING:
+				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+				custodianManagersIds = custodianManagers.map(user => user.id);
+				if (accessRecord.publisherObj.team.notifications[0].optIn) {
+					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({email: teamEmail});
+					});
+				}
+
 				// 1. Create reviewer notifications
 				await notificationBuilder.triggerNotificationMessage(
-					remainingReviewerUserIds,
+					[...remainingReviewerUserIds,...custodianManagersIds],
 					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					'data access request',
 					accessRecord._id
@@ -2450,7 +2518,7 @@ export default class DataRequestController extends Controller {
 				};
 				html = await emailGenerator.generateReviewDeadlineWarning(options);
 				await emailGenerator.sendEmail(
-					remainingReviewers,
+					[...remainingReviewers, ...custodianManagers],
 					constants.hdrukEmail,
 					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					html,
@@ -2459,10 +2527,10 @@ export default class DataRequestController extends Controller {
 				break;
 			case constants.notificationTypes.DEADLINEPASSED:
 				// 1. Get all managers
-				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
-				managerUserIds = custodianManagers.map(user => user.id);
+				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+				custodianManagersIds = custodianManagers.map(user => user.id);
 				// 2. Combine managers and reviewers remaining
-				let deadlinePassedUserIds = [...remainingReviewerUserIds, ...managerUserIds];
+				let deadlinePassedUserIds = [...remainingReviewerUserIds, ...custodianManagersIds];
 				let deadlinePassedUsers = [...remainingReviewers, ...custodianManagers];
 
 				// 3. Create notifications
@@ -2472,6 +2540,12 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
+				if (accessRecord.publisherObj.team.notifications[0].optIn) {
+					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({email: teamEmail});
+					});
+				}
+
 				// 4. Create emails
 				options = {
 					id: accessRecord._id,
@@ -2499,9 +2573,9 @@ export default class DataRequestController extends Controller {
 				break;
 			case constants.notificationTypes.WORKFLOWASSIGNED:
 				// 1. Get managers for publisher
-				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team.toObject(), constants.roleTypes.MANAGER);
+				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team.toObject(), 'All');
 				// 2. Get managerIds for notifications
-				managerUserIds = custodianManagers.map(user => user.id);
+				custodianManagersIds = custodianManagers.map(user => user.id);
 				// 3. deconstruct and set options for notifications and email
 				options = {
 					id: accessRecord._id,
@@ -2516,11 +2590,16 @@ export default class DataRequestController extends Controller {
 				};
 				// 4. Create notifications for the managers only
 				await notificationBuilder.triggerNotificationMessage(
-					managerUserIds,
+					custodianManagersIds,
 					`Workflow of ${workflowName} has been assiged to an appplication`,
 					'data access request',
 					accessRecord._id
 				);
+				if (accessRecord.publisherObj.team.notifications[0].optIn) {
+					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({email: teamEmail});
+					});
+				}
 				// 5. Generate the email
 				html = await emailGenerator.generateWorkflowAssigned(options);
 				// 6. Send email to custodian managers only within the team
@@ -2627,7 +2706,7 @@ export default class DataRequestController extends Controller {
 				// Custodian notification
 				if (_.has(accessRecord.datasets[0], 'publisher.team.users')) {
 					// Retrieve all custodian user Ids to generate notifications
-					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, constants.roleTypes.MANAGER);
+					custodianManagers = teamController.getTeamMembersByRole(accessRecord.datasets[0].publisher.team, 'All');
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
@@ -2635,6 +2714,21 @@ export default class DataRequestController extends Controller {
 						'data access request',
 						accessRecord._id
 					);
+				} else if (_.has(accessRecord, 'publisherObj')) {
+					// Retrieve all custodian user Ids to generate notifications
+					custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+					custodianUserIds = custodianManagers.map(user => user.id);
+					await notificationBuilder.triggerNotificationMessage(
+						custodianUserIds,
+						`An amendment request has been submitted to ${projectId} by ${appFirstName} ${appLastName}`,
+						'data access request',
+						accessRecord._id
+					);
+					if (accessRecord.publisherObj.team.notifications[0].optIn) {
+						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({email: teamEmail});
+						});
+					}
 				} else {
 					const dataCustodianEmail = process.env.DATA_CUSTODIAN_EMAIL || contactPoint;
 					custodianManagers = [{ email: dataCustodianEmail }];
@@ -2712,13 +2806,17 @@ export default class DataRequestController extends Controller {
 				break;
 			case constants.notificationTypes.MESSAGESENT:
 				if (userType === constants.userTypes.APPLICANT) {
-					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.MANAGER);
+					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 					const custodianManagersIds = custodianManagers.map(user => user.id);
-					const custodianReviewers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, constants.roleTypes.REVIEWER);
-					const custodianReviewersIds = custodianManagers.map(user => user.id);
+
+					if (accessRecord.publisherObj.team.notifications[0].optIn) {
+						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({email: teamEmail});
+						});
+					}
 
 					await notificationBuilder.triggerNotificationMessage(
-						[...custodianManagersIds, ...custodianReviewersIds, ...accessRecord.authors.map(author => author.id)],
+						[...custodianManagersIds, ...accessRecord.authors.map(author => author.id)],
 						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname}`,
 						'data access message sent',
 						accessRecord._id
@@ -2735,15 +2833,24 @@ export default class DataRequestController extends Controller {
 					});
 
 					await emailGenerator.sendEmail(
-						[...custodianManagers, ...custodianReviewers, ...accessRecord.authors],
+						[...custodianManagers, ...accessRecord.authors],
 						constants.hdrukEmail,
 						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname}`,
 						html,
 						false
 					);
 				} else if (userType === constants.userTypes.CUSTODIAN) {
+					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+					const custodianManagersIds = custodianManagers.map(user => user.id);
+
+					if (accessRecord.publisherObj.team.notifications[0].optIn) {
+						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({email: teamEmail});
+						});
+					}
+
 					await notificationBuilder.triggerNotificationMessage(
-						[accessRecord.userId, ...accessRecord.authors.map(author => author.id)],
+						[accessRecord.userId, ...accessRecord.authors.map(author => author.id), ...custodianManagersIds],
 						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname} from ${accessRecord.publisherObj.name}`,
 						'data access message sent',
 						accessRecord._id
@@ -2760,7 +2867,7 @@ export default class DataRequestController extends Controller {
 					});
 
 					await emailGenerator.sendEmail(
-						[accessRecord.mainApplicant, ...accessRecord.authors],
+						[accessRecord.mainApplicant, ...accessRecord.authors, ...custodianManagers],
 						constants.hdrukEmail,
 						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname}`,
 						html,
