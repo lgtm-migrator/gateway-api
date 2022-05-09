@@ -968,9 +968,7 @@ const getTeamMembersByRole = (team, role) => {
 	let { members = [], users = [] } = team;
 
 	let userIds = members.filter(mem => {
-		
 		if (mem.roles.includes(role) || role === 'All') {
-			console.log(`mem getTeamMembersByRole 1 : ${JSON.stringify(mem)}\n`);
 			if(!_.has(mem, 'notifications')) {
 				return true;
 			}
