@@ -162,7 +162,6 @@ export default class WorkflowService {
 			// deconstruct context
 			let { publisherObj, workflow = {}, actioner = '' } = context;
 
-			console.log(`publisherObj createNotifications : ${JSON.stringify(publisherObj)}\n`);
 			custodianManagers = teamController.getTeamMembersByRole(publisherObj, 'All');
 			if (publisherObj.notifications[0].optIn) {
 				publisherObj.notifications[0].subscribedEmails.map(teamEmail => {
