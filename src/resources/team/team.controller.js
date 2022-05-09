@@ -968,8 +968,14 @@ const getTeamMembersByRole = (team, role) => {
 	let { members = [], users = [] } = team;
 
 	let userIds = members.filter(mem => {
+		
 		if (mem.roles.includes(role) || role === 'All') {
+			console.log(`mem getTeamMembersByRole 1 : ${JSON.stringify(mem)}\n`);
 			if(!_.has(mem, 'notifications')) {
+				return true;
+			}
+
+			if (_.has(mem, 'notifications') && !mem.notifications.length) {
 				return true;
 			}
 	
@@ -979,28 +985,6 @@ const getTeamMembersByRole = (team, role) => {
 		}
 	}).map(mem => mem.memberid.toString());
 
-	return users.filter(user => userIds.includes(user._id.toString()));
-};
-
-
-const getTeamMembersNotifications = (team, filterArray) => {
-	// Destructure members array and populated users array (populate 'users' must be included in the original Mongo query)
-	let { members = [], users = [] } = team;
-	// Get all userIds for role within team
-	let userIds = members.filter(mem => {
-		if(filterArray.includes(mem.memberid)) {
-			return false
-		}
-
-		if(!_.has(mem, 'notifications')) {
-			return true;
-		}
-
-		if (_.has(mem, 'notifications') && mem.notifications.length && mem.notifications[0].optIn) {
-			return true;
-		}
-	}).map(mem => mem.memberid.toString());
-	// return all user records for role
 	return users.filter(user => userIds.includes(user._id.toString()));
 };
 
@@ -1324,7 +1308,6 @@ export default {
 	deleteTeamMember: deleteTeamMember,
 	checkTeamPermissions: checkTeamPermissions,
 	getTeamMembersByRole: getTeamMembersByRole,
-	getTeamMembersNotifications: getTeamMembersNotifications,
 	createNotifications: createNotifications,
 	getTeamsList: getTeamsList,
 	addTeam: addTeam,
