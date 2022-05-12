@@ -2512,10 +2512,6 @@ ${_displayDataUseRegisterDashboardLink()}
 	return body;
 };
 
-const _getRecipients = (recipients, environment, genericEmail) => {
-	return environment === 'production' ? [...new Map(recipients.map(item => [item['email'], item])).values()] : [{ email: genericEmail }];
-};
-
 /**
  * [_sendEmail]
  *
@@ -2523,13 +2519,6 @@ const _getRecipients = (recipients, environment, genericEmail) => {
  * @param   {Object}  context
  */
 const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, attachments = []) => {
-	// 1. Apply SendGrid API key from environment variable
-  if (process.env.NODE_ENV === 'production') {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  }
-
-	// 2. Ensure any duplicates recieve only a single email
-	// const recipients = _getRecipients(to, process.env.NODE_ENV, process.env.GENERIC_EMAIL);
   const recipients = [...new Map(to.map(item => [item['email'], item])).values()];
 	// 3. Build each email object for SendGrid extracting email addresses from user object with unique unsubscribe link (to)
 	for (let recipient of recipients) {
@@ -2543,40 +2532,6 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 		};
 
     // 4. Send email
-    if (process.env.NODE_ENV !== 'production') {
-      try {
-        await transporter.sendMail(message, (error, info) => {
-          if (error) {
-            return console.log(error);
-          }
-          console.log('Email sent: ' + info.response);
-        });
-      } catch (error) {
-        console.error(error.response.body);
-        Sentry.addBreadcrumb({
-          category: 'SendGrid',
-          message: 'Sending email failed',
-          level: Sentry.Severity.Warning,
-        });
-        Sentry.captureException(error);
-      }
-    } else {
-      await sgMail.send(message, false, err => {
-        if (err && process.env.NODE_ENV === 'production') {
-          Sentry.addBreadcrumb({
-            category: 'SendGrid',
-            message: 'Sending email failed',
-            level: Sentry.Severity.Warning,
-          });
-          Sentry.captureException(err);
-        }
-      });
-    }
-	}
-};
-
-const _sendEmailSmtp = async (message) => {
-  if (process.env.NODE_ENV !== 'production') {
     try {
       await transporter.sendMail(message, (error, info) => {
         if (error) {
@@ -2593,17 +2548,26 @@ const _sendEmailSmtp = async (message) => {
       });
       Sentry.captureException(error);
     }
-  } else {
-    await sgMail.send(message, false, err => {
-      if (err && process.env.NODE_ENV === 'production') {
-        Sentry.addBreadcrumb({
-          category: 'SendGrid',
-          message: 'Sending email failed',
-          level: Sentry.Severity.Warning,
-        });
-        Sentry.captureException(err);
+
+	}
+};
+
+const _sendEmailSmtp = async (message) => {
+  try {
+    await transporter.sendMail(message, (error, info) => {
+      if (error) {
+        return console.log(error);
       }
+      console.log('Email sent: ' + info.response);
     });
+  } catch (error) {
+    console.error(error.response.body);
+    Sentry.addBreadcrumb({
+      category: 'SendGrid',
+      message: 'Sending email failed',
+      level: Sentry.Severity.Warning,
+    });
+    Sentry.captureException(error);
   }
 }
 
@@ -2614,12 +2578,6 @@ const _sendEmailSmtp = async (message) => {
  * @param   {Object}  message to from, templateId
  */
 const _sendIntroEmail = msg => {
-	// 1. Apply SendGrid API key from environment variable
-  if (process.env.NODE_ENV === 'production') {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  }
-
-	// 2. Send email
   _sendEmailSmtp(msg);
 };
 
@@ -2751,5 +2709,4 @@ export default {
 	generateDataUseRegisterApproved: _generateDataUseRegisterApproved,
 	generateDataUseRegisterRejected: _generateDataUseRegisterRejected,
 	generateDataUseRegisterPending: _generateDataUseRegisterPending,
-	getRecipients: _getRecipients,
 };
