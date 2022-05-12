@@ -9,7 +9,6 @@ import wordTemplateBuilder from '../utilities/wordTemplateBuilder.util';
 
 const fs = require('fs');
 const nodemailer = require('nodemailer');
-const sgMail = require('@sendgrid/mail');
 const readEnv = process.env.ENV || 'production';
 
 let parent, qsId;
