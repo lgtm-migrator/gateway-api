@@ -33,6 +33,7 @@ export default class QuestionbankService {
 				questionStatus,
 				guidance: {},
 				countOfChanges: 0,
+				unpublishedGuidance: [],
 			};
 
 			const schema = await this.dataRequestRepository.createApplicationFormSchema(newSchema);
@@ -43,6 +44,7 @@ export default class QuestionbankService {
 				guidance: schema.guidance,
 				countOfChanges: schema.countOfChanges,
 				schemaId: schema._id,
+				unpublishedGuidance: schema.unpublishedGuidance,
 			};
 		}
 
@@ -61,6 +63,7 @@ export default class QuestionbankService {
 				guidance: latestSchemaVersion.guidance,
 				countOfChanges: latestSchemaVersion.countOfChanges,
 				schemaId: latestSchemaVersion._id,
+				unpublishedGuidance: latestSchemaVersion.unpublishedGuidance,
 			};
 		}
 
@@ -79,6 +82,7 @@ export default class QuestionbankService {
 					guidance: latestSchemaVersion.guidance,
 					version: latestSchemaVersion.version + 1,
 					countOfChanges: 0,
+					unpublishedGuidance: [],
 				};
 
 				const schema = await this.dataRequestRepository.createApplicationFormSchema(newSchema);
@@ -89,6 +93,7 @@ export default class QuestionbankService {
 					guidance: newSchema.guidance,
 					countOfChanges: newSchema.countOfChanges,
 					schemaId: schema._id,
+					unpublishedGuidance: schema.unpublishedGuidance,
 				};
 			} else {
 				let questionStatus = {};
@@ -107,6 +112,7 @@ export default class QuestionbankService {
 					guidance: {},
 					countOfChanges: 0,
 					version: latestSchemaVersion.version + 1,
+					unpublishedGuidance: [],
 				};
 
 				const schema = await this.dataRequestRepository.createApplicationFormSchema(newSchema);
@@ -117,6 +123,7 @@ export default class QuestionbankService {
 					guidance: newSchema.guidance,
 					countOfChanges: newSchema.countOfChanges,
 					schemaId: schema._id,
+					unpublishedGuidance: newSchema.unpublishedGuidance,
 				};
 			}
 		}
