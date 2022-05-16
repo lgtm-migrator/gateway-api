@@ -40,12 +40,10 @@ const DataRequestSchemas = new Schema(
 			type: Number,
 			default: 0,
 		},
-		unpublishedGuidance: [
-			{
-				type: String,
-				default: [],
-			},
-		],
+		unpublishedGuidance: {
+			type: Array,
+			default: [],
+		},
 	},
 	{
 		timestamps: true,
