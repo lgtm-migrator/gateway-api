@@ -2262,6 +2262,42 @@ const _generateMessageNotification = options => {
 	return body;
 };
 
+const _generateMessageCreatorNotification = options => {
+  let { firstMessage, firstname, lastname, messageDescription, openMessagesLink } = options;
+
+  let body = `<div>
+            <div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
+              <table
+              align="center"
+              border="0"
+              cellpadding="0"
+              cellspacing="40"
+              width="700"
+              word-break="break-all"
+              style="font-family: Arial, sans-serif">
+                <thead>
+                  <tr>
+                    <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
+                    Data Access Enquiry submitted
+                    </th>
+                  </tr>
+                </thead>
+                <tbody style="overflow-y: auto; overflow-x: hidden;">
+                  <tr>
+                    <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
+                      <p>Dear ${firstname} ${lastname},</p>
+                      <p>Thank you for submitting an enquiry about ${firstMessage.datasetsRequested[0].name}.</p>
+                      <p>Your enquiry has been sent to ${firstMessage.datasetsRequested[0].publisher} who will reply in due course. If you have not received a response after 10 working days, or if you have any queries or concerns about the Gateway, please email enquiries@hdruk.ac.uk and a member of the HDR UK team will get in touch with you.</p>
+                      <p>${messageDescription.replace(/\n/g, '<br />')}</p>
+                    </th>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+  return body;
+};
+
 const _generateEntityNotification = options => {
 	let { resourceType, resourceName, resourceLink, subject, rejectionReason, activeflag, type, resourceAuthor } = options;
 	let authorBody;
@@ -2700,6 +2736,7 @@ export default {
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages
 	generateMessageNotification: _generateMessageNotification,
+  generateMessageCreatorNotification: _generateMessageCreatorNotification,
 	generateEntityNotification: _generateEntityNotification,
 	//ActivityLog
 	generateActivityLogManualEventCreated: _generateActivityLogManualEventCreated,

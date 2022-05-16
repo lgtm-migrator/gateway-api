@@ -104,7 +104,7 @@ module.exports = {
 
 			// 15. Prepare to send email if a new message has been created
 			if (messageType === 'message') {
-				let optIn, subscribedEmails;
+				let optIn, subscribedEmails, messageCreatorRecipient;
 				// 16. Find recipients who have opted in to email updates and exclude the requesting user
 				let messageRecipients = await UserModel.find({ _id: { $in: topicObj.recipients } });
 
@@ -125,9 +125,12 @@ module.exports = {
 						);
 						if (!_.isEmpty(subscribedMembersByType)) {
 							// build cleaner array of memberIds from subscribedMembersByType
-							const memberIds = [...subscribedMembersByType.map(m => m.memberid.toString()), topicObj.createdBy.toString()];
+							const memberIds = [...subscribedMembersByType.map(m => m.memberid.toString())].filter(ele => ele !== topicObj.createdBy.toString());
+							const creatorObjectId = topicObj.createdBy.toString();
 							// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object
 							const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
+							const creatorEmail = await UserModel.findById(creatorObjectId);
+							messageCreatorRecipient = [{ email: creatorEmail.email}];
 							messageRecipients = [...teamNotificationEmails, ...memberEmails];
 						} else {
 							// only if not membersByType but has a team email setup
@@ -155,6 +158,18 @@ module.exports = {
 					html,
 					false
 				);
+
+				if (messageCreatorRecipient) {
+					let htmlCreator = emailGenerator.generateMessageCreatorNotification(options);
+
+					emailGenerator.sendEmail(
+						messageCreatorRecipient,
+						constants.hdrukEmail,
+						`You have received a new message on the HDR UK Innovation Gateway`,
+						htmlCreator,
+						false
+					);
+				}
 			}
 			// 19. Return successful response with message data
 			const messageObj = message.toObject();
