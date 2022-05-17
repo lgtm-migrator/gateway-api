@@ -125,13 +125,24 @@ module.exports = {
 						);
 						if (!_.isEmpty(subscribedMembersByType)) {
 							// build cleaner array of memberIds from subscribedMembersByType
-							const memberIds = [...subscribedMembersByType.map(m => m.memberid.toString())].filter(ele => ele !== topicObj.createdBy.toString());
-							const creatorObjectId = topicObj.createdBy.toString();
-							// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object
-							const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
-							const creatorEmail = await UserModel.findById(creatorObjectId);
-							messageCreatorRecipient = [{ email: creatorEmail.email}];
-							messageRecipients = [...teamNotificationEmails, ...memberEmails];
+							console.log(`topicObj : ${JSON.stringify(topicObj)}`);
+							console.log(`topicObj.createdBy : ${JSON.stringify(topicObj.createdBy)}`);
+							console.log(`topicObj.createdBy 2 : ${JSON.stringify(typeof topicObj.createdBy === 'object')}`);
+							if (topicObj.topicMessages !== undefined) {
+								const memberIds = [...subscribedMembersByType.map(m => m.memberid.toString()), ...topicObj.createdBy._id.toString()];
+								// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object
+								const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
+								messageRecipients = [...teamNotificationEmails, ...memberEmails];
+							} else {
+								const memberIds = [...subscribedMembersByType.map(m => m.memberid.toString())].filter(ele => ele !== topicObj.createdBy.toString());
+								const creatorObjectId = topicObj.createdBy.toString();
+								// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object
+								const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
+								const creatorEmail = await UserModel.findById(creatorObjectId);
+								messageCreatorRecipient = [{ email: creatorEmail.email}];
+								messageRecipients = [...teamNotificationEmails, ...memberEmails];
+							}
+							
 						} else {
 							// only if not membersByType but has a team email setup
 							messageRecipients = [...messageRecipients, ...teamNotificationEmails];
