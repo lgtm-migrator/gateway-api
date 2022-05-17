@@ -6,6 +6,7 @@ import constants from './../utilities/constants.util';
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { TeamModel } from '../team/team.model';
+import { PublisherModel } from '../publisher/publisher.model';
 import teamController from '../team/team.controller';
 import emailGenerator from '../utilities/emailGenerator.util';
 import { getObjectFilters } from '../search/search.repository';
@@ -371,13 +372,20 @@ export default class DataUseRegisterController extends Controller {
 
 		switch (type) {
 			case constants.dataUseRegisterNotifications.DATAUSEAPPROVED: {
+				let teamEmailNotification = [];
 				const adminTeam = await TeamModel.findOne({ type: 'admin' })
 					.populate({
 						path: 'users',
 					})
 					.lean();
+				const team = await TeamModel.findById(dataUseRegister.publisher.toString());
+				if (team.notifications.length > 0 && team.notifications[0].optIn) {
+					team.notifications[0].subscribedEmails.map(teamEmail => {
+						teamEmailNotification.push({email: teamEmail});
+					});
+				}
 				const dataUseTeamMembers = teamController.getTeamMembersByRole(adminTeam, constants.roleTypes.ADMIN_DATA_USE);
-				const emailRecipients = [...dataUseTeamMembers, uploader];
+				const emailRecipients = [...dataUseTeamMembers, uploader, ...teamEmailNotification];
 
 				const options = {
 					id,
