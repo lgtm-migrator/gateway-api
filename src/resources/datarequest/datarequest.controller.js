@@ -2177,8 +2177,8 @@ export default class DataRequestController extends Controller {
 						options
 					));
 					// Get the name of the publishers word template
-						let publisherTemplate = await PublisherModel.findOne({ name: publisher }, { wordTemplate: 1, _id: 0 }).lean();
-						let templateName = publisherTemplate.wordTemplate;
+					let publisherTemplate = await PublisherModel.findOne({ name: publisher }, { _id: 0 }).lean();
+					let templateName = publisherTemplate.wordTemplate;
 					// Send emails to custodian team members who have opted in to email notifications
 					if (emailRecipientType === 'dataCustodian') {
 						emailRecipients = [...custodianManagers];
