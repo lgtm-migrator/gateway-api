@@ -6,7 +6,6 @@ import constants from './../utilities/constants.util';
 import { Data } from '../tool/data.model';
 import { Course } from '../course/course.model';
 import { TeamModel } from '../team/team.model';
-import { PublisherModel } from '../publisher/publisher.model';
 import teamController from '../team/team.controller';
 import emailGenerator from '../utilities/emailGenerator.util';
 import { getObjectFilters } from '../search/search.repository';
