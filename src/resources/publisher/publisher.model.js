@@ -47,7 +47,7 @@ const PublisherSchema = new Schema(
 		federation: {
 			active: { type: Boolean },
 			auth: { type: Object, select: false },
-			endpoints: { type: Boolean, select: false },
+			endpoints: { type: Object, select: false },
 			notificationEmail: { type: Array, select: false },
 		},
 	},
