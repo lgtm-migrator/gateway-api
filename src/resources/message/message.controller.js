@@ -9,6 +9,7 @@ import { Data as ToolModel } from '../tool/data.model';
 import constants from '../utilities/constants.util';
 import { dataRequestService } from '../datarequest/dependency';
 import { activityLogService } from '../activitylog/dependency';
+import { publishMessageToPubSub } from '../../services/google/PubSubService';
 
 const topicController = require('../topic/topic.controller');
 
@@ -20,10 +21,11 @@ module.exports = {
 			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds, firstMessage } = req.body;
 			let topicObj = {};
 			let team, publisher, userType;
+			let tools = {};
 			// 1. If the message type is 'message' and topic id is empty
 			if (messageType === 'message') {
 				// 2. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
-				const tools = await ToolModel.find()
+				tools = await ToolModel.find()
 					.where('_id')
 					.in(relatedObjectIds)
 					.populate({
@@ -36,7 +38,8 @@ module.exports = {
 							},
 						},
 					});
-				// 3. Return undefined if no object(s) exists
+
+					// 3. Return undefined if no object(s) exists
 				if (_.isEmpty(tools)) return undefined;
 
 				// 4. Get recipients for new message
@@ -87,6 +90,7 @@ module.exports = {
 					}
 				}
 			}
+
 			// 13. Create new message
 			const message = await MessagesModel.create({
 				messageID: parseInt(Math.random().toString().replace('0.', '')),
@@ -99,6 +103,7 @@ module.exports = {
 				readBy: [new mongoose.Types.ObjectId(createdBy)],
 				...(userType && { userType }),
 			});
+
 			// 14. Return 500 error if message was not successfully created
 			if (!message) return res.status(500).json({ success: false, message: 'Could not save message to database.' });
 
@@ -178,6 +183,23 @@ module.exports = {
 						false
 					);
 				}
+
+				// publish the message to PubSub
+				const pubSubMessage = {
+					id: "",
+					publisherInfo: {
+						id: tools[0].publisher._id,
+						name: tools[0].publisher.name,
+					},
+					data: {
+						topicId: topicObj._id,
+						messageId: message.messageID,
+						createdDate: message.createdDate,
+						data: req.body.firstMessage,
+
+					}
+				};
+				publishMessageToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, pubSubMessage);
 			}
 			// 19. Return successful response with message data
 			const messageObj = message.toObject();
