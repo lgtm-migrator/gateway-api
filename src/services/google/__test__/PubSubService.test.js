@@ -1,7 +1,7 @@
 const sinon = require('sinon');
 
 const topicName = 'topic-name';
-import { pushMessage } from '../PubSubService';
+import { publishMessageToPubSub } from '../PubSubService';
 
 jest.mock('@google-cloud/pubsub', () => ({
     __esModule: true,
@@ -32,7 +32,7 @@ afterEach(restoreConsole);
 
 describe('PubSub', () => {
     it(`publish message function was called`, async () => {
-        const mockFn = jest.fn().mockName("pushMessage");
+        const mockFn = jest.fn().mockName("publishMessageToPubSub");
         mockFn(); // comment me
         expect(mockFn).toHaveBeenCalled();
     });
@@ -42,6 +42,6 @@ describe('PubSub', () => {
             foo: 'bar',
         };
 
-        expect(async () => await pushMessage(topicName, message)).rejects.toThrow();
+        expect(async () => await publishMessageToPubSub(topicName, message)).rejects.toThrow();
     });
 });
