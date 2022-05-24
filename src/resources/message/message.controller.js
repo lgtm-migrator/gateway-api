@@ -9,7 +9,7 @@ import { Data as ToolModel } from '../tool/data.model';
 import constants from '../utilities/constants.util';
 import { dataRequestService } from '../datarequest/dependency';
 import { activityLogService } from '../activitylog/dependency';
-import { publishMessageToPubSub } from '../../services/google/PubSubService';
+import { publishMessageToChannel } from '../../services/cachePubSub/cachePubSubClient';
 
 const topicController = require('../topic/topic.controller');
 
@@ -184,22 +184,25 @@ module.exports = {
 					);
 				}
 
-				// publish the message to PubSub
-				const pubSubMessage = {
-					id: "",
-					publisherInfo: {
-						id: tools[0].publisher._id,
-						name: tools[0].publisher.name,
-					},
-					data: {
-						topicId: topicObj._id,
-						messageId: message.messageID,
-						createdDate: message.createdDate,
-						data: req.body.firstMessage,
+				// publish the message to Redis PubSub
+				if (process.env.CACHE_ENABLED) {
+					const pubSubMessage = {
+						id: "",
+						publisherInfo: {
+							id: tools[0].publisher._id,
+							name: tools[0].publisher.name,
+						},
+						data: {
+							topicId: topicObj._id,
+							messageId: message.messageID,
+							createdDate: message.createdDate,
+							data: req.body.firstMessage,
+	
+						}
+					};
+					await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+				}
 
-					}
-				};
-				publishMessageToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, pubSubMessage);
 			}
 			// 19. Return successful response with message data
 			const messageObj = message.toObject();
