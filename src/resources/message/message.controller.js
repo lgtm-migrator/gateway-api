@@ -10,8 +10,10 @@ import constants from '../utilities/constants.util';
 import { dataRequestService } from '../datarequest/dependency';
 import { activityLogService } from '../activitylog/dependency';
 import { publishMessageToChannel } from '../../services/cachePubSub/cachePubSubClient';
+import { PublisherModel } from '../publisher/publisher.model';
 
 const topicController = require('../topic/topic.controller');
+const { ObjectId } = require('mongodb');
 
 module.exports = {
 	// POST /api/v1/messages
@@ -185,12 +187,14 @@ module.exports = {
 				}
 
 				// publish the message to Redis PubSub
-				if (process.env.CACHE_ENABLED) {
+				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
+
+				if (publisherDetails['dar-integration']['enabled']) {
 					const pubSubMessage = {
 						id: "",
 						publisherInfo: {
-							id: tools[0].publisher._id,
-							name: tools[0].publisher.name,
+							id: publisherDetails._id,
+							name: publisherDetails.name,
 						},
 						data: {
 							topicId: topicObj._id,
