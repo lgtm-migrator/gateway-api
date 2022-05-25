@@ -1,3 +1,8 @@
+// example params in .env file:
+// PUBSUB_PROJECT_ID='hdruk-gateway-dev'
+// PUBSUB_TOPIC_ENQUIRY='enquiry'
+// PUBSUB_SUBSCRIPTION_ID='enquiry-sub'
+
 const {PubSub} = require('@google-cloud/pubsub');
 
 const pubSubClient = new PubSub({
