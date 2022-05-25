@@ -2874,8 +2874,6 @@ export default class DataRequestController extends Controller {
 
 			const topic = await this.topicService.getTopicForDAR(id, questionId || panelId, messageType);
 
-			console.log('*** TOPIC', topic);
-
 			let messages = [];
 			if (!_.isEmpty(topic) && !_.isEmpty(topic.topicMessages)) {
 				for (let topicMessage of topic.topicMessages.reverse()) {
@@ -2903,8 +2901,6 @@ export default class DataRequestController extends Controller {
 
 	//POST api/v1/data-access-request/:id/messages
 	async submitMessage(req, res) {
-		console.log('*** submitting message', req.body);
-
 		try {
 			const {
 				params: { id },
@@ -2914,13 +2910,11 @@ export default class DataRequestController extends Controller {
 			const requestingUserObjectId = req.user._id;
 			const requestingUser = req.user;
 
-			console.log('*** accessRecord');
-
 			let accessRecord = await this.dataRequestService.getApplicationWithTeamById(id, { lean: true });
 			if (!accessRecord) {
 				return res.status(404).json({ status: 'error', message: 'The application could not be found.' });
 			}
-			console.log('*** permissions');
+
 			const { authorised, userType } = datarequestUtil.getUserPermissionsForApplication(
 				accessRecord,
 				requestingUserId,
@@ -2940,14 +2934,12 @@ export default class DataRequestController extends Controller {
 			) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
-			console.log('*** topics');
+
 			let topic = await this.topicService.getTopicForDAR(id, questionId || panel.panelId, messageType);
 
 			if (_.isEmpty(topic)) {
 				topic = await this.topicService.createTopicForDAR(id, questionId || panel.panelId, messageType);
 			}
-
-			console.log('*** creating message', topic);
 
 			await this.messageService.createMessageForDAR(messageBody, topic._id, requestingUserObjectId, userType);
 
@@ -2964,7 +2956,7 @@ export default class DataRequestController extends Controller {
 							break;
 						}
 					}
-					console.log('*** finding panel');
+
 					const foundPanel = dynamicForm.findQuestionPanel(foundQuestionSet.questionSetId, accessRecord.jsonSchema.questionPanels);
 
 					for (let page of accessRecord.jsonSchema.pages) {
@@ -2995,7 +2987,6 @@ export default class DataRequestController extends Controller {
 						requestingUser
 					);
 				} else if (panel) {
-					console.log('*** creating notifications');
 					this.createNotifications(
 						constants.notificationTypes.MESSAGESENT,
 						{
