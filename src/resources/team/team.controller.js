@@ -965,11 +965,24 @@ const checkIfAdmin = (user, adminRoles) => {
 };
 
 const getTeamMembersByRole = (team, role) => {
-	// Destructure members array and populated users array (populate 'users' must be included in the original Mongo query)
 	let { members = [], users = [] } = team;
-	// Get all userIds for role within team
-	let userIds = members.filter(mem => mem.roles.includes(role) || role === 'All').map(mem => mem.memberid.toString());
-	// return all user records for role
+
+	let userIds = members.filter(mem => {
+		if (mem.roles.includes(role) || role === 'All') {
+			if(!_.has(mem, 'notifications')) {
+				return true;
+			}
+
+			if (_.has(mem, 'notifications') && !mem.notifications.length) {
+				return true;
+			}
+	
+			if (_.has(mem, 'notifications') && mem.notifications.length && mem.notifications[0].optIn) {
+				return true;
+			}
+		}
+	}).map(mem => mem.memberid.toString());
+
 	return users.filter(user => userIds.includes(user._id.toString()));
 };
 

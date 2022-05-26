@@ -44,6 +44,12 @@ const PublisherSchema = new Schema(
 		allowAccessRequestManagement: { type: Boolean, default: false },
 		uses5Safes: { type: Boolean, default: false },
 		wordTemplate: String,
+		federation: {
+			active: { type: Boolean },
+			auth: { type: Object, select: false },
+			endpoints: { type: Object, select: false },
+			notificationEmail: { type: Array, select: false },
+		},
 	},
 	{
 		toJSON: { virtuals: true },
