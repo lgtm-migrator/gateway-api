@@ -65,4 +65,26 @@ export default class QuestionbankController extends Controller {
 			});
 		}
 	}
+
+	async revertChanges(req, res) {
+		try {
+			const { publisherId } = req.params;
+			const { questionSet } = req.query;
+
+			let target;
+			if (questionSet) {
+				target = questionSet;
+			}
+
+			await this.questionbankService.revertChanges(publisherId, target);
+
+			return res.status(200).json({ success: true });
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'Error removing the schema updates, please try again',
+			});
+		}
+	}
 }

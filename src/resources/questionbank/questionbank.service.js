@@ -16,15 +16,8 @@ export default class QuestionbankService {
 		let dataRequestSchemas = await this.dataRequestRepository.getApplicationFormSchemas(publisher);
 
 		if (isEmpty(dataRequestSchemas)) {
-			let questionStatus = {};
-
 			//create the questionStatus from the master schema
-			masterSchema.questionSets.forEach(questionSet => {
-				questionSet.questions.forEach(question => {
-					if (question.lockedQuestion === 1) questionStatus[question.questionId] = 2;
-					else questionStatus[question.questionId] = question.defaultQuestion;
-				});
-			});
+			let questionStatus = await this.getDefaultQuestionStates();
 
 			const newSchema = {
 				publisher: publisher.name,
@@ -199,5 +192,82 @@ export default class QuestionbankService {
 		});
 
 		return newQuestionsAdded;
+	}
+
+	async revertChanges(publisherId, target) {
+		const publisher = await this.publisherService.getPublisher(publisherId);
+		const dataRequestSchemas = await this.dataRequestRepository.getApplicationFormSchemas(publisher);
+
+		if (dataRequestSchemas.length === 0) {
+			throw new Error('This publisher has no data request schemas');
+		}
+
+		// Default previous state is the master schema
+		let previousState = await this.getDefaultQuestionStates();
+
+		let guidance = {};
+		let unpublishedGuidance = [];
+		// Is previous version exists, previousState is last schema version
+		if (dataRequestSchemas.length > 1) {
+			previousState = dataRequestSchemas[1].questionStatus;
+			guidance = dataRequestSchemas[1].guidance || {};
+		}
+
+		// Revert updates for a given question panel ELSE revert all updates
+		if (target) {
+			const panelQuestions = await this.getPanelQuestions(target);
+			const updates = Object.keys(previousState).filter(key => !panelQuestions.includes(key));
+
+			updates.forEach(key => {
+				previousState[key] = dataRequestSchemas[0].questionStatus[key];
+
+				if (dataRequestSchemas[0].unpublishedGuidance.includes(key)) {
+					unpublishedGuidance.push(key);
+				}
+
+				if (Object.keys(dataRequestSchemas[0].guidance).includes(key)) {
+					guidance[key] = dataRequestSchemas[0].guidance[key];
+				}
+			});
+		}
+
+		await this.dataRequestRepository.updateApplicationFormSchemaById(dataRequestSchemas[0]._id, {
+			questionStatus: previousState,
+			unpublishedGuidance,
+			guidance,
+		});
+
+		return;
+	}
+
+	async getDefaultQuestionStates() {
+		const global = await this.globalService.getGlobal({ localeId: 'en-gb' });
+		const masterSchema = global.masterSchema;
+
+		let defaultQuestionStates = {};
+
+		masterSchema.questionSets.forEach(questionSet => {
+			questionSet.questions.forEach(question => {
+				if (question.lockedQuestion === 1) defaultQuestionStates[question.questionId] = 2;
+				else defaultQuestionStates[question.questionId] = question.defaultQuestion;
+			});
+		});
+
+		return defaultQuestionStates;
+	}
+
+	async getPanelQuestions(target) {
+		const global = await this.globalService.getGlobal({ localeId: 'en-gb' });
+		const questionSets = global.masterSchema.questionSets;
+
+		const panelQuestions = questionSets.filter(questionSet => questionSet.questionSetId === target);
+
+		if (panelQuestions.length === 0) {
+			throw new Error('This is not a valid questionSetId');
+		}
+
+		const questionIds = panelQuestions[0].questions.map(question => question.questionId);
+
+		return questionIds;
 	}
 }

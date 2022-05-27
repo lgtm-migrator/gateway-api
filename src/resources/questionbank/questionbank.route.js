@@ -89,4 +89,11 @@ router.post('/:schemaId', passport.authenticate('jwt'), validatePostRequest, aut
 	questionbankController.publishSchema(req, res)
 );
 
+// @route   PATCH /api/v2/questionbank/publisherId
+// @desc	Revert the draft schema to the previous version
+// @access  Public
+router.patch('/:publisherId', passport.authenticate('jwt'), validateViewRequest, authorizeViewRequest, (req, res) =>
+	questionbankController.revertChanges(req, res)
+);
+
 module.exports = router;
