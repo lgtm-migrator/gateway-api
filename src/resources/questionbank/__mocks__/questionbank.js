@@ -15,7 +15,7 @@ export const globalDocument = {
 	masterSchema: {
 		questionSets: [
 			{
-				questionSetId: 'primaryapplicant',
+				questionSetId: 'safepeople-primaryapplicant',
 				questionSetHeader: 'Primary applicant',
 				questions: [
 					{

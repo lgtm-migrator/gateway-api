@@ -1,3 +1,4 @@
+import { NextPage } from '@hubspot/api-client/lib/codegen/cms/hubdb/api';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 
@@ -62,6 +63,23 @@ export default class QuestionbankController extends Controller {
 			return res.status(500).json({
 				success: false,
 				message: 'A server error occurred, please try again',
+			});
+		}
+	}
+
+	async revertChanges(req, res) {
+		try {
+			const { publisherId } = req.params;
+			const { page } = req.query;
+
+			await this.questionbankService.revertChanges(publisherId, page);
+
+			return res.status(200).json({ success: true });
+		} catch (err) {
+			logger.logError(err, logCategory);
+			return res.status(500).json({
+				success: false,
+				message: 'Error removing the schema updates, please try again',
 			});
 		}
 	}
