@@ -192,6 +192,7 @@ module.exports = {
 				if (publisherDetails['dar-integration']['enabled']) {
 					const pubSubMessage = {
 						id: "",
+						type: "enquiry",
 						publisherInfo: {
 							id: publisherDetails._id,
 							name: publisherDetails.name,
