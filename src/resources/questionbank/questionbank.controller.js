@@ -1,3 +1,4 @@
+import { NextPage } from '@hubspot/api-client/lib/codegen/cms/hubdb/api';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 
@@ -69,14 +70,9 @@ export default class QuestionbankController extends Controller {
 	async revertChanges(req, res) {
 		try {
 			const { publisherId } = req.params;
-			const { questionSet } = req.query;
+			const { page } = req.query;
 
-			let target;
-			if (questionSet) {
-				target = questionSet;
-			}
-
-			await this.questionbankService.revertChanges(publisherId, target);
+			await this.questionbankService.revertChanges(publisherId, page);
 
 			return res.status(200).json({ success: true });
 		} catch (err) {

@@ -214,11 +214,14 @@ export default class QuestionbankService {
 		}
 
 		// Revert updates for a given question panel ELSE revert all updates
+		let countOfChanges = 0;
 		if (target) {
 			const panelQuestions = await this.getPanelQuestions(target);
 			const updates = Object.keys(previousState).filter(key => !panelQuestions.includes(key));
 
 			updates.forEach(key => {
+				if (previousState[key] !== dataRequestSchemas[0].questionStatus[key]) countOfChanges += 1;
+
 				previousState[key] = dataRequestSchemas[0].questionStatus[key];
 
 				if (dataRequestSchemas[0].unpublishedGuidance.includes(key)) {
@@ -235,6 +238,7 @@ export default class QuestionbankService {
 			questionStatus: previousState,
 			unpublishedGuidance,
 			guidance,
+			countOfChanges,
 		});
 
 		return;
@@ -260,13 +264,18 @@ export default class QuestionbankService {
 		const global = await this.globalService.getGlobal({ localeId: 'en-gb' });
 		const questionSets = global.masterSchema.questionSets;
 
-		const panelQuestions = questionSets.filter(questionSet => questionSet.questionSetId === target);
+		const panelQuestions = questionSets.filter(questionSet => questionSet.questionSetId.includes(target));
 
-		if (panelQuestions.length === 0) {
-			throw new Error('This is not a valid questionSetId');
+		if (!panelQuestions) {
+			throw new Error('Invalid page identifier: ' + target);
 		}
 
-		const questionIds = panelQuestions[0].questions.map(question => question.questionId);
+		let questions = [];
+		panelQuestions.forEach(panel => {
+			questions.push(...panel.questions);
+		});
+
+		const questionIds = questions.map(question => question.questionId);
 
 		return questionIds;
 	}
