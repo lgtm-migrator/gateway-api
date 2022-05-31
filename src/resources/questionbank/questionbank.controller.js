@@ -1,4 +1,3 @@
-import { NextPage } from '@hubspot/api-client/lib/codegen/cms/hubdb/api';
 import Controller from '../base/controller';
 import { logger } from '../utilities/logger';
 
