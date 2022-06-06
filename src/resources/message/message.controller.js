@@ -187,8 +187,8 @@ module.exports = {
 				}
 
 				// publish the message to Redis PubSub
-				//const cacheEnabled = process.env.CACHE_ENABLED || false;
-				//if(cacheEnabled) {
+				const cacheEnabled = process.env.CACHE_ENABLED || false;
+				if(cacheEnabled) {
 					let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
 
 					if (publisherDetails['dar-integration']['enabled']) {
@@ -207,10 +207,9 @@ module.exports = {
 		
 							}
 						};
-						console.log(pubSubMessage);
 						await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
 					}
-				//}
+				}
 
 			}
 			// 19. Return successful response with message data
