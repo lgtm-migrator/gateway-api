@@ -187,25 +187,28 @@ module.exports = {
 				}
 
 				// publish the message to Redis PubSub
-				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
+				const cacheEnabled = process.env.CACHE_ENABLED || false;
+				if(cacheEnabled) {
+					let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
 
-				if (publisherDetails['dar-integration']['enabled']) {
-					const pubSubMessage = {
-						id: "",
-						type: "enquiry",
-						publisherInfo: {
-							id: publisherDetails._id,
-							name: publisherDetails.name,
-						},
-						data: {
-							topicId: topicObj._id,
-							messageId: message.messageID,
-							createdDate: message.createdDate,
-							data: req.body.firstMessage,
-	
-						}
-					};
-					await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+					if (publisherDetails['dar-integration']['enabled']) {
+						const pubSubMessage = {
+							id: "",
+							type: "enquiry",
+							publisherInfo: {
+								id: publisherDetails._id,
+								name: publisherDetails.name,
+							},
+							data: {
+								topicId: topicObj._id,
+								messageId: message.messageID,
+								createdDate: message.createdDate,
+								data: req.body.firstMessage,
+		
+							}
+						};
+						await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+					}
 				}
 
 			}

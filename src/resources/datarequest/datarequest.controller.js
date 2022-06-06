@@ -453,24 +453,27 @@ export default class DataRequestController extends Controller {
 			}
 
 			// publish the message to Redis PubSub
-			let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(accessRecord.publisherObj._id) }).lean();
+			const cacheEnabled = process.env.CACHE_ENABLED || false;
+			if(cacheEnabled) {
+				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(accessRecord.publisherObj._id) }).lean();
 
-			if (accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED 
-				&& publisherDetails['dar-integration']['enabled']) {
-				const pubSubMessage = {
-					id: "",
-					type: "5safes",
-					publisherInfo: {
-						id: accessRecord.publisherObj._id,
-						name: accessRecord.publisherObj.name,
-					},
-					data: {
-						dataRequestId: accessRecord._id,
-						createdDate: accessRecord.createdAt,
-						data: accessRecord.questionAnswers,
-					}
-				};
-				await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+				if (accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED 
+					&& publisherDetails['dar-integration']['enabled']) {
+					const pubSubMessage = {
+						id: "",
+						type: "5safes",
+						publisherInfo: {
+							id: accessRecord.publisherObj._id,
+							name: accessRecord.publisherObj.name,
+						},
+						data: {
+							dataRequestId: accessRecord._id,
+							createdDate: accessRecord.createdAt,
+							data: accessRecord.questionAnswers,
+						}
+					};
+					await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+				}	
 			}
 
 			// 11. Return aplication and successful response
