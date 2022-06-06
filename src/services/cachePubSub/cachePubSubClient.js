@@ -4,7 +4,9 @@ const client = createClient({
 });
 
 export const publishMessageToChannel = async (channel, message) => {
-    await client.connect();
+    if (!client.isOpen) {
+        await client.connect();
+    }
 
     client.on("connect", () => console.log("Redis cache is ready"));
     client.on("error", (err) => console.log('Redis Client Error', err));
