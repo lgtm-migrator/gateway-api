@@ -16,9 +16,11 @@ import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
 import { PublisherModel } from '../publisher/publisher.model';
 import { dataUseRegisterController } from '../dataUseRegister/dependency';
+import { publishMessageToChannel } from '../../services/cachePubSub/cachePubSubClient';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
+const { ObjectId } = require('mongodb');
 
 export default class DataRequestController extends Controller {
 	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService, dataUseRegisterService) {
@@ -448,6 +450,30 @@ export default class DataRequestController extends Controller {
 					businessKey: id,
 				};
 				bpmController.postStartPreReview(bpmContext);
+			}
+
+			// publish the message to Redis PubSub
+			const cacheEnabled = process.env.CACHE_ENABLED || false;
+			if(cacheEnabled) {
+				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(accessRecord.publisherObj._id) }).lean();
+
+				if (accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED 
+					&& publisherDetails['dar-integration']['enabled']) {
+					const pubSubMessage = {
+						id: "",
+						type: "5safes",
+						publisherInfo: {
+							id: accessRecord.publisherObj._id,
+							name: accessRecord.publisherObj.name,
+						},
+						data: {
+							dataRequestId: accessRecord._id,
+							createdDate: accessRecord.createdAt,
+							data: accessRecord.questionAnswers,
+						}
+					};
+					await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+				}	
 			}
 
 			// 11. Return aplication and successful response
