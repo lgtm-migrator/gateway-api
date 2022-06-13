@@ -16,7 +16,7 @@ import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
 import { PublisherModel } from '../publisher/publisher.model';
 import { dataUseRegisterController } from '../dataUseRegister/dependency';
-import { publishMessageToChannel } from '../../services/cachePubSub/cachePubSubClient';
+import { publishMessageWithRetryToPubSub } from '../../services/google/PubSubWithRetryService';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -452,7 +452,7 @@ export default class DataRequestController extends Controller {
 				bpmController.postStartPreReview(bpmContext);
 			}
 
-			// publish the message to Redis PubSub
+			// publish the message to GCP PubSub
 			const cacheEnabled = process.env.CACHE_ENABLED || false;
 			if(cacheEnabled) {
 				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(accessRecord.publisherObj._id) }).lean();
@@ -472,7 +472,7 @@ export default class DataRequestController extends Controller {
 							data: accessRecord.questionAnswers,
 						}
 					};
-					await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+					await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 				}	
 			}
 

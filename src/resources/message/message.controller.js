@@ -9,7 +9,7 @@ import { Data as ToolModel } from '../tool/data.model';
 import constants from '../utilities/constants.util';
 import { dataRequestService } from '../datarequest/dependency';
 import { activityLogService } from '../activitylog/dependency';
-import { publishMessageToChannel } from '../../services/cachePubSub/cachePubSubClient';
+import { publishMessageWithRetryToPubSub } from '../../services/google/PubSubWithRetryService';
 import { PublisherModel } from '../publisher/publisher.model';
 
 const topicController = require('../topic/topic.controller');
@@ -186,7 +186,7 @@ module.exports = {
 					);
 				}
 
-				// publish the message to Redis PubSub
+				// publish the message to GCP PubSub
 				const cacheEnabled = process.env.CACHE_ENABLED || false;
 				if(cacheEnabled) {
 					let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
@@ -207,7 +207,7 @@ module.exports = {
 		
 							}
 						};
-						await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+						await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 					}
 				}
 
