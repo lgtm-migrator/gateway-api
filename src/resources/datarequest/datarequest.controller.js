@@ -452,7 +452,7 @@ export default class DataRequestController extends Controller {
 				bpmController.postStartPreReview(bpmContext);
 			}
 
-			// publish the message to Redis PubSub
+			// publish the message to GCP PubSub
 			const cacheEnabled = process.env.CACHE_ENABLED || false;
 			if(cacheEnabled) {
 				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(accessRecord.publisherObj._id) }).lean();

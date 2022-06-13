@@ -186,7 +186,7 @@ module.exports = {
 					);
 				}
 
-				// publish the message to Redis PubSub
+				// publish the message to GCP PubSub
 				const cacheEnabled = process.env.CACHE_ENABLED || false;
 				if(cacheEnabled) {
 					let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
