@@ -9,7 +9,6 @@ import { Data as ToolModel } from '../tool/data.model';
 import constants from '../utilities/constants.util';
 import { dataRequestService } from '../datarequest/dependency';
 import { activityLogService } from '../activitylog/dependency';
-import { publishMessageToPubSub } from '../../services/google/PubSubService';
 import { publishMessageWithRetryToPubSub } from '../../services/google/PubSubWithRetryService';
 import { PublisherModel } from '../publisher/publisher.model';
 
@@ -208,7 +207,6 @@ module.exports = {
 		
 							}
 						};
-						// await publishMessageToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 						await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 					}
 				}

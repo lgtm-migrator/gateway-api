@@ -16,7 +16,7 @@ import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
 import { PublisherModel } from '../publisher/publisher.model';
 import { dataUseRegisterController } from '../dataUseRegister/dependency';
-import { publishMessageToPubSub } from '../../services/google/PubSubService';
+import { publishMessageWithRetryToPubSub } from '../../services/google/PubSubWithRetryService';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -472,7 +472,7 @@ export default class DataRequestController extends Controller {
 							data: accessRecord.questionAnswers,
 						}
 					};
-					await publishMessageToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
+					await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 				}	
 			}
 
