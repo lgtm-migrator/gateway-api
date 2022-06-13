@@ -16,7 +16,7 @@ import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
 import { PublisherModel } from '../publisher/publisher.model';
 import { dataUseRegisterController } from '../dataUseRegister/dependency';
-import { publishMessageToChannel } from '../../services/cachePubSub/cachePubSubClient';
+import { publishMessageToPubSub } from '../../services/google/PubSubService';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
@@ -472,7 +472,7 @@ export default class DataRequestController extends Controller {
 							data: accessRecord.questionAnswers,
 						}
 					};
-					await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+					await publishMessageToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 				}	
 			}
 

@@ -9,7 +9,8 @@ import { Data as ToolModel } from '../tool/data.model';
 import constants from '../utilities/constants.util';
 import { dataRequestService } from '../datarequest/dependency';
 import { activityLogService } from '../activitylog/dependency';
-import { publishMessageToChannel } from '../../services/cachePubSub/cachePubSubClient';
+import { publishMessageToPubSub } from '../../services/google/PubSubService';
+import { publishMessageWithRetryToPubSub } from '../../services/google/PubSubWithRetryService';
 import { PublisherModel } from '../publisher/publisher.model';
 
 const topicController = require('../topic/topic.controller');
@@ -207,7 +208,8 @@ module.exports = {
 		
 							}
 						};
-						await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
+						// await publishMessageToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
+						await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 					}
 				}
 

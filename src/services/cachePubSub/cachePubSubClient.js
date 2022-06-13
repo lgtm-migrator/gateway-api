@@ -1,5 +1,6 @@
 import { createClient } from 'redis';
 
+// await publishMessageToChannel(process.env.CACHE_CHANNEL, JSON.stringify(pubSubMessage));
 export const publishMessageToChannel = async (channel, message) => {
     try {
         const client = createClient({ 
