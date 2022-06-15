@@ -667,7 +667,6 @@ const _displayDataUseRegisterDashboardLink = () => {
 const _generateDARStatusChangedEmail = options => {
 	let { id, applicationStatus, applicationStatusDesc, projectId, projectName, publisher, datasetTitles, dateSubmitted, applicants } =
 		options;
-	console.log(applicationStatus);
 	let body = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
                 align="center"
