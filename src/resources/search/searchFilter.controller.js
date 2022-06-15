@@ -61,7 +61,7 @@ export default class SearchFilterController {
 			});
 		} catch (err) {
 			process.stdout.write(`${err.message}\n`);
-			return res.json({
+			return res.status(500).json({
 				success: false,
 				message: err.message,
 			});
