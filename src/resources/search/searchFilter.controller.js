@@ -15,8 +15,10 @@ import {
 import { findNodeInTree } from '../filters/utils/filters.util';
 
 export default class SearchFilterController {
+	_filtersService;
+
 	constructor(filtersService) {
-		this.filtersService = filtersService;
+		this._filtersService = filtersService;
 	}
 
 	/** Get the relevant filters for a given query */
@@ -46,7 +48,7 @@ export default class SearchFilterController {
 			const filterQuery = getObjectFilters(baseQuery, req.query, dataType);
 			const useCache = isEqual(baseQuery, filterQuery) && query.length === 0;
 
-			let filters = await this.filtersService.buildFilters(dataType, filterQuery, useCache);
+			let filters = await this._filtersService.buildFilters(dataType, filterQuery, useCache);
 
 			if (dataType === 'dataset') {
 				// enable new filter behaviour for datasets only - if statement can be removed to apply to all
@@ -90,7 +92,7 @@ export default class SearchFilterController {
 					delete queryParams[filter];
 
 					const filterQuery = await getObjectFilters(baseQuery, queryParams, dataType);
-					const updatedFilters = await this.filtersService.buildFilters(dataType, filterQuery, false);
+					const updatedFilters = await this._filtersService.buildFilters(dataType, filterQuery, false);
 
 					filters[key] = updatedFilters[key];
 				}
