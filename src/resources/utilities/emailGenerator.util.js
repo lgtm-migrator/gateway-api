@@ -16,16 +16,16 @@ let questionList = [];
 let excludedQuestionSetIds = ['addRepeatableSection', 'removeRepeatableSection'];
 let autoCompleteLookups = { fullname: ['email'] };
 let transporterOptions = {
-  host: process.env.MAIL_HOST,
-  port: process.env.MAIL_PORT,
-  auth: {
-    user: process.env.MAIL_USERNAME,
-    pass: process.env.MAIL_PASSWORD,
-  },
-  pool: true,
-  maxConnections: 1,
-  rateDelta: 20000,
-  rateLimit: 5,
+	host: process.env.MAIL_HOST,
+	port: process.env.MAIL_PORT,
+	auth: {
+		user: process.env.MAIL_USERNAME,
+		pass: process.env.MAIL_PASSWORD,
+	},
+	pool: true,
+	maxConnections: 1,
+	rateDelta: 20000,
+	rateLimit: 5,
 };
 let transporter = nodemailer.createTransport(transporterOptions);
 
@@ -683,7 +683,7 @@ const _generateDARStatusChangedEmail = options => {
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                    Your data access request for ${projectName || datasetTitles} has been approved with conditions by ${publisher}. 
+                    Your data access request for ${projectName || datasetTitles} has been ${applicationStatus} by ${publisher}. 
                     Summary information about your approved project will be included in the Gateway data use register. 
                     You will be notified as soon as this becomes visible and searchable on the Gateway.
                     </th>
@@ -2263,9 +2263,9 @@ const _generateMessageNotification = options => {
 };
 
 const _generateMessageCreatorNotification = options => {
-  let { firstMessage, firstname, lastname, messageDescription, openMessagesLink } = options;
+	let { firstMessage, firstname, lastname, messageDescription, openMessagesLink } = options;
 
-  let body = `<div>
+	let body = `<div>
             <div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
               <table
               align="center"
@@ -2287,7 +2287,9 @@ const _generateMessageCreatorNotification = options => {
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
                       <p>Dear ${firstname} ${lastname},</p>
                       <p>Thank you for submitting an enquiry about ${firstMessage.datasetsRequested[0].name}.</p>
-                      <p>Your enquiry has been sent to ${firstMessage.datasetsRequested[0].publisher} who will reply in due course. If you have not received a response after 10 working days, or if you have any queries or concerns about the Gateway, please email enquiries@hdruk.ac.uk and a member of the HDR UK team will get in touch with you.</p>
+                      <p>Your enquiry has been sent to ${
+												firstMessage.datasetsRequested[0].publisher
+											} who will reply in due course. If you have not received a response after 10 working days, or if you have any queries or concerns about the Gateway, please email enquiries@hdruk.ac.uk and a member of the HDR UK team will get in touch with you.</p>
                       <p>${messageDescription.replace(/\n/g, '<br />')}</p>
                     </th>
                   </tr>
@@ -2295,7 +2297,7 @@ const _generateMessageCreatorNotification = options => {
               </table>
             </div>
           </div>`;
-  return body;
+	return body;
 };
 
 const _generateEntityNotification = options => {
@@ -2554,7 +2556,7 @@ ${_displayDataUseRegisterDashboardLink()}
  * @param   {Object}  context
  */
 const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, attachments = []) => {
-  const recipients = [...new Map(to.map(item => [item['email'], item])).values()];
+	const recipients = [...new Map(to.map(item => [item['email'], item])).values()];
 	// 3. Build each email object for SendGrid extracting email addresses from user object with unique unsubscribe link (to)
 	for (let recipient of recipients) {
 		let body = _generateEmailHeader + html + _generateEmailFooter(recipient, allowUnsubscribe);
@@ -2566,45 +2568,44 @@ const _sendEmail = async (to, from, subject, html, allowUnsubscribe = true, atta
 			attachments,
 		};
 
-    // 4. Send email
-    try {
-      await transporter.sendMail(message, (error, info) => {
-        if (error) {
-          return console.log(error);
-        }
-        console.log('Email sent: ' + info.response);
-      });
-    } catch (error) {
-      console.error(error.response.body);
-      Sentry.addBreadcrumb({
-        category: 'SendGrid',
-        message: 'Sending email failed',
-        level: Sentry.Severity.Warning,
-      });
-      Sentry.captureException(error);
-    }
-
+		// 4. Send email
+		try {
+			await transporter.sendMail(message, (error, info) => {
+				if (error) {
+					return console.log(error);
+				}
+				console.log('Email sent: ' + info.response);
+			});
+		} catch (error) {
+			console.error(error.response.body);
+			Sentry.addBreadcrumb({
+				category: 'SendGrid',
+				message: 'Sending email failed',
+				level: Sentry.Severity.Warning,
+			});
+			Sentry.captureException(error);
+		}
 	}
 };
 
-const _sendEmailSmtp = async (message) => {
-  try {
-    await transporter.sendMail(message, (error, info) => {
-      if (error) {
-        return console.log(error);
-      }
-      console.log('Email sent: ' + info.response);
-    });
-  } catch (error) {
-    console.error(error.response.body);
-    Sentry.addBreadcrumb({
-      category: 'SendGrid',
-      message: 'Sending email failed',
-      level: Sentry.Severity.Warning,
-    });
-    Sentry.captureException(error);
-  }
-}
+const _sendEmailSmtp = async message => {
+	try {
+		await transporter.sendMail(message, (error, info) => {
+			if (error) {
+				return console.log(error);
+			}
+			console.log('Email sent: ' + info.response);
+		});
+	} catch (error) {
+		console.error(error.response.body);
+		Sentry.addBreadcrumb({
+			category: 'SendGrid',
+			message: 'Sending email failed',
+			level: Sentry.Severity.Warning,
+		});
+		Sentry.captureException(error);
+	}
+};
 
 /**
  * [_sendIntroEmail]
@@ -2613,7 +2614,7 @@ const _sendEmailSmtp = async (message) => {
  * @param   {Object}  message to from, templateId
  */
 const _sendIntroEmail = msg => {
-  _sendEmailSmtp(msg);
+	_sendEmailSmtp(msg);
 };
 
 const _generateEmailHeader = `
@@ -2736,7 +2737,7 @@ export default {
 	//generateMetadataOnboardingUnArchived: _generateMetadataOnboardingUnArchived,
 	//Messages
 	generateMessageNotification: _generateMessageNotification,
-  generateMessageCreatorNotification: _generateMessageCreatorNotification,
+	generateMessageCreatorNotification: _generateMessageCreatorNotification,
 	generateEntityNotification: _generateEntityNotification,
 	//ActivityLog
 	generateActivityLogManualEventCreated: _generateActivityLogManualEventCreated,
