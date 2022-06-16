@@ -29,7 +29,14 @@ router.get('/', async (req, res) => {
 
 	let searchAll = false;
 	if (searchString.length > 0) {
-		searchQuery['$and'].push({ $text: { $search: `'${searchString.split(" ").map(item => item.replace(/^/,"\"").replace(/$/,"\"")).join(" ")}'` }});
+		searchQuery['$and'].push({
+			$text: {
+				$search: `'${searchString
+					.split(' ')
+					.map(item => item.replace(/^/, '"').replace(/$/, '"'))
+					.join(' ')}'`,
+			},
+		});
 	} else {
 		searchAll = true;
 	}
@@ -62,7 +69,7 @@ router.get('/', async (req, res) => {
 			getObjectResult(
 				'dataset',
 				searchAll,
-				getObjectFilters(searchQuery, req, 'dataset'),
+				getObjectFilters(searchQuery, req.query, 'dataset'),
 				req.query.datasetIndex || 0,
 				req.query.maxResults || 40,
 				req.query.datasetSort || ''
@@ -70,7 +77,7 @@ router.get('/', async (req, res) => {
 			getObjectResult(
 				'tool',
 				searchAll,
-				getObjectFilters(searchQuery, req, 'tool'),
+				getObjectFilters(searchQuery, req.query, 'tool'),
 				req.query.toolIndex || 0,
 				req.query.maxResults || 40,
 				req.query.toolSort || '',
@@ -80,7 +87,7 @@ router.get('/', async (req, res) => {
 			getObjectResult(
 				'project',
 				searchAll,
-				getObjectFilters(searchQuery, req, 'project'),
+				getObjectFilters(searchQuery, req.query, 'project'),
 				req.query.projectIndex || 0,
 				req.query.maxResults || 40,
 				req.query.projectSort || '',
@@ -90,7 +97,7 @@ router.get('/', async (req, res) => {
 			getObjectResult(
 				'paper',
 				searchAll,
-				getObjectFilters(searchQuery, req, 'paper'),
+				getObjectFilters(searchQuery, req.query, 'paper'),
 				req.query.paperIndex || 0,
 				req.query.maxResults || 40,
 				req.query.paperSort || '',
@@ -101,7 +108,7 @@ router.get('/', async (req, res) => {
 			getObjectResult(
 				'course',
 				searchAll,
-				getObjectFilters(searchQuery, req, 'course'),
+				getObjectFilters(searchQuery, req.query, 'course'),
 				req.query.courseIndex || 0,
 				req.query.maxResults || 40,
 				'startdate',
@@ -111,7 +118,7 @@ router.get('/', async (req, res) => {
 			getObjectResult(
 				'collection',
 				searchAll,
-				getObjectFilters(searchQuery, req, 'collection'),
+				getObjectFilters(searchQuery, req.query, 'collection'),
 				req.query.collectionIndex || 0,
 				req.query.maxResults || 40,
 				req.query.collectionSort || ''
@@ -119,7 +126,7 @@ router.get('/', async (req, res) => {
 			getObjectResult(
 				'dataUseRegister',
 				searchAll,
-				getObjectFilters(searchQuery, req, 'dataUseRegister'),
+				getObjectFilters(searchQuery, req.query, 'dataUseRegister'),
 				req.query.dataUseRegisterIndex || 0,
 				req.query.maxResults || 40,
 				req.query.dataUseRegisterSort || ''
@@ -130,7 +137,7 @@ router.get('/', async (req, res) => {
 		results = await getObjectResult(
 			entityType,
 			searchAll,
-			getObjectFilters(searchQuery, req, entityType),
+			getObjectFilters(searchQuery, req.query, entityType),
 			req.query[`${entityType}Index`] || 0,
 			req.query.maxResults || 40,
 			sort
@@ -138,14 +145,14 @@ router.get('/', async (req, res) => {
 	}
 
 	const summaryCounts = await Promise.all([
-		getObjectCount('dataset', searchAll, getObjectFilters(searchQuery, req, 'dataset')),
-		getObjectCount('tool', searchAll, getObjectFilters(searchQuery, req, 'tool')),
-		getObjectCount('project', searchAll, getObjectFilters(searchQuery, req, 'project')),
-		getObjectCount('paper', searchAll, getObjectFilters(searchQuery, req, 'paper')),
+		getObjectCount('dataset', searchAll, getObjectFilters(searchQuery, req.query, 'dataset')),
+		getObjectCount('tool', searchAll, getObjectFilters(searchQuery, req.query, 'tool')),
+		getObjectCount('project', searchAll, getObjectFilters(searchQuery, req.query, 'project')),
+		getObjectCount('paper', searchAll, getObjectFilters(searchQuery, req.query, 'paper')),
 		getObjectCount('person', searchAll, searchQuery),
-		getObjectCount('course', searchAll, getObjectFilters(searchQuery, req, 'course')),
-		getObjectCount('collection', searchAll, getObjectFilters(searchQuery, req, 'collection')),
-		getObjectCount('dataUseRegister', searchAll, getObjectFilters(searchQuery, req, 'dataUseRegister')),
+		getObjectCount('course', searchAll, getObjectFilters(searchQuery, req.query, 'course')),
+		getObjectCount('collection', searchAll, getObjectFilters(searchQuery, req.query, 'collection')),
+		getObjectCount('dataUseRegister', searchAll, getObjectFilters(searchQuery, req.query, 'dataUseRegister')),
 	]);
 
 	const summary = {
@@ -162,10 +169,10 @@ router.get('/', async (req, res) => {
 	let myEntitiesSummary = {};
 	if (req.query.form === 'true') {
 		const summaryMyEntityCounts = await Promise.all([
-			getMyObjectsCount('tool', searchAll, getObjectFilters(searchQuery, req, 'tool'), authorID),
-			getMyObjectsCount('project', searchAll, getObjectFilters(searchQuery, req, 'project'), authorID),
-			getMyObjectsCount('paper', searchAll, getObjectFilters(searchQuery, req, 'paper'), authorID),
-			getMyObjectsCount('course', searchAll, getObjectFilters(searchQuery, req, 'course'), authorID),
+			getMyObjectsCount('tool', searchAll, getObjectFilters(searchQuery, req.query, 'tool'), authorID),
+			getMyObjectsCount('project', searchAll, getObjectFilters(searchQuery, req.query, 'project'), authorID),
+			getMyObjectsCount('paper', searchAll, getObjectFilters(searchQuery, req.query, 'paper'), authorID),
+			getMyObjectsCount('course', searchAll, getObjectFilters(searchQuery, req.query, 'course'), authorID),
 		]);
 
 		myEntitiesSummary = {
