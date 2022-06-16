@@ -165,17 +165,19 @@ export default class WorkflowService {
 			custodianManagers = teamController.getTeamMembersByRole(publisherObj, 'All');
 			if (publisherObj.notifications[0].optIn) {
 				publisherObj.notifications[0].subscribedEmails.map(teamEmail => {
-					custodianManagers.push({email: teamEmail});
+					custodianManagers.push({ email: teamEmail });
 				});
 			}
 			managerUserIds = custodianManagers.map(user => user.id);
 			let { workflowName = 'Workflow Title', _id, steps, createdAt } = workflow;
+			const action = type.replace('Workflow', '').toLowerCase();
 			options = {
 				actioner,
 				workflowName,
 				_id,
 				steps,
 				createdAt,
+				action,
 			};
 
 			// switch over types
@@ -190,7 +192,7 @@ export default class WorkflowService {
 						_id
 					);
 					// 5. Generate the email
-					html = await emailGenerator.generateWorkflowCreated(options);
+					html = await emailGenerator.generateWorkflowActionEmail(options);
 					// 6. Send email to custodian managers only within the team
 					await emailGenerator.sendEmail(custodianManagers, constants.hdrukEmail, `A Workflow has been created`, html, false);
 					break;
@@ -205,7 +207,7 @@ export default class WorkflowService {
 						_id
 					);
 					// 5. Generate the email
-					html = await emailGenerator.generateWorkflowCreated(options);
+					html = await emailGenerator.generateWorkflowActionEmail(options);
 					// 6. Send email to custodian managers only within the team
 					await emailGenerator.sendEmail(custodianManagers, constants.hdrukEmail, `A Workflow has been updated`, html, false);
 					break;
@@ -220,11 +222,11 @@ export default class WorkflowService {
 						_id
 					);
 					// 5. Generate the email
-					html = await emailGenerator.generateWorkflowCreated(options);
+					html = await emailGenerator.generateWorkflowActionEmail(options);
 					// 6. Send email to custodian managers only within the team
 					await emailGenerator.sendEmail(custodianManagers, constants.hdrukEmail, `A Workflow has been deleted`, html, false);
 					break;
-				}
+			}
 		}
 	}
 
