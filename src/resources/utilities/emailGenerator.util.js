@@ -1231,8 +1231,8 @@ const _generateNewReviewPhaseEmail = options => {
 	return body;
 };
 
-const _generateWorkflowCreated = options => {
-	let { workflowName, steps, createdAt, actioner } = options;
+const _generateWorkflowActionEmail = options => {
+	let { workflowName, steps, createdAt, actioner, action } = options;
 
 	let table = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -1245,12 +1245,12 @@ const _generateWorkflowCreated = options => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                      A new Workflow has been created.
+                      A new Workflow has been ${action}.
                     </th>
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                      ${actioner} has created ${workflowName} on ${moment(createdAt).format('D MMM YYYY')}
+                      ${actioner} has ${action} ${workflowName} on ${moment(createdAt).format('D MMM YYYY')}
                     </th>
                   </tr>
                 </thead>
@@ -2725,7 +2725,7 @@ export default {
 	generateWordContent: _generateWordContent,
 	//Workflows
 	generateWorkflowAssigned: _generateWorkflowAssigned,
-	generateWorkflowCreated: _generateWorkflowCreated,
+	generateWorkflowActionEmail: _generateWorkflowActionEmail,
 	//Metadata Onboarding
 	generateMetadataOnboardingSumbitted: _generateMetadataOnboardingSumbitted,
 	generateMetadataOnboardingApproved: _generateMetadataOnboardingApproved,
