@@ -198,7 +198,7 @@ app.use('/api/v1/reviews', require('../resources/tool/review.route'));
 app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
 
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
-app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
+app.use('/api/v1/search/filter', require('../resources/search/searchFilter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
 
 app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router'));

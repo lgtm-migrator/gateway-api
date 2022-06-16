@@ -860,13 +860,13 @@ export function getMyObjectsCount(type, searchAll, searchQuery, authorID) {
 	});
 }
 
-export function getObjectFilters(searchQueryStart, req, type) {
+export function getObjectFilters(searchQueryStart, queryParams, type) {
 	let searchQuery = JSON.parse(JSON.stringify(searchQueryStart));
 
 	// iterate over query string keys
-	for (const key of Object.keys(req.query)) {
+	for (const key of Object.keys(queryParams)) {
 		try {
-			const filterValues = req.query[key].split('::');
+			const filterValues = queryParams[key].split('::');
 			// check mapper for query type
 			// let filterNode = findNodeInTree(`${type}Filters`, key);
 			let filterNode;
