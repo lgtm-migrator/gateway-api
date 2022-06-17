@@ -202,7 +202,7 @@ export default class WorkflowService {
 					// 4. Create notifications for the managers only
 					await notificationBuilder.triggerNotificationMessage(
 						managerUserIds,
-						`A new workflow of ${workflowName} has been updated`,
+						`A workflow of ${workflowName} has been updated`,
 						'workflow',
 						_id
 					);
@@ -217,7 +217,7 @@ export default class WorkflowService {
 					// 4. Create notifications for the managers only
 					await notificationBuilder.triggerNotificationMessage(
 						managerUserIds,
-						`A new workflow of ${workflowName} has been deleted`,
+						`A workflow of ${workflowName} has been deleted`,
 						'workflow',
 						_id
 					);

@@ -1233,7 +1233,8 @@ const _generateNewReviewPhaseEmail = options => {
 };
 
 const _generateWorkflowActionEmail = options => {
-	let { workflowName, steps, createdAt, actioner, action } = options;
+	let { workflowName, steps, actioner, action } = options;
+	const currentDate = new Date().toISOString();
 
 	let table = `<div style="border: 1px solid #d0d3d4; border-radius: 15px; width: 700px; margin: 0 auto;">
                 <table
@@ -1246,12 +1247,14 @@ const _generateWorkflowActionEmail = options => {
                 <thead>
                   <tr>
                     <th style="border: 0; color: #29235c; font-size: 22px; text-align: left;">
-                      A new Workflow has been ${action}.
+                      A ${action == 'created' ? 'new' : ''} Workflow has been ${action}.
                     </th>
                   </tr>
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
-                      ${actioner} has ${action} ${workflowName} on ${moment(createdAt).format('D MMM YYYY')}
+                      A data access request ${workflowName} workflow has been ${action} by ${actioner} on ${moment(currentDate).format(
+		'D MMM YYYY'
+	)}
                     </th>
                   </tr>
                 </thead>
