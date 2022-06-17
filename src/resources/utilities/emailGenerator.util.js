@@ -684,8 +684,7 @@ const _generateDARStatusChangedEmail = options => {
                   <tr>
                     <th style="border: 0; font-size: 14px; font-weight: normal; color: #333333; text-align: left;">
                     Your data access request for ${projectName || datasetTitles} has been ${applicationStatus} by ${publisher}. 
-                    Summary information about your approved project will be included in the Gateway data use register. 
-                    You will be notified as soon as this becomes visible and searchable on the Gateway.
+                    See below for more details or contact the data custodian.
                     </th>
                   </tr>
                 </thead>
