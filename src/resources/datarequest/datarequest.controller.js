@@ -453,7 +453,7 @@ export default class DataRequestController extends Controller {
 			}
 
 			// publish the message to GCP PubSub
-			const cacheEnabled = process.env.CACHE_ENABLED || false;
+			const cacheEnabled = parseInt(process.env.CACHE_ENABLED) || 0;
 			if(cacheEnabled) {
 				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(accessRecord.publisherObj._id) }).lean();
 
@@ -2015,12 +2015,15 @@ export default class DataRequestController extends Controller {
 			questionWithAnswer = {},
 		} = context;
 
+		let notificationTeam = [];
+
 		switch (type) {
 			case constants.notificationTypes.INPROGRESS:
 				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 				custodianManagersIds = custodianManagers.map(user => user.id);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
 						custodianManagers.push({email: teamEmail});
 					});
 				}
@@ -2067,8 +2070,9 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
 						custodianManagers.push({email: teamEmail});
 					});
 				}
@@ -2133,8 +2137,9 @@ export default class DataRequestController extends Controller {
 						accessRecord._id,
 						accessRecord.datasets[0].publisher._id.toString()
 					);
-					if (accessRecord.datasets[0].publisher.team.notifications[0].optIn) {
-						accessRecord.datasets[0].publisher.team.notifications[0].subscribedEmails.map(teamEmail => {
+					notificationTeam = accessRecord.datasets[0].publisher.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
 							custodianManagers.push({email: teamEmail});
 						});
 					}
@@ -2150,8 +2155,9 @@ export default class DataRequestController extends Controller {
 						accessRecord._id,
 						accessRecord.datasets[0].publisher._id.toString()
 					);
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
 							custodianManagers.push({email: teamEmail});
 						});
 					}
@@ -2254,14 +2260,16 @@ export default class DataRequestController extends Controller {
 						'data access request',
 						accessRecord._id
 					);
-					if (accessRecord.datasets[0].publisher.team.notifications[0].optIn) {
-						accessRecord.datasets[0].publisher.team.notifications[0].subscribedEmails.map(teamEmail => {
+					notificationTeam = accessRecord.datasets[0].publisher.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
 							custodianManagers.push({email: teamEmail});
 						});
 					}
 				} else if (_.has(accessRecord, 'publisherObj') && accessRecord.publisherObj.allowAccessRequestManagement) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+					
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
@@ -2269,8 +2277,9 @@ export default class DataRequestController extends Controller {
 						'data access request',
 						accessRecord._id
 					);
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
 							custodianManagers.push({email: teamEmail});
 						});
 					}
@@ -2484,8 +2493,9 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
 						custodianManagers.push({email: teamEmail});
 					});
 				}
@@ -2513,8 +2523,9 @@ export default class DataRequestController extends Controller {
 			case constants.notificationTypes.DEADLINEWARNING:
 				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 				custodianManagersIds = custodianManagers.map(user => user.id);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
 						custodianManagers.push({email: teamEmail});
 					});
 				}
@@ -2566,8 +2577,9 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
 						custodianManagers.push({email: teamEmail});
 					});
 				}
@@ -2621,8 +2633,9 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
 						custodianManagers.push({email: teamEmail});
 					});
 				}
@@ -2750,8 +2763,9 @@ export default class DataRequestController extends Controller {
 						'data access request',
 						accessRecord._id
 					);
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
 							custodianManagers.push({email: teamEmail});
 						});
 					}
@@ -2835,8 +2849,9 @@ export default class DataRequestController extends Controller {
 					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 					const custodianManagersIds = custodianManagers.map(user => user.id);
 
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
 							custodianManagers.push({email: teamEmail});
 						});
 					}
@@ -2869,8 +2884,9 @@ export default class DataRequestController extends Controller {
 					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 					const custodianManagersIds = custodianManagers.map(user => user.id);
 
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
 							custodianManagers.push({email: teamEmail});
 						});
 					}
