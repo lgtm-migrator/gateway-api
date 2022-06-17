@@ -968,12 +968,12 @@ const getTeamMembersByRole = (team, role) => {
 	let { members = [], users = [] } = team;
 
 	let userIds = members.filter(mem => {
-		if (mem.roles.includes(role) || role === 'All') {
+		if (mem.roles.includes(role) || (role === 'All' && _.has(mem, 'roles'))) {
 			if(!_.has(mem, 'notifications')) {
 				return true;
 			}
 
-			if (_.has(mem, 'notifications') && !mem.notifications.length) {
+			if (_.has(mem, 'notifications') && mem.notifications.length === 0) {
 				return true;
 			}
 	

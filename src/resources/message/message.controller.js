@@ -187,7 +187,7 @@ module.exports = {
 				}
 
 				// publish the message to GCP PubSub
-				const cacheEnabled = process.env.CACHE_ENABLED || false;
+				const cacheEnabled = parseInt(process.env.CACHE_ENABLED) || 0;
 				if(cacheEnabled) {
 					let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
 
