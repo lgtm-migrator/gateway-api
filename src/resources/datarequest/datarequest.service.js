@@ -102,8 +102,10 @@ export default class DataRequestService {
 		// 2. Get schema to base application form on
 		const dataRequestSchema = await this.dataRequestRepository.getApplicationFormSchema(publisher);
 
+		console.log('dataRequestSchema', dataRequestSchema);
+
 		// 3. Build up the accessModel for the user
-		const { jsonSchema, _id: schemaId, isCloneable = false } = dataRequestSchema;
+		const { jsonSchema, _id: schemaId, questionSetStatus, isCloneable = false } = dataRequestSchema;
 
 		// 4. Set form type
 		const formType = schemaId.toString === constants.enquiryFormId ? constants.formTypes.Enquiry : constants.formTypes.Extended5Safe;
@@ -126,6 +128,7 @@ export default class DataRequestService {
 			applicationStatus: constants.applicationStatuses.INPROGRESS,
 			formType,
 			presubmissionTopic,
+			questionSetStatus,
 		};
 	}
 
@@ -580,7 +583,7 @@ export default class DataRequestService {
 		}
 
 		darContributorsInfo.map(contributorInfo => {
-			if (isUndefined(contributorInfo.user)) { 
+			if (isUndefined(contributorInfo.user)) {
 				helper.hidePrivateProfileDetails([contributorInfo]);
 			}
 		});

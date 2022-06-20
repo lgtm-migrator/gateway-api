@@ -45,6 +45,10 @@ const DataRequestSchema = new Schema(
 			type: Object,
 			default: {},
 		},
+		questionSetStatus: {
+			type: Object,
+			default: {},
+		},
 		initialQuestionAnswers: {
 			type: Object,
 			default: {},
