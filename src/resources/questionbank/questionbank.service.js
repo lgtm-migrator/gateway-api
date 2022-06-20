@@ -16,14 +16,15 @@ export default class QuestionbankService {
 		let dataRequestSchemas = await this.dataRequestRepository.getApplicationFormSchemas(publisher);
 
 		if (isEmpty(dataRequestSchemas)) {
-			//create the questionStatus from the master schema
 			let questionStatus = await this.getDefaultQuestionStates();
+			let questionSetStatus = await this.getDefaultQuestionSetStates();
 
 			const newSchema = {
 				publisher: publisher.name,
 				status: 'draft',
 				isCloneable: true,
 				questionStatus,
+				questionSetStatus,
 				guidance: {},
 				countOfChanges: 0,
 				unpublishedGuidance: [],
@@ -34,6 +35,7 @@ export default class QuestionbankService {
 			return {
 				masterSchema,
 				questionStatus: schema.questionStatus,
+				questionSetStatus: schema.questionSetStatus,
 				guidance: schema.guidance,
 				countOfChanges: schema.countOfChanges,
 				schemaId: schema._id,
@@ -44,6 +46,7 @@ export default class QuestionbankService {
 		const latestSchemaVersion = dataRequestSchemas[0];
 		if (latestSchemaVersion.status === 'draft') {
 			let newQuestionStatus = latestSchemaVersion.questionStatus;
+			let newQuestionSetStatus = latestSchemaVersion.questionSetStatus;
 			let newQuestionsAdded = this.addQuestionsFromMasterSchema(masterSchema, latestSchemaVersion, newQuestionStatus);
 
 			//Add new questions from the master schema if any
@@ -53,6 +56,7 @@ export default class QuestionbankService {
 			return {
 				masterSchema,
 				questionStatus: newQuestionStatus,
+				questionSetStatus: newQuestionSetStatus,
 				guidance: latestSchemaVersion.guidance,
 				countOfChanges: latestSchemaVersion.countOfChanges,
 				schemaId: latestSchemaVersion._id,
@@ -63,15 +67,18 @@ export default class QuestionbankService {
 		if (latestSchemaVersion.status === 'active') {
 			if (!isEmpty(latestSchemaVersion.questionStatus)) {
 				let newQuestionStatus = latestSchemaVersion.questionStatus;
+				let newQuestionSetStatus = latestSchemaVersion.questionSetStatus;
 
 				//Add new questions from the master schema if any
 				this.addQuestionsFromMasterSchema(masterSchema, latestSchemaVersion, newQuestionStatus);
+				this.addQuestionSetsFromMasterSchema(masterSchema, latestSchemaVersion, newQuestionSetStatus);
 
 				const newSchema = {
 					publisher: publisher.name,
 					status: 'draft',
 					isCloneable: true,
 					questionStatus: newQuestionStatus,
+					questionSetStatus: newQuestionSetStatus,
 					guidance: latestSchemaVersion.guidance,
 					version: latestSchemaVersion.version + 1,
 					countOfChanges: 0,
@@ -83,6 +90,7 @@ export default class QuestionbankService {
 				return {
 					masterSchema,
 					questionStatus: newSchema.questionStatus,
+					questionSetStatus: newSchema.questionSetStatus,
 					guidance: newSchema.guidance,
 					countOfChanges: newSchema.countOfChanges,
 					schemaId: schema._id,
@@ -90,18 +98,21 @@ export default class QuestionbankService {
 				};
 			} else {
 				let questionStatus = {};
+				let questionSetStatus = {};
 
 				//Add questions from the publisher schema
 				this.addQuestionsFromPublisherSchema(latestSchemaVersion, questionStatus);
 
 				//Add question from master schema if not in the publisher schema
 				this.addQuestionsFromMasterSchema(masterSchema, latestSchemaVersion, questionStatus);
+				this.addQuestionSetsFromMasterSchema(masterSchema, latestSchemaVersion, questionSetStatus);
 
 				const newSchema = {
 					publisher: publisher.name,
 					status: 'draft',
 					isCloneable: true,
 					questionStatus,
+					questionSetStatus,
 					guidance: {},
 					countOfChanges: 0,
 					version: latestSchemaVersion.version + 1,
@@ -113,6 +124,7 @@ export default class QuestionbankService {
 				return {
 					masterSchema,
 					questionStatus: newSchema.questionStatus,
+					questionSetStatus: newSchema.questionSetStatus,
 					guidance: newSchema.guidance,
 					countOfChanges: newSchema.countOfChanges,
 					schemaId: schema._id,
@@ -194,6 +206,14 @@ export default class QuestionbankService {
 		return newQuestionsAdded;
 	}
 
+	addQuestionSetsFromMasterSchema(masterSchema, publisherSchema, questionSetStatus) {
+		masterSchema.questionSets.forEach(questionSet => {
+			if (!has(publisherSchema.questionSetStatus, questionSet.questionSetId)) {
+				questionSetStatus[questionSet.questionSetId] = 1;
+			}
+		});
+	}
+
 	async revertChanges(publisherId, target) {
 		const publisher = await this.publisherService.getPublisher(publisherId);
 		const dataRequestSchemas = await this.dataRequestRepository.getApplicationFormSchemas(publisher);
@@ -255,6 +275,21 @@ export default class QuestionbankService {
 				if (question.lockedQuestion === 1) defaultQuestionStates[question.questionId] = 2;
 				else defaultQuestionStates[question.questionId] = question.defaultQuestion;
 			});
+		});
+
+		return defaultQuestionStates;
+	}
+
+	async getDefaultQuestionSetStates() {
+		const global = await this.globalService.getGlobal({ localeId: 'en-gb' });
+		const masterSchema = global.masterSchema;
+
+		let defaultQuestionSetStates = {};
+
+		masterSchema.questionSets.forEach(questionSet => {
+			if (!has(publisherSchema.questionSetStatus, questionSet.questionSetId)) {
+				defaultQuestionSetStates[questionSet.questionSetId] = 1;
+			}
 		});
 
 		return defaultQuestionStates;

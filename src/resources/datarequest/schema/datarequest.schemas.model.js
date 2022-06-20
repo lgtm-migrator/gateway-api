@@ -36,6 +36,10 @@ const DataRequestSchemas = new Schema(
 			type: Object,
 			default: {},
 		},
+		questionSetStatus: {
+			type: Object,
+			default: {},
+		},
 		countOfChanges: {
 			type: Number,
 			default: 0,
