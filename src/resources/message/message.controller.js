@@ -199,13 +199,14 @@ module.exports = {
 								id: publisherDetails._id,
 								name: publisherDetails.name,
 							},
-							data: {
+							details: {
 								topicId: topicObj._id,
 								messageId: message.messageID,
 								createdDate: message.createdDate,
-								data: req.body.firstMessage,
+								questionBank: req.body.firstMessage,
 		
-							}
+							},
+							darIntegration: publisherDetails['dar-integration'],
 						};
 						await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 					}
