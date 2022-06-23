@@ -1,3 +1,4 @@
+import { Console } from '@sentry/node/dist/integrations';
 import { isEmpty, has } from 'lodash';
 
 export default class QuestionbankService {
@@ -223,13 +224,15 @@ export default class QuestionbankService {
 		}
 
 		// Default previous state is the master schema
-		let previousState = await this.getDefaultQuestionStates();
-
+		let previousQuestionStatus = await this.getDefaultQuestionStates();
+		let previousQuestionSetStatus = await this.getDefaultQuestionSetStates();
 		let guidance = {};
 		let unpublishedGuidance = [];
+
 		// Is previous version exists, previousState is last schema version
 		if (dataRequestSchemas.length > 1) {
-			previousState = dataRequestSchemas[1].questionStatus;
+			previousQuestionStatus = dataRequestSchemas[1].questionStatus;
+			previousQuestionSetStatus = dataRequestSchemas[1].questionSetStatus;
 			guidance = dataRequestSchemas[1].guidance || {};
 		}
 
@@ -237,12 +240,19 @@ export default class QuestionbankService {
 		let countOfChanges = 0;
 		if (target) {
 			const panelQuestions = await this.getPanelQuestions(target);
-			const updates = Object.keys(previousState).filter(key => !panelQuestions.includes(key));
+			const updateQuestionStatus = Object.keys(previousQuestionStatus).filter(key => !panelQuestions.includes(key));
 
-			updates.forEach(key => {
-				if (previousState[key] !== dataRequestSchemas[0].questionStatus[key]) countOfChanges += 1;
+			const global = await this.globalService.getGlobal({ localeId: 'en-gb' });
+			const questionSets = global.masterSchema.formPanels.filter(({ pageId }) => pageId !== target);
 
-				previousState[key] = dataRequestSchemas[0].questionStatus[key];
+			questionSets.forEach(({ panelId }) => {
+				previousQuestionSetStatus[panelId] = dataRequestSchemas[0].questionSetStatus[panelId];
+			});
+
+			updateQuestionStatus.forEach(key => {
+				if (previousQuestionStatus[key] !== dataRequestSchemas[0].questionStatus[key]) countOfChanges += 1;
+
+				previousQuestionStatus[key] = dataRequestSchemas[0].questionStatus[key];
 
 				if (dataRequestSchemas[0].unpublishedGuidance.includes(key)) {
 					unpublishedGuidance.push(key);
@@ -255,7 +265,8 @@ export default class QuestionbankService {
 		}
 
 		await this.dataRequestRepository.updateApplicationFormSchemaById(dataRequestSchemas[0]._id, {
-			questionStatus: previousState,
+			questionStatus: previousQuestionStatus,
+			questionSetStatus: previousQuestionSetStatus,
 			unpublishedGuidance,
 			guidance,
 			countOfChanges,
@@ -287,12 +298,10 @@ export default class QuestionbankService {
 		let defaultQuestionSetStates = {};
 
 		masterSchema.questionSets.forEach(questionSet => {
-			if (!has(publisherSchema.questionSetStatus, questionSet.questionSetId)) {
-				defaultQuestionSetStates[questionSet.questionSetId] = 1;
-			}
+			defaultQuestionSetStates[questionSet.questionSetId] = 1;
 		});
 
-		return defaultQuestionStates;
+		return defaultQuestionSetStates;
 	}
 
 	async getPanelQuestions(target) {
