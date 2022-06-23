@@ -7,6 +7,10 @@ export const dataRequestSchema = {
 	countOfChanges: 0,
 	status: 'active',
 	isCloneable: true,
+	questionSetStatus: {
+		'safepeople-primaryapplicant': 1,
+		'safepeople-otherindividuals': 1,
+	},
 	questionStatus: {
 		safedatadataflowdiagramenclosed: 1,
 		safeoutputsoutputsdisseminationplansproposalfindings: 0,
@@ -26,6 +30,10 @@ export const dataRequestSchema = {
 };
 
 export const expectedSchema = {
+	questionSetStatus: {
+		'safepeople-primaryapplicant': 1,
+		'safepeople-otherindividuals': 1,
+	},
 	questionStatus: {
 		safedatadataflowdiagramenclosed: 1,
 		safeoutputsoutputsdisseminationplansproposalfindings: 0,
