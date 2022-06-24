@@ -578,7 +578,7 @@ const getTeamsList = async (req, res) => {
 				membersCount: { $size: '$members' },
 			}
 		)
-			.populate('publisher', { name: 1, 'publisherDetails.name': 1, 'publisherDetails.memberOf': 1 })
+			.populate('publisher', { name: 1, 'publisherDetails.name': 1, 'publisherDetails.memberOf': 1, 'questionBank.enabled': 1 })
 			.populate('users', { firstname: 1, lastname: 1 })
 			.sort({ updatedAt: -1 })
 			.lean();
@@ -1052,7 +1052,7 @@ const filterMembersByNoticationTypesOptIn = (members, notificationTypes) => {
 		}
 
 		return some(member.notifications, notification => {
-			return includes(notificationTypes, notification.notificationType) && (notification.optIn === true);
+			return includes(notificationTypes, notification.notificationType) && notification.optIn === true;
 		});
 	});
 };
