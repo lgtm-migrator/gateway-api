@@ -41,6 +41,9 @@ const PublisherSchema = new Schema(
 			accessRequestCost: String,
 			dataUseLimitation: [String],
 			dataUseRequirements: [String],
+			questionBank: {
+				enabled: { type: Boolean, default: false },
+			},
 		},
 		mdcFolderId: String,
 		rorOrgId: String,
