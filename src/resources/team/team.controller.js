@@ -768,7 +768,12 @@ const editTeam = async (req, res) => {
 		}
 
 		const id = req.params.id;
-		const { name, memberOf, contactPoint } = req.body;
+		const { name, memberOf, contactPoint, questionBankEnabled } = req.body;
+
+		if (!_.isUndefined(questionBankEnabled) && !(typeof questionBankEnabled === 'boolean')) {
+			return res.status(400).json({ success: false, message: 'questionBankEnabled must be of boolean type' });
+		}
+
 		const existingTeamDetails = await PublisherModel.findOne({ _id: ObjectId(id) }).lean();
 
 		//3. Update Team
@@ -780,6 +785,9 @@ const editTeam = async (req, res) => {
 					name,
 					memberOf,
 					contactPoint,
+					...(!_.isUndefined(questionBankEnabled) && {
+						'questionBank.enabled': questionBankEnabled,
+					}),
 				},
 			},
 			err => {
