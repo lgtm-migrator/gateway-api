@@ -102,8 +102,6 @@ export default class DataRequestService {
 		// 2. Get schema to base application form on
 		const dataRequestSchema = await this.dataRequestRepository.getApplicationFormSchema(publisher);
 
-		console.log('dataRequestSchema', dataRequestSchema);
-
 		// 3. Build up the accessModel for the user
 		const { jsonSchema, _id: schemaId, questionSetStatus, isCloneable = false } = dataRequestSchema;
 

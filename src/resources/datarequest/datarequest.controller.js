@@ -256,7 +256,6 @@ export default class DataRequestController extends Controller {
 
 			// 5. If in progress application found use existing endpoint to handle logic to fetch and return
 			if (accessRecord) {
-				console.log('Exists');
 				req.params.id = accessRecord._id;
 				return await this.getAccessRequestById(req, res);
 			} else {
@@ -266,8 +265,6 @@ export default class DataRequestController extends Controller {
 				const {
 					datasetfields: { publisher = '' },
 				} = datasets[0];
-
-				console.log('Building');
 
 				// 1. GET the template from the custodian or take the default (Cannot have dataset specific question sets for multiple datasets)
 				accessRecord = await this.dataRequestService.buildApplicationForm(
