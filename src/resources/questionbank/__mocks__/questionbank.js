@@ -199,5 +199,18 @@ export const globalDocument = {
 				],
 			},
 		],
+		formPanels: [
+			{ panelId: 'safepeople-primaryapplicant', index: 1, pageId: 'safepeople' },
+			{
+				panelId: 'safepeople-otherindividuals',
+				pageId: 'safepeople',
+				index: 2,
+			},
+			{
+				panelId: 'safeproject-projectdetails',
+				pageId: 'safeproject',
+				index: 3,
+			},
+		],
 	},
 };

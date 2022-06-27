@@ -125,6 +125,10 @@ describe('Question Bank Service', function () {
 						safepeopleotherindividualsjobtitle: 0,
 						safepeopleotherindividualsorganisation: 0,
 					},
+					questionSetStatus: {
+						'safepeople-primaryapplicant': 0,
+						'safepeople-otherindividuals': 0,
+					},
 					unpublishedGuidance: ['safepeopleprimaryapplicantfullname'],
 				},
 				{
@@ -137,6 +141,10 @@ describe('Question Bank Service', function () {
 						safepeopleotherindividualsfullname: 1,
 						safepeopleotherindividualsjobtitle: 1,
 						safepeopleotherindividualsorganisation: 1,
+					},
+					questionSetStatus: {
+						'safepeople-primaryapplicant': 1,
+						'safepeople-otherindividuals': 1,
 					},
 					unpublishedGuidance: [],
 				},
@@ -153,6 +161,10 @@ describe('Question Bank Service', function () {
 						safepeopleotherindividualsfullname: 1,
 						safepeopleotherindividualsjobtitle: 1,
 						safepeopleotherindividualsorganisation: 1,
+					},
+					questionSetStatus: {
+						'safepeople-primaryapplicant': 1,
+						'safepeople-otherindividuals': 1,
 					},
 					unpublishedGuidance: [],
 					guidance: {},
@@ -177,6 +189,10 @@ describe('Question Bank Service', function () {
 						safeprojectprojectdetailstype: 0,
 						safeprojectprojectdetailsneworexisting: 0,
 					},
+					questionSetStatus: {
+						'safepeople-primaryapplicant': 0,
+						'safeproject-projectdetails': 0,
+					},
 					unpublishedGuidance: ['safepeopleprimaryapplicantfullname'],
 				},
 				{
@@ -189,6 +205,10 @@ describe('Question Bank Service', function () {
 						safeprojectprojectdetailstitle: 1,
 						safeprojectprojectdetailstype: 1,
 						safeprojectprojectdetailsneworexisting: 1,
+					},
+					questionSetStatus: {
+						'safepeople-primaryapplicant': 1,
+						'safeproject-projectdetails': 1,
 					},
 					unpublishedGuidance: [],
 				},
@@ -205,6 +225,10 @@ describe('Question Bank Service', function () {
 						safeprojectprojectdetailstitle: 0,
 						safeprojectprojectdetailstype: 0,
 						safeprojectprojectdetailsneworexisting: 0,
+					},
+					questionSetStatus: {
+						'safepeople-primaryapplicant': 1,
+						'safeproject-projectdetails': 0,
 					},
 					unpublishedGuidance: [],
 					guidance: {},

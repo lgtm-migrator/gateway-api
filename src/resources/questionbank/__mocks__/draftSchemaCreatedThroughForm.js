@@ -12,6 +12,10 @@ export const dataRequestSchema = {
 		safepeopleprimaryapplicantjobtitle: 'Guidance for safepeopleprimaryapplicantjobtitle',
 		safepeopleprimaryapplicanttelephone: 'Guidance for safepeopleprimaryapplicanttelephone',
 	},
+	questionSetStatus: {
+		'safepeople-primaryapplicant': 1,
+		'safepeople-otherindividuals': 0,
+	},
 	questionStatus: {
 		safepeopleprimaryapplicantfullname: 0,
 		safepeopleprimaryapplicantjobtitle: 1,
