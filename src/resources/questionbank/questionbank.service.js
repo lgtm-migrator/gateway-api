@@ -298,7 +298,7 @@ export default class QuestionbankService {
 		let defaultQuestionSetStates = {};
 
 		masterSchema.questionSets.forEach(questionSet => {
-			defaultQuestionSetStates[questionSet.questionSetId] = 1;
+			defaultQuestionSetStates[questionSet.questionSetId] = typeof questionSet.active !== 'undefined' ? questionSet.active : 1;
 		});
 
 		return defaultQuestionSetStates;
