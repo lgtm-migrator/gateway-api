@@ -27,6 +27,14 @@ export const publishMessageWithRetryToPubSub = async (topicName, message) => {
       messages,
     };
 
+    const initialRetryDelayMillis = parseInt(process.env.PUBSUB_RP_INITIAL_RETRY_DELAY) || 100;
+    const retryDelayMultiplier = parseFloat(process.env.PUBSUB_RP_RETRY_DELAY_MULTIPLIER) || 2.0;
+    const maxRetryDelayMillis = parseInt(process.env.PUBSUB_RP_MAX_RETRY_DELAY) || 60000;
+    const initialRpcTimeoutMillis = parseInt(process.env.PUBSUB_RP_INITIAL_RPC_TIMEOUT) || 5000;
+    const rpcTimeoutMultiplier = parseFloat(process.env.PUBSUB_RP_RPC_TIMEOUT_MULTIPLIER) || 2.0;
+    const maxRpcTimeoutMillis = parseInt(process.env.PUBSUB_RP_MAX_RPC_TIMEOUT) || 600000;
+    const totalTimeoutMillis = parseInt(process.env.PUBSUB_RP_TOTAL_TIMEOUT) || 600000;
+
     // Retry settings control how the publisher handles retryable failures. Default values are shown.
     // The `retryCodes` array determines which grpc errors will trigger an automatic retry.
     // The `backoffSettings` object lets you specify the behaviour of retries over time.
@@ -43,23 +51,23 @@ export const publishMessageWithRetryToPubSub = async (topicName, message) => {
         backoffSettings: {
             // The initial delay time, in milliseconds, between the completion
             // of the first failed request and the initiation of the first retrying request.
-            initialRetryDelayMillis: 100,
+            initialRetryDelayMillis,
             // The multiplier by which to increase the delay time between the completion
             // of failed requests, and the initiation of the subsequent retrying request.
-            retryDelayMultiplier: 1.3,
+            retryDelayMultiplier,
             // The maximum delay time, in milliseconds, between requests.
             // When this value is reached, retryDelayMultiplier will no longer be used to increase delay time.
-            maxRetryDelayMillis: 60000,
+            maxRetryDelayMillis,
             // The initial timeout parameter to the request.
-            initialRpcTimeoutMillis: 5000,
+            initialRpcTimeoutMillis,
             // The multiplier by which to increase the timeout parameter between failed requests.
-            rpcTimeoutMultiplier: 1.0,
+            rpcTimeoutMultiplier,
             // The maximum timeout parameter, in milliseconds, for a request. When this value is reached,
             // rpcTimeoutMultiplier will no longer be used to increase the timeout.
-            maxRpcTimeoutMillis: 600000,
+            maxRpcTimeoutMillis,
             // The total time, in milliseconds, starting from when the initial request is sent,
             // after which an error will be returned, regardless of the retrying attempts made meanwhile.
-            totalTimeoutMillis: 600000,
+            totalTimeoutMillis,
         },
     };
   

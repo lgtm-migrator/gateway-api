@@ -466,11 +466,12 @@ export default class DataRequestController extends Controller {
 							id: accessRecord.publisherObj._id,
 							name: accessRecord.publisherObj.name,
 						},
-						data: {
+						details: {
 							dataRequestId: accessRecord._id,
 							createdDate: accessRecord.createdAt,
-							data: accessRecord.questionAnswers,
-						}
+							questionBank: accessRecord.questionAnswers,
+						},
+						darIntegration: publisherDetails['dar-integration'],
 					};
 					await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 				}	
