@@ -578,7 +578,12 @@ const getTeamsList = async (req, res) => {
 				membersCount: { $size: '$members' },
 			}
 		)
-			.populate('publisher', { name: 1, 'publisherDetails.name': 1, 'publisherDetails.memberOf': 1, 'questionBank.enabled': 1 })
+			.populate('publisher', {
+				name: 1,
+				'publisherDetails.name': 1,
+				'publisherDetails.memberOf': 1,
+				'publisherDetails.questionBank.enabled': 1,
+			})
 			.populate('users', { firstname: 1, lastname: 1 })
 			.sort({ updatedAt: -1 })
 			.lean();
