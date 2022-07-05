@@ -59,4 +59,11 @@ router.patch('/dataRequestModalContent/:id', passport.authenticate('jwt'), utils
 	publisherController.updateDataRequestModalContent(req, res)
 );
 
+router.patch(
+	'/:id/questionbank',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Updating question bank enabled / disabled' }),
+	(req, res) => publisherController.updateQuestionBank(req, res)
+);
+
 module.exports = router;

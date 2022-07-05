@@ -173,4 +173,17 @@ export default class PublisherController extends Controller {
 			});
 		}
 	}
+
+	async updateQuestionBank(req, res) {
+		try {
+			await this.publisherService.updateQuestionBank(req.params.id, req.body).then(() => {
+				return res.status(200).json({ success: true });
+			});
+		} catch (err) {
+			return res.status(500).json({
+				success: false,
+				message: 'An error occurred updating the question bank settings',
+			});
+		}
+	}
 }
