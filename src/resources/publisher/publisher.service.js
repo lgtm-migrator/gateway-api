@@ -94,4 +94,18 @@ export default class PublisherService {
 
 		return filteredApplications;
 	}
+
+	async updateDataUseWidget(publisherId, content) {
+		await this.publisherRepository.updateByQuery(
+			{ _id: publisherId },
+			{
+				'publisherDetails.dataUse': {
+					widget: {
+						...content,
+						acceptedDate: Date.now(),
+					},
+				},
+			}
+		);
+	}
 }

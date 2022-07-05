@@ -4,6 +4,7 @@ import passport from 'passport';
 import { logger } from '../utilities/logger';
 import PublisherController from './publisher.controller';
 import { publisherService, workflowService, dataRequestService, amendmentService } from './dependency';
+import { userIsTeamManager } from '../auth/utils';
 
 const logCategory = 'Publisher';
 const publisherController = new PublisherController(publisherService, workflowService, dataRequestService, amendmentService);
@@ -52,6 +53,13 @@ router.get(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed workflows for a publisher' }),
 	(req, res) => publisherController.getPublisherWorkflows(req, res)
+);
+
+// @route   PATCH /api/publishers/:id/dataUseWidget
+// @desc	Update data use widget settings (terms and conditions)
+// @access  Public
+router.patch('/:id/dataUseWidget', passport.authenticate('jwt'), userIsTeamManager(), (req, res) =>
+	publisherController.updateDataUseWidget(req, res)
 );
 
 module.exports = router;

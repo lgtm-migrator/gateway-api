@@ -37,6 +37,13 @@ const PublisherSchema = new Schema(
 			accessRequestCost: String,
 			dataUseLimitation: [String],
 			dataUseRequirements: [String],
+			dataUse: {
+				widget: {
+					accepted: { type: Boolean, default: false },
+					acceptedByUserId: String,
+					acceptedDate: Date,
+				},
+			},
 		},
 		mdcFolderId: String,
 		rorOrgId: String,
