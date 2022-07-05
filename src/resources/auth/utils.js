@@ -202,6 +202,18 @@ const loginAndSignToken = (req, res, next) => {
 	});
 };
 
+const userIsTeamManager = () => async (req, res, next) => {
+	const { user, params } = req;
+
+	const members = await TeamModel.findOne({ _id: params.id }, { _id: 0, members: { $elemMatch: { memberid: user._id } } }).lean();
+	if (!isEmpty(members) && members.members[0].roles.includes(constants.roleTypes.MANAGER)) return next();
+
+	return res.status(401).json({
+		status: 'error',
+		message: 'Unauthorised to perform this action.',
+	});
+};
+
 export {
 	setup,
 	signToken,
@@ -213,4 +225,5 @@ export {
 	getTeams,
 	catchLoginErrorAndRedirect,
 	loginAndSignToken,
+	userIsTeamManager,
 };
