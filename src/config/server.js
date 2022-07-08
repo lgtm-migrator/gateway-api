@@ -254,6 +254,7 @@ app.use('/api/v1/global', require('../resources/global/global.route'));
 
 app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
 
+app.use('/api/v2/questionbank', require('../resources/questionbank/questionbank.route'));
 app.use('/api/v2/data-use-registers', require('../resources/dataUseRegister/dataUseRegister.route'));
 app.use('/api/v1/locations', require('../resources/spatialfilter/SpatialRouter'));
 
