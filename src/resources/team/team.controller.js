@@ -722,7 +722,7 @@ const addTeam = async (req, res) => {
 		// 11. Send email and notification to managers
 		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user, publisherId);
 
-		return res.status(200).json({ success: true });
+		return res.status(200).json({ success: true, _id: newTeam._id });
 	} catch (err) {
 		console.error(err.message);
 		return res.status(500).json({
@@ -971,21 +971,23 @@ const checkIfAdmin = (user, adminRoles) => {
 const getTeamMembersByRole = (team, role) => {
 	let { members = [], users = [] } = team;
 
-	let userIds = members.filter(mem => {
-		if (mem.roles.includes(role) || (role === 'All' && _.has(mem, 'roles'))) {
-			if(!_.has(mem, 'notifications')) {
-				return true;
-			}
+	let userIds = members
+		.filter(mem => {
+			if (mem.roles.includes(role) || (role === 'All' && _.has(mem, 'roles'))) {
+				if (!_.has(mem, 'notifications')) {
+					return true;
+				}
 
-			if (_.has(mem, 'notifications') && mem.notifications.length === 0) {
-				return true;
+				if (_.has(mem, 'notifications') && mem.notifications.length === 0) {
+					return true;
+				}
+
+				if (_.has(mem, 'notifications') && mem.notifications.length && mem.notifications[0].optIn) {
+					return true;
+				}
 			}
-	
-			if (_.has(mem, 'notifications') && mem.notifications.length && mem.notifications[0].optIn) {
-				return true;
-			}
-		}
-	}).map(mem => mem.memberid.toString());
+		})
+		.map(mem => mem.memberid.toString());
 
 	return users.filter(user => userIds.includes(user._id.toString()));
 };
