@@ -2668,12 +2668,12 @@ const _generateEmailFooter = (recipient, allowUnsubscribe) => {
           </div>`;
 };
 
-const _generateAttachment = (filename, content, type) => {
+const _generateAttachment = (filename, content, contentType) => {
 	return {
 		content,
 		filename,
-		type,
-		disposition: 'attachment',
+		contentType,
+		encoding: 'base64',
 	};
 };
 
