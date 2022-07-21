@@ -27,8 +27,6 @@ const authorizeViewRequest = (req, res, next) => {
 	const authorised = isUserMemberOfTeamById(requestingUser, publisherId);
 	const isAdminUser = requestingUser.teams.map(team => team.type).includes(constants.teamTypes.ADMIN);
 
-	console.log('requestingUser, publisherId', requestingUser, publisherId);
-
 	if (!authorised && !isAdminUser) {
 		return res.status(401).json({
 			success: false,
