@@ -7,6 +7,7 @@ import DatarequestschemaController from './datarequest.schema.controller';
 import { datarequestschemaService } from './dependency';
 import { utils } from '../../auth';
 import { ROLES } from '../../user/user.roles';
+import constants from '../../utilities/constants.util';
 
 const datarequestschemaController = new DatarequestschemaController(datarequestschemaService);
 
@@ -39,8 +40,9 @@ const authorizeUpdate = async (req, res, next) => {
 	}
 
 	const authorised = isUserMemberOfTeam(requestingUser, datarequestschema.publisher);
+	const isAdmin = requestingUser.teams.map(team => team.type).includes(constants.teamTypes.ADMIN);
 
-	if (!authorised) {
+	if (!authorised && !isAdmin) {
 		return res.status(401).json({
 			success: false,
 			message: 'You are not authorised to perform this action',
