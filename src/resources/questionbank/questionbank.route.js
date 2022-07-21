@@ -6,6 +6,7 @@ import { questionbankService } from './dependency';
 import { datarequestschemaService } from './../datarequest/schema/dependency';
 import { logger } from '../utilities/logger';
 import { isUserMemberOfTeamById, isUserMemberOfTeamByName } from '../auth/utils';
+import constants from '../utilities/constants.util';
 
 const router = express.Router();
 const questionbankController = new QuestionbankController(questionbankService);
@@ -24,8 +25,9 @@ const authorizeViewRequest = (req, res, next) => {
 	const { publisherId } = req.params;
 
 	const authorised = isUserMemberOfTeamById(requestingUser, publisherId);
+	const isAdminUser = requestingUser.teams.map(team => team.type).includes(constants.teamTypes.ADMIN);
 
-	if (!authorised) {
+	if (!authorised && !isAdminUser) {
 		return res.status(401).json({
 			success: false,
 			message: 'You are not authorised to perform this action',
@@ -57,8 +59,9 @@ const authorizePostRequest = async (req, res, next) => {
 	}
 
 	const authorised = isUserMemberOfTeamByName(requestingUser, dataRequestSchema.publisher);
+	const isAdminUser = requestingUser.teams.map(team => team.type).includes(constants.teamTypes.ADMIN);
 
-	if (!authorised) {
+	if (!authorised && !isAdminUser) {
 		return res.status(401).json({
 			success: false,
 			message: 'You are not authorised to perform this action',
@@ -82,7 +85,7 @@ router.get(
 	(req, res) => questionbankController.getQuestionbank(req, res)
 );
 
-// @route   POST /api/v1/questionbanks
+// @route   POST /api/v1/questionbank/schemaId
 // @desc    Activate a draft schema creating a jsonSchema from masterSchema
 // @access  Public
 router.post('/:schemaId', passport.authenticate('jwt'), validatePostRequest, authorizePostRequest, (req, res) =>
