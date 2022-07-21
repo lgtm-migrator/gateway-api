@@ -40,9 +40,9 @@ const authorizeUpdate = async (req, res, next) => {
 	}
 
 	const authorised = isUserMemberOfTeam(requestingUser, datarequestschema.publisher);
-	const isAdmin = requestingUser.teams.map(team => team.type).includes(constants.teamTypes.ADMIN);
+	const isAdminUser = requestingUser.teams.map(team => team.type).includes(constants.teamTypes.ADMIN);
 
-	if (!authorised && !isAdmin) {
+	if (!authorised && !isAdminUser) {
 		return res.status(401).json({
 			success: false,
 			message: 'You are not authorised to perform this action',
