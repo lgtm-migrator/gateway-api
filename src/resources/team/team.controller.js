@@ -578,7 +578,12 @@ const getTeamsList = async (req, res) => {
 				membersCount: { $size: '$members' },
 			}
 		)
-			.populate('publisher', { name: 1, 'publisherDetails.name': 1, 'publisherDetails.memberOf': 1 })
+			.populate('publisher', {
+				name: 1,
+				'publisherDetails.name': 1,
+				'publisherDetails.memberOf': 1,
+				'publisherDetails.questionBank.enabled': 1,
+			})
 			.populate('users', { firstname: 1, lastname: 1 })
 			.sort({ updatedAt: -1 })
 			.lean();
@@ -717,7 +722,7 @@ const addTeam = async (req, res) => {
 		// 11. Send email and notification to managers
 		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user, publisherId);
 
-		return res.status(200).json({ success: true });
+		return res.status(200).json({ success: true, _id: newTeam._id });
 	} catch (err) {
 		console.error(err.message);
 		return res.status(500).json({
@@ -769,6 +774,7 @@ const editTeam = async (req, res) => {
 
 		const id = req.params.id;
 		const { name, memberOf, contactPoint } = req.body;
+
 		const existingTeamDetails = await PublisherModel.findOne({ _id: ObjectId(id) }).lean();
 
 		//3. Update Team
@@ -776,11 +782,9 @@ const editTeam = async (req, res) => {
 			{ _id: ObjectId(id) },
 			{
 				name: `${memberOf} > ${name}`,
-				publisherDetails: {
-					name,
-					memberOf,
-					contactPoint,
-				},
+				'publisherDetails.name': name,
+				'publisherDetails.memberOf': memberOf,
+				'publisherDetails.contactPoint': contactPoint,
 			},
 			err => {
 				if (err) {
@@ -967,21 +971,23 @@ const checkIfAdmin = (user, adminRoles) => {
 const getTeamMembersByRole = (team, role) => {
 	let { members = [], users = [] } = team;
 
-	let userIds = members.filter(mem => {
-		if (mem.roles.includes(role) || role === 'All') {
-			if(!_.has(mem, 'notifications')) {
-				return true;
-			}
+	let userIds = members
+		.filter(mem => {
+			if (mem.roles.includes(role) || (role === 'All' && _.has(mem, 'roles'))) {
+				if (!_.has(mem, 'notifications')) {
+					return true;
+				}
 
-			if (_.has(mem, 'notifications') && !mem.notifications.length) {
-				return true;
+				if (_.has(mem, 'notifications') && mem.notifications.length === 0) {
+					return true;
+				}
+
+				if (_.has(mem, 'notifications') && mem.notifications.length && mem.notifications[0].optIn) {
+					return true;
+				}
 			}
-	
-			if (_.has(mem, 'notifications') && mem.notifications.length && mem.notifications[0].optIn) {
-				return true;
-			}
-		}
-	}).map(mem => mem.memberid.toString());
+		})
+		.map(mem => mem.memberid.toString());
 
 	return users.filter(user => userIds.includes(user._id.toString()));
 };
@@ -1065,7 +1071,7 @@ const filterMembersByNoticationTypesOptIn = (members, notificationTypes) => {
 		}
 
 		return some(member.notifications, notification => {
-			return includes(notificationTypes, notification.notificationType) && (notification.optIn === true);
+			return includes(notificationTypes, notification.notificationType) && notification.optIn === true;
 		});
 	});
 };

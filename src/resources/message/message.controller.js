@@ -9,8 +9,11 @@ import { Data as ToolModel } from '../tool/data.model';
 import constants from '../utilities/constants.util';
 import { dataRequestService } from '../datarequest/dependency';
 import { activityLogService } from '../activitylog/dependency';
+import { publishMessageWithRetryToPubSub } from '../../services/google/PubSubWithRetryService';
+import { PublisherModel } from '../publisher/publisher.model';
 
 const topicController = require('../topic/topic.controller');
+const { ObjectId } = require('mongodb');
 
 module.exports = {
 	// POST /api/v1/messages
@@ -20,10 +23,11 @@ module.exports = {
 			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds, firstMessage } = req.body;
 			let topicObj = {};
 			let team, publisher, userType;
+			let tools = {};
 			// 1. If the message type is 'message' and topic id is empty
 			if (messageType === 'message') {
 				// 2. Find the related object(s) in MongoDb and include team data to update topic recipients in case teams have changed
-				const tools = await ToolModel.find()
+				tools = await ToolModel.find()
 					.where('_id')
 					.in(relatedObjectIds)
 					.populate({
@@ -36,7 +40,8 @@ module.exports = {
 							},
 						},
 					});
-				// 3. Return undefined if no object(s) exists
+
+					// 3. Return undefined if no object(s) exists
 				if (_.isEmpty(tools)) return undefined;
 
 				// 4. Get recipients for new message
@@ -87,6 +92,7 @@ module.exports = {
 					}
 				}
 			}
+
 			// 13. Create new message
 			const message = await MessagesModel.create({
 				messageID: parseInt(Math.random().toString().replace('0.', '')),
@@ -99,6 +105,7 @@ module.exports = {
 				readBy: [new mongoose.Types.ObjectId(createdBy)],
 				...(userType && { userType }),
 			});
+
 			// 14. Return 500 error if message was not successfully created
 			if (!message) return res.status(500).json({ success: false, message: 'Could not save message to database.' });
 
@@ -178,6 +185,33 @@ module.exports = {
 						false
 					);
 				}
+
+				// publish the message to GCP PubSub
+				const cacheEnabled = parseInt(process.env.CACHE_ENABLED) || 0;
+				if(cacheEnabled) {
+					let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
+
+					if (publisherDetails['dar-integration']['enabled']) {
+						const pubSubMessage = {
+							id: "",
+							type: "enquiry",
+							publisherInfo: {
+								id: publisherDetails._id,
+								name: publisherDetails.name,
+							},
+							details: {
+								topicId: topicObj._id,
+								messageId: message.messageID,
+								createdDate: message.createdDate,
+								questionBank: req.body.firstMessage,
+		
+							},
+							darIntegration: publisherDetails['dar-integration'],
+						};
+						await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
+					}
+				}
+
 			}
 			// 19. Return successful response with message data
 			const messageObj = message.toObject();

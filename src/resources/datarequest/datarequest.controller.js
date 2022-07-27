@@ -16,12 +16,22 @@ import { logger } from '../utilities/logger';
 import { UserModel } from '../user/user.model';
 import { PublisherModel } from '../publisher/publisher.model';
 import { dataUseRegisterController } from '../dataUseRegister/dependency';
+import { publishMessageWithRetryToPubSub } from '../../services/google/PubSubWithRetryService';
 
 const logCategory = 'Data Access Request';
 const bpmController = require('../bpmnworkflow/bpmnworkflow.controller');
+const { ObjectId } = require('mongodb');
 
 export default class DataRequestController extends Controller {
-	constructor(dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService, dataUseRegisterService) {
+	constructor(
+		dataRequestService,
+		workflowService,
+		amendmentService,
+		topicService,
+		messageService,
+		activityLogService,
+		dataUseRegisterService
+	) {
 		super(dataRequestService);
 		this.dataRequestService = dataRequestService;
 		this.workflowService = workflowService;
@@ -29,7 +39,7 @@ export default class DataRequestController extends Controller {
 		this.activityLogService = activityLogService;
 		this.topicService = topicService;
 		this.messageService = messageService;
-		this.dataUseRegisterService = dataUseRegisterService
+		this.dataUseRegisterService = dataUseRegisterService;
 	}
 
 	// ###### APPLICATION CRUD OPERATIONS #######
@@ -329,7 +339,6 @@ export default class DataRequestController extends Controller {
 			//Get additional info to pre populate for user and collaborators (authors)
 			let contributors = await this.dataRequestService.getDarContributors(darId, userId);
 
-
 			// Return payload
 			return res.status(200).json({
 				success: true,
@@ -448,6 +457,30 @@ export default class DataRequestController extends Controller {
 					businessKey: id,
 				};
 				bpmController.postStartPreReview(bpmContext);
+			}
+
+			// publish the message to GCP PubSub
+			const cacheEnabled = parseInt(process.env.CACHE_ENABLED) || 0;
+			if (cacheEnabled) {
+				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(accessRecord.publisherObj._id) }).lean();
+
+				if (accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED && publisherDetails['dar-integration']['enabled']) {
+					const pubSubMessage = {
+						id: '',
+						type: '5safes',
+						publisherInfo: {
+							id: accessRecord.publisherObj._id,
+							name: accessRecord.publisherObj.name,
+						},
+						details: {
+							dataRequestId: accessRecord._id,
+							createdDate: accessRecord.createdAt,
+							questionBank: accessRecord.questionAnswers,
+						},
+						darIntegration: publisherDetails['dar-integration'],
+					};
+					await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
+				}
 			}
 
 			// 11. Return aplication and successful response
@@ -698,23 +731,22 @@ export default class DataRequestController extends Controller {
 
 					if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVED) {
 						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
- 						await dataUseRegisterController.createNotifications(
- 							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
- 							{},
- 							dataUseRegister
- 						);
+						await dataUseRegisterController.createNotifications(
+							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
+							{},
+							dataUseRegister
+						);
 						await this.activityLogService.logActivity(constants.activityLogEvents.data_access_request.APPLICATION_APPROVED, {
 							accessRequest: accessRecord,
 							user: req.user,
 						});
-					}
-					else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
+					} else if (accessRecord.applicationStatus === constants.applicationStatuses.APPROVEDWITHCONDITIONS) {
 						const dataUseRegister = await this.dataUseRegisterService.createDataUseRegister(requestingUser, accessRecord);
- 						await dataUseRegisterController.createNotifications(
- 							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
- 							{},
- 							dataUseRegister
- 						);
+						await dataUseRegisterController.createNotifications(
+							constants.dataUseRegisterNotifications.DATAUSEAPPROVED,
+							{},
+							dataUseRegister
+						);
 						await this.activityLogService.logActivity(
 							constants.activityLogEvents.data_access_request.APPLICATION_APPROVED_WITH_CONDITIONS,
 							{
@@ -1989,13 +2021,16 @@ export default class DataRequestController extends Controller {
 			questionWithAnswer = {},
 		} = context;
 
+		let notificationTeam = [];
+
 		switch (type) {
 			case constants.notificationTypes.INPROGRESS:
 				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 				custodianManagersIds = custodianManagers.map(user => user.id);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-						custodianManagers.push({email: teamEmail});
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({ email: teamEmail });
 					});
 				}
 				await notificationBuilder.triggerNotificationMessage(
@@ -2037,13 +2072,16 @@ export default class DataRequestController extends Controller {
 				let statusChangeUserIds = [...custodianManagers, ...stepReviewers].map(user => user.id);
 				await notificationBuilder.triggerNotificationMessage(
 					statusChangeUserIds,
-					`${appFirstName} ${appLastName}'s Data Access Request for ${projectName || datasetTitles} was ${context.applicationStatus} by ${firstname} ${lastname}`,
+					`${appFirstName} ${appLastName}'s Data Access Request for ${projectName || datasetTitles} was ${
+						context.applicationStatus
+					} by ${firstname} ${lastname}`,
 					'data access request',
 					accessRecord._id
 				);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-						custodianManagers.push({email: teamEmail});
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({ email: teamEmail });
 					});
 				}
 
@@ -2059,7 +2097,9 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${projectName || datasetTitles} was ${context.applicationStatus} by ${publisher}`,
+						`A Data Access Request you are contributing to for ${projectName || datasetTitles} was ${
+							context.applicationStatus
+						} by ${publisher}`,
 						'data access request',
 						accessRecord._id
 					);
@@ -2102,14 +2142,17 @@ export default class DataRequestController extends Controller {
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
-						`A Data Access Request has been submitted to ${publisher} for ${projectName || datasetTitles} by ${appFirstName} ${appLastName}`,
+						`A Data Access Request has been submitted to ${publisher} for ${
+							projectName || datasetTitles
+						} by ${appFirstName} ${appLastName}`,
 						'data access request received',
 						accessRecord._id,
 						accessRecord.datasets[0].publisher._id.toString()
 					);
-					if (accessRecord.datasets[0].publisher.team.notifications[0].optIn) {
-						accessRecord.datasets[0].publisher.team.notifications[0].subscribedEmails.map(teamEmail => {
-							custodianManagers.push({email: teamEmail});
+					notificationTeam = accessRecord.datasets[0].publisher.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({ email: teamEmail });
 						});
 					}
 				} else if (_.has(accessRecord, 'publisherObj') && accessRecord.publisherObj.allowAccessRequestManagement) {
@@ -2119,14 +2162,17 @@ export default class DataRequestController extends Controller {
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
-						`A Data Access Request has been submitted to ${publisher} for ${projectName || datasetTitles} by ${appFirstName} ${appLastName}`,
+						`A Data Access Request has been submitted to ${publisher} for ${
+							projectName || datasetTitles
+						} by ${appFirstName} ${appLastName}`,
 						'data access request received',
 						accessRecord._id,
 						accessRecord.datasets[0].publisher._id.toString()
 					);
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-							custodianManagers.push({email: teamEmail});
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({ email: teamEmail });
 						});
 					}
 				} else {
@@ -2144,7 +2190,9 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						accessRecord.authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${projectName || datasetTitles} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,
+						`A Data Access Request you are contributing to for ${
+							projectName || datasetTitles
+						} was successfully submitted to ${publisher} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
 					);
@@ -2212,7 +2260,9 @@ export default class DataRequestController extends Controller {
 					}
 
 					// Remove temporary files for word attachment
-					if (!_.isUndefined(templateName)) { await emailGenerator.deleteWordAttachmentTempFiles() }
+					if (!_.isUndefined(templateName)) {
+						await emailGenerator.deleteWordAttachmentTempFiles();
+					}
 				}
 				break;
 			case constants.notificationTypes.RESUBMITTED:
@@ -2224,28 +2274,35 @@ export default class DataRequestController extends Controller {
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
-						`A Data Access Request has been resubmitted with updates to ${publisher} for ${projectName || datasetTitles} by ${appFirstName} ${appLastName}`,
+						`A Data Access Request has been resubmitted with updates to ${publisher} for ${
+							projectName || datasetTitles
+						} by ${appFirstName} ${appLastName}`,
 						'data access request',
 						accessRecord._id
 					);
-					if (accessRecord.datasets[0].publisher.team.notifications[0].optIn) {
-						accessRecord.datasets[0].publisher.team.notifications[0].subscribedEmails.map(teamEmail => {
-							custodianManagers.push({email: teamEmail});
+					notificationTeam = accessRecord.datasets[0].publisher.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({ email: teamEmail });
 						});
 					}
 				} else if (_.has(accessRecord, 'publisherObj') && accessRecord.publisherObj.allowAccessRequestManagement) {
 					// Retrieve all custodian user Ids to generate notifications
 					custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
+
 					custodianUserIds = custodianManagers.map(user => user.id);
 					await notificationBuilder.triggerNotificationMessage(
 						custodianUserIds,
-						`A Data Access Request has been resubmitted with updates to ${publisher} for ${projectName || datasetTitles} by ${appFirstName} ${appLastName}`,
+						`A Data Access Request has been resubmitted with updates to ${publisher} for ${
+							projectName || datasetTitles
+						} by ${appFirstName} ${appLastName}`,
 						'data access request',
 						accessRecord._id
 					);
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-							custodianManagers.push({email: teamEmail});
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({ email: teamEmail });
 						});
 					}
 				} else {
@@ -2263,7 +2320,9 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						accessRecord.authors.map(author => author.id),
-						`A Data Access Request you are contributing to for ${projectName || datasetTitles} was successfully resubmitted with updates to ${publisher} by ${firstname} ${lastname}`,
+						`A Data Access Request you are contributing to for ${
+							projectName || datasetTitles
+						} was successfully resubmitted with updates to ${publisher} by ${firstname} ${lastname}`,
 						'data access request',
 						accessRecord._id
 					);
@@ -2458,9 +2517,10 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-						custodianManagers.push({email: teamEmail});
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({ email: teamEmail });
 					});
 				}
 				// 3. Create manager emails
@@ -2487,15 +2547,16 @@ export default class DataRequestController extends Controller {
 			case constants.notificationTypes.DEADLINEWARNING:
 				custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 				custodianManagersIds = custodianManagers.map(user => user.id);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-						custodianManagers.push({email: teamEmail});
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({ email: teamEmail });
 					});
 				}
 
 				// 1. Create reviewer notifications
 				await notificationBuilder.triggerNotificationMessage(
-					[...remainingReviewerUserIds,...custodianManagersIds],
+					[...remainingReviewerUserIds, ...custodianManagersIds],
 					`The deadline is approaching for a Data Access Request application you are reviewing`,
 					'data access request',
 					accessRecord._id
@@ -2540,9 +2601,10 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-						custodianManagers.push({email: teamEmail});
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({ email: teamEmail });
 					});
 				}
 
@@ -2595,9 +2657,10 @@ export default class DataRequestController extends Controller {
 					'data access request',
 					accessRecord._id
 				);
-				if (accessRecord.publisherObj.team.notifications[0].optIn) {
-					accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-						custodianManagers.push({email: teamEmail});
+				notificationTeam = accessRecord.publisherObj.team.notifications;
+				if (notificationTeam.length && notificationTeam[0].optIn) {
+					notificationTeam[0].subscribedEmails.map(teamEmail => {
+						custodianManagers.push({ email: teamEmail });
 					});
 				}
 				// 5. Generate the email
@@ -2630,7 +2693,9 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						authors.map(author => author.id),
-						`A Data Access Request you contributed to for ${projectName || datasetTitles} has been duplicated into a new form by ${firstname} ${lastname}`,
+						`A Data Access Request you contributed to for ${
+							projectName || datasetTitles
+						} has been duplicated into a new form by ${firstname} ${lastname}`,
 						'data access request unlinked',
 						newApplicationId
 					);
@@ -2672,7 +2737,9 @@ export default class DataRequestController extends Controller {
 				if (!_.isEmpty(authors)) {
 					await notificationBuilder.triggerNotificationMessage(
 						authors.map(author => author.id),
-						`A draft Data Access Request you contributed to for ${projectName || datasetTitles} has been deleted by ${firstname} ${lastname}`,
+						`A draft Data Access Request you contributed to for ${
+							projectName || datasetTitles
+						} has been deleted by ${firstname} ${lastname}`,
 						'data access request unlinked',
 						accessRecord._id
 					);
@@ -2724,9 +2791,10 @@ export default class DataRequestController extends Controller {
 						'data access request',
 						accessRecord._id
 					);
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-							custodianManagers.push({email: teamEmail});
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({ email: teamEmail });
 						});
 					}
 				} else {
@@ -2809,9 +2877,10 @@ export default class DataRequestController extends Controller {
 					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 					const custodianManagersIds = custodianManagers.map(user => user.id);
 
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-							custodianManagers.push({email: teamEmail});
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({ email: teamEmail });
 						});
 					}
 
@@ -2843,15 +2912,18 @@ export default class DataRequestController extends Controller {
 					const custodianManagers = teamController.getTeamMembersByRole(accessRecord.publisherObj.team, 'All');
 					const custodianManagersIds = custodianManagers.map(user => user.id);
 
-					if (accessRecord.publisherObj.team.notifications[0].optIn) {
-						accessRecord.publisherObj.team.notifications[0].subscribedEmails.map(teamEmail => {
-							custodianManagers.push({email: teamEmail});
+					notificationTeam = accessRecord.publisherObj.team.notifications;
+					if (notificationTeam.length && notificationTeam[0].optIn) {
+						notificationTeam[0].subscribedEmails.map(teamEmail => {
+							custodianManagers.push({ email: teamEmail });
 						});
 					}
 
 					await notificationBuilder.triggerNotificationMessage(
 						[accessRecord.userId, ...accessRecord.authors.map(author => author.id), ...custodianManagersIds],
-						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname} from ${accessRecord.publisherObj.name}`,
+						`There is a new message for the application ${projectName || datasetTitles} from ${user.firstname} ${user.lastname} from ${
+							accessRecord.publisherObj.name
+						}`,
 						'data access message sent',
 						accessRecord._id
 					);
@@ -2924,7 +2996,7 @@ export default class DataRequestController extends Controller {
 		try {
 			const {
 				params: { id },
-				query: { messageType, questionId },
+				query: { messageType, questionId, panelId },
 			} = req;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
@@ -2953,7 +3025,7 @@ export default class DataRequestController extends Controller {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			const topic = await this.topicService.getTopicForDAR(id, questionId, messageType);
+			const topic = await this.topicService.getTopicForDAR(id, questionId || panelId, messageType);
 
 			let messages = [];
 			if (!_.isEmpty(topic) && !_.isEmpty(topic.topicMessages)) {
@@ -2986,7 +3058,7 @@ export default class DataRequestController extends Controller {
 			const {
 				params: { id },
 			} = req;
-			const { questionId, messageType, messageBody } = req.body;
+			const { questionId, panel, messageType, messageBody } = req.body;
 			const requestingUserId = parseInt(req.user.id);
 			const requestingUserObjectId = req.user._id;
 			const requestingUser = req.user;
@@ -3001,6 +3073,7 @@ export default class DataRequestController extends Controller {
 				requestingUserId,
 				requestingUserObjectId
 			);
+
 			if (!authorised) {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			} else if (
@@ -3015,10 +3088,10 @@ export default class DataRequestController extends Controller {
 				return res.status(401).json({ status: 'failure', message: 'Unauthorised' });
 			}
 
-			let topic = await this.topicService.getTopicForDAR(id, questionId, messageType);
+			let topic = await this.topicService.getTopicForDAR(id, questionId || panel.panelId, messageType);
 
 			if (_.isEmpty(topic)) {
-				topic = await this.topicService.createTopicForDAR(id, questionId, messageType);
+				topic = await this.topicService.createTopicForDAR(id, questionId || panel.panelId, messageType);
 			}
 
 			await this.messageService.createMessageForDAR(messageBody, topic._id, requestingUserObjectId, userType);
@@ -3028,43 +3101,61 @@ export default class DataRequestController extends Controller {
 					foundQuestionSet = {},
 					foundPage = {};
 
-				for (let questionSet of accessRecord.jsonSchema.questionSets) {
-					foundQuestion = datarequestUtil.findQuestion(questionSet.questions, questionId);
-					if (foundQuestion) {
-						foundQuestionSet = questionSet;
-						break;
+				if (questionId) {
+					for (let questionSet of accessRecord.jsonSchema.questionSets) {
+						foundQuestion = datarequestUtil.findQuestion(questionSet.questions, questionId);
+						if (foundQuestion) {
+							foundQuestionSet = questionSet;
+							break;
+						}
 					}
-				}
 
-				const panel = dynamicForm.findQuestionPanel(foundQuestionSet.questionSetId, accessRecord.jsonSchema.questionPanels);
+					const foundPanel = dynamicForm.findQuestionPanel(foundQuestionSet.questionSetId, accessRecord.jsonSchema.questionPanels);
 
-				for (let page of accessRecord.jsonSchema.pages) {
-					if (page.pageId === panel.pageId) {
-						foundPage = page;
-						break;
+					for (let page of accessRecord.jsonSchema.pages) {
+						if (page.pageId === foundPanel.pageId) {
+							foundPage = page;
+							break;
+						}
 					}
-				}
 
-				const answer =
-					accessRecord.questionAnswers && accessRecord.questionAnswers[questionId]
-						? accessRecord.questionAnswers[questionId]
-						: 'No answer for this question';
+					const answer =
+						accessRecord.questionAnswers && accessRecord.questionAnswers[questionId]
+							? accessRecord.questionAnswers[questionId]
+							: 'No answer for this question';
 
-				this.createNotifications(
-					constants.notificationTypes.MESSAGESENT,
-					{
-						userType,
-						messageBody,
-						questionWithAnswer: {
-							question: foundQuestion.question,
-							questionPanel: foundQuestionSet.questionSetHeader,
-							page: foundPage.title,
-							answer,
+					this.createNotifications(
+						constants.notificationTypes.MESSAGESENT,
+						{
+							userType,
+							messageBody,
+							questionWithAnswer: {
+								question: foundQuestion.question,
+								questionPanel: foundQuestionSet.questionSetHeader,
+								page: foundPage.title,
+								answer,
+							},
 						},
-					},
-					accessRecord,
-					requestingUser
-				);
+						accessRecord,
+						requestingUser
+					);
+				} else if (panel) {
+					this.createNotifications(
+						constants.notificationTypes.MESSAGESENT,
+						{
+							userType,
+							messageBody,
+							questionWithAnswer: {
+								question: '',
+								questionPanel: panel.panelId,
+								page: panel.panelHeader,
+								answer: '',
+							},
+						},
+						accessRecord,
+						requestingUser
+					);
+				}
 			}
 
 			this.activityLogService.logActivity(
