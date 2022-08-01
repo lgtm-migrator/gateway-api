@@ -1,4 +1,4 @@
-import { isEmpty, has, isNil, orderBy } from 'lodash';
+import { isEmpty, has, isNil, orderBy, isNull, isUndefined } from 'lodash';
 import moment from 'moment';
 
 import helper from '../utilities/helper.util';
@@ -103,7 +103,7 @@ export default class DataRequestService {
 		const dataRequestSchema = await this.dataRequestRepository.getApplicationFormSchema(publisher);
 
 		// 3. Build up the accessModel for the user
-		const { jsonSchema, _id: schemaId, isCloneable = false } = dataRequestSchema;
+		const { jsonSchema, _id: schemaId, questionSetStatus, isCloneable = false } = dataRequestSchema;
 
 		// 4. Set form type
 		const formType = schemaId.toString === constants.enquiryFormId ? constants.formTypes.Enquiry : constants.formTypes.Extended5Safe;
@@ -126,6 +126,7 @@ export default class DataRequestService {
 			applicationStatus: constants.applicationStatuses.INPROGRESS,
 			formType,
 			presubmissionTopic,
+			questionSetStatus,
 		};
 	}
 
@@ -280,8 +281,12 @@ export default class DataRequestService {
 		let applicantNames = '';
 		// Return only main applicant if no applicants added
 		if (isEmpty(applicants)) {
-			const { firstname, lastname } = accessRecord.mainApplicant;
-			applicantNames = `${firstname} ${lastname}`;
+			if (isNull(accessRecord.mainApplicant)) {
+				applicantNames = '';
+			} else {
+				const { firstname, lastname } = accessRecord.mainApplicant;
+				applicantNames = `${firstname} ${lastname}`;
+			}
 		} else {
 			applicantNames = applicants.join(', ');
 		}
@@ -563,5 +568,24 @@ export default class DataRequestService {
 		});
 
 		return { authorised: true, userType: requestingUserType, accessRecords: requestedVersions };
+	}
+
+	async getDarContributors(darId, userId) {
+		let contributors = await this.dataRequestRepository.getDarContributors(darId);
+		let darContributors = [contributors[0].userId, ...contributors[0].authorIds];
+
+		let darContributorsInfo = [];
+		for (let contributor of darContributors) {
+			let additionalInformation = await this.dataRequestRepository.getDarContributorsInfo(contributor, userId);
+			darContributorsInfo.push(additionalInformation[0]);
+		}
+
+		darContributorsInfo.map(contributorInfo => {
+			if (isUndefined(contributorInfo.user)) {
+				helper.hidePrivateProfileDetails([contributorInfo]);
+			}
+		});
+
+		return darContributorsInfo;
 	}
 }

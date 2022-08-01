@@ -15,6 +15,12 @@ const _activityLogNotifications = Object.freeze({
 	MANUALEVENTREMOVED: 'manualEventRemoved',
 });
 
+const _dataUseRegisterNotifications = Object.freeze({
+	DATAUSEAPPROVED: 'dataUseApproved',
+	DATAUSEREJECTED: 'dataUseRejected',
+	DATAUSEPENDING: 'dataUsePending',
+});
+
 const _teamNotificationTypes = Object.freeze({
 	DATAACCESSREQUEST: 'dataAccessRequest',
 	METADATAONBOARDING: 'metaDataOnboarding',
@@ -113,7 +119,7 @@ const _navigationFlags = {
 						displayOrder: 1,
 					},
 				],
-				text: '#NAME# made this change on on #DATE#',
+				text: '#NAME# made this change on #DATE#',
 			},
 			incomplete: { status: 'DANGER', options: [], text: '#NAME# requested an update on #DATE#' },
 		},
@@ -146,6 +152,8 @@ const _notificationTypes = {
 	MEMBERROLECHANGED: 'MemberRoleChanged',
 	WORKFLOWASSIGNED: 'WorkflowAssigned',
 	WORKFLOWCREATED: 'WorkflowCreated',
+	WORKFLOWUPDATED: 'WorkflowUpdated',
+	WORKFLOWDELETED: 'WorkflowDeleted',
 	INPROGRESS: 'InProgress',
 	APPLICATIONCLONED: 'ApplicationCloned',
 	APPLICATIONDELETED: 'ApplicationDeleted',
@@ -216,19 +224,18 @@ const _roleTypes = {
 	REVIEWER: 'reviewer',
 	METADATA_EDITOR: 'metadata_editor',
 	ADMIN_DATASET: 'admin_dataset',
+	ADMIN_DATA_USE: 'admin_data_use',
 };
 
 // </Team related enums>
 
 // <Dataset onboarding related enums>
 
-const _datatsetStatuses = {
+const _datasetStatuses = {
 	DRAFT: 'draft',
-	INPROGRESS: 'inProgress',
 	INREVIEW: 'inReview',
-	APPROVED: 'approved',
+	ACTIVE: 'active',
 	REJECTED: 'rejected',
-	APPROVEDWITHCONDITIONS: 'approved with conditions',
 	ARCHIVE: 'archive',
 };
 
@@ -248,8 +255,14 @@ const _logTypes = {
 	USER: 'User',
 };
 
-// Activity log related enums
+const _dataUseRegisterStatus = {
+	ACTIVE: 'active',
+	INREVIEW: 'inReview',
+	REJECTED: 'rejected',
+	ARCHIVED: 'archived',
+};
 
+// Activity log related enums
 const _activityLogEvents = {
 	data_access_request: {
 		APPLICATION_SUBMITTED: 'applicationSubmitted',
@@ -282,16 +295,54 @@ const _activityLogEvents = {
 		DATASET_VERSION_UNARCHIVED: 'datasetVersionUnarchived',
 		DATASET_UPDATES_SUBMITTED: 'datasetUpdatesSubmitted',
 	},
+	data_use_register: {
+		DATA_USE_REGISTER_UPDATED: 'dataUseRegisterUpdated',
+	},
 };
 
 const _activityLogTypes = {
 	DATA_ACCESS_REQUEST: 'data_request',
+	DATA_USE_REGISTER: 'data_use_register',
 	DATASET: 'dataset',
 };
 
 const _systemGeneratedUser = {
 	FIRSTNAME: 'System',
 	LASTNAME: 'Generated',
+};
+
+const _datasetSortOptions = {
+	latest: 'timestamps.updated',
+	alphabetic: 'name',
+	metadata: 'metadataQualityScore',
+	recentlyadded: 'timestamps.published',
+	popularity: 'counter',
+	relevance: 'weights',
+};
+
+const _datasetSortOptionsKeys = {
+	LATEST: 'latest',
+	ALPHABETIC: 'alphabetic',
+	METADATA: 'metadata',
+	RECENTLYADDED: 'recentlyadded',
+	POPULARITY: 'popularity',
+	RELEVANCE: 'relevance',
+};
+
+const _datasetSortDirections = {
+	asc: 1,
+	desc: -1,
+};
+
+const _searchDataTypes = {
+	Datasets: 'dataset',
+	Tools: 'tool',
+	Projects: 'project',
+	Papers: 'paper',
+	People: 'person',
+	Courses: 'course',
+	Collections: 'collection',
+	Datauses: 'dataUseRegister',
 };
 
 export default {
@@ -316,11 +367,17 @@ export default {
 	submissionEmailRecipientTypes: _submissionEmailRecipientTypes,
 	hdrukEmail: _hdrukEmail,
 	mailchimpSubscriptionStatuses: _mailchimpSubscriptionStatuses,
-	datatsetStatuses: _datatsetStatuses,
+	datasetStatuses: _datasetStatuses,
 	logTypes: _logTypes,
 	activityLogEvents: _activityLogEvents,
 	activityLogTypes: _activityLogTypes,
 	systemGeneratedUser: _systemGeneratedUser,
 	activityLogNotifications: _activityLogNotifications,
 	DARMessageTypes: _DARMessageTypes,
+	datasetSortOptions: _datasetSortOptions,
+	datasetSortOptionsKeys: _datasetSortOptionsKeys,
+	datasetSortDirections: _datasetSortDirections,
+	dataUseRegisterStatus: _dataUseRegisterStatus,
+	dataUseRegisterNotifications: _dataUseRegisterNotifications,
+	searchDataTypes: _searchDataTypes,
 };

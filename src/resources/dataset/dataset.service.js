@@ -37,7 +37,7 @@ export default class DatasetService {
 		return dataset;
 	}
 
-	async getDatasets(query = {}, options = {} ) {
+	async getDatasets(query = {}, options = {}) {
 		return this.datasetRepository.getDatasets(query, options);
 	}
 
@@ -109,5 +109,17 @@ export default class DatasetService {
 			return { id, description, name, dataElementsCount: dataElements.length || 0, dataElements };
 		});
 		return dataset;
+	}
+
+	async updateMany(query, data) {
+		return this.datasetRepository.updateMany(query, data);
+	}
+
+	getDatasetsByPids(pids) {
+		return this.datasetRepository.getDatasetsByPids(pids);
+	}
+
+	getDatasetsByName(name) {
+		return this.datasetRepository.getDataset({ name, fields: 'pid' }, { lean: true });
 	}
 }

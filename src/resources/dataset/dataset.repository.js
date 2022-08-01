@@ -34,4 +34,17 @@ export default class DatasetRepository extends Repository {
 			return obj;
 		}, {});
 	}
+
+	async updateMany(query, data) {
+		return this.dataset.updateMany(query, data);
+	}
+
+	getDatasetsByPids(pids) {
+		return this.dataset.aggregate([
+			{ $match: { pid: { $in: pids } } },
+			{ $project: { pid: 1, datasetid: 1, name: 1, createdAt: 1 } },
+			{ $sort: { createdAt: -1 } },
+			{ $group: { _id: '$pid', pid: { $first: '$pid' }, datasetid: { $first: '$datasetid' }, name: { $first: '$name' } } },
+		]);
+	}
 }

@@ -4,6 +4,7 @@ import passport from 'passport';
 import { logger } from '../utilities/logger';
 import PublisherController from './publisher.controller';
 import { publisherService, workflowService, dataRequestService, amendmentService } from './dependency';
+import { utils } from '../auth';
 
 const logCategory = 'Publisher';
 const publisherController = new PublisherController(publisherService, workflowService, dataRequestService, amendmentService);
@@ -52,6 +53,17 @@ router.get(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Viewed workflows for a publisher' }),
 	(req, res) => publisherController.getPublisherWorkflows(req, res)
+);
+
+router.patch('/dataRequestModalContent/:id', passport.authenticate('jwt'), utils.userIsTeamManager(), (req, res) =>
+	publisherController.updateDataRequestModalContent(req, res)
+);
+
+router.patch(
+	'/:id/questionbank',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Updating question bank enabled / disabled' }),
+	(req, res) => publisherController.updateQuestionBank(req, res)
 );
 
 module.exports = router;

@@ -28,29 +28,35 @@ const tree = [
     {
         "value": "Malaysia",
         "label": "Malaysia",
+        "checked": false,
         "children": []
     },
     {
         "value": "Pakistan",
         "label": "Pakistan",
+        "checked": false,
         "children": []
     },
     {
         "value": "India",
         "label": "India",
+        "checked": false,
         "children": []
     },
     {
         "value": "United Kingdom",
         "label": "United Kingdom",
+        "checked": false,
         "children": [
             {
                 "value": "England",
                 "label": "England",
+                "checked": false,
                 "children": [
                     {
                         "value": "London",
                         "label": "London",
+                        "checked": false,
                         "children": []
                     }
                 ]
@@ -58,16 +64,19 @@ const tree = [
             {
                 "value": "Northern Ireland",
                 "label": "Northern Ireland",
+                "checked": false,
                 "children": []
             },
             {
                 "value": "Scotland",
                 "label": "Scotland",
+                "checked": false,
                 "children": []
             },
             {
                 "value": "Wales",
                 "label": "Wales",
+                "checked": false,
                 "children": []
             }
         ]
@@ -75,6 +84,7 @@ const tree = [
     {
         "value": "Worldwide",
         "label": "Worldwide",
+        "checked": false,
         "children": []
     }
 ];

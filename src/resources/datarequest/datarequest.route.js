@@ -8,6 +8,7 @@ import { logger } from '../utilities/logger';
 import DataRequestController from './datarequest.controller';
 import AmendmentController from './amendment/amendment.controller';
 import { dataRequestService, workflowService, amendmentService, topicService, messageService, activityLogService } from './dependency';
+import { dataUseRegisterService } from '../dataUseRegister/dependency';
 
 const fs = require('fs');
 const path = './tmp';
@@ -27,7 +28,8 @@ const dataRequestController = new DataRequestController(
 	amendmentService,
 	topicService,
 	messageService,
-	activityLogService
+	activityLogService,
+	dataUseRegisterService
 );
 const amendmentController = new AmendmentController(amendmentService, dataRequestService, activityLogService);
 const router = express.Router();
@@ -297,6 +299,16 @@ router.post(
 	passport.authenticate('jwt'),
 	logger.logRequestMiddleware({ logCategory, action: 'Triggering an amendment to a Data Access Request application' }),
 	(req, res) => dataRequestController.createAmendment(req, res)
+);
+
+// @route   GET api/v1/data-access-request/prepopulate-contributors/:id
+// @desc    GET Information to prepopulate fields for each contributor
+// @access  Private
+router.get(
+	'/prepopulate-contributors/:id',
+	passport.authenticate('jwt'),
+	logger.logRequestMiddleware({ logCategory, action: 'Get additional information for Data Access Request contributors' }),
+	(req, res) => dataRequestController.getContributorsAdditionalInfo(req, res)
 );
 
 module.exports = router;

@@ -71,7 +71,7 @@ const datasetSchema = new Schema(
 			phenotypes: [],
 		},
 		datasetv2: {},
-		isLatestVersion: Boolean
+		isLatestVersion: Boolean,
 	},
 	{
 		timestamps: true,
@@ -115,12 +115,12 @@ datasetSchema.virtual('submittedDataAccessRequests', {
 });
 
 // Pre hook query middleware
-datasetSchema.pre('find', function() {
-    this.where({type: 'dataset'});
+datasetSchema.pre('find', function () {
+	this.where({ type: 'dataset' });
 });
 
-datasetSchema.pre('findOne', function() {
-    this.where({type: 'dataset'});
+datasetSchema.pre('findOne', function () {
+	this.where({ type: 'dataset' });
 });
 
 // Load entity class

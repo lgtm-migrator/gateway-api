@@ -10,7 +10,8 @@ export default class FiltersService {
 		projectRepository,
 		paperRepository,
 		collectionRepository,
-		courseRepository
+		courseRepository,
+		DataUseRegisterRepository
 	) {
 		this.filtersRepository = filtersRepository;
 		this.datasetRepository = datasetRepository;
@@ -19,6 +20,7 @@ export default class FiltersService {
 		this.paperRepository = paperRepository;
 		this.collectionRepository = collectionRepository;
 		this.courseRepository = courseRepository;
+		this.DataUseRegisterRepository = DataUseRegisterRepository;
 	}
 
 	async getFilters(id, query = {}) {
@@ -117,6 +119,7 @@ export default class FiltersService {
 			fields = '';
 
 		// 2. Query Db for required entity if array of entities has not been passed
+		query.limit = 0; // unlimited rows
 		switch (type) {
 			// Get minimal payload to build filters
 			case 'dataset':
@@ -143,8 +146,12 @@ export default class FiltersService {
 				entities = await this.collectionRepository.getCollections({ ...query, fields }, { aggregate: true });
 				break;
 			case 'course':
-				fields = `courseOptions.startDate, provider,location,courseOptions.studyMode,award,entries.level,domains,keywords,competencyFramework,nationalPriority`;
+				fields = `courseOptions.startDate,provider,location,courseOptions.studyMode,award,entries.level,domains,keywords,competencyFramework,nationalPriority`;
 				entities = await this.courseRepository.getCourses({ ...query, fields }, { lean: true, dateFormat: 'DD MMM YYYY' });
+				break;
+			case 'dataUseRegister':
+				fields = `organisationName,organisationSector,keywords,publisherDetails.name,fundersAndSponsors`;
+				entities = await this.DataUseRegisterRepository.getDataUseRegistersFilters({ ...query, fields }, { aggregate: true });
 				break;
 		}
 		// 3. Loop over each entity
@@ -176,12 +183,12 @@ export default class FiltersService {
 		Object.keys(filters).forEach(filterKey => {
 			// 9. Set filter values to title case (all except publisher) / upper case (publisher) and remove white space
 			if (filterKey === 'publisher') {
-				filters[filterKey] = filters[filterKey].map(value => value.includes(">")
-					? value.split(" > ")[1].toString().toUpperCase().trim() 
-					: value.toString().toUpperCase().trim());
+				filters[filterKey] = filters[filterKey].map(value =>
+					value.includes('>') ? value.split(' > ')[1].toString().toUpperCase().trim() : value.toString().toUpperCase().trim()
+				);
 			} else {
-				filters[filterKey] = filters[filterKey].map(value => helper.toTitleCase(value.toString().trim()));
-			};
+				filters[filterKey] = filters[filterKey].map(value => (filterKey === 'spatial') ? value.toString().trim() : helper.toTitleCase(value.toString().trim()));
+			}
 			// 10. Distinct filter values
 			const distinctFilter = uniq(filters[filterKey]);
 			// 11. Sort filter values and update final object
@@ -301,6 +308,20 @@ export default class FiltersService {
 					keywords,
 					competencyFramework,
 					nationalPriorityAreas: nationalPriority,
+				};
+				break;
+			}
+			case 'dataUseRegister': {
+				// 2. Extract all properties used for filtering
+				let { keywords = [], organisationName = '', organisationSector = '', publisherDetails = '', fundersAndSponsors = [] } = entity;
+
+				// 3. Create flattened filter props object
+				filterValues = {
+					keywords,
+					organisationName,
+					organisationSector,
+					publisher: publisherDetails[0].name,
+					fundersAndSponsors,
 				};
 				break;
 			}
