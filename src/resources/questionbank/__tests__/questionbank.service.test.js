@@ -13,7 +13,7 @@ import * as noSchemaExists from '../__mocks__/noSchemaExists';
 describe('Question Bank Service', function () {
 	const dataRequestRepository = new DataRequestRepository();
 	const globalService = new GlobalService();
-	sinon.stub(globalService, 'getGlobal').returns(questionBank.globalDocument);
+	sinon.stub(globalService, 'getMasterSchema').returns(questionBank.globalDocument);
 	const publisherRepository = new PublisherRepository();
 	sinon.stub(publisherRepository, 'getPublisher').returns(questionBank.publisherDocument);
 	const publisherService = new PublisherService(publisherRepository);
