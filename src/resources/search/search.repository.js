@@ -320,7 +320,16 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 
 					activeflag: 1,
 					counter: 1,
-					'datasetfields.metadataquality.weighted_quality_score': 1,
+
+					'datasetfields.metadataquality.weighted_quality_score': {
+						$convert: {
+							input: '$datasetfields.metadataquality.weighted_quality_score',
+							to: 'double',
+							onError: 0,
+							onNull: 0,
+						},
+					},
+
 					'datasetfields.metadataquality.weighted_quality_rating': 1,
 					'datasetfields.metadataquality.weighted_error_percent': 1,
 					'datasetfields.metadataquality.weighted_completeness_percent': 1,
