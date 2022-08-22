@@ -21,6 +21,10 @@ const PublisherSchema = new Schema(
 			body: String,
 			footer: String,
 		},
+		dataRequestModalContentUpdatedOn: Date,
+		dataRequestModalContentUpdatedBy: Number,
+		applicationFormUpdatedOn: Date,
+		applicationFormUpdatedBy: Number,
 		workflowEnabled: {
 			type: Boolean,
 			default: false,
@@ -39,10 +43,14 @@ const PublisherSchema = new Schema(
 			dataUseRequirements: [String],
 			dataUse: {
 				widget: {
+					enabled: { type: Boolean, default: false },
 					accepted: { type: Boolean, default: false },
 					acceptedByUserId: String,
 					acceptedDate: Date,
 				},
+			},
+			questionBank: {
+				enabled: { type: Boolean, default: false },
 			},
 		},
 		mdcFolderId: String,

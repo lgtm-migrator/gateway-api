@@ -19,7 +19,7 @@ module.exports = {
 	// POST /api/v1/messages
 	createMessage: async (req, res) => {
 		try {
-			const { _id: createdBy, firstname, lastname } = req.user;
+			const { _id: createdBy, firstname, lastname, isServiceAccount = false } = req.user;
 			let { messageType = 'message', topic = '', messageDescription, relatedObjectIds, firstMessage } = req.body;
 			let topicObj = {};
 			let team, publisher, userType;
@@ -187,8 +187,8 @@ module.exports = {
 				}
 
 				// publish the message to GCP PubSub
-				const cacheEnabled = process.env.CACHE_ENABLED || false;
-				if(cacheEnabled) {
+				const cacheEnabled = parseInt(process.env.CACHE_ENABLED) || 0;
+				if (cacheEnabled && !isServiceAccount) {
 					let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
 
 					if (publisherDetails['dar-integration']['enabled']) {
@@ -199,13 +199,14 @@ module.exports = {
 								id: publisherDetails._id,
 								name: publisherDetails.name,
 							},
-							data: {
+							details: {
 								topicId: topicObj._id,
 								messageId: message.messageID,
 								createdDate: message.createdDate,
-								data: req.body.firstMessage,
+								questionBank: req.body.firstMessage,
 		
-							}
+							},
+							darIntegration: publisherDetails['dar-integration'],
 						};
 						await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 					}

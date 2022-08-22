@@ -3,7 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import { to } from 'await-to-js';
 import Url from 'url';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNull } from 'lodash';
 import queryString from 'query-string';
 
 import { ROLES } from '../user/user.roles';
@@ -204,15 +204,24 @@ const loginAndSignToken = (req, res, next) => {
 
 const userIsTeamManager = () => async (req, res, next) => {
 	const { user, params } = req;
-
 	const members = await TeamModel.findOne({ _id: params.id }, { _id: 0, members: { $elemMatch: { memberid: user._id } } }).lean();
-	if (!isEmpty(members) && members.members[0].roles.includes(constants.roleTypes.MANAGER)) return next();
+	if ((!isEmpty(members) && members.members[0].roles.includes(constants.roleTypes.MANAGER)) || user.role === 'Admin') return next();
 
 	return res.status(401).json({
 		status: 'error',
 		message: 'Unauthorised to perform this action.',
 	});
 };
+
+function isUserMemberOfTeamById(user, teamId) {
+	let { teams } = user;
+	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher._id.equals(teamId));
+}
+
+function isUserMemberOfTeamByName(user, publisherName) {
+	let { teams } = user;
+	return teams.filter(team => !isNull(team.publisher)).some(team => team.publisher.name === publisherName);
+}
 
 export {
 	setup,
@@ -225,5 +234,7 @@ export {
 	getTeams,
 	catchLoginErrorAndRedirect,
 	loginAndSignToken,
+	isUserMemberOfTeamById,
+	isUserMemberOfTeamByName,
 	userIsTeamManager,
 };
