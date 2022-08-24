@@ -98,12 +98,6 @@ export default class PublisherService {
 	async updateDataUseWidget(publisherId, content) {
 		const publisher = await this.publisherRepository.getPublisher(publisherId);
 		const data = { ...publisher.publisherDetails.dataUse.widget, ...content };
-
-		console.log('++++++');
-
-		console.log(data);
-		console.log('++++++');
-
 		await this.publisherRepository.updateByQuery(
 			{ _id: publisherId },
 			{
