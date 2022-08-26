@@ -313,6 +313,7 @@ export async function getObjectResult(type, searchAll, searchQuery, startIndex, 
 					'datasetv2.summary.publisher.name': 1,
 					'datasetv2.summary.publisher.logo': 1,
 					'datasetv2.summary.publisher.memberOf': 1,
+					'datasetv2.provenance.temporal.accrualPeriodicity': 1, 
 
 					'persons.id': 1,
 					'persons.firstname': 1,
