@@ -95,6 +95,22 @@ export default class PublisherService {
 		return filteredApplications;
 	}
 
+	async updateDataUseWidget(publisherId, content) {
+		const publisher = await this.publisherRepository.getPublisher(publisherId);
+		const data = { ...publisher.publisherDetails.dataUse.widget, ...content };
+		await this.publisherRepository.updateByQuery(
+			{ _id: publisherId },
+			{
+				'publisherDetails.dataUse': {
+					widget: {
+						...data,
+						acceptedDate: Date.now(),
+					},
+				},
+			}
+		);
+	}
+
 	async update(document, body = {}) {
 		return this.publisherRepository.update(document, body);
 	}

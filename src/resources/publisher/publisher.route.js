@@ -4,6 +4,7 @@ import passport from 'passport';
 import { logger } from '../utilities/logger';
 import PublisherController from './publisher.controller';
 import { publisherService, workflowService, dataRequestService, amendmentService } from './dependency';
+import { userIsTeamManager } from '../auth/utils';
 import { utils } from '../auth';
 
 const logCategory = 'Publisher';
@@ -55,6 +56,12 @@ router.get(
 	(req, res) => publisherController.getPublisherWorkflows(req, res)
 );
 
+// @route   PATCH /api/publishers/:id/dataUseWidget
+// @desc	Update data use widget settings (terms and conditions)
+// @access  Public
+router.patch('/:id/dataUseWidget', passport.authenticate('jwt'), utils.userIsTeamManager(), (req, res) =>
+	publisherController.updateDataUseWidget(req, res)
+);
 router.patch('/dataRequestModalContent/:id', passport.authenticate('jwt'), utils.userIsTeamManager(), (req, res) =>
 	publisherController.updateDataRequestModalContent(req, res)
 );

@@ -41,6 +41,14 @@ const PublisherSchema = new Schema(
 			accessRequestCost: String,
 			dataUseLimitation: [String],
 			dataUseRequirements: [String],
+			dataUse: {
+				widget: {
+					enabled: { type: Boolean, default: false },
+					accepted: { type: Boolean, default: false },
+					acceptedByUserId: String,
+					acceptedDate: Date,
+				},
+			},
 			questionBank: {
 				enabled: { type: Boolean, default: false },
 			},
