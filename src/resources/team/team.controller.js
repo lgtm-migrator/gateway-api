@@ -583,6 +583,7 @@ const getTeamsList = async (req, res) => {
 				'publisherDetails.name': 1,
 				'publisherDetails.memberOf': 1,
 				'publisherDetails.questionBank.enabled': 1,
+				'publisherDetails.dataUse.widget.enabled': 1,
 			})
 			.populate('users', { firstname: 1, lastname: 1 })
 			.sort({ updatedAt: -1 })
@@ -971,21 +972,23 @@ const checkIfAdmin = (user, adminRoles) => {
 const getTeamMembersByRole = (team, role) => {
 	let { members = [], users = [] } = team;
 
-	let userIds = members.filter(mem => {
-		if (mem.roles.includes(role) || (role === 'All' && _.has(mem, 'roles'))) {
-			if(!_.has(mem, 'notifications')) {
-				return true;
-			}
+	let userIds = members
+		.filter(mem => {
+			if (mem.roles.includes(role) || (role === 'All' && _.has(mem, 'roles'))) {
+				if (!_.has(mem, 'notifications')) {
+					return true;
+				}
 
-			if (_.has(mem, 'notifications') && mem.notifications.length === 0) {
-				return true;
+				if (_.has(mem, 'notifications') && mem.notifications.length === 0) {
+					return true;
+				}
+
+				if (_.has(mem, 'notifications') && mem.notifications.length && mem.notifications[0].optIn) {
+					return true;
+				}
 			}
-	
-			if (_.has(mem, 'notifications') && mem.notifications.length && mem.notifications[0].optIn) {
-				return true;
-			}
-		}
-	}).map(mem => mem.memberid.toString());
+		})
+		.map(mem => mem.memberid.toString());
 
 	return users.filter(user => userIds.includes(user._id.toString()));
 };
