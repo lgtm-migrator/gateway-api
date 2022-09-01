@@ -41,7 +41,7 @@ module.exports = {
 						},
 					});
 
-					// 3. Return undefined if no object(s) exists
+				// 3. Return undefined if no object(s) exists
 				if (_.isEmpty(tools)) return undefined;
 
 				// 4. Get recipients for new message
@@ -138,15 +138,16 @@ module.exports = {
 								const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
 								messageRecipients = [...teamNotificationEmails, ...memberEmails];
 							} else {
-								const memberIds = [...subscribedMembersByType.map(m => m.memberid.toString())].filter(ele => ele !== topicObj.createdBy.toString());
+								const memberIds = [...subscribedMembersByType.map(m => m.memberid.toString())].filter(
+									ele => ele !== topicObj.createdBy.toString()
+								);
 								const creatorObjectId = topicObj.createdBy.toString();
 								// returns array of objects [{email: 'email@email.com '}] for members in subscribed emails users is list of full user object
 								const { memberEmails } = teamController.getMemberDetails([...memberIds], [...messageRecipients]);
 								const creatorEmail = await UserModel.findById(creatorObjectId);
-								messageCreatorRecipient = [{ email: creatorEmail.email}];
+								messageCreatorRecipient = [{ email: creatorEmail.email }];
 								messageRecipients = [...teamNotificationEmails, ...memberEmails];
 							}
-							
 						} else {
 							// only if not membersByType but has a team email setup
 							messageRecipients = [...messageRecipients, ...teamNotificationEmails];
@@ -188,13 +189,14 @@ module.exports = {
 
 				// publish the message to GCP PubSub
 				const cacheEnabled = parseInt(process.env.CACHE_ENABLED) || 0;
+
 				if (cacheEnabled && !isServiceAccount) {
 					let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(tools[0].publisher._id) }).lean();
 
-					if (publisherDetails['dar-integration']['enabled']) {
+					if (publisherDetails['dar-integration'] && publisherDetails['dar-integration']['enabled']) {
 						const pubSubMessage = {
-							id: "",
-							type: "enquiry",
+							id: '',
+							type: 'enquiry',
 							publisherInfo: {
 								id: publisherDetails._id,
 								name: publisherDetails.name,
@@ -204,14 +206,12 @@ module.exports = {
 								messageId: message.messageID,
 								createdDate: message.createdDate,
 								questionBank: req.body.firstMessage,
-		
 							},
 							darIntegration: publisherDetails['dar-integration'],
 						};
 						await publishMessageWithRetryToPubSub(process.env.PUBSUB_TOPIC_ENQUIRY, JSON.stringify(pubSubMessage));
 					}
 				}
-
 			}
 			// 19. Return successful response with message data
 			const messageObj = message.toObject();
