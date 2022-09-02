@@ -441,6 +441,7 @@ export default class DataRequestService {
 		// Process the files for scanning
 		//lgtm [js/type-confusion-through-parameter-tampering]
 		for (let i = 0; i < files.length; i++) {
+			console.log('files[i]', files[i]);
 			// Get description information
 			let description = descriptionArray ? descriptions[i] : descriptions;
 			// Get uniqueId
