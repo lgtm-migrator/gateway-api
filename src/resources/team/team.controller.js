@@ -694,6 +694,7 @@ const addTeam = async (req, res) => {
 
 		publisher.name = `${inputSanitizer.removeNonBreakingSpaces(memberOf)} > ${inputSanitizer.removeNonBreakingSpaces(name)}`;
 		publisher.publisherDetails = {
+			...publisher.publisherDetails,
 			name: inputSanitizer.removeNonBreakingSpaces(name),
 			memberOf: inputSanitizer.removeNonBreakingSpaces(memberOf),
 			contactPoint: inputSanitizer.removeNonBreakingSpaces(contactPoint),
@@ -723,7 +724,7 @@ const addTeam = async (req, res) => {
 		// 11. Send email and notification to managers
 		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user, publisherId);
 
-		return res.status(200).json({ success: true });
+		return res.status(200).json(newPublisher);
 	} catch (err) {
 		console.error(err.message);
 		return res.status(500).json({
