@@ -583,6 +583,7 @@ const getTeamsList = async (req, res) => {
 				'publisherDetails.name': 1,
 				'publisherDetails.memberOf': 1,
 				'publisherDetails.questionBank.enabled': 1,
+				'publisherDetails.dataUse.widget.enabled': 1,
 			})
 			.populate('users', { firstname: 1, lastname: 1 })
 			.sort({ updatedAt: -1 })
