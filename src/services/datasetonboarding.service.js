@@ -221,12 +221,8 @@ export default class DatasetOnboardingService {
 	getDatasetVersion = async id => {
 		let dataset = await Data.findOne({ _id: id });
 
-		if (dataset.questionAnswers) {
-			dataset.questionAnswers = JSON.parse(dataset.questionAnswers);
-		} else {
-			dataset.questionAnswers = datasetonboardingUtil.populateQuestionAnswers(dataset.datasetv2);
-			await this.datasetOnboardingRepository.updateByQuery({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
-		}
+		dataset.questionAnswers = datasetonboardingUtil.populateQuestionAnswers(dataset.datasetv2);
+		await this.datasetOnboardingRepository.updateByQuery({ _id: id }, { questionAnswers: JSON.stringify(dataset.questionAnswers) });
 
 		if (_.isEmpty(dataset.structuralMetadata)) {
 			dataset.structuralMetadata = datasetonboardingUtil.populateStructuralMetadata(dataset.datasetfields.technicaldetails);
