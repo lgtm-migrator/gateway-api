@@ -464,7 +464,11 @@ export default class DataRequestController extends Controller {
 			if (cacheEnabled) {
 				let publisherDetails = await PublisherModel.findOne({ _id: ObjectId(accessRecord.publisherObj._id) }).lean();
 
-				if (accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED && publisherDetails['dar-integration']['enabled']) {
+				if (
+					accessRecord.applicationStatus === constants.applicationStatuses.SUBMITTED &&
+					publisherDetails['dar-integration'] &&
+					publisherDetails['dar-integration']['enabled']
+				) {
 					const pubSubMessage = {
 						id: '',
 						type: '5safes',
