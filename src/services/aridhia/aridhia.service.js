@@ -22,7 +22,7 @@ export default class aridhiaService {
 
 	resToDataset(res) {
 		res = res.data;
-console.log(JSON.stringify(res));
+console.log(JSON.stringify(res, null, 2));
 		let doc = {
 			pid: `fair-${res.code}`,
 			activeflag: 'active',
