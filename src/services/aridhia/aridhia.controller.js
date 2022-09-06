@@ -7,10 +7,10 @@ import * as Sentry from '@sentry/node';
 
 export default class AridhiaController {
 	constructor() {
-		// let config = {
-		// 	endpoint: process.env.ARIDHIA_ENDPOINT,
-		// 	logCategory: 'Aridhia Script',
-		// };
+		let config = {
+			endpoint: process.env.ARIDHIA_ENDPOINT,
+			logCategory: 'Aridhia Script',
+		};
 		this.datasetService = new DatasetService();
 		this.aridhia = new Aridhia(config);
 	}
