@@ -33,7 +33,7 @@ export default class aridhiaService {
 			description: res.catalogue.description,
 			datasetv2: {},
 			license: res.catalogue.license,
-			name: res.name,
+			name: res.catalog.title,
 			publisher: res.catalogue.publisher,
 			rights: res.catalogue.rights,
 			tags: { features: [...res.catalogue.keyword] },
