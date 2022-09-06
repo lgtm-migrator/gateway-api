@@ -7,10 +7,10 @@ import * as Sentry from '@sentry/node';
 
 export default class AridhiaController {
 	constructor() {
-		let config = {
-			endpoint: process.env.ARIDHIA_ENDPOINT,
-			logCategory: 'Aridhia Script',
-		};
+		// let config = {
+		// 	endpoint: process.env.ARIDHIA_ENDPOINT,
+		// 	logCategory: 'Aridhia Script',
+		// };
 		this.datasetService = new DatasetService();
 		this.aridhia = new Aridhia(config);
 	}
@@ -37,13 +37,14 @@ export default class AridhiaController {
 
 			this.archiveDeprecatedDatasets(codes);
 		} catch (err) {
-			Sentry.addBreadcrumb({
-				category: 'Caching',
-				message: `Unable to complete the metadata import from Aridhia`,
-				level: Sentry.Severity.Error,
-			});
+			console.log(err);
+			// Sentry.addBreadcrumb({
+			// 	category: 'Caching',
+			// 	message: `Unable to complete the metadata import from Aridhia`,
+			// 	level: Sentry.Severity.Error,
+			// });
 
-			logger.logError(err, this.config.logCategory);
+			// logger.logError(err, this.config.logCategory);
 			console.log('Aridhia Script broke down. Error: ' + err);
 		}
 	}
