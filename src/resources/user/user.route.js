@@ -113,37 +113,38 @@ router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), utils.ch
 			return res.status(err.statusCode).json({ status: 'error', message: err.message });
 		});
 });
-
-// @router   POST /api/v1/users/serviceaccount
-// @desc     create service account
-// @access   Private
-// router.post('/serviceaccount', passport.authenticate('jwt'), utils.checkIsInRole(ROLES.Admin), async (req, res) => {
-// 	try {
-// 		// 1. Validate request body params
-// 		let { firstname = '', lastname = '', email = '', teamId = '' } = req.body;
-// 		if (_.isEmpty(firstname) || _.isEmpty(lastname) || _.isEmpty(email) || _.isEmpty(teamId)) {
-// 			return res.status(400).json({
-// 				success: false,
-// 				message: 'You must supply a first name, last name, email address and teamId',
-// 			});
-// 		}
-// 		// 2. Create service account
-// 		const serviceAccount = await createServiceAccount(firstname, lastname, email, teamId);
-// 		if(_.isNil(serviceAccount)) {
-// 			return res.status(400).json({
-// 				success: false,
-// 				message: 'Unable to create service account with provided details',
-// 			});
-// 		}
-// 		// 3. Return service account details
-// 		return res.status(200).json({
-// 			success: true,
-// 			serviceAccount
-// 		});
-// 	} catch (err) {
-// 		console.error(err.message);
-// 		return res.status(500).json(err);
-// 	}
-// });
+import _ from 'lodash'
+import { createServiceAccount } from './user.repository'
+@router   POST /api/v1/users/serviceaccount
+@desc     create service account
+@access   Private
+router.post('/serviceaccount', async (req, res) => {
+	try {
+		// 1. Validate request body params
+		let { firstname = '', lastname = '', email = '', teamId = '' } = req.body;
+		if (_.isEmpty(firstname) || _.isEmpty(lastname) || _.isEmpty(email) || _.isEmpty(teamId)) {
+			return res.status(400).json({
+				success: false,
+				message: 'You must supply a first name, last name, email address and teamId',
+			});
+		}
+		// 2. Create service account
+		const serviceAccount = await createServiceAccount(firstname, lastname, email, teamId);
+		if(_.isNil(serviceAccount)) {
+			return res.status(400).json({
+				success: false,
+				message: 'Unable to create service account with provided details',
+			});
+		}
+		// 3. Return service account details
+		return res.status(200).json({
+			success: true,
+			serviceAccount
+		});
+	} catch (err) {
+		console.error(err.message);
+		return res.status(500).json(err);
+	}
+});
 
 module.exports = router;
