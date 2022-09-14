@@ -53,7 +53,7 @@ configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
 
-var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
+var domains = [/\.healthdatagateway\.org$/, /\.hdruk\.dev$/, process.env.homeURL];
 
 var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
