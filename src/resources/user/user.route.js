@@ -12,6 +12,9 @@ import {
     checkMinLengthMiddleware,
 } from '../../middlewares/index';
 
+import _ from 'lodash'
+import { createServiceAccount } from './user.repository'
+
 const router = express.Router();
 
 // @router   GET /api/v1/users/:userID
@@ -113,11 +116,10 @@ router.patch('/advancedSearch/roles/:id', passport.authenticate('jwt'), utils.ch
 			return res.status(err.statusCode).json({ status: 'error', message: err.message });
 		});
 });
-import _ from 'lodash'
-import { createServiceAccount } from './user.repository'
-@router   POST /api/v1/users/serviceaccount
-@desc     create service account
-@access   Private
+
+// @router   POST /api/v1/users/serviceaccount
+// @desc     create service account
+// @access   Private
 router.post('/serviceaccount', async (req, res) => {
 	try {
 		// 1. Validate request body params
