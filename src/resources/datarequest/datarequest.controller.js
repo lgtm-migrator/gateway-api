@@ -476,6 +476,7 @@ export default class DataRequestController extends Controller {
 							dataRequestId: accessRecord._id,
 							createdDate: accessRecord.createdAt,
 							questionBank: accessRecord.questionAnswers,
+							files: accessRecord.files,
 						},
 						darIntegration: publisherDetails['dar-integration'],
 					};
