@@ -267,7 +267,7 @@ export default class DataUseRegisterController extends Controller {
 			}
 			let searchQuery = { $and: [{ activeflag: 'active' }] };
 
-			searchQuery = getObjectFilters(searchQuery, req, 'dataUseRegister');
+			searchQuery = getObjectFilters(searchQuery, req.query, 'dataUseRegister');
 
 			const aggregateQuery = [
 				{
@@ -371,13 +371,20 @@ export default class DataUseRegisterController extends Controller {
 
 		switch (type) {
 			case constants.dataUseRegisterNotifications.DATAUSEAPPROVED: {
+				let teamEmailNotification = [];
 				const adminTeam = await TeamModel.findOne({ type: 'admin' })
 					.populate({
 						path: 'users',
 					})
 					.lean();
+				const team = await TeamModel.findById(dataUseRegister.publisher.toString());
+				if (team.notifications.length > 0 && team.notifications[0].optIn) {
+					team.notifications[0].subscribedEmails.map(teamEmail => {
+						teamEmailNotification.push({ email: teamEmail });
+					});
+				}
 				const dataUseTeamMembers = teamController.getTeamMembersByRole(adminTeam, constants.roleTypes.ADMIN_DATA_USE);
-				const emailRecipients = [...dataUseTeamMembers, uploader];
+				const emailRecipients = [...dataUseTeamMembers, uploader, ...teamEmailNotification];
 
 				const options = {
 					id,

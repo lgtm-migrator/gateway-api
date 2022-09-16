@@ -53,7 +53,7 @@ configuration.findAccount = Account.findAccount;
 const oidc = new Provider(process.env.api_url || 'http://localhost:3001', configuration);
 oidc.proxy = true;
 
-var domains = [/\.healthdatagateway\.org$/, process.env.homeURL];
+var domains = [/\.healthdatagateway\.org$/, /\.hdruk\.dev$/, process.env.homeURL];
 
 var rx = /^((http|https)+:\/\/[a-z]+)\.([^/]*)/;
 var arr = rx.exec(process.env.homeURL);
@@ -198,7 +198,7 @@ app.use('/api/v1/reviews', require('../resources/tool/review.route'));
 app.use('/api/v1/relatedobject/', require('../resources/relatedobjects/relatedobjects.route'));
 
 app.use('/api/v1/accounts', require('../resources/account/account.route'));
-app.use('/api/v1/search/filter', require('../resources/search/filter.route'));
+app.use('/api/v1/search/filter', require('../resources/search/searchFilter.route'));
 app.use('/api/v1/search', require('../resources/search/search.router')); // tools projects people
 
 app.use('/api/v1/linkchecker', require('../resources/linkchecker/linkchecker.router'));
@@ -254,6 +254,7 @@ app.use('/api/v1/global', require('../resources/global/global.route'));
 
 app.use('/api/v1/search-preferences', require('../resources/searchpreferences/searchpreferences.route'));
 
+app.use('/api/v2/questionbank', require('../resources/questionbank/questionbank.route'));
 app.use('/api/v2/data-use-registers', require('../resources/dataUseRegister/dataUseRegister.route'));
 app.use('/api/v1/locations', require('../resources/spatialfilter/SpatialRouter'));
 
