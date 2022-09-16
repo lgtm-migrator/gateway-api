@@ -725,6 +725,7 @@ const addTeam = async (req, res) => {
 		await createNotifications(constants.notificationTypes.TEAMADDED, { recipients }, name, req.user, publisherId);
 
 		return res.status(200).json(newPublisher);
+
 	} catch (err) {
 		console.error(err.message);
 		return res.status(500).json({
