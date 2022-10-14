@@ -152,3 +152,6 @@ terraform apply tf_apply && rm tf_apply
 ```
 
 [Link to terraform file](deployment/GCP/api.tf)
+
+
+...
