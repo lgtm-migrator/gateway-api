@@ -10,7 +10,7 @@ const logRequestMiddleware = options => {
 
 const logSystemActivity = options => {
 	const { category = 'Action not categorised', action = 'Action not described' } = options;
-	process.stdout.write(`logSystemActivity - action: ${action}`);
+	process.stdout.write(`logSystemActivity : action ${action}, category ${category}`);
 	// Save to database
 };
 

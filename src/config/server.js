@@ -10,7 +10,6 @@ import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
 import { connectToDatabase } from './db';
 import { initialiseAuthentication } from '../resources/auth';
-import helper from '../resources/utilities/helper.util';
 
 require('dotenv').config();
 

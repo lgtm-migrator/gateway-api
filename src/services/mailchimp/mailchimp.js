@@ -38,7 +38,7 @@ const addSubscriptionMember = async (subscriptionId, user, status) => {
 		// 3. POST to MailChimp Marketing API to add the Gateway user to the MailChimp subscription members
 		const md5email = Crypto.createHash('md5').update(email).digest('hex');
 		await mailchimp.put(`lists/${subscriptionId}/members/${md5email}`, body).catch(err => {
-			process.stdout.write(`MAILCHIP - addSubscriptionMember : ${err.message}\n`);
+			process.stdout.write(`MAILCHIP - addSubscriptionMember : ${id} - ${err.message}\n`);
 		});
 	}
 };
